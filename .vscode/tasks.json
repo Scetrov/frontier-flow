@@ -1,0 +1,115 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev Server",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "dev"],
+      "isBackground": true,
+      "presentation": {
+        "clear": false,
+        "echo": true,
+        "focus": false,
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "build"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Typecheck",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "typecheck"],
+      "presentation": {
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "lint"],
+      "presentation": {
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Unit Tests (watch)",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "test"],
+      "isBackground": true,
+      "group": "test",
+      "presentation": {
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Unit Tests",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "test:run"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Playwright E2E",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "test:e2e"],
+      "group": "test",
+      "presentation": {
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Preview",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "preview"],
+      "isBackground": true,
+      "presentation": {
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Verify Workspace",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Typecheck", "Lint", "Unit Tests"],
+      "problemMatcher": []
+    }
+  ]
+}

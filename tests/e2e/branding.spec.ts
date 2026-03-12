@@ -5,17 +5,23 @@ test("renders Frontier Flow branding metadata", async ({ page }) => {
 
   await expect(page).toHaveTitle("Frontier Flow");
 
-  await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute(
+  const faviconLinks = page.locator('link[rel="icon"][type="image/png"]');
+  await expect(faviconLinks).toHaveCount(3);
+  await expect(page.locator('link[rel="icon"][type="image/png"][sizes="32x32"]')).toHaveAttribute(
     "href",
-    "/favicon.svg",
+    "/favicon@32px.png",
   );
-  await expect(page.locator('link[rel="icon"][type="image/x-icon"]')).toHaveAttribute(
+  await expect(page.locator('link[rel="icon"][type="image/png"][sizes="64x64"]')).toHaveAttribute(
     "href",
-    "/favicon.ico",
+    "/favicon@64px.png",
+  );
+  await expect(page.locator('link[rel="icon"][type="image/png"][sizes="128x128"]')).toHaveAttribute(
+    "href",
+    "/favicon@128px.png",
   );
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
     "href",
-    "/apple-touch-icon.png",
+    "/LogoSquare@2x.png",
   );
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
     "href",
@@ -61,6 +67,8 @@ test("preserves shell landmarks and layout constraints across viewport widths", 
 
   await page.setViewportSize({ height: 900, width: 320 });
   await page.goto("/");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Connect" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Open node toolbox" })).toBeFocused();
 });

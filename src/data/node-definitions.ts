@@ -20,15 +20,15 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     color: "var(--socket-value)",
   },
   {
-    type: "inventoryCheck",
-    label: "Inventory Check",
-    description: "Inspect cargo and equipment states before action execution.",
+    type: "isAggressor",
+    label: "Is Aggressor",
+    description: "Check if a target is actively attacking the turret's base.",
     color: "var(--socket-vector)",
   },
   {
-    type: "signalRelay",
-    label: "Signal Relay",
-    description: "Forward fleet events and state transitions to downstream nodes.",
+    type: "setPriority",
+    label: "Set Priority",
+    description: "Set or adjust a target's priority weight in the return list.",
     color: "var(--socket-signal)",
   },
 ] as const;
