@@ -1,1 +1,1 @@
-- 003-sui-wallet-connect: Added TypeScript 5.9 (strict, ES2022, ES Modules), React 19 + `@mysten/dapp-kit` (wallet UI, hooks, providers), `@mysten/sui` (SUI client, balance queries), `@tanstack/react-query` (dapp-kit peer dependency)
+- 004-reactflow-canvas-nodes: Added TypeScript 5.9 (strict, ES2022 target, ES Modules only, `any` forbidden) + `@xyflow/react` ^12.10.0, `react` ^19.2.0, `lucide-react` ^0.563.0, `dagre` ^0.8.5

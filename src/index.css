@@ -85,3 +85,246 @@ button,
 .font-heading {
   font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
 }
+
+.ff-canvas {
+  height: 100%;
+  min-height: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 71, 0, 0.06), transparent 28%),
+    radial-gradient(circle at top left, rgba(84, 160, 255, 0.18), transparent 35%),
+    linear-gradient(135deg, #10151f, #16212e 55%, #0d1118);
+}
+
+.ff-canvas__flow {
+  height: 100%;
+}
+
+.ff-canvas__background {
+  opacity: 0.5;
+}
+
+.ff-canvas__controls {
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(26, 10, 10, 0.9);
+}
+
+.ff-canvas__controls button {
+  border-bottom: 1px solid var(--ui-border-dark);
+  background: transparent;
+  color: var(--cream-white);
+}
+
+.ff-canvas__empty-state {
+  position: absolute;
+  left: 1.5rem;
+  top: 1.5rem;
+  z-index: 4;
+  max-width: 38rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(26, 10, 10, 0.84);
+  padding: 1.25rem;
+  backdrop-filter: blur(12px);
+}
+
+.ff-canvas__eyebrow {
+  margin: 0 0 0.75rem;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-canvas__title {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: clamp(1.2rem, 2vw, 2rem);
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cream-white);
+}
+
+.ff-canvas__copy {
+  margin: 0.9rem 0 0;
+  max-width: 32rem;
+  color: var(--text-secondary);
+}
+
+.ff-node {
+  position: relative;
+  min-width: 16rem;
+  max-width: 18rem;
+}
+
+.ff-node__surface {
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(20, 24, 31, 0.94);
+  box-shadow: 0 20px 35px rgba(3, 6, 10, 0.35);
+  overflow: hidden;
+}
+
+.ff-node.is-selected .ff-node__surface {
+  border-color: var(--brand-orange);
+  box-shadow: 0 0 0 1px rgba(255, 71, 0, 0.35), 0 20px 35px rgba(3, 6, 10, 0.35);
+}
+
+.ff-node--diamond {
+  min-width: 14rem;
+}
+
+.ff-node--diamond .ff-node__surface {
+  position: relative;
+  min-height: 13rem;
+  background: transparent;
+  border: none;
+  overflow: visible;
+}
+
+.ff-node--diamond .ff-node__surface::before {
+  content: "";
+  position: absolute;
+  inset: 1rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(20, 24, 31, 0.95);
+  transform: rotate(45deg);
+  box-shadow: 0 18px 32px rgba(3, 6, 10, 0.35);
+}
+
+.ff-node.is-selected.ff-node--diamond .ff-node__surface::before {
+  border-color: var(--brand-orange);
+  box-shadow: 0 0 0 1px rgba(255, 71, 0, 0.35), 0 18px 32px rgba(3, 6, 10, 0.35);
+}
+
+.ff-node__surface--diamond > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ff-node__row {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 1rem;
+}
+
+.ff-node__row--top,
+.ff-node__row--bottom {
+  padding: 0.35rem 0.75rem;
+}
+
+.ff-node__header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 0.9rem;
+  color: var(--text-dark);
+}
+
+.ff-node--diamond .ff-node__header {
+  justify-content: center;
+  margin: 0 1.25rem;
+}
+
+.ff-node__icon {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
+.ff-node__title {
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ff-node__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem 0.9rem;
+  align-items: start;
+}
+
+.ff-node--diamond .ff-node__body {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+  padding: 0.6rem 2rem 1.2rem;
+}
+
+.ff-node__column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ff-node__column--right {
+  align-items: flex-end;
+}
+
+.ff-node--diamond .ff-node__column {
+  width: 100%;
+  align-items: center;
+}
+
+.ff-node__description {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.ff-node__socket {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.15rem;
+}
+
+.ff-node__socket-label {
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cream-white);
+  white-space: nowrap;
+}
+
+.ff-node__handle {
+  position: relative !important;
+  width: 0.72rem !important;
+  height: 0.72rem !important;
+  min-width: 0.72rem;
+  min-height: 0.72rem;
+  border: 1px solid rgba(250, 250, 229, 0.5) !important;
+  transform: none !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+}
+
+.ff-node__socket:hover .ff-node__handle,
+.ff-node__handle.connectingto,
+.ff-node__handle.valid {
+  box-shadow: 0 0 0 4px rgba(250, 250, 229, 0.1);
+}
+
+.react-flow__edge-path {
+  stroke-linecap: square;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  filter: drop-shadow(0 0 6px rgba(255, 71, 0, 0.35));
+}
+
+@media (max-width: 767px) {
+  .ff-canvas__empty-state {
+    left: 1rem;
+    right: 1rem;
+    top: 1rem;
+    max-width: none;
+  }
+}

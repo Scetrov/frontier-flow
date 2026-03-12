@@ -4,7 +4,7 @@ import WalletStatus from "./WalletStatus";
 function Header() {
   return (
     <header className="border-b border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.92)] px-4 py-3 backdrop-blur-sm sm:px-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <img
             alt="Frontier Flow"
@@ -23,7 +23,7 @@ function Header() {
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <WalletStatus />
         </div>
       </div>
