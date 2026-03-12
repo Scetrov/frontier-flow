@@ -25,15 +25,6 @@ function Header() {
 
         <div className="flex shrink-0 flex-col items-end gap-2">
           <WalletStatus />
-
-          <div className="hidden text-right sm:block">
-            <p className="font-heading text-[0.65rem] uppercase tracking-[0.28em] text-[var(--text-secondary)]">
-              Visual Contract Shell
-            </p>
-            <p className="text-xs text-[var(--text-secondary)]">
-              Compose automations, validate structure, deploy with intent.
-            </p>
-          </div>
         </div>
       </div>
     </header>
