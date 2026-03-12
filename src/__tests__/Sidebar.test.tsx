@@ -10,6 +10,16 @@ const definitions: readonly NodeDefinition[] = [
     label: "Aggression",
     description: "Trigger combat automations.",
     color: "var(--brand-orange)",
+    category: "event-trigger",
+    sockets: [
+      {
+        id: "priority",
+        type: "priority",
+        position: "right",
+        direction: "output",
+        label: "priority",
+      },
+    ],
   },
 ];
 

@@ -113,6 +113,9 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
                         {definition.label}
                       </span>
                     </div>
+                    <span className="font-heading text-[0.62rem] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+                      {definition.category.replaceAll("-", " ")} · {definition.sockets.length} sockets
+                    </span>
                     <span className="text-sm text-[var(--text-secondary)]">
                       {definition.description}
                     </span>

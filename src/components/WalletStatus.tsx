@@ -54,17 +54,18 @@ function WalletStatus() {
         : formatBalance(balanceQuery.data.totalBalance);
 
     return (
-      <div className="flex max-w-full flex-col items-end gap-2 sm:flex-row sm:items-center">
-        <div className="grid min-w-0 gap-1 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.85)] px-3 py-2 text-right">
-          <span className="font-heading text-[0.65rem] uppercase tracking-[0.28em] text-[var(--brand-orange)]">
+      <div className="flex max-w-full items-center gap-2">
+        <div className="flex min-w-0 items-center gap-3 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.85)] px-3 py-2">
+          <span className="hidden font-heading text-[0.65rem] uppercase tracking-[0.28em] text-[var(--brand-orange)] sm:block">
             Wallet
           </span>
           <span className="truncate font-heading text-sm uppercase tracking-[0.12em] text-[var(--cream-white)]">
             {formatAddress(account.address)}
           </span>
+          <div className="h-4 w-px bg-[var(--ui-border-dark)]" />
           <span
             aria-live="polite"
-            className="text-[0.7rem] uppercase tracking-[0.2em] text-[var(--text-secondary)]"
+            className="whitespace-nowrap text-[0.7rem] uppercase tracking-[0.2em] text-[var(--text-secondary)]"
           >
             {balanceLabel}
           </span>
@@ -97,20 +98,22 @@ function WalletStatus() {
 
   if (wallets.length === 0) {
     return (
-      <div className="flex max-w-[18rem] flex-col items-end gap-2 text-right">
+      <div className="flex items-center gap-2">
         <button
           className={`${sharedButtonClassName} border-[var(--brand-orange)] bg-transparent text-[var(--brand-orange)] hover:bg-[rgba(255,71,0,0.1)]`}
           onClick={() => {
-            setShowWalletHelp(true);
+            setShowWalletHelp(!showWalletHelp);
           }}
           type="button"
         >
-          Connect
+          {showWalletHelp ? "Hide Help" : "Connect"}
         </button>
         {showWalletHelp ? (
-          <p className="max-w-[18rem] text-[0.7rem] text-[var(--text-secondary)]">
-            Install a Sui-compatible wallet such as Sui Wallet, Suiet, or Ethos to connect.
-          </p>
+          <div className="absolute right-4 top-full z-50 mt-2 max-w-[18rem] border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.95)] p-3 shadow-xl backdrop-blur-md">
+            <p className="text-[0.7rem] leading-relaxed text-[var(--text-secondary)]">
+              Install a Sui-compatible wallet such as Sui Wallet, Suiet, or Ethos to connect.
+            </p>
+          </div>
         ) : null}
       </div>
     );
