@@ -1,9 +1,10 @@
-import logoUrl from "../../assets/LogoSquare@2x.png";
+import logoUrl from "../../assets/favicon@32px.png";
+import WalletStatus from "./WalletStatus";
 
 function Header() {
   return (
     <header className="border-b border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.92)] px-4 py-3 backdrop-blur-sm sm:px-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <img
             alt="Frontier Flow"
@@ -22,13 +23,17 @@ function Header() {
           </div>
         </div>
 
-        <div className="hidden text-right sm:block">
-          <p className="font-heading text-[0.65rem] uppercase tracking-[0.28em] text-[var(--text-secondary)]">
-            Visual Contract Shell
-          </p>
-          <p className="text-xs text-[var(--text-secondary)]">
-            Compose automations, validate structure, deploy with intent.
-          </p>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <WalletStatus />
+
+          <div className="hidden text-right sm:block">
+            <p className="font-heading text-[0.65rem] uppercase tracking-[0.28em] text-[var(--text-secondary)]">
+              Visual Contract Shell
+            </p>
+            <p className="text-xs text-[var(--text-secondary)]">
+              Compose automations, validate structure, deploy with intent.
+            </p>
+          </div>
         </div>
       </div>
     </header>

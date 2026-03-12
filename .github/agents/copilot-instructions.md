@@ -1,1 +1,1 @@
-<!-- MANUAL ADDITIONS END -->
+- 003-sui-wallet-connect: Added TypeScript 5.9 (strict, ES2022, ES Modules), React 19 + `@mysten/dapp-kit` (wallet UI, hooks, providers), `@mysten/sui` (SUI client, balance queries), `@tanstack/react-query` (dapp-kit peer dependency)
