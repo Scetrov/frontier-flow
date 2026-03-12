@@ -1,30 +1,4 @@
-# Dependencies
-node_modules/
-
-# Build output
+.vite/
 dist/
-coverage/
-playwright-report/
+node_modules/
 test-results/
-
-# Editor
-.vscode/*
-!.vscode/extensions.json
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Env
-.env
-.env.*
-!.env.example
-
-# Logs
-*.log
-npm-debug.log*
-
-# Temp
-*.tmp
-*.swp
