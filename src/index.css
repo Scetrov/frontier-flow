@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand */
+  --brand-orange: #ff4700;
+  --brand-dark: #e03f00;
+  --cream-white: #fafae5;
+
+  /* Backgrounds */
+  --bg-primary: #1a0a0a;
+  --bg-secondary: #2d1515;
+
+  /* Text */
+  --text-primary: #fafae5;
+  --text-secondary: #c7b8b3;
+  --text-dark: #0b0b0b;
+
+  /* Borders */
+  --border-color: #6b6b5e;
+  --ui-border-dark: #3a3a3a;
+
+  /* Cards */
+  --card-bg: rgba(45, 21, 21, 0.85);
+
+  /* Canvas */
+  --canvas-bg: #334155;
+
+  /* Functional */
+  --error-glow: #ff3b30;
+
+  /* Socket colours */
+  --socket-signal: #fafae5;
+  --socket-entity: #54a0ff;
+  --socket-value: #1abc9c;
+  --socket-vector: #9b59b6;
+  --socket-any: #6b6b5e;
+
+  /* Typography */
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  border-radius: 0;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top, rgba(255, 71, 0, 0.12), transparent 25%),
+    linear-gradient(180deg, #120707 0%, #1a0a0a 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+[draggable="true"] {
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-orange);
+  outline-offset: 2px;
+}
+
+.font-heading {
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+}

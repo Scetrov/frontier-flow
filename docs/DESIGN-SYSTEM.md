@@ -29,8 +29,8 @@ description: Typography, colour palette, component styling, and accessibility st
 
 ### Theme Usage Guidance
 
-> [!TIP]
-> **Always** use usage-based variables (e.g., `--bg-primary`, `--text-primary`) instead of hardcoded colors. These variables automatically switch values based on the active theme (Light/Dark).
+[!TIP]
+**Always** use usage-based variables (e.g., `--bg-primary`, `--text-primary`) instead of hardcoded colors. These variables automatically switch values based on the active theme (Light/Dark).
 
 | Variable           | Light Mode (Stone/Warm)    | Dark Mode (Red/Nebula)   | Usage Meaning               |
 | ------------------ | -------------------------- | ------------------------ | --------------------------- |

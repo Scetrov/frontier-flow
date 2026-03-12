@@ -203,17 +203,17 @@ To ensure efficiency for power users and accessibility for all, the following ke
 
 ```mermaid
 flowchart LR
-    A["Open App"] --> B["Explore Default Graph"]
-    B --> C["Build Custom Graph"]
-    C --> D["Preview Code"]
-    D --> E{"Looks Correct?"}
+    A["Open App"] --B["Explore Default Graph"]
+    B --C["Build Custom Graph"]
+    C --D["Preview Code"]
+    D --E{"Looks Correct?"}
     E -->|No| C
     E -->|Yes| F["Run Tests"]
-    F --> G{"Tests Pass?"}
+    F --G{"Tests Pass?"}
     G -->|No| C
     G -->|Yes| H["Connect Wallet"]
-    H --> I["Deploy / Upgrade"]
-    I --> J["Save to GitHub"]
-    J --> K["Iterate"]
-    K --> C
+    H --I["Deploy / Upgrade"]
+    I --J["Save to GitHub"]
+    J --K["Iterate"]
+    K --C
 ```

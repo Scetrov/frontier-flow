@@ -64,7 +64,7 @@ Given that feature description, do this:
          - Multiple reasonable interpretations exist with different implications
          - No reasonable default exists
        - **LIMIT: Maximum 3 [NEEDS CLARIFICATION] markers total**
-       - Prioritize clarifications by impact: scope > security/privacy > user experience > technical details
+       - Prioritize clarifications by impact: scope security/privacy user experience technical details
     4. Fill User Scenarios & Testing section
        If no clear user flow: ERROR "Cannot determine user scenarios"
     5. Generate Functional Requirements
@@ -200,7 +200,7 @@ When creating this spec from a user prompt:
    - Significantly impact feature scope or user experience
    - Have multiple reasonable interpretations with different implications
    - Lack any reasonable default
-4. **Prioritize clarifications**: scope > security/privacy > user experience > technical details
+4. **Prioritize clarifications**: scope security/privacy user experience technical details
 5. **Think like a tester**: Every vague requirement should fail the "testable and unambiguous" checklist item
 6. **Common areas needing clarification** (only if no reasonable default exists):
    - Feature scope and boundaries (include/exclude specific use cases)

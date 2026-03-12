@@ -1,50 +1,170 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  Sync Impact Report
+  ===================
+  Version change: N/A → 1.0.0
+  Modified principles: N/A (initial population)
+  Added sections:
+    - Core Principles (7 principles derived from docs/CONSTITUTION.md)
+    - Architecture & Design Standards
+    - Development Workflow & Guardrails
+    - Governance
+  Removed sections: N/A
+  Templates requiring updates:
+    - .specify/templates/plan-template.md ✅ no changes needed
+      (Constitution Check section uses generic gate reference)
+    - .specify/templates/spec-template.md ✅ no changes needed
+      (standard sections, no constitution-specific refs)
+    - .specify/templates/tasks-template.md ✅ no changes needed
+      (user-story organisation, no constitution-specific refs)
+    - .specify/templates/commands/*.md ✅ N/A (directory empty)
+  Follow-up TODOs: none
+-->
+
+# Frontier Flow Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Type Safety Above All
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+- All code MUST use TypeScript (target ES2022, ES Modules only).
+  No CommonJS.
+- `any` is forbidden without exception; use `unknown` with
+  narrowing instead.
+- Complex state machines MUST use discriminated unions.
+- Favour immutable data and pure functions.
+- Prefer readable, explicit solutions over clever shortcuts.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Visual Feedback is Paramount
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+- Every canvas interaction (drag, connect, delete, auto-arrange)
+  MUST produce immediate, clear visual feedback.
+- Feedback mechanisms include animations, colour coding, and
+  pulse effects.
+- Typed sockets MUST be colour-matched to their data type
+  (Signal, Entity, Value, Vector, Any) following the Blender
+  paradigm.
+- Connections MUST render colour-matched animated SVG strokes
+  with closed arrow markers.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Domain-Driven Design
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+- Component structure and node types MUST map directly to game
+  domain elements (e.g., `Aggression`, `Proximity`, `GetTribe`,
+  `PriorityQueue`).
+- The UI MUST speak the language of EVE Frontier.
+- Nodes are categorised as Events, Triggers, or Actions.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Predictable Code Generation
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+- Generated Sui Move code MUST be deterministic — identical
+  graph state MUST produce identical output.
+- Generated code MUST be readable and logically sound.
+- Code generation MUST be fully decoupled from UI components.
+- The generator MUST validate all graph inputs to block
+  injection attacks in generated smart contracts.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Security by Default
+
+- Zero tolerance for logged secrets; never hardcode secrets in
+  the UI or configuration.
+- All untrusted external content (e.g., custom node labels)
+  MUST be sanitised before rendering (use React's built-in
+  escaping).
+- Asynchronous operations MUST use `async/await` with clean
+  error handling; no deep nesting.
+- Surface user-facing errors via predefined notification
+  patterns or Error Boundaries.
+
+### VI. Test-First Quality
+
+- Unit tests are mandatory for utilities, layout algorithms,
+  and code generators. Cover both happy-path and error paths.
+- Test Driven Development is mandatory for all new features
+  and bug fixes.
+- UI/interaction tests MUST accompany every UX change.
+  Playwright is the E2E tool for canvas and workflow testing.
+- Tests MUST NOT rely on timing assertions; use fake timers,
+  mock clocks, or injected dependencies.
+- Minimum 70% test coverage overall; critical paths (code
+  generation, connection logic) MUST reach ≥ 90%.
+
+### VII. Accessibility & Inclusion
+
+- The application MUST target WCAG 2.1 Level AA compliance.
+- Core operations (node navigation, connection, deletion,
+  search) MUST have efficient keyboard equivalents.
+- Use semantic HTML and ARIA attributes (roles, labels, live
+  regions) to describe graph states to assistive technologies.
+- Focusable elements MUST have a distinct, high-contrast
+  `:focus-visible` state with a logical tab order.
+
+## Architecture & Design Standards
+
+- **Runtime**: React 19, TypeScript 5.9 (strict), ES Modules.
+- **Build**: Vite (Rolldown fork), Bun (`bun dev`, `bun run
+  build`, `bun run lint`, `bun run test`).
+- **Graph Engine**: `@xyflow/react` (React Flow v12).
+- **Styling**: Tailwind CSS v4, PostCSS, CSS variables.
+  Usage-based tokens (e.g., `--bg-primary`, `--text-primary`).
+- **Design Language**: Sci-fi industrial aesthetic (EVE
+  Frontier). Sharp, angular shapes — border-radius is `0px`
+  globally without exception.
+- **Typography**: `Disket Mono` (headings), `Inter` (body),
+  `Fira Code` (code).
+- **Separation of Concerns**: UI layer MUST remain thin.
+  Canvas state via React Flow hooks. Code generation decoupled
+  (`utils/codeGenerator.ts`). Layout abstracted
+  (`utils/layoutEngine.ts`).
+- **Performance**: Lazy-load heavy dependencies. Debounce
+  high-frequency events to prevent render thrashing.
+- **State Management**: Local React Hooks +
+  `ReactFlowProvider` contexts. No global state library unless
+  justified via ADR.
+- **Blockchain**: `@mysten/sui`, `@mysten/dapp-kit`,
+  `@zktx.io/sui-move-builder` (WASM).
+
+## Development Workflow & Guardrails
+
+- **Signed Commits**: All commits MUST be GPG-signed. Never
+  disable signing.
+- **Conventional Commits**: Use `feat:`, `fix:`, `docs:`,
+  `chore:`, etc.
+- **Pre-PR Checks**: Run linters, type checks (`tsc -b`), and
+  formatters before submitting.
+- **Branch Policy**: Feature branches only. Never commit
+  directly to main/master/production.
+- **PR Requirements**: Minimum 1 approval, all CI checks green,
+  linked issue/ticket, tests included, security review for
+  sensitive changes.
+- **Dependabot**: Enabled with weekly scans. Lock files
+  committed (`bun.lockb`, frozen installs).
+- **Naming Conventions**:
+  - `PascalCase` for React components, interfaces, classes,
+    enums, type aliases.
+  - `camelCase` for variables, utility functions, and utility
+    filenames.
+  - `kebab-case` for organisational directories.
+  - No `I` prefix on interfaces.
+- **Temporary Files**: Write outside tracked source directories
+  or add to `.gitignore`.
+- **Search Boundaries**: Never run search commands over
+  `/dist` or `node_modules`.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- This constitution is the **absolute source of truth** for
+  all development, architectural decisions, and project
+  conventions within `frontier-flow`.
+- The extended reference is `docs/CONSTITUTION.md`; this file
+  is the speckit-consumable distillation.
+- All PRs and code reviews MUST verify compliance with these
+  principles.
+- Amendments require documentation, at least one approval, and
+  a migration plan for breaking changes.
+- Complexity beyond these principles MUST be justified via an
+  ADR in `docs/ADR/`.
+- Version follows semantic versioning: MAJOR for incompatible
+  governance changes, MINOR for new principles or material
+  expansions, PATCH for clarifications and typo fixes.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-02-22 | **Last Amended**: 2026-03-12

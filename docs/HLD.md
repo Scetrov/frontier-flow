@@ -84,8 +84,8 @@ The application models game automation logic (e.g., EVE Frontier mechanics) wher
 
 ### 2.2 Core Dependencies (Planned)
 
-> [!NOTE]
-> These packages are specified in the design but not yet added to `package.json`.
+[!NOTE]
+These packages are specified in the design but not yet added to `package.json`.
 
 | Package                     | Version | Purpose                                  |
 | --------------------------- | ------- | ---------------------------------------- |
@@ -162,7 +162,7 @@ frontierflow/
 
 ### 4.1 Component Hierarchy
 
-> For hierarchical code structure and internals, see [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#1-component-hierarchy--internals).
+For hierarchical code structure and internals, see [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#1-component-hierarchy--internals).
 
 ### 4.2 Data Flow
 
@@ -171,9 +171,9 @@ flowchart TB
     subgraph App["App Component"]
         State["State: nodes, edges, isPreviewOpen, generatedCode"]
 
-        State --> Header
-        State --> DnDFlow
-        State --> Sidebar
+        State --Header
+        State --DnDFlow
+        State --Sidebar
 
         subgraph Header["Header"]
             onPreview["onPreview"]
@@ -190,7 +190,7 @@ flowchart TB
 
         Draggable -->|drag| DropHandler
         DropHandler -->|updates| ReactFlow
-        onPreview --> Modal
+        onPreview --Modal
 
         Modal["CodePreviewModal"]
     end
@@ -227,7 +227,7 @@ flowchart LR
 
 ## 5. Design System
 
-> **Reference:** See the definitive [`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md) for the complete typography stack, spacing, theming rules, and core variable names.
+**Reference:** See the definitive [`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md) for the complete typography stack, spacing, theming rules, and core variable names.
 
 ### 5.1 Colour Palette & Variables
 
@@ -235,8 +235,8 @@ The application relies on CSS variables for thematic consistency rather than har
 
 ### 5.2 Socket Type System
 
-> **Design Pattern:** Typed sockets (similar to Blender's node editor)  
-> **Rule:** Only sockets of matching colours can be connected. Grey sockets accept any type.
+**Design Pattern:** Typed sockets (similar to Blender's node editor)  
+**Rule:** Only sockets of matching colours can be connected. Grey sockets accept any type.
 
 #### Socket Data Types (Inheriting Core Move Types)
 
@@ -258,11 +258,11 @@ Domain-specific sockets map to 4 foundational Move types (`Signal`, `Entity`, `V
 
 ##### Socket Connection Rules
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#21-socket-connection-rules) for the exact compatibility matrix and validation functions.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#21-socket-connection-rules) for the exact compatibility matrix and validation functions.
 
 ##### Visual Socket Styling
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#22-visual-socket-styling) for socket CSS definitions including hover and pulse animations.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#22-visual-socket-styling) for socket CSS definitions including hover and pulse animations.
 
 ##### Edge Styling by Move Core Type
 
@@ -274,7 +274,7 @@ Domain-specific sockets map to 4 foundational Move types (`Signal`, `Entity`, `V
 | `Vector`       | `var(--socket-vector)` | 3px          | Animated  |
 | `Any`          | `var(--socket-any)`    | 2px          | Animated  |
 
-> **Note:** Edge colors are dynamically determined by the source socket type using `getSocketColorFromHandle`.
+**Note:** Edge colors are dynamically determined by the source socket type using `getSocketColorFromHandle`.
 
 ### 5.3 Typography and Shapes
 
@@ -284,7 +284,7 @@ We natively load:
 - `Disket Mono` for displays/headers.
 - `Inter` for standard body.
 
-> **Important UI Note:** All generic shapes (buttons, cards, interface panels, nodes, and interactive sockets) have their border radius set to `0px` to maintain the technical industrial EVE Frontier look.
+**Important UI Note:** All generic shapes (buttons, cards, interface panels, nodes, and interactive sockets) have their border radius set to `0px` to maintain the technical industrial EVE Frontier look.
 
 ### 5.4 Visual Effects
 
@@ -301,7 +301,7 @@ We natively load:
 
 #### Node Container
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#32-common-ui-node-styling-ccp-aligned) for Node CSS configuration.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#32-common-ui-node-styling-ccp-aligned) for Node CSS configuration.
 
 #### Handle Styles
 
@@ -321,7 +321,7 @@ We natively load:
 
 **File:** `src/components/Header.tsx`
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#11-header-component-internals) for Header component props and logo SVG.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#11-header-component-internals) for Header component props and logo SVG.
 
 **Structure:**
 
@@ -353,7 +353,7 @@ We natively load:
 - Three sections: Header, Scrollable content, Footer
 - Right-side positioned with left border
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#12-sidebar-component-internals) for node definitions array and Drag event handlers.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#12-sidebar-component-internals) for node definitions array and Drag event handlers.
 
 ---
 
@@ -361,7 +361,7 @@ We natively load:
 
 **File:** `src/components/CodePreviewModal.tsx`
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#13-codepreviewmodal-internals) for Modal props and Copy to clipboard implementation.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#13-codepreviewmodal-internals) for Modal props and Copy to clipboard implementation.
 
 **Features:**
 
@@ -380,7 +380,7 @@ We natively load:
 
 **Type:** React Class Component (required for error boundaries)
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#14-errorboundary-state) for ErrorBoundary internal state properties.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#14-errorboundary-state) for ErrorBoundary internal state properties.
 
 **Methods:**
 
@@ -394,7 +394,7 @@ We natively load:
 
 **Location:** Defined within `src/App.tsx`
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#15-dndflow-configuration) for DnDFlow props, ReactFlow provider setup, and Drag-and-Drop hook implementations.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#15-dndflow-configuration) for DnDFlow props, ReactFlow provider setup, and Drag-and-Drop hook implementations.
 
 ---
 
@@ -404,7 +404,7 @@ We natively load:
 
 **File:** `src/nodes/index.ts`
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#31-node-type-registry) for the mapping of node types to React components.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#31-node-type-registry) for the mapping of node types to React components.
 
 ### 7.2 Common Node Structure
 
@@ -418,11 +418,11 @@ All custom nodes follow this pattern:
 
 **Common Styling Classes (CCP Aligned):**
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#32-common-ui-node-styling-ccp-aligned) for the shared CSS classes applied to custom nodes.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#32-common-ui-node-styling-ccp-aligned) for the shared CSS classes applied to custom nodes.
 
 ### 7.3 Individual Node Specifications
 
-> **Socket Format:** `socketId` (Position, Type, Direction) - Description
+**Socket Format:** `socketId` (Position, Type, Direction) - Description
 
 #### AggressionNode
 
@@ -550,10 +550,10 @@ flowchart TB
         end
         subgraph Body["Body"]
             direction LR
-            Input["Input Socket"] --> Content["Node Content"]
-            Content --> Output1["Output Socket 1"]
-            Content --> Output2["Output Socket 2"]
-            Content --> Output3["Output Socket 3"]
+            Input["Input Socket"] --Content["Node Content"]
+            Content --Output1["Output Socket 1"]
+            Content --Output2["Output Socket 2"]
+            Content --Output3["Output Socket 3"]
         end
     end
 ```
@@ -573,17 +573,17 @@ flowchart TB
 
 ### 7.5 Socket Implementation
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#23-socket-implementation) for socket interfaces, type enumerations, and runtime colour mapping logic.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#23-socket-implementation) for socket interfaces, type enumerations, and runtime colour mapping logic.
 
 ### 7.6 Connection Validation Hook
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#24-connection-validation-hook) for the `useConnectionValidation` hook tying visual sockets to validation logic.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#24-connection-validation-hook) for the `useConnectionValidation` hook tying visual sockets to validation logic.
 
 ---
 
 ## 8. State Management
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#4-state-management-initialization) for React state hooks, initial node layouts, and predefined edge connections.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#4-state-management-initialization) for React state hooks, initial node layouts, and predefined edge connections.
 
 ---
 
@@ -596,23 +596,23 @@ flowchart TB
 **Function Signature:**
 
 ```typescript
-export const generateMoveCode = (nodes: Node[]): string => { ... }
+export const generateMoveCode = (nodes: Node[]): string ={ ... }
 ```
 
 **Output Structure:**
 
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#5-code-generation-outputs) for a complete example of generated Move code module structure.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#5-code-generation-outputs) for a complete example of generated Move code module structure.
 
 **Node-to-Code Mapping:**
 
-> **On-Chain Context:** The generated code targets the `builder_extensions` pattern defined in `world::turret`. The world contract provides default targeting logic via `world::turret::get_target_priority_list()`. When an extension is configured (via `authorize_extension<Auth>`), the world contract's default function aborts with error code 7 (`EExtensionConfigured`), and the game server resolves the package ID from the configured type name and calls the extension's `get_target_priority_list` function directly. Frontier Flow generates extension contracts that implement custom targeting logic using the `TargetCandidate` struct, `ReturnTargetPriorityList` return entries, and `OnlineReceipt` proof pattern. The extension function receives BCS-serialized `vector<TargetCandidate>` and returns BCS-serialized `vector<ReturnTargetPriorityList>`.
+**On-Chain Context:** The generated code targets the `builder_extensions` pattern defined in `world::turret`. The world contract provides default targeting logic via `world::turret::get_target_priority_list()`. When an extension is configured (via `authorize_extension<Auth>`), the world contract's default function aborts with error code 7 (`EExtensionConfigured`), and the game server resolves the package ID from the configured type name and calls the extension's `get_target_priority_list` function directly. Frontier Flow generates extension contracts that implement custom targeting logic using the `TargetCandidate` struct, `ReturnTargetPriorityList` return entries, and `OnlineReceipt` proof pattern. The extension function receives BCS-serialized `vector<TargetCandidate>` and returns BCS-serialized `vector<ReturnTargetPriorityList>`.
 
 | Node Type     | Generated Code                                                                                                                 |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `aggression`  | `turret::candidate_is_aggressor(&candidate)` — checks the `is_aggressor` field on `TargetCandidate`                            |
 | `proximity`   | Entry point: `get_target_priority_list(turret, owner_character, target_candidate_list, receipt)`                               |
 | `getTribe`    | `turret::candidate_character_tribe(&candidate)` — reads tribe ID (u32) from target candidate                                   |
-| `listOfTribe` | `let friendly_tribes: vector<u32> = vector[tribe_1, tribe_2, ...]` — static tribe list                                         |
+| `listOfTribe` | `let friendly_tribes: vector<u32= vector[tribe_1, tribe_2, ...]` — static tribe list                                         |
 | `isInList`    | Tribe comparison: `turret::candidate_character_tribe(&candidate) == character::tribe(owner_character)`                         |
 | `addToQueue`  | `vector::push_back(&mut return_list, turret::new_return_target_priority_list(item_id, weight))` — appends entry to return list |
 | `hpRatio`     | `turret::candidate_hp_ratio(&candidate)` — reads HP ratio (0-100) from target candidate                                        |
@@ -632,7 +632,7 @@ Before the Emitter phase, the compilation pipeline executes a dedicated **AST Pr
 | **Constant Propagation**     | If a `ListOfTribe` node defines a static list with only one element, the emitter may replace `vector::contains(list, &item)` with a direct equality check — eliminating the vector allocation entirely.                 |
 | **Gas-Cost Annotation**      | Each IR node is annotated with an estimated gas weight. The optimiser reorders independent operations to front-load cheap checks (e.g., boolean guards) before expensive lookups, enabling early-exit short-circuiting. |
 
-> See [SOLUTION-DESIGN.md §5.3.2](./SOLUTION-DESIGN.md#532-phase-35-ast-pruning--gas-optimization) for the optimiser's internal implementation details and TypeScript interfaces.
+See [SOLUTION-DESIGN.md §5.3.2](./SOLUTION-DESIGN.md#532-phase-35-ast-pruning--gas-optimization) for the optimiser's internal implementation details and TypeScript interfaces.
 
 ### 9.2 Deployment Integration
 
@@ -654,13 +654,13 @@ Publishing a _new_ package is only half the deployment story. In EVE Frontier, p
 
 ```mermaid
 flowchart LR
-    A["User edits graph"] --> B["Compile via WASM"]
-    B --> C{"First deploy?"}
+    A["User edits graph"] --B["Compile via WASM"]
+    B --C{"First deploy?"}
     C -->|Yes| D["txb.publish() → UpgradeCap"]
     C -->|No| E["txb.upgrade() with stored UpgradeCap"]
-    D --> F["Store UpgradeCap reference in IndexedDB"]
-    E --> G["Commit upgrade digest → authorise"]
-    G --> H["On-chain package bytecode replaced"]
+    D --F["Store UpgradeCap reference in IndexedDB"]
+    E --G["Commit upgrade digest → authorise"]
+    G --H["On-chain package bytecode replaced"]
 ```
 
 **Key Mechanics:**
@@ -672,7 +672,7 @@ flowchart LR
 | **Digest Authorisation** | The upgrade transaction calls `package::authorise_upgrade` with the compiled digest before committing the new bytecode modules.                                                        |
 | **UI Signaling**         | The Deploy button dynamically switches between "Deploy" (new) and "Upgrade" (existing) based on whether a stored `UpgradeCap` exists for the active network + package combination.     |
 
-> See [SOLUTION-DESIGN.md §5.7.1](./SOLUTION-DESIGN.md#571-package-upgrade-flow) for the full TypeScript transaction construction.
+See [SOLUTION-DESIGN.md §5.7.1](./SOLUTION-DESIGN.md#571-package-upgrade-flow) for the full TypeScript transaction construction.
 
 ### 9.3 GitHub Integration & Persistence
 
@@ -694,15 +694,15 @@ flowchart LR
 3. **Visual Error Tracing:** Correlates test failures back to specific React Flow Node IDs, highlighting the exact node where an assertion or type constraint failed.
 4. **Compiler Error Traceability:** When a graph passes the local Constraint Engine but fails during the actual WASM Sui Move compilation, native compiler errors are intercepted and mapped back to the originating React Flow Node. The Emitter annotates each generated code line with an AST Node ID comment (e.g., `// @ff-node:dnd_3_1708642800000`). A regex parser extracts line numbers from the Move compiler's error output, cross-references them against the emitted source map, resolves the originating AST Node ID, and highlights the responsible canvas node with a `.node-error-highlight` CSS class. This eliminates cryptic compiler output for non-technical users.
 
-> See [SOLUTION-DESIGN.md §5.4.1](./SOLUTION-DESIGN.md#541-compiler-error--node-mapping) for the full source map interface and error parsing implementation.
+See [SOLUTION-DESIGN.md §5.4.1](./SOLUTION-DESIGN.md#541-compiler-error--node-mapping) for the full source map interface and error parsing implementation.
 
 ---
 
 ## 10. Configuration Files
 
-> Configuration files (`package.json`, `vite.config.ts`, `tailwind.config.js`, `postcss.config.js`, `index.css`, `index.html`) contain boilerplates and low-level build settings.
+Configuration files (`package.json`, `vite.config.ts`, `tailwind.config.js`, `postcss.config.js`, `index.css`, `index.html`) contain boilerplates and low-level build settings.
 >
-> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#6-configuration-files) for their complete contents and setups.
+See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#6-configuration-files) for their complete contents and setups.
 
 ---
 

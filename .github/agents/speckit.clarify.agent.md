@@ -110,15 +110,15 @@ Execution steps:
 
        | Option | Description |
        |--------|-------------|
-       | A | <Option A description> |
-       | B | <Option B description> |
-       | C | <Option C description> (add D/E as needed up to 5) |
+       | A | <Option A description|
+       | B | <Option B description|
+       | C | <Option C description(add D/E as needed up to 5) |
        | Short | Provide a different short answer (<=5 words) (Include only if free-form alternative is appropriate) |
 
        - After the table, add: `You can reply with the option letter (e.g., "A"), accept the recommendation by saying "yes" or "recommended", or provide your own short answer.`
     - For short‑answer style (no meaningful discrete options):
        - Provide your **suggested answer** based on best practices and context.
-       - Format as: `**Suggested:** <your proposed answer> - <brief reasoning>`
+       - Format as: `**Suggested:** <your proposed answer- <brief reasoning>`
        - Then output: `Format: Short answer (<=5 words). You can accept the suggestion by saying "yes" or "suggested", or provide your own answer.`
     - After the user answers:
        - If the user replies with "yes", "recommended", or "suggested", use your previously stated recommendation/suggestion as the answer.
@@ -137,7 +137,7 @@ Execution steps:
     - For the first integrated answer in this session:
        - Ensure a `## Clarifications` section exists (create it just after the highest-level contextual/overview section per the spec template if missing).
        - Under it, create (if not present) a `### Session YYYY-MM-DD` subheading for today.
-    - Append a bullet line immediately after acceptance: `- Q: <question> → A: <final answer>`.
+    - Append a bullet line immediately after acceptance: `- Q: <question→ A: <final answer>`.
     - Then immediately apply the clarification to the most appropriate section(s):
        - Functional ambiguity → Update or add a bullet in Functional Requirements.
        - User interaction / actor distinction → Update User Stories or Actors subsection (if present) with clarified role, constraint, or scenario.

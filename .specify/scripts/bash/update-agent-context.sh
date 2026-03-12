@@ -362,8 +362,8 @@ create_new_agent_file() {
     if [[ "$target_file" == *.mdc ]]; then
         local frontmatter_file
         frontmatter_file=$(mktemp) || return 1
-        printf '%s\n' "---" "description: Project Development Guidelines" "globs: [\"**/*\"]" "alwaysApply: true" "---" "" > "$frontmatter_file"
-        cat "$temp_file" >> "$frontmatter_file"
+        printf '%s\n' "---" "description: Project Development Guidelines" "globs: [\"**/*\"]" "alwaysApply: true" "---" "" "$frontmatter_file"
+        cat "$temp_file" >"$frontmatter_file"
         mv "$frontmatter_file" "$temp_file"
     fi
 
@@ -430,46 +430,46 @@ update_existing_agent_file() {
     while IFS= read -r line || [[ -n "$line" ]]; do
         # Handle Active Technologies section
         if [[ "$line" == "## Active Technologies" ]]; then
-            echo "$line" >> "$temp_file"
+            echo "$line" >"$temp_file"
             in_tech_section=true
             continue
         elif [[ $in_tech_section == true ]] && [[ "$line" =~ ^##[[:space:]] ]]; then
             # Add new tech entries before closing the section
             if [[ $tech_entries_added == false ]] && [[ ${#new_tech_entries[@]} -gt 0 ]]; then
-                printf '%s\n' "${new_tech_entries[@]}" >> "$temp_file"
+                printf '%s\n' "${new_tech_entries[@]}" >"$temp_file"
                 tech_entries_added=true
             fi
-            echo "$line" >> "$temp_file"
+            echo "$line" >"$temp_file"
             in_tech_section=false
             continue
         elif [[ $in_tech_section == true ]] && [[ -z "$line" ]]; then
             # Add new tech entries before empty line in tech section
             if [[ $tech_entries_added == false ]] && [[ ${#new_tech_entries[@]} -gt 0 ]]; then
-                printf '%s\n' "${new_tech_entries[@]}" >> "$temp_file"
+                printf '%s\n' "${new_tech_entries[@]}" >"$temp_file"
                 tech_entries_added=true
             fi
-            echo "$line" >> "$temp_file"
+            echo "$line" >"$temp_file"
             continue
         fi
         
         # Handle Recent Changes section
         if [[ "$line" == "## Recent Changes" ]]; then
-            echo "$line" >> "$temp_file"
+            echo "$line" >"$temp_file"
             # Add new change entry right after the heading
             if [[ -n "$new_change_entry" ]]; then
-                echo "$new_change_entry" >> "$temp_file"
+                echo "$new_change_entry" >"$temp_file"
             fi
             in_changes_section=true
             changes_entries_added=true
             continue
         elif [[ $in_changes_section == true ]] && [[ "$line" =~ ^##[[:space:]] ]]; then
-            echo "$line" >> "$temp_file"
+            echo "$line" >"$temp_file"
             in_changes_section=false
             continue
         elif [[ $in_changes_section == true ]] && [[ "$line" == "- "* ]]; then
             # Keep only first 2 existing changes
             if [[ $existing_changes_count -lt 2 ]]; then
-                echo "$line" >> "$temp_file"
+                echo "$line" >"$temp_file"
                 ((existing_changes_count++))
             fi
             continue
@@ -477,30 +477,30 @@ update_existing_agent_file() {
         
         # Update timestamp
         if [[ "$line" =~ \*\*Last\ updated\*\*:.*[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] ]]; then
-            echo "$line" | sed "s/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$current_date/" >> "$temp_file"
+            echo "$line" | sed "s/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$current_date/" >"$temp_file"
         else
-            echo "$line" >> "$temp_file"
+            echo "$line" >"$temp_file"
         fi
     done < "$target_file"
     
     # Post-loop check: if we're still in the Active Technologies section and haven't added new entries
     if [[ $in_tech_section == true ]] && [[ $tech_entries_added == false ]] && [[ ${#new_tech_entries[@]} -gt 0 ]]; then
-        printf '%s\n' "${new_tech_entries[@]}" >> "$temp_file"
+        printf '%s\n' "${new_tech_entries[@]}" >"$temp_file"
         tech_entries_added=true
     fi
     
     # If sections don't exist, add them at the end of the file
     if [[ $has_active_technologies -eq 0 ]] && [[ ${#new_tech_entries[@]} -gt 0 ]]; then
-        echo "" >> "$temp_file"
-        echo "## Active Technologies" >> "$temp_file"
-        printf '%s\n' "${new_tech_entries[@]}" >> "$temp_file"
+        echo "" >"$temp_file"
+        echo "## Active Technologies" >"$temp_file"
+        printf '%s\n' "${new_tech_entries[@]}" >"$temp_file"
         tech_entries_added=true
     fi
     
     if [[ $has_recent_changes -eq 0 ]] && [[ -n "$new_change_entry" ]]; then
-        echo "" >> "$temp_file"
-        echo "## Recent Changes" >> "$temp_file"
-        echo "$new_change_entry" >> "$temp_file"
+        echo "" >"$temp_file"
+        echo "## Recent Changes" >"$temp_file"
+        echo "$new_change_entry" >"$temp_file"
         changes_entries_added=true
     fi
     
@@ -509,8 +509,8 @@ update_existing_agent_file() {
         if ! head -1 "$temp_file" | grep -q '^---'; then
             local frontmatter_file
             frontmatter_file=$(mktemp) || { rm -f "$temp_file"; return 1; }
-            printf '%s\n' "---" "description: Project Development Guidelines" "globs: [\"**/*\"]" "alwaysApply: true" "---" "" > "$frontmatter_file"
-            cat "$temp_file" >> "$frontmatter_file"
+            printf '%s\n' "---" "description: Project Development Guidelines" "globs: [\"**/*\"]" "alwaysApply: true" "---" "" "$frontmatter_file"
+            cat "$temp_file" >"$frontmatter_file"
             mv "$frontmatter_file" "$temp_file"
         fi
     fi

@@ -79,7 +79,7 @@ This glossary bridges three domains that intersect in Frontier Flow: **EVE Front
 
 Quick reference mapping the three domain layers:
 
-> **On-Chain Mapping:** In the `world::turret` contract, socket types map to `TargetCandidate` fields and accessor functions. The `rider` socket maps to `character_id` (u32), `tribe` maps to `character_tribe` (u32), and `number`/`value` sockets map to ratio fields (`hp_ratio`, `shield_ratio`, `armor_ratio`) and `priority_weight` (u64). The `target` socket maps to `item_id` and `type_id`.
+**On-Chain Mapping:** In the `world::turret` contract, socket types map to `TargetCandidate` fields and accessor functions. The `rider` socket maps to `character_id` (u32), `tribe` maps to `character_tribe` (u32), and `number`/`value` sockets map to ratio fields (`hp_ratio`, `shield_ratio`, `armor_ratio`) and `priority_weight` (u64). The `target` socket maps to `item_id` and `type_id`.
 
 | Frontier Flow Socket | EVE Frontier Concept | Move Core Type | CSS Variable      | Colour    |
 | -------------------- | -------------------- | -------------- | ----------------- | --------- |

@@ -34,16 +34,16 @@ flowchart TB
         Serverless["Netlify Functions"]
         OAuthPath["- /api/github-callback"]
         OAuthDesc["  OAuth token exchange"]
-        StaticAssets --> AssetContent
-        Serverless --> OAuthPath
-        OAuthPath --> OAuthDesc
+        StaticAssets --AssetContent
+        Serverless --OAuthPath
+        OAuthPath --OAuthDesc
     end
 
-    StaticAssets --> GitHubAPI["GitHub API<br/>dependency fetch<br/>+ repo persistence"]
-    Serverless --> GitHubAPI
+    StaticAssets --GitHubAPI["GitHub API<br/>dependency fetch<br/>+ repo persistence"]
+    Serverless --GitHubAPI
 
-    StaticAssets --> SuiRPC["Sui RPC Nodes<br/>devnet/testnet/mainnet"]
-    Serverless --> SuiRPC
+    StaticAssets --SuiRPC["Sui RPC Nodes<br/>devnet/testnet/mainnet"]
+    Serverless --SuiRPC
 ```
 
 ---
@@ -124,8 +124,8 @@ For local development with the OAuth flow, create a `.env` file (already in `.gi
 VITE_GITHUB_CLIENT_ID=your_dev_client_id
 ```
 
-> [!CAUTION]
-> Never commit `.env` files or secrets to the repository. See [SECURITY.md §8](./SECURITY.md#8-secret-management).
+[!CAUTION]
+Never commit `.env` files or secrets to the repository. See [SECURITY.md §8](./SECURITY.md#8-secret-management).
 
 ---
 
@@ -135,9 +135,9 @@ VITE_GITHUB_CLIENT_ID=your_dev_client_id
 
 ```mermaid
 flowchart LR
-    A["bun install<br/>--frozen-lockfile"] --> B["tsc -b<br/>(type check)"]
-    B --> C["vite build<br/>(bundle + minify)"]
-    C --> D["dist/<br/>index.html + assets/"]
+    A["bun install<br/>--frozen-lockfile"] --B["tsc -b<br/>(type check)"]
+    B --C["vite build<br/>(bundle + minify)"]
+    C --D["dist/<br/>index.html + assets/"]
 ```
 
 ### 4.2 Build Commands

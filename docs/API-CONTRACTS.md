@@ -99,10 +99,10 @@ type SocketType =
 
 ### 1.5 Socket Compatibility Matrix
 
-> See [SOLUTION-DESIGN.md §2.1](./SOLUTION-DESIGN.md#21-socket-connection-rules) for the full runtime compatibility map.
+See [SOLUTION-DESIGN.md §2.1](./SOLUTION-DESIGN.md#21-socket-connection-rules) for the full runtime compatibility map.
 
 ```typescript
-const socketCompatibility: Record<SocketType, SocketType[]> = {
+const socketCompatibility: Record<SocketType, SocketType[]= {
   rider: ["rider", "any"],
   tribe: ["tribe", "any"],
   standing: ["standing", "number", "any"],
@@ -318,13 +318,13 @@ module builder_extensions::turret_logic {
 
     // @ff-node:dnd_1_1708642800000
     /// Extension entry: evaluates target candidates and returns prioritized target list.
-    /// Receives BCS-serialized vector<TargetCandidate> and returns BCS-serialized vector<ReturnTargetPriorityList>.
+    /// Receives BCS-serialized vector<TargetCandidateand returns BCS-serialized vector<ReturnTargetPriorityList>.
     public fun get_target_priority_list(
         turret: &Turret,
         owner_character: &Character,
         target_candidate_list: vector<u8>,
         receipt: OnlineReceipt,
-    ): vector<u8> {
+    ): vector<u8{
         assert!(turret::turret_id(&receipt) == object::id(turret), 1); // EInvalidOnlineReceipt
 
         // @ff-node:dnd_2_1708642800001
@@ -476,5 +476,5 @@ sequenceDiagram
 | `sui_dryRunTransactionBlock`  | Pre-flight transaction validation   |
 | `sui_executeTransactionBlock` | Publish/upgrade package transaction |
 
-> [!NOTE]
-> All Sui interactions are mediated by `@mysten/sui` SDK and `@mysten/dapp-kit` hooks. Direct JSON-RPC calls are abstracted away.
+[!NOTE]
+All Sui interactions are mediated by `@mysten/sui` SDK and `@mysten/dapp-kit` hooks. Direct JSON-RPC calls are abstracted away.

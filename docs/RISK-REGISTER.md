@@ -443,5 +443,5 @@ flowchart TD
 | New feature risk impact analysis | Per feature | Lead Developer |
 | Dependency vulnerability scan    | Weekly (CI) | Automated      |
 
-> [!IMPORTANT]
-> This register is a living document. New risks must be added as features evolve. All `🔴 High` risks must have active mitigation plans before any production deployment.
+[!IMPORTANT]
+This register is a living document. New risks must be added as features evolve. All `🔴 High` risks must have active mitigation plans before any production deployment.

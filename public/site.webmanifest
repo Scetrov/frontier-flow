@@ -1,0 +1,26 @@
+{
+  "name": "Frontier Flow",
+  "short_name": "Frontier Flow",
+  "description": "Visual low-code programming interface for EVE Frontier game automation.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a0a0a",
+  "theme_color": "#ff4700",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    }
+  ]
+}

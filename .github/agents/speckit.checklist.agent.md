@@ -184,7 +184,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Missing definitions: "Is 'visual hierarchy' defined with measurable criteria? [Gap]"
 
    **Content Consolidation**:
-   - Soft cap: If raw candidate items > 40, prioritize by risk/impact
+   - Soft cap: If raw candidate items 40, prioritize by risk/impact
    - Merge near-duplicates checking the same requirement aspect
    - If >5 low-impact edge cases, create one item: "Are edge cases X, Y, Z addressed in requirements? [Coverage]"
 

@@ -258,8 +258,8 @@ Content-Security-Policy:
   form-action 'self';
 ```
 
-> [!IMPORTANT]
-> The `'wasm-unsafe-eval'` directive is required for the in-browser Move compiler. This is the minimum relaxation needed for WASM execution; do **not** use the broader `'unsafe-eval'`.
+[!IMPORTANT]
+The `'wasm-unsafe-eval'` directive is required for the in-browser Move compiler. This is the minimum relaxation needed for WASM execution; do **not** use the broader `'unsafe-eval'`.
 
 ### 5.3 Subresource Integrity (SRI)
 
@@ -441,5 +441,5 @@ A quick-reference checklist for PR reviewers and release managers:
 
 ---
 
-> [!IMPORTANT]
-> This document is a living specification. Controls must be revisited whenever new features are introduced, dependencies are updated, or the deployment model changes. All `🔴 High` risks in the [Risk Register](./RISK-REGISTER.md) must have corresponding controls documented here.
+[!IMPORTANT]
+This document is a living specification. Controls must be revisited whenever new features are introduced, dependencies are updated, or the deployment model changes. All `🔴 High` risks in the [Risk Register](./RISK-REGISTER.md) must have corresponding controls documented here.

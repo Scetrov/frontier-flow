@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Frontier Flow favicon">
+  <rect width="128" height="128" fill="#1a0a0a" />
+  <rect x="12" y="12" width="104" height="104" fill="none" stroke="#ff4700" stroke-width="8" />
+  <path d="M32 36h48v12H44v22h32v12H44v28H32z" fill="#fafae5" />
+  <path d="M86 36h10l-12 56H74z" fill="#ff4700" />
+</svg>

@@ -80,7 +80,7 @@ src/
     └── socketTypes.ts    # Socket definitions & colours
 ```
 
-> See [HLD.md §3](./HLD.md#3-project-structure) for the full project tree.
+See [HLD.md §3](./HLD.md#3-project-structure) for the full project tree.
 
 ---
 

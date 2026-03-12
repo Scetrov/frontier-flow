@@ -92,8 +92,8 @@ description: Low-level technical implementation details and code references for 
 
 ```typescript
 interface HeaderProps {
-  onPreview: () => void;
-  onAutoArrange: () => void;
+  onPreview: () =void;
+  onAutoArrange: () =void;
   // Note: Network selection and wallet connection state are handled internally
   // by dapp-kit hooks (useCurrentAccount, useSuiClientQuery, etc.)
 }
@@ -177,7 +177,7 @@ const onDragStart = (
   event: React.DragEvent,
   nodeType: string,
   label: string,
-) => {
+) ={
   event.dataTransfer.setData("application/reactflow", nodeType);
   event.dataTransfer.setData("application/label", label);
   event.dataTransfer.effectAllowed = "move";
@@ -191,7 +191,7 @@ const onDragStart = (
 ```typescript
 interface CodePreviewModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: () =void;
   code: string;
 }
 ```
@@ -199,10 +199,10 @@ interface CodePreviewModalProps {
 **Copy Implementation:**
 
 ```typescript
-const handleCopy = () => {
+const handleCopy = () ={
   navigator.clipboard.writeText(code);
   setCopied(true);
-  setTimeout(() => setCopied(false), 2000);
+  setTimeout(() =setCopied(false), 2000);
 };
 ```
 
@@ -227,7 +227,7 @@ interface DnDFlowProps {
   setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
-  onConnect: (params: Connection) => void;
+  onConnect: (params: Connection) =void;
 }
 ```
 
@@ -260,7 +260,7 @@ interface DnDFlowProps {
 
 ```typescript
 const onDrop = useCallback(
-  (event: React.DragEvent) => {
+  (event: React.DragEvent) ={
     event.preventDefault();
     const type = event.dataTransfer.getData("application/reactflow");
     const label = event.dataTransfer.getData("application/label");
@@ -279,7 +279,7 @@ const onDrop = useCallback(
       data: { label: label || `${type} node` },
     };
 
-    setNodes((nds) => nds.concat(newNode));
+    setNodes((nds) =nds.concat(newNode));
   },
   [screenToFlowPosition, setNodes],
 );
@@ -309,7 +309,7 @@ const onDrop = useCallback(
 
 ```typescript
 // Type compatibility matrix
-const socketCompatibility: Record<string, string[]> = {
+const socketCompatibility: Record<string, string[]= {
   rider: ["rider", "any"],
   tribe: ["tribe", "any"],
   standing: ["standing", "number", "any"],
@@ -440,7 +440,7 @@ type SocketType =
   | "string"
   | "any";
 
-const socketColors: Record<SocketType, string> = {
+const socketColors: Record<SocketType, string= {
   rider: "var(--socket-entity)",
   tribe: "var(--socket-entity)",
   standing: "var(--socket-value)",
@@ -473,7 +473,7 @@ export function useConnectionValidation() {
   const { getNode } = useReactFlow();
 
   const isValidConnection = useCallback(
-    (connection: Connection): boolean => {
+    (connection: Connection): boolean ={
       const sourceNode = getNode(connection.source!);
       const targetNode = getNode(connection.target!);
 
@@ -481,10 +481,10 @@ export function useConnectionValidation() {
 
       // Get socket types from node data
       const sourceSocket = sourceNode.data.sockets?.find(
-        (s: SocketDefinition) => s.id === connection.sourceHandle,
+        (s: SocketDefinition) =s.id === connection.sourceHandle,
       );
       const targetSocket = targetNode.data.sockets?.find(
-        (s: SocketDefinition) => s.id === connection.targetHandle,
+        (s: SocketDefinition) =s.id === connection.targetHandle,
       );
 
       if (!sourceSocket || !targetSocket) return false;
@@ -714,7 +714,7 @@ flowchart TD
     C -->|3. Sanitise| D(Input Sanitiser)
     D -->|3.5 Optimise| O(AST Pruning & Gas Optimiser)
     O -->|4. Emit| E(Move Code Emitter Template)
-    E --> F[Valid Sui Move Code .move]
+    E --F[Valid Sui Move Code .move]
 ```
 
 ### 5.2 Phase 1: Parsing and Intermediate Representation (IR)
@@ -751,7 +751,7 @@ Before the IR reaches the Optimiser or Emitter, all user-supplied values (node l
 
 **Implementation:** `src/utils/sanitiser.ts`
 
-> See [SECURITY.md §7.1](./SECURITY.md#71-code-generation-safety) for the full input validation policy and [TESTING-STRATEGY.md §4.1](./TESTING-STRATEGY.md#41-code-generator-pipeline) for the sanitiser test coverage requirements.
+See [SECURITY.md §7.1](./SECURITY.md#71-code-generation-safety) for the full input validation policy and [TESTING-STRATEGY.md §4.1](./TESTING-STRATEGY.md#41-code-generator-pipeline) for the sanitiser test coverage requirements.
 
 ### 5.3.2 Phase 3.5: AST Pruning & Gas Optimization
 
@@ -764,7 +764,7 @@ interface OptimizationPass {
   /** Human-readable identifier for diagnostics. */
   name: string;
   /** Returns a transformed (pruned/rewritten) copy of the IR tree. */
-  apply: (ir: IRNode[]) => IRNode[];
+  apply: (ir: IRNode[]) =IRNode[];
   /** Estimated gas savings category for UI reporting. */
   impact: "minor" | "moderate" | "significant";
 }
@@ -830,9 +830,9 @@ interface NodeCodeGenerator {
   /** Node type this generator handles. */
   readonly nodeType: NodeType;
   /** Validates if this specific node has its minimum required inputs. */
-  validate: (node: IRNode) => ValidationResult;
+  validate: (node: IRNode) =ValidationResult;
   /** Generates annotated Move source lines for this node. */
-  emit: (node: IRNode, context: GenerationContext) => AnnotatedLine[];
+  emit: (node: IRNode, context: GenerationContext) =AnnotatedLine[];
 }
 ```
 
@@ -911,7 +911,7 @@ export function parseCompilerOutput(
     const msgMatch = MOVE_ERROR_MSG_REGEX.exec(`error[${block}`);
 
     const line = lineMatch ? parseInt(lineMatch[1], 10) : null;
-    const mapEntry = line ? sourceMap.find((e) => e.line === line) : undefined;
+    const mapEntry = line ? sourceMap.find((e) =e.line === line) : undefined;
 
     diagnostics.push({
       severity: "error",
@@ -932,11 +932,11 @@ export function parseCompilerOutput(
 
 ```mermaid
 flowchart LR
-    A["WASM compiler error"] --> B["parseCompilerOutput()"]
-    B --> C["Resolve line → SourceMapEntry"]
-    C --> D["Extract reactFlowNodeId"]
-    D --> E["Apply .node-error-highlight to canvas node"]
-    E --> F["Show userMessage in error toast + Testing Panel"]
+    A["WASM compiler error"] --B["parseCompilerOutput()"]
+    B --C["Resolve line → SourceMapEntry"]
+    C --D["Extract reactFlowNodeId"]
+    D --E["Apply .node-error-highlight to canvas node"]
+    E --F["Show userMessage in error toast + Testing Panel"]
 ```
 
 When one or more `CompilerDiagnostic` entries resolve to a valid `reactFlowNodeId`, the application dispatches a node-update action that applies the `.node-error-highlight` CSS class to the matching React Flow node(s). Unresolvable errors (no matching source map entry) are displayed in a generic error panel with the raw compiler output preserved for advanced users.
@@ -976,7 +976,7 @@ public fun get_target_priority_list(
     owner_character: &Character,
     target_candidate_list: vector<u8>,
     receipt: OnlineReceipt,
-): vector<u8> {
+): vector<u8{
     assert!(turret::turret_id(&receipt) == object::id(turret), 1); // EInvalidOnlineReceipt
     
     // Deserialize BCS candidates
@@ -1106,14 +1106,14 @@ export async function storeUpgradeCap(
   packageName: string,
   network: string,
   cap: StoredUpgradeCap,
-): Promise<void> {
+): Promise<void{
   await set(UPGRADE_CAP_KEY(packageName, network), cap);
 }
 
 export async function getUpgradeCap(
   packageName: string,
   network: string,
-): Promise<StoredUpgradeCap | undefined> {
+): Promise<StoredUpgradeCap | undefined{
   return get(UPGRADE_CAP_KEY(packageName, network));
 }
 ```
@@ -1128,7 +1128,7 @@ import { Transaction } from "@mysten/sui/transactions";
 async function buildUpgradeTransaction(
   result: CompilationResult,
   storedCap: StoredUpgradeCap,
-): Promise<Transaction> {
+): Promise<Transaction{
   const txb = new Transaction();
 
   // 1. Authorise the upgrade using the existing UpgradeCap
@@ -1167,8 +1167,8 @@ The `Header` component queries IndexedDB on mount and on network change to deter
 const [deployMode, setDeployMode] = useState<"publish" | "upgrade">("publish");
 const [storedCap, setStoredCap] = useState<StoredUpgradeCap | undefined>();
 
-useEffect(() => {
-  getUpgradeCap("frontier_protocols", activeNetwork).then((cap) => {
+useEffect(() ={
+  getUpgradeCap("frontier_protocols", activeNetwork).then((cap) ={
     setStoredCap(cap);
     setDeployMode(cap ? "upgrade" : "publish");
   });
