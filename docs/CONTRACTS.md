@@ -1,4 +1,4 @@
-# Examplar Contracts
+# Exemplar Contracts
 
 This section contains exemplar turret strategy Move modules showcasing different approaches to target prioritization. These are intended as templates and inspiration for developers to build their own custom strategies, and can be deployed as-is for basic functionality. Each module implements the `get_target_priority_list` function, which the turret calls to retrieve a weighted list of targets based on the current in-game situation. The strategies demonstrate various ways to interpret the candidate data and apply custom logic for prioritization.
 

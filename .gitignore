@@ -5,6 +5,7 @@ test-results/
 coverage/
 playwright-report/
 build/
+*.tsbuildinfo
 *.log
 .env*
 node-compile-cache/

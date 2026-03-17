@@ -34,7 +34,7 @@ import {
 
 import BaseNode from "./BaseNode";
 
-export const iconByNodeType: Readonly<Record<string, LucideIcon>> = {
+export const iconByNodeType: Readonly<Partial<Record<string, LucideIcon>>> = {
   aggression: Swords,
   proximity: Radar,
   getTribe: Users,

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
 import {
   Background,
+  BackgroundVariant,
   Controls,
   ReactFlow,
   ReactFlowProvider,
@@ -14,55 +15,27 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import { createFlowNodeData, getNodeDefinition, hydrateFlowNode } from "../data/node-definitions";
+import { createFlowNodeData, getNodeDefinition } from "../data/node-definitions";
 import { flowNodeTypes } from "../nodes";
 import type { FlowEdge, FlowNode } from "../types/nodes";
 import { getEdgeColor, getEdgeStrokeWidth, isValidFlowConnection } from "../utils/socketTypes";
+
+import { restoreSavedFlow } from "./restoreSavedFlow";
 
 interface CanvasWorkspaceProps {
   readonly initialNodes?: readonly FlowNode[];
   readonly initialEdges?: readonly FlowEdge[];
 }
 
-function restoreSavedFlow(
-  initialNodes: readonly FlowNode[],
-  initialEdges: readonly FlowEdge[],
-): { readonly nodes: FlowNode[]; readonly edges: FlowEdge[] } {
-  const restoredNodes = initialNodes.flatMap((node) => {
-    const restoredNode = hydrateFlowNode(node);
-    if (restoredNode === undefined) {
-      console.warn(`Omitting unknown saved node type: ${String(node.type)}`);
-      return [];
-    }
-
-    return [restoredNode];
-  });
-
-  const validNodeIds = new Set(restoredNodes.map((node) => node.id));
-  const restoredEdges = initialEdges.filter(
-    (edge) => validNodeIds.has(edge.source) && validNodeIds.has(edge.target),
-  );
-
-  return {
-    nodes: restoredNodes,
-    edges: restoredEdges,
-  };
-}
-
+/**
+ * Restores saved nodes from the canonical catalogue and drops edges that no longer point to valid handles.
+ */
 function FlowEditor({ initialNodes = [], initialEdges = [] }: CanvasWorkspaceProps) {
   const [restoredFlow] = useState(() => restoreSavedFlow(initialNodes, initialEdges));
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(restoredFlow.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(restoredFlow.edges);
-  const canvasRef = useRef<HTMLDivElement | null>(null);
   const nodeCounterRef = useRef(0);
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
-
-  useEffect(() => {
-    const controlButtons = canvasRef.current?.querySelectorAll<HTMLButtonElement>(".ff-canvas__controls button");
-    controlButtons?.forEach((button) => {
-      button.tabIndex = -1;
-    });
-  }, []);
 
   const handleDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -81,9 +54,16 @@ function FlowEditor({ initialNodes = [], initialEdges = [] }: CanvasWorkspacePro
 
       nodeCounterRef.current += 1;
 
+      // Subtract the grab offset so the node appears where the user was pointing,
+      // not offset by however far into the drag source the pointer was.
+      const rawOffset = event.dataTransfer.getData("application/x-offset");
+      const parts = rawOffset.split(",");
+      const ox = isFinite(Number(parts[0])) ? Number(parts[0]) : 0;
+      const oy = isFinite(Number(parts[1])) ? Number(parts[1]) : 0;
+
       const position = reactFlow.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
+        x: event.clientX - ox,
+        y: event.clientY - oy,
       });
 
       const nextNode: FlowNode = {
@@ -138,7 +118,7 @@ function FlowEditor({ initialNodes = [], initialEdges = [] }: CanvasWorkspacePro
   );
 
   return (
-    <div className="ff-canvas" data-testid="canvas-workspace" ref={canvasRef}>
+    <div className="ff-canvas" data-testid="canvas-workspace">
       <ReactFlow<FlowNode, FlowEdge>
         aria-label="Node editor canvas"
         className="ff-canvas__flow"
@@ -155,12 +135,11 @@ function FlowEditor({ initialNodes = [], initialEdges = [] }: CanvasWorkspacePro
         onNodesChange={onNodesChange}
         proOptions={{ hideAttribution: true }}
       >
-        <Background className="ff-canvas__background" color="rgba(250, 250, 229, 0.08)" gap={28} />
+        <Background className="ff-canvas__background" color="rgba(250, 250, 229, 0.1)" gap={32} variant={BackgroundVariant.Lines} />
         <Controls className="ff-canvas__controls" showInteractive={false} />
         {nodes.length === 0 ? (
           <div className="ff-canvas__empty-state">
             <p className="ff-canvas__eyebrow">Contract Canvas</p>
-            <h1 className="ff-canvas__title"></h1>
             <p className="ff-canvas__copy">
               Start with Aggression or Proximity, then layer scoring, filters, config sources, and Add to Queue.
             </p>

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function dropNode(page: Page, label: string, clientX: number, clientY: number) {
   const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
-  const source = page.getByRole("button", { name: new RegExp(label) }).first();
+  const source = page.getByRole("button", { name: label, exact: true }).first();
   const canvas = page.locator('[data-testid="canvas-workspace"] .react-flow').first();
 
   await source.dispatchEvent("dragstart", { dataTransfer });
