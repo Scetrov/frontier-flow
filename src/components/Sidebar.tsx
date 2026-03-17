@@ -21,6 +21,17 @@ const categoryLabels: Readonly<Record<(typeof categoryOrder)[number], string>> =
 
 function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    if (typeof window.matchMedia !== "function") {
+      return true;
+    }
+
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
   const groupedDefinitions = categoryOrder
     .map((category) => ({
       category,
@@ -54,6 +65,7 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
     const mediaQuery = window.matchMedia("(min-width: 768px)");
 
     const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
       if (event.matches) {
         setIsOpen(false);
       }
@@ -98,21 +110,24 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
       {isOpen ? (
         <button
           aria-label="Close node toolbox overlay"
-          className="fixed inset-0 z-20 bg-black/40 md:hidden"
+          className="fixed inset-y-0 left-0 z-20 bg-black/40 md:hidden"
           onClick={() => {
             setIsOpen(false);
           }}
+          style={{ right: "min(22rem, 88vw)" }}
           type="button"
         />
       ) : null}
 
       <aside
         aria-label="Node toolbox"
+        aria-hidden={!isDesktop && !isOpen}
         className={[
           "fixed inset-y-0 right-0 z-30 flex w-[min(22rem,88vw)] min-h-0 flex-col overflow-hidden border-l border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.96)] backdrop-blur-md transition-transform duration-200 md:static md:z-0 md:w-80 md:translate-x-0",
           isOpen ? "translate-x-0" : "translate-x-full",
         ].join(" ")}
         id="node-toolbox"
+        inert={!isDesktop && !isOpen}
       >
         <div className="shrink-0 border-b border-[var(--ui-border-dark)] px-4 py-4 sm:px-5">
           <p className="font-heading text-[0.68rem] uppercase tracking-[0.3em] text-[var(--brand-orange)]">
@@ -166,6 +181,7 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
                         {group.definitions.map((definition) => (
                           <li key={definition.type}>
                             <button
+                              aria-label={definition.label}
                               className="group flex w-full cursor-grab flex-col items-start gap-2 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.82)] p-4 text-left transition-colors hover:border-[var(--brand-orange)] active:cursor-grabbing"
                               draggable="true"
                               onDragStart={(event) => {

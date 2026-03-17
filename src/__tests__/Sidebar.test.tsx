@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Sidebar from "../components/Sidebar";
 import { nodeDefinitions } from "../data/node-definitions";
@@ -43,7 +43,28 @@ const twoCategoryDefinitions: readonly NodeDefinition[] = [
   },
 ];
 
+const originalMatchMedia = window.matchMedia;
+
 describe("Sidebar", () => {
+  beforeEach(() => {
+    window.matchMedia = (query: string) => ({
+      matches: query === "(min-width: 768px)",
+      media: query,
+      onchange: null,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      dispatchEvent() {
+        return false;
+      },
+    });
+  });
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
   it("renders all five category headings", () => {
     render(<Sidebar definitions={nodeDefinitions} />);
 
@@ -129,7 +150,7 @@ describe("Sidebar", () => {
     render(<Sidebar definitions={singleCategoryDefinitions} />);
 
     const setData = vi.fn();
-    const button = screen.getByRole("button", { name: /Aggression/ });
+    const button = screen.getByRole("button", { name: /^Aggression$/ });
 
     fireEvent.dragStart(button, {
       dataTransfer: {
