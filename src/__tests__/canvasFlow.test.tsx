@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import CanvasWorkspace from "../components/CanvasWorkspace";
 import { restoreSavedFlow } from "../components/restoreSavedFlow";
@@ -8,6 +8,8 @@ import { createFlowNodeData } from "../data/node-definitions";
 import type { FlowNode } from "../types/nodes";
 import { CONTRACT_LIBRARY_STORAGE_KEY } from "../utils/contractStorage";
 import { isValidFlowConnection } from "../utils/socketTypes";
+
+const originalMatchMedia = window.matchMedia;
 
 function createFlowNode(id: string, type: string, position = { x: 0, y: 0 }): FlowNode {
   return {
@@ -37,7 +39,23 @@ function createDropData(type: string, offset?: { x: number; y: number }) {
 
 describe("CanvasWorkspace", () => {
   beforeEach(() => {
+    window.matchMedia = (query: string) => ({
+      matches: query === "(min-width: 768px)",
+      media: query,
+      onchange: null,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      dispatchEvent() {
+        return false;
+      },
+    });
     window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
   });
 
   it("persists the active named contract to local storage", async () => {

@@ -77,7 +77,7 @@ function FlowEditor({ initialContractName = "Starter Contract", initialNodes = [
   const [draftContractName, setDraftContractName] = useState(activeContract.name);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
-  const [isContractPanelOpen, setIsContractPanelOpen] = useState(true);
+  const [isContractPanelOpen, setIsContractPanelOpen] = useState(getIsDesktop);
   const nodeCounterRef = useRef(0);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
