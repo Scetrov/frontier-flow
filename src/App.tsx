@@ -3,6 +3,10 @@ import CanvasWorkspace from "./components/CanvasWorkspace";
 import Header from "./components/Header";
 import KitchenSinkPage from "./components/KitchenSinkPage";
 import Sidebar from "./components/Sidebar";
+import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
+
+const defaultContractFlow = createDefaultContractFlow();
+const defaultContractName = "Starter Contract";
 
 function App() {
   const isKitchenSinkRoute = typeof window !== "undefined" && window.location.pathname === "/kitchen-sink";
@@ -18,7 +22,11 @@ function App() {
             aria-label="Node editor canvas"
             className="relative flex-1 overflow-hidden border-y border-[var(--ui-border-dark)]"
           >
-            <CanvasWorkspace />
+            <CanvasWorkspace
+              initialContractName={defaultContractName}
+              initialEdges={defaultContractFlow.edges}
+              initialNodes={defaultContractFlow.nodes}
+            />
           </section>
           <Sidebar />
         </main>

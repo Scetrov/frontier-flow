@@ -1,7 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../App";
+import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
+
+const canvasWorkspaceSpy = vi.fn();
 
 vi.mock("../components/Header", () => ({
   default: () => <div>Header Slot</div>,
@@ -16,7 +19,10 @@ vi.mock("../components/Sidebar", () => ({
 }));
 
 vi.mock("../components/CanvasWorkspace", () => ({
-  default: () => <div>Canvas Workspace Slot</div>,
+  default: (props: { initialNodes?: unknown; initialEdges?: unknown }) => {
+    canvasWorkspaceSpy(props);
+    return <div>Canvas Workspace Slot</div>;
+  },
 }));
 
 vi.mock("../components/KitchenSinkPage", () => ({
@@ -24,8 +30,11 @@ vi.mock("../components/KitchenSinkPage", () => ({
 }));
 
 describe("App", () => {
+  const defaultContractFlow = createDefaultContractFlow();
+
   afterEach(() => {
     window.history.replaceState({}, "", "/");
+    canvasWorkspaceSpy.mockClear();
   });
 
   it("renders the default editor shell on the root route", () => {
@@ -37,6 +46,13 @@ describe("App", () => {
     expect(screen.getByText("Canvas Workspace Slot")).toBeInTheDocument();
     expect(screen.getByText("Sidebar Slot")).toBeInTheDocument();
     expect(screen.queryByText("Kitchen Sink Slot")).not.toBeInTheDocument();
+    expect(canvasWorkspaceSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialContractName: "Starter Contract",
+        initialNodes: defaultContractFlow.nodes,
+        initialEdges: defaultContractFlow.edges,
+      }),
+    );
   });
 
   it("renders the kitchen sink page on the /kitchen-sink route", () => {

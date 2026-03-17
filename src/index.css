@@ -87,6 +87,7 @@ button,
 }
 
 .ff-canvas {
+  position: relative;
   height: 100%;
   min-height: 0;
   background:
@@ -114,10 +115,110 @@ button,
   color: var(--cream-white);
 }
 
+.ff-contract-bar {
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: minmax(10rem, 12rem) minmax(12rem, 16rem) auto;
+  gap: 0.75rem;
+  align-items: end;
+  max-width: min(58rem, calc(100% - 2rem));
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.92);
+  padding: 0.85rem 0.95rem;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 38px rgba(3, 6, 10, 0.3);
+}
+
+.ff-contract-bar__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.ff-contract-bar__field--name {
+  min-width: min(18rem, 100%);
+}
+
+.ff-contract-bar__label {
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-contract-bar__input,
+.ff-contract-bar__button,
+.ff-canvas__context-action {
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(26, 10, 10, 0.9);
+  color: var(--cream-white);
+  font: inherit;
+}
+
+.ff-contract-bar__input {
+  min-height: 2.5rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.ff-contract-bar__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.ff-contract-bar__button,
+.ff-canvas__context-action {
+  min-height: 2.5rem;
+  padding: 0.65rem 0.9rem;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ff-contract-bar__button:hover,
+.ff-canvas__context-action:hover {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.12);
+}
+
+.ff-contract-bar__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ff-contract-bar__button--danger:hover {
+  border-color: var(--error-glow);
+  background: rgba(255, 59, 48, 0.12);
+}
+
+.ff-contract-bar__meta {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.ff-canvas__context-menu {
+  position: fixed;
+  z-index: 8;
+  min-width: 14rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.98);
+  box-shadow: 0 20px 38px rgba(3, 6, 10, 0.35);
+  padding: 0.35rem;
+}
+
 .ff-canvas__empty-state {
   position: absolute;
   left: 1.5rem;
-  top: 1.5rem;
+  top: 6.75rem;
   z-index: 4;
   max-width: 38rem;
   border: 1px solid var(--ui-border-dark);
@@ -233,6 +334,18 @@ button,
 }
 
 @media (max-width: 768px) {
+  .ff-contract-bar {
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 0.75rem;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: none;
+  }
+
+  .ff-contract-bar__actions {
+    flex-wrap: wrap;
+  }
+
   .ff-kitchen-sink__panel {
     left: 1rem;
     right: 1rem;

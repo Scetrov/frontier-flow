@@ -1,10 +1,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import CanvasWorkspace from "../components/CanvasWorkspace";
 import { restoreSavedFlow } from "../components/restoreSavedFlow";
+import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
 import { createFlowNodeData } from "../data/node-definitions";
 import type { FlowNode } from "../types/nodes";
+import { CONTRACT_LIBRARY_STORAGE_KEY } from "../utils/contractStorage";
+import { isValidFlowConnection } from "../utils/socketTypes";
 
 function createFlowNode(id: string, type: string, position = { x: 0, y: 0 }): FlowNode {
   return {
@@ -33,6 +36,62 @@ function createDropData(type: string, offset?: { x: number; y: number }) {
 }
 
 describe("CanvasWorkspace", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("persists the active named contract to local storage", async () => {
+    const defaultContractFlow = createDefaultContractFlow();
+
+    render(
+      <CanvasWorkspace
+        initialContractName="Starter Contract"
+        initialEdges={defaultContractFlow.edges}
+        initialNodes={defaultContractFlow.nodes}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem(CONTRACT_LIBRARY_STORAGE_KEY)).not.toBeNull();
+    });
+
+    expect(JSON.parse(window.localStorage.getItem(CONTRACT_LIBRARY_STORAGE_KEY) ?? "{}")).toMatchObject({
+      activeContractName: "Starter Contract",
+      contracts: [
+        {
+          name: "Starter Contract",
+        },
+      ],
+    });
+  });
+
+  it("can save the current graph as a second named contract", async () => {
+    const defaultContractFlow = createDefaultContractFlow();
+
+    render(
+      <CanvasWorkspace
+        initialContractName="Starter Contract"
+        initialEdges={defaultContractFlow.edges}
+        initialNodes={defaultContractFlow.nodes}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Contract name"), { target: { value: "Raid Response" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Copy" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Saved contract")).toHaveValue("Raid Response");
+    });
+
+    expect(JSON.parse(window.localStorage.getItem(CONTRACT_LIBRARY_STORAGE_KEY) ?? "{}")).toMatchObject({
+      activeContractName: "Raid Response",
+      contracts: [
+        { name: "Starter Contract" },
+        { name: "Raid Response" },
+      ],
+    });
+  });
+
   it("renders an empty-state prompt before any node is dropped", () => {
     render(<CanvasWorkspace />);
 
@@ -176,6 +235,65 @@ describe("CanvasWorkspace", () => {
     );
 
     expect(restoredFlow.edges).toHaveLength(1);
+  });
+
+  it("restores a connected default contract flow", () => {
+    const defaultContractFlow = createDefaultContractFlow();
+
+    render(
+      <CanvasWorkspace
+        initialEdges={defaultContractFlow.edges}
+        initialNodes={defaultContractFlow.nodes}
+      />,
+    );
+
+    expect(screen.getByText("Aggression")).toBeInTheDocument();
+    expect(screen.getByText("Get Tribe")).toBeInTheDocument();
+    expect(screen.getByText("Exclude Same Tribe")).toBeInTheDocument();
+    expect(screen.getByText("Get Priority Weight")).toBeInTheDocument();
+    expect(screen.getByText("Add to Queue")).toBeInTheDocument();
+    expect(screen.queryByText("Contract Canvas")).not.toBeInTheDocument();
+  });
+
+  it("opens a right-click context menu that offers auto-arrange", async () => {
+    const defaultContractFlow = createDefaultContractFlow();
+
+    render(
+      <CanvasWorkspace
+        initialContractName="Starter Contract"
+        initialEdges={defaultContractFlow.edges}
+        initialNodes={defaultContractFlow.nodes}
+      />,
+    );
+
+    fireEvent.contextMenu(screen.getByTestId("canvas-workspace"));
+
+    expect(screen.getByRole("menu", { name: "Canvas context menu" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Auto-arrange contract" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("menu", { name: "Canvas context menu" })).not.toBeInTheDocument();
+    });
+  });
+
+  it("uses only valid connections in the default contract flow", () => {
+    const defaultContractFlow = createDefaultContractFlow();
+
+    defaultContractFlow.edges.forEach((edge) => {
+      expect(
+        isValidFlowConnection(
+          {
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourceHandle ?? null,
+            targetHandle: edge.targetHandle ?? null,
+          },
+          defaultContractFlow.nodes,
+          [],
+        ),
+      ).toBe(true);
+    });
   });
 
   it("keeps canvas controls keyboard focusable", async () => {
