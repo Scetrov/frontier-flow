@@ -126,7 +126,7 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+        <div className="ff-toolbox__scroll flex-1 overflow-y-auto px-4 py-4 sm:px-5">
           {definitions.length === 0 ? (
             <p className="border border-dashed border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.8)] px-4 py-6 text-sm text-[var(--text-secondary)]">
               No node definitions available.
@@ -197,6 +197,15 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
               })}
             </div>
           )}
+        </div>
+
+        <div className="border-t border-[var(--ui-border-dark)] px-4 py-3 sm:px-5">
+          <p className="font-heading text-[0.62rem] uppercase tracking-[0.2em] text-[var(--brand-orange)]">
+            {definitions.length} nodes · drag to canvas
+          </p>
+          <p className="mt-2 text-xs text-[var(--text-secondary)]">
+            Header and footer stay pinned while the catalogue scrolls. Config sources now pair with reusable list accessors.
+          </p>
         </div>
       </aside>
     </>

@@ -141,7 +141,7 @@ function FlowEditor({ initialNodes = [], initialEdges = [] }: CanvasWorkspacePro
           <div className="ff-canvas__empty-state">
             <p className="ff-canvas__eyebrow">Contract Canvas</p>
             <p className="ff-canvas__copy">
-              Start with Aggression or Proximity, then layer scoring, filters, config sources, and Add to Queue.
+              Start with Aggression or Proximity, then layer scoring, filters, config sources, config list accessors, and Add to Queue.
             </p>
           </div>
         ) : null}

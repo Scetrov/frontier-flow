@@ -40,7 +40,7 @@ describe("CanvasWorkspace", () => {
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "Start with Aggression or Proximity, then layer scoring, filters, config sources, and Add to Queue.",
+        "Start with Aggression or Proximity, then layer scoring, filters, config sources, config list accessors, and Add to Queue.",
       ),
     ).toBeInTheDocument();
   });

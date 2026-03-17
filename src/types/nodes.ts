@@ -9,6 +9,7 @@ export type SocketType =
   | "standing"
   | "wallet"
   | "priority"
+  | "config"
   | "target"
   | "boolean"
   | "list"

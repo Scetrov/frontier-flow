@@ -170,7 +170,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     category: "data-accessor",
     sockets: [
       { id: "group_id", type: "number", position: "left", direction: "input", label: "group id" },
-      { id: "config", type: "list", position: "left", direction: "input", label: "config" },
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
       { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
     ],
@@ -183,7 +183,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     category: "data-accessor",
     sockets: [
       { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
-      { id: "config", type: "list", position: "left", direction: "input", label: "config" },
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
       { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
     ],
@@ -196,7 +196,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     category: "data-accessor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "config", type: "list", position: "left", direction: "input", label: "config" },
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
       { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
     ],
@@ -275,51 +275,74 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
   {
     type: "groupBonusConfig",
     label: "Group Bonus Config",
-    description: "Expose the group-specialist configuration object as a reusable list source.",
+    description: "Expose the group-specialist configuration object as a reusable config source.",
     color: "var(--socket-vector)",
     category: "data-source",
     sockets: [
-      { id: "config", type: "list", position: "right", direction: "output", label: "config" },
+      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
     ],
   },
   {
     type: "roundRobinConfig",
     label: "Round Robin Config",
-    description: "Expose the round-robin history configuration as a reusable list source.",
+    description: "Expose the round-robin history configuration as a reusable config source.",
     color: "var(--socket-vector)",
     category: "data-source",
     sockets: [
-      { id: "config", type: "list", position: "right", direction: "output", label: "config" },
+      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
     ],
   },
   {
     type: "threatLedgerConfig",
     label: "Threat Ledger Config",
-    description: "Expose the tribe threat ledger as a reusable list source.",
+    description: "Expose the tribe threat ledger as a reusable config source.",
     color: "var(--socket-vector)",
     category: "data-source",
     sockets: [
-      { id: "config", type: "list", position: "right", direction: "output", label: "config" },
+      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
     ],
   },
   {
     type: "typeBlocklistConfig",
     label: "Type Blocklist Config",
-    description: "Expose the blocked type id configuration for type-based exclusions.",
+    description: "Expose the blocked type id configuration as a reusable config source.",
     color: "var(--socket-vector)",
     category: "data-source",
     sockets: [
-      { id: "blocked_types", type: "list", position: "right", direction: "output", label: "blocked types" },
+      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
     ],
   },
   {
-    type: "listOfTribe",
-    label: "List of Tribe",
-    description: "Provide a static tribe list used by the canonical contract flow.",
+    type: "getTribeListFromConfig",
+    label: "Get Tribe List from Config",
+    description: "Read a tribe list from a config object so it can feed reusable list-based logic.",
     color: "var(--socket-vector)",
-    category: "data-source",
+    category: "data-accessor",
     sockets: [
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
+      { id: "items", type: "list", position: "right", direction: "output", label: "tribes" },
+    ],
+  },
+  {
+    type: "getItemListFromConfig",
+    label: "Get Item List from Config",
+    description: "Read an item list from a config object so exclusion and scoring nodes can share it.",
+    color: "var(--socket-vector)",
+    category: "data-accessor",
+    sockets: [
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
       { id: "items", type: "list", position: "right", direction: "output", label: "items" },
+    ],
+  },
+  {
+    type: "getCharacterListFromConfig",
+    label: "Get Character List from Config",
+    description: "Read a character list from a config object for allowlists, denylists, and actor-specific flows.",
+    color: "var(--socket-vector)",
+    category: "data-accessor",
+    sockets: [
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
+      { id: "items", type: "list", position: "right", direction: "output", label: "characters" },
     ],
   },
   {

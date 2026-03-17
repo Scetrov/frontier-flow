@@ -151,6 +151,28 @@ button,
   color: var(--text-secondary);
 }
 
+.ff-toolbox__scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-orange) rgba(250, 250, 229, 0.08);
+}
+
+.ff-toolbox__scroll::-webkit-scrollbar {
+  width: 0.8rem;
+}
+
+.ff-toolbox__scroll::-webkit-scrollbar-track {
+  background: rgba(250, 250, 229, 0.06);
+}
+
+.ff-toolbox__scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--brand-orange), var(--brand-dark));
+  border: 2px solid rgba(26, 10, 10, 0.96);
+}
+
+.ff-toolbox__scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ff6a2e, var(--brand-orange));
+}
+
 .ff-kitchen-sink {
   flex: 1;
   min-height: 0;

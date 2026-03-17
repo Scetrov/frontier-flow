@@ -24,6 +24,10 @@ describe("socketTypes", () => {
     expect(canConnectSocketTypes("target", "target")).toBe(true);
   });
 
+  it("accepts valid config connections", () => {
+    expect(canConnectSocketTypes("config", "config")).toBe(true);
+  });
+
   it("rejects invalid number to tribe connections", () => {
     expect(canConnectSocketTypes("number", "tribe")).toBe(false);
   });

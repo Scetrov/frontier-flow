@@ -17,6 +17,7 @@ export const socketCompatibility: Readonly<Record<SocketType, readonly SocketTyp
   standing: ["standing", "number", "any"],
   wallet: ["wallet", "any"],
   priority: ["priority", "any"],
+  config: ["config", "any"],
   target: ["target", "rider", "any"],
   boolean: ["boolean", "any"],
   list: ["list", "any"],
@@ -28,6 +29,7 @@ export const socketCompatibility: Readonly<Record<SocketType, readonly SocketTyp
     "standing",
     "wallet",
     "priority",
+    "config",
     "target",
     "boolean",
     "list",
@@ -43,6 +45,7 @@ const socketColorByType: Readonly<Record<SocketType, string>> = {
   standing: "var(--socket-value)",
   wallet: "var(--socket-value)",
   priority: "var(--socket-vector)",
+  config: "var(--socket-vector)",
   target: "var(--socket-entity)",
   boolean: "var(--socket-signal)",
   list: "var(--socket-vector)",
@@ -114,7 +117,7 @@ export function getEdgeStrokeWidth(
   sourceHandleId: string | null,
 ): number {
   const socket = getSocketDefinition(sourceNode, sourceHandleId);
-  return socket?.type === "priority" || socket?.type === "list" ? 3 : 2;
+  return socket?.type === "priority" || socket?.type === "list" || socket?.type === "config" ? 3 : 2;
 }
 
 /**

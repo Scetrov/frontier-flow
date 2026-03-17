@@ -21,13 +21,13 @@ bun dev
 
 ## What Changed
 
-This feature replaces the 9 placeholder node definitions with 29 contract-aligned node definitions derived from `docs/CONTRACTS.md`. The node palette now accurately represents the reusable scoring, filtering, and data-access concepts from EVE Frontier turret strategy contracts.
+This feature replaces the 9 placeholder node definitions with 31 contract-aligned node definitions derived from `docs/CONTRACTS.md`. The node palette now accurately represents the reusable scoring, filtering, config-access, and data-access concepts from EVE Frontier turret strategy contracts.
 
 ### Key Files
 
 | File                                    | Change                                               |
 | --------------------------------------- | ---------------------------------------------------- |
-| `src/data/node-definitions.ts`          | 29 contract-aligned definitions (was 9 placeholders) |
+| `src/data/node-definitions.ts`          | 31 contract-aligned definitions with reusable config accessors |
 | `src/nodes/createNode.tsx`              | New factory function for generating node components  |
 | `src/nodes/index.ts`                    | Registry generated via factory (was manual imports)  |
 | `src/nodes/BaseNode.tsx`                | Unchanged — all nodes render through this            |
@@ -61,8 +61,8 @@ bun run test:e2e
 ## Using the New Nodes
 
 1. Open the app in the browser (`http://localhost:5173`)
-2. The sidebar shows 29 nodes grouped by category
-3. Drag representative nodes from each category onto the canvas, for example `Aggression`, `Get Priority Weight`, `Exclude Same Tribe`, `Group Bonus Config`, and `Add to Queue`
+2. The sidebar shows 31 nodes grouped by category
+3. Drag representative nodes from each category onto the canvas, for example `Aggression`, `Get Priority Weight`, `Get Tribe List from Config`, `Exclude Same Tribe`, `Group Bonus Config`, and `Add to Queue`
 4. Connect sockets — valid links such as `target` → `target` are accepted, while invalid links such as `number` → `tribe` are rejected
 5. Compose a full targeting graph (for example `Proximity` → `Get Tribe` → `Exclude Same Tribe` → `Behaviour Bonus` → `Add to Queue`)
 6. If a saved graph contains a removed node type, the canvas omits that node and logs a warning instead of crashing

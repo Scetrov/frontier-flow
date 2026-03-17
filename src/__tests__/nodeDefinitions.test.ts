@@ -173,7 +173,7 @@ const expectedNodeDefinitions = [
     category: "data-accessor",
     sockets: [
       { id: "group_id", type: "number", position: "left", direction: "input", label: "group id" },
-      { id: "config", type: "list", position: "left", direction: "input", label: "config" },
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
       { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
     ],
@@ -186,7 +186,7 @@ const expectedNodeDefinitions = [
     category: "data-accessor",
     sockets: [
       { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
-      { id: "config", type: "list", position: "left", direction: "input", label: "config" },
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
       { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
     ],
@@ -199,7 +199,7 @@ const expectedNodeDefinitions = [
     category: "data-accessor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "config", type: "list", position: "left", direction: "input", label: "config" },
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
       { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
     ],
@@ -278,44 +278,67 @@ const expectedNodeDefinitions = [
   {
     type: "groupBonusConfig",
     label: "Group Bonus Config",
-    description: "Expose the group-specialist configuration object as a reusable list source.",
+    description: "Expose the group-specialist configuration object as a reusable config source.",
     color: "var(--socket-vector)",
     category: "data-source",
-    sockets: [{ id: "config", type: "list", position: "right", direction: "output", label: "config" }],
+    sockets: [{ id: "config", type: "config", position: "right", direction: "output", label: "config" }],
   },
   {
     type: "roundRobinConfig",
     label: "Round Robin Config",
-    description: "Expose the round-robin history configuration as a reusable list source.",
+    description: "Expose the round-robin history configuration as a reusable config source.",
     color: "var(--socket-vector)",
     category: "data-source",
-    sockets: [{ id: "config", type: "list", position: "right", direction: "output", label: "config" }],
+    sockets: [{ id: "config", type: "config", position: "right", direction: "output", label: "config" }],
   },
   {
     type: "threatLedgerConfig",
     label: "Threat Ledger Config",
-    description: "Expose the tribe threat ledger as a reusable list source.",
+    description: "Expose the tribe threat ledger as a reusable config source.",
     color: "var(--socket-vector)",
     category: "data-source",
-    sockets: [{ id: "config", type: "list", position: "right", direction: "output", label: "config" }],
+    sockets: [{ id: "config", type: "config", position: "right", direction: "output", label: "config" }],
   },
   {
     type: "typeBlocklistConfig",
     label: "Type Blocklist Config",
-    description: "Expose the blocked type id configuration for type-based exclusions.",
+    description: "Expose the blocked type id configuration as a reusable config source.",
     color: "var(--socket-vector)",
     category: "data-source",
+    sockets: [{ id: "config", type: "config", position: "right", direction: "output", label: "config" }],
+  },
+  {
+    type: "getTribeListFromConfig",
+    label: "Get Tribe List from Config",
+    description: "Read a tribe list from a config object so it can feed reusable list-based logic.",
+    color: "var(--socket-vector)",
+    category: "data-accessor",
     sockets: [
-      { id: "blocked_types", type: "list", position: "right", direction: "output", label: "blocked types" },
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
+      { id: "items", type: "list", position: "right", direction: "output", label: "tribes" },
     ],
   },
   {
-    type: "listOfTribe",
-    label: "List of Tribe",
-    description: "Provide a static tribe list used by the canonical contract flow.",
+    type: "getItemListFromConfig",
+    label: "Get Item List from Config",
+    description: "Read an item list from a config object so exclusion and scoring nodes can share it.",
     color: "var(--socket-vector)",
-    category: "data-source",
-    sockets: [{ id: "items", type: "list", position: "right", direction: "output", label: "items" }],
+    category: "data-accessor",
+    sockets: [
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
+      { id: "items", type: "list", position: "right", direction: "output", label: "items" },
+    ],
+  },
+  {
+    type: "getCharacterListFromConfig",
+    label: "Get Character List from Config",
+    description: "Read a character list from a config object for allowlists, denylists, and actor-specific flows.",
+    color: "var(--socket-vector)",
+    category: "data-accessor",
+    sockets: [
+      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
+      { id: "items", type: "list", position: "right", direction: "output", label: "characters" },
+    ],
   },
   {
     type: "addToQueue",
@@ -336,8 +359,8 @@ const expectedNodeDefinitions = [
 const expectedNodeTypes = expectedNodeDefinitions.map((definition) => definition.type);
 
 describe("nodeDefinitions", () => {
-  it("contains the complete 29-node contract-aligned catalogue", () => {
-    expect(nodeDefinitions).toHaveLength(29);
+  it("contains the complete 31-node contract-aligned catalogue", () => {
+    expect(nodeDefinitions).toHaveLength(31);
     expect(nodeDefinitions.map((definition) => definition.type)).toEqual(expectedNodeTypes);
   });
 
@@ -369,13 +392,13 @@ describe("nodeDefinitions", () => {
   it("keeps the canonical targeting flow sockets available", () => {
     const proximity = nodeDefinitions.find((definition) => definition.type === "proximity");
     const getTribe = nodeDefinitions.find((definition) => definition.type === "getTribe");
-    const listOfTribe = nodeDefinitions.find((definition) => definition.type === "listOfTribe");
+    const getTribeListFromConfig = nodeDefinitions.find((definition) => definition.type === "getTribeListFromConfig");
     const isInList = nodeDefinitions.find((definition) => definition.type === "isInList");
     const addToQueue = nodeDefinitions.find((definition) => definition.type === "addToQueue");
 
     expect(proximity?.sockets.map((socket) => socket.id)).toEqual(["priority", "target"]);
     expect(getTribe?.sockets.map((socket) => socket.id)).toEqual(["target", "tribe", "owner_tribe"]);
-    expect(listOfTribe?.sockets.map((socket) => socket.id)).toEqual(["items"]);
+    expect(getTribeListFromConfig?.sockets.map((socket) => socket.id)).toEqual(["config", "items"]);
     expect(isInList?.sockets.map((socket) => socket.id)).toEqual(["input_item", "input_list", "yes", "no"]);
     expect(addToQueue?.sockets.map((socket) => socket.id)).toEqual([
       "priority_in",

@@ -12,9 +12,9 @@ import {
   Hash,
   Heart,
   Layers,
-  List,
   ListChecks,
   ListPlus,
+  Package,
   Radar,
   Repeat,
   Scale,
@@ -28,6 +28,7 @@ import {
   TrendingUp,
   UserRoundX,
   UserX,
+  User,
   Users,
   Zap,
 } from "lucide-react";
@@ -62,7 +63,9 @@ export const iconByNodeType: Readonly<Partial<Record<string, LucideIcon>>> = {
   roundRobinConfig: Repeat,
   threatLedgerConfig: BookOpen,
   typeBlocklistConfig: ShieldBan,
-  listOfTribe: List,
+  getTribeListFromConfig: Users,
+  getItemListFromConfig: Package,
+  getCharacterListFromConfig: User,
   addToQueue: ListPlus,
 };
 
