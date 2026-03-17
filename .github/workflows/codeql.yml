@@ -38,7 +38,7 @@ jobs:
           - language: actions
             build-mode: none
           - language: javascript-typescript
-            build-mode: manual
+            build-mode: none
 
     steps:
       - name: Checkout repository
@@ -49,22 +49,6 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-
-      - name: Setup Bun
-        if: matrix.language == 'javascript-typescript'
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        if: matrix.language == 'javascript-typescript'
-        run: bun install --frozen-lockfile
-
-      - name: Build project
-        if: matrix.language == 'javascript-typescript'
-        env:
-          CI: true
-        run: bun run build
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3
