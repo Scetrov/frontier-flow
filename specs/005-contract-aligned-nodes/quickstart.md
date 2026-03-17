@@ -31,13 +31,16 @@ This feature replaces the 9 placeholder node definitions with 29 contract-aligne
 | `src/nodes/createNode.tsx`              | New factory function for generating node components  |
 | `src/nodes/index.ts`                    | Registry generated via factory (was manual imports)  |
 | `src/nodes/BaseNode.tsx`                | Unchanged — all nodes render through this            |
+| `src/utils/socketTypes.ts`              | Existing compatibility rules validated against the new node set |
 | `src/__tests__/nodeDefinitions.test.ts` | Parameterized tests for all 29 definitions           |
-| `src/__tests__/canvasFlow.test.tsx`     | Updated to use new node types                        |
-| `src/__tests__/Sidebar.test.tsx`        | Updated fixture to use new node definition           |
+| `src/__tests__/canvasFlow.test.tsx`     | Canvas drop coverage plus unknown-node migration handling |
+| `src/__tests__/socketTypes.test.ts`     | Socket compatibility regression tests for valid, invalid, and `any` links |
+| `src/__tests__/Sidebar.test.tsx`        | Sidebar grouping and drag-metadata coverage          |
+| `tests/e2e/canvas.spec.ts`              | Browser coverage for dropping representative contract nodes |
 
 ### Deleted Files
 
-The individual node component files (`AggressionNode.tsx`, `ProximityNode.tsx`, etc.) are replaced by the factory pattern in `createNode.tsx`.
+The individual node component files (`AggressionNode.tsx`, `ProximityNode.tsx`, `GetTribeNode.tsx`, `ListOfTribeNode.tsx`, `IsInListNode.tsx`, `AddToQueueNode.tsx`, `HpRatioNode.tsx`, `ShieldRatioNode.tsx`, and `ArmorRatioNode.tsx`) are replaced by the factory pattern in `createNode.tsx`.
 
 ## Verify
 
@@ -59,6 +62,7 @@ bun run test:e2e
 
 1. Open the app in the browser (`http://localhost:5173`)
 2. The sidebar shows 29 nodes grouped by category
-3. Drag any node onto the canvas
-4. Connect sockets — only type-compatible connections are allowed
-5. Compose a full targeting graph (e.g., Proximity → Get Tribe → Exclude Same Tribe → Behaviour Bonus → Add to Queue)
+3. Drag representative nodes from each category onto the canvas, for example `Aggression`, `Get Priority Weight`, `Exclude Same Tribe`, `Group Bonus Config`, and `Add to Queue`
+4. Connect sockets — valid links such as `target` → `target` are accepted, while invalid links such as `number` → `tribe` are rejected
+5. Compose a full targeting graph (for example `Proximity` → `Get Tribe` → `Exclude Same Tribe` → `Behaviour Bonus` → `Add to Queue`)
+6. If a saved graph contains a removed node type, the canvas omits that node and logs a warning instead of crashing

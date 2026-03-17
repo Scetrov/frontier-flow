@@ -9,8 +9,25 @@ interface SidebarProps {
   readonly definitions?: readonly NodeDefinition[];
 }
 
+const categoryOrder = ["event-trigger", "data-accessor", "logic-gate", "data-source", "action"] as const;
+
+const categoryLabels: Readonly<Record<(typeof categoryOrder)[number], string>> = {
+  "event-trigger": "Event Trigger",
+  "data-accessor": "Data Accessor",
+  "logic-gate": "Logic Gate",
+  "data-source": "Data Source",
+  action: "Action",
+};
+
 function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const groupedDefinitions = categoryOrder
+    .map((category) => ({
+      category,
+      label: categoryLabels[category],
+      definitions: definitions.filter((definition) => definition.category === category),
+    }))
+    .filter((group) => group.definitions.length > 0);
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") {
@@ -82,7 +99,7 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
             Frontier Nodes
           </h2>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Drag domain primitives onto the canvas to start a deterministic contract graph.
+            Drag nodes from the toolbox to start creating a flow.
           </p>
         </div>
 
@@ -92,37 +109,50 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
               No node definitions available.
             </p>
           ) : (
-            <ul className="space-y-3">
-              {definitions.map((definition) => (
-                <li key={definition.type}>
-                  <button
-                    className="group flex w-full cursor-grab flex-col items-start gap-2 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.82)] p-4 text-left transition-colors hover:border-[var(--brand-orange)] active:cursor-grabbing"
-                    draggable="true"
-                    onDragStart={(event) => {
-                      handleDragStart(event, definition);
-                    }}
-                    type="button"
-                  >
-                    <div className="flex w-full items-center gap-3">
-                      <span
-                        aria-hidden="true"
-                        className="h-3 w-3 border border-[var(--cream-white)]"
-                        style={{ backgroundColor: definition.color }}
-                      />
-                      <span className="font-heading text-sm uppercase tracking-[0.14em] text-[var(--cream-white)] group-hover:text-[var(--brand-orange)]">
-                        {definition.label}
-                      </span>
-                    </div>
-                    <span className="font-heading text-[0.62rem] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
-                      {definition.category.replaceAll("-", " ")} · {definition.sockets.length} sockets
+            <div className="space-y-6">
+              {groupedDefinitions.map((group) => (
+                <section key={group.category} aria-label={group.label} className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-[var(--ui-border-dark)] pb-2">
+                    <h3 className="font-heading text-xs uppercase tracking-[0.22em] text-[var(--brand-orange)]">
+                      {group.label}
+                    </h3>
+                    <span className="text-[0.7rem] uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+                      {group.definitions.length}
                     </span>
-                    <span className="text-sm text-[var(--text-secondary)]">
-                      {definition.description}
-                    </span>
-                  </button>
-                </li>
+                  </div>
+
+                  <ul className="space-y-3">
+                    {group.definitions.map((definition) => (
+                      <li key={definition.type}>
+                        <button
+                          className="group flex w-full cursor-grab flex-col items-start gap-2 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.82)] p-4 text-left transition-colors hover:border-[var(--brand-orange)] active:cursor-grabbing"
+                          draggable="true"
+                          onDragStart={(event) => {
+                            handleDragStart(event, definition);
+                          }}
+                          type="button"
+                        >
+                          <div className="flex w-full items-center gap-3">
+                            <span
+                              aria-hidden="true"
+                              className="h-3 w-3 border border-[var(--cream-white)]"
+                              style={{ backgroundColor: definition.color }}
+                            />
+                            <span className="font-heading text-sm uppercase tracking-[0.14em] text-[var(--cream-white)] group-hover:text-[var(--brand-orange)]">
+                              {definition.label}
+                            </span>
+                          </div>
+                          <span className="font-heading text-[0.62rem] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+                            {group.label} · {definition.sockets.length} sockets
+                          </span>
+                          <span className="text-sm text-[var(--text-secondary)]">{definition.description}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </aside>

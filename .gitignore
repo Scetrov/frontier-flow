@@ -7,3 +7,5 @@ playwright-report/
 build/
 *.log
 .env*
+node-compile-cache/
+playwright-transform-cache*/

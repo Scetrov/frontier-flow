@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
 import {
   Background,
@@ -14,16 +14,55 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import { createFlowNodeData, getNodeDefinition } from "../data/node-definitions";
+import { createFlowNodeData, getNodeDefinition, hydrateFlowNode } from "../data/node-definitions";
 import { flowNodeTypes } from "../nodes";
 import type { FlowEdge, FlowNode } from "../types/nodes";
 import { getEdgeColor, getEdgeStrokeWidth, isValidFlowConnection } from "../utils/socketTypes";
 
-function FlowEditor() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([]);
+interface CanvasWorkspaceProps {
+  readonly initialNodes?: readonly FlowNode[];
+  readonly initialEdges?: readonly FlowEdge[];
+}
+
+function restoreSavedFlow(
+  initialNodes: readonly FlowNode[],
+  initialEdges: readonly FlowEdge[],
+): { readonly nodes: FlowNode[]; readonly edges: FlowEdge[] } {
+  const restoredNodes = initialNodes.flatMap((node) => {
+    const restoredNode = hydrateFlowNode(node);
+    if (restoredNode === undefined) {
+      console.warn(`Omitting unknown saved node type: ${String(node.type)}`);
+      return [];
+    }
+
+    return [restoredNode];
+  });
+
+  const validNodeIds = new Set(restoredNodes.map((node) => node.id));
+  const restoredEdges = initialEdges.filter(
+    (edge) => validNodeIds.has(edge.source) && validNodeIds.has(edge.target),
+  );
+
+  return {
+    nodes: restoredNodes,
+    edges: restoredEdges,
+  };
+}
+
+function FlowEditor({ initialNodes = [], initialEdges = [] }: CanvasWorkspaceProps) {
+  const [restoredFlow] = useState(() => restoreSavedFlow(initialNodes, initialEdges));
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(restoredFlow.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(restoredFlow.edges);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const nodeCounterRef = useRef(0);
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
+
+  useEffect(() => {
+    const controlButtons = canvasRef.current?.querySelectorAll<HTMLButtonElement>(".ff-canvas__controls button");
+    controlButtons?.forEach((button) => {
+      button.tabIndex = -1;
+    });
+  }, []);
 
   const handleDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -99,7 +138,7 @@ function FlowEditor() {
   );
 
   return (
-    <div className="ff-canvas" data-testid="canvas-workspace">
+    <div className="ff-canvas" data-testid="canvas-workspace" ref={canvasRef}>
       <ReactFlow<FlowNode, FlowEdge>
         aria-label="Node editor canvas"
         className="ff-canvas__flow"
@@ -121,9 +160,9 @@ function FlowEditor() {
         {nodes.length === 0 ? (
           <div className="ff-canvas__empty-state">
             <p className="ff-canvas__eyebrow">Contract Canvas</p>
-            <h1 className="ff-canvas__title">Drag verified nodes from the toolbox to start a targeting graph.</h1>
+            <h1 className="ff-canvas__title"></h1>
             <p className="ff-canvas__copy">
-              Place Proximity, Get Tribe, List of Tribe, Is In List, and Add to Queue to build the canonical flow.
+              Start with Aggression or Proximity, then layer scoring, filters, config sources, and Add to Queue.
             </p>
           </div>
         ) : null}
@@ -132,10 +171,10 @@ function FlowEditor() {
   );
 }
 
-function CanvasWorkspace() {
+function CanvasWorkspace({ initialNodes, initialEdges }: CanvasWorkspaceProps) {
   return (
     <ReactFlowProvider>
-      <FlowEditor />
+      <FlowEditor initialEdges={initialEdges} initialNodes={initialNodes} />
     </ReactFlowProvider>
   );
 }

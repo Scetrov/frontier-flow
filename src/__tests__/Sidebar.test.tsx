@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import Sidebar from "../components/Sidebar";
+import { nodeDefinitions } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
 
 const definitions: readonly NodeDefinition[] = [
@@ -24,11 +25,23 @@ const definitions: readonly NodeDefinition[] = [
 ];
 
 describe("Sidebar", () => {
-  it("renders node definitions", () => {
-    render(<Sidebar definitions={definitions} />);
+  it("renders the contract-aligned palette grouped by category", () => {
+    render(<Sidebar definitions={nodeDefinitions} />);
 
-    expect(screen.getByRole("complementary", { name: "Node toolbox" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Aggression/ })).toBeInTheDocument();
+    const toolbox = screen.getByRole("complementary", { name: "Node toolbox" });
+    expect(toolbox).toBeInTheDocument();
+
+    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "Event Trigger",
+      "Data Accessor",
+      "Logic Gate",
+      "Data Source",
+      "Action",
+    ]);
+
+    expect(within(toolbox).getAllByRole("button")).toHaveLength(29);
+    expect(within(toolbox).getByRole("button", { name: /Aggression/ })).toBeInTheDocument();
+    expect(within(toolbox).getByRole("button", { name: /Add to Queue/ })).toBeInTheDocument();
   });
 
   it("shows the empty state when there are no definitions", () => {
