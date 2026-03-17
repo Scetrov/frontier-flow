@@ -135,6 +135,23 @@ describe("Sidebar", () => {
     expect(screen.getByText("No node definitions available.")).toBeVisible();
   });
 
+  it("collapses and reopens the toolbox from the chevron handle", () => {
+    render(<Sidebar definitions={nodeDefinitions} />);
+
+    const toggle = screen.getByRole("button", { name: "Close node toolbox" });
+    const toolbox = screen.getByRole("complementary", { name: "Node toolbox" });
+
+    fireEvent.click(toggle);
+
+    expect(toolbox).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("button", { name: "Open node toolbox" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open node toolbox" }));
+
+    expect(toolbox).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByRole("button", { name: "Close node toolbox" })).toBeInTheDocument();
+  });
+
   it("does not render the deprecated toolbox footer summary", () => {
     render(<Sidebar definitions={nodeDefinitions} />);
 

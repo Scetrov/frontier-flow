@@ -14,6 +14,7 @@ import {
   type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { createFlowNodeData, getNodeDefinition } from "../data/node-definitions";
 import { flowNodeTypes } from "../nodes";
@@ -42,6 +43,20 @@ interface ContextMenuState {
   readonly y: number;
 }
 
+const desktopMediaQuery = "(min-width: 768px)";
+
+function getIsDesktop() {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  if (typeof window.matchMedia !== "function") {
+    return true;
+  }
+
+  return window.matchMedia(desktopMediaQuery).matches;
+}
+
 /**
  * Restores saved nodes from the canonical catalogue and drops edges that no longer point to valid handles.
  */
@@ -61,6 +76,8 @@ function FlowEditor({ initialContractName = "Starter Contract", initialNodes = [
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(activeContract.edges);
   const [draftContractName, setDraftContractName] = useState(activeContract.name);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [isDesktop, setIsDesktop] = useState(getIsDesktop);
+  const [isContractPanelOpen, setIsContractPanelOpen] = useState(true);
   const nodeCounterRef = useRef(0);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
@@ -244,6 +261,26 @@ function FlowEditor({ initialContractName = "Starter Contract", initialNodes = [
   );
 
   useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(desktopMediaQuery);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+      if (event.matches) {
+        setIsContractPanelOpen(true);
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
+  }, []);
+
+  useEffect(() => {
     saveContractLibrary(
       typeof window === "undefined" ? undefined : window.localStorage,
       withActiveContractSnapshot(contractLibrary, nodes, edges),
@@ -280,56 +317,105 @@ function FlowEditor({ initialContractName = "Starter Contract", initialNodes = [
 
   return (
     <div className="ff-canvas" data-testid="canvas-workspace" onContextMenu={handlePaneContextMenu}>
-      <div className="ff-contract-bar" role="region" aria-label="Saved contract controls">
-        <label className="ff-contract-bar__field">
-          <span className="ff-contract-bar__label">Saved Contract</span>
-          <select
-            aria-label="Saved contract"
-            className="ff-contract-bar__input"
-            value={contractLibrary.activeContractName}
-            onChange={(event) => {
-              handleSelectContract(event.target.value);
-            }}
+      {!isDesktop && isContractPanelOpen ? (
+        <button
+          aria-label="Close saved contract controls overlay"
+          className="ff-canvas__drawer-overlay"
+          onClick={() => {
+            setIsContractPanelOpen(false);
+          }}
+          style={{ left: "calc(min(24rem, 88vw) + 2.75rem)" }}
+          type="button"
+        />
+      ) : null}
+
+      <div className="ff-canvas__drawer ff-canvas__drawer--left">
+        <div
+          className="ff-canvas__drawer-shell"
+          style={{
+            transform: isContractPanelOpen ? "translateX(0)" : "translateX(calc(-100% + 2.75rem))",
+          }}
+        >
+          <aside
+            aria-hidden={!isContractPanelOpen}
+            aria-label="Saved contract controls"
+            className="ff-contract-panel"
+            id="saved-contract-controls"
+            inert={!isContractPanelOpen}
+            role="region"
           >
-            {contractLibrary.contracts.map((contract) => (
-              <option key={contract.name} value={contract.name}>
-                {contract.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            <div className="ff-contract-panel__header">
+              <p className="ff-contract-panel__eyebrow">Contracts</p>
+              <h2 className="ff-contract-panel__title">Save / Load</h2>
+              <p className="ff-contract-panel__copy">Manage local flow snapshots without taking canvas space away from the editor.</p>
+            </div>
 
-        <label className="ff-contract-bar__field ff-contract-bar__field--name">
-          <span className="ff-contract-bar__label">Contract Name</span>
-          <input
-            aria-label="Contract name"
-            className="ff-contract-bar__input"
-            type="text"
-            value={draftContractName}
-            onChange={(event) => {
-              setDraftContractName(event.target.value);
-            }}
-          />
-        </label>
+            <div className="ff-contract-bar">
+              <label className="ff-contract-bar__field">
+                <span className="ff-contract-bar__label">Saved Contract</span>
+                <select
+                  aria-label="Saved contract"
+                  className="ff-contract-bar__input"
+                  value={contractLibrary.activeContractName}
+                  onChange={(event) => {
+                    handleSelectContract(event.target.value);
+                  }}
+                >
+                  {contractLibrary.contracts.map((contract) => (
+                    <option key={contract.name} value={contract.name}>
+                      {contract.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-        <div className="ff-contract-bar__actions">
-          <button className="ff-contract-bar__button" type="button" onClick={handleSaveAsContract}>
-            Save
-          </button>
-          <button className="ff-contract-bar__button" type="button" onClick={handleCreateContractCopy}>
-            Save Copy
-          </button>
+              <label className="ff-contract-bar__field ff-contract-bar__field--name">
+                <span className="ff-contract-bar__label">Contract Name</span>
+                <input
+                  aria-label="Contract name"
+                  className="ff-contract-bar__input"
+                  type="text"
+                  value={draftContractName}
+                  onChange={(event) => {
+                    setDraftContractName(event.target.value);
+                  }}
+                />
+              </label>
+
+              <div className="ff-contract-bar__actions">
+                <button className="ff-contract-bar__button" type="button" onClick={handleSaveAsContract}>
+                  Save
+                </button>
+                <button className="ff-contract-bar__button" type="button" onClick={handleCreateContractCopy}>
+                  Save Copy
+                </button>
+                <button
+                  className="ff-contract-bar__button ff-contract-bar__button--danger"
+                  type="button"
+                  onClick={handleDeleteContract}
+                  disabled={contractLibrary.contracts.length <= 1}
+                >
+                  Delete
+                </button>
+              </div>
+
+              <p className="ff-contract-bar__meta">Nodes, edges, and positions auto-save locally for the active contract.</p>
+            </div>
+          </aside>
+
           <button
-            className="ff-contract-bar__button ff-contract-bar__button--danger"
+            aria-controls="saved-contract-controls"
+            aria-expanded={isContractPanelOpen}
+            aria-label={isContractPanelOpen ? "Close saved contract controls" : "Open saved contract controls"}
+            className="ff-canvas__drawer-handle ff-canvas__drawer-handle--left"
+            onClick={() => {
+              setIsContractPanelOpen((open) => !open);
+            }}
             type="button"
-            onClick={handleDeleteContract}
-            disabled={contractLibrary.contracts.length <= 1}
           >
-            Delete
+            {isContractPanelOpen ? <ChevronLeft aria-hidden="true" className="h-5 w-5" /> : <ChevronRight aria-hidden="true" className="h-5 w-5" />}
           </button>
         </div>
-
-        <p className="ff-contract-bar__meta">Nodes, edges, and positions auto-save locally for the active contract.</p>
       </div>
 
       <ReactFlow<FlowNode, FlowEdge>

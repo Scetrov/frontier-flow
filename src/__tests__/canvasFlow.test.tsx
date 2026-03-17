@@ -92,6 +92,22 @@ describe("CanvasWorkspace", () => {
     });
   });
 
+  it("collapses and reopens saved contract controls from the left drawer handle", () => {
+    render(<CanvasWorkspace />);
+
+    const controls = screen.getByRole("region", { name: "Saved contract controls" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Close saved contract controls" }));
+
+    expect(controls).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("button", { name: "Open saved contract controls" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open saved contract controls" }));
+
+    expect(controls).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByRole("button", { name: "Close saved contract controls" })).toBeInTheDocument();
+  });
+
   it("renders an empty-state prompt before any node is dropped", () => {
     render(<CanvasWorkspace />);
 
