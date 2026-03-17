@@ -100,7 +100,7 @@ button,
 }
 
 .ff-canvas__background {
-  opacity: 0.5;
+  opacity: 1;
 }
 
 .ff-canvas__controls {
@@ -151,6 +151,74 @@ button,
   color: var(--text-secondary);
 }
 
+.ff-kitchen-sink {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border-top: 1px solid var(--ui-border-dark);
+  border-bottom: 1px solid var(--ui-border-dark);
+}
+
+.ff-kitchen-sink__canvas-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.ff-kitchen-sink__panel {
+  position: absolute;
+  left: 1.5rem;
+  top: 1.5rem;
+  z-index: 5;
+  max-width: 32rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(26, 10, 10, 0.84);
+  padding: 1.25rem;
+  backdrop-filter: blur(12px);
+}
+
+.ff-kitchen-sink__eyebrow {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-kitchen-sink__title {
+  margin: 0.75rem 0 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: clamp(1.2rem, 2.2vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cream-white);
+}
+
+.ff-kitchen-sink__copy {
+  margin: 0.9rem 0 0;
+  color: var(--text-secondary);
+}
+
+.ff-kitchen-sink__meta {
+  margin: 1rem 0 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+@media (max-width: 768px) {
+  .ff-kitchen-sink__panel {
+    left: 1rem;
+    right: 1rem;
+    top: 1rem;
+    max-width: none;
+  }
+}
+
 .ff-node {
   position: relative;
   min-width: 16rem;
@@ -165,8 +233,8 @@ button,
 }
 
 .ff-node.is-selected .ff-node__surface {
-  border-color: var(--brand-orange);
-  box-shadow: 0 0 0 1px rgba(255, 71, 0, 0.35), 0 20px 35px rgba(3, 6, 10, 0.35);
+  border-color: var(--ff-node-accent, var(--brand-orange));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ff-node-accent, var(--brand-orange)) 35%, transparent), 0 20px 35px rgba(3, 6, 10, 0.35);
 }
 
 .ff-node--diamond {
@@ -192,8 +260,8 @@ button,
 }
 
 .ff-node.is-selected.ff-node--diamond .ff-node__surface::before {
-  border-color: var(--brand-orange);
-  box-shadow: 0 0 0 1px rgba(255, 71, 0, 0.35), 0 18px 32px rgba(3, 6, 10, 0.35);
+  border-color: var(--ff-node-accent, var(--brand-orange));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ff-node-accent, var(--brand-orange)) 35%, transparent), 0 18px 32px rgba(3, 6, 10, 0.35);
 }
 
 .ff-node__surface--diamond > * {
@@ -241,9 +309,9 @@ button,
 
 .ff-node__body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.5rem;
-  padding: 0.8rem 0.9rem 0.9rem;
+  padding: 0.6rem 0.9rem 0.9rem;
   align-items: start;
 }
 
@@ -270,6 +338,8 @@ button,
 }
 
 .ff-node__description {
+  padding: 0.35rem 0.9rem 0.45rem;
+  border-bottom: 1px solid var(--ui-border-dark);
   color: var(--text-secondary);
   font-size: 0.72rem;
   line-height: 1.45;
