@@ -109,12 +109,12 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
       <aside
         aria-label="Node toolbox"
         className={[
-          "fixed inset-y-0 right-0 z-30 flex w-[min(22rem,88vw)] flex-col border-l border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.96)] backdrop-blur-md transition-transform duration-200 md:static md:z-0 md:w-80 md:translate-x-0",
+          "fixed inset-y-0 right-0 z-30 flex w-[min(22rem,88vw)] min-h-0 flex-col overflow-hidden border-l border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.96)] backdrop-blur-md transition-transform duration-200 md:static md:z-0 md:w-80 md:translate-x-0",
           isOpen ? "translate-x-0" : "translate-x-full",
         ].join(" ")}
         id="node-toolbox"
       >
-        <div className="border-b border-[var(--ui-border-dark)] px-4 py-4 sm:px-5">
+        <div className="shrink-0 border-b border-[var(--ui-border-dark)] px-4 py-4 sm:px-5">
           <p className="font-heading text-[0.68rem] uppercase tracking-[0.3em] text-[var(--brand-orange)]">
             Toolbox
           </p>
@@ -197,15 +197,6 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
               })}
             </div>
           )}
-        </div>
-
-        <div className="border-t border-[var(--ui-border-dark)] px-4 py-3 sm:px-5">
-          <p className="font-heading text-[0.62rem] uppercase tracking-[0.2em] text-[var(--brand-orange)]">
-            {definitions.length} nodes · drag to canvas
-          </p>
-          <p className="mt-2 text-xs text-[var(--text-secondary)]">
-            Header and footer stay pinned while the catalogue scrolls. Config sources now pair with reusable list accessors.
-          </p>
         </div>
       </aside>
     </>

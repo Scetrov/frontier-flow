@@ -114,13 +114,15 @@ describe("Sidebar", () => {
     expect(screen.getByText("No node definitions available.")).toBeVisible();
   });
 
-  it("keeps the toolbox footer visible with the catalogue summary", () => {
+  it("does not render the deprecated toolbox footer summary", () => {
     render(<Sidebar definitions={nodeDefinitions} />);
 
-    expect(screen.getByText(`${String(nodeDefinitions.length)} nodes · drag to canvas`)).toBeVisible();
+    expect(screen.queryByText(`${String(nodeDefinitions.length)} nodes · drag to canvas`)).not.toBeInTheDocument();
     expect(
-      screen.getByText("Header and footer stay pinned while the catalogue scrolls. Config sources now pair with reusable list accessors."),
-    ).toBeVisible();
+      screen.queryByText(
+        "Header and footer stay pinned while the catalogue scrolls. Config sources now pair with reusable list accessors.",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("writes drag metadata including grab offset when a node drag starts", () => {
