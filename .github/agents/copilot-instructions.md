@@ -1,1 +1,1 @@
-- 004-reactflow-canvas-nodes: Added TypeScript 5.9 (strict, ES2022 target, ES Modules only, `any` forbidden) + `@xyflow/react` ^12.10.0, `react` ^19.2.0, `lucide-react` ^0.563.0, `dagre` ^0.8.5
+- 005-contract-aligned-nodes: Added TypeScript 5.9 (strict, ES2022, ESM only) + React 19, @xyflow/react 12, lucide-react, Tailwind CSS 4, Vite

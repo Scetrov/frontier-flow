@@ -58,6 +58,9 @@ bun dev
 | `test:run`  | `bunx vitest run`      | Run tests once (CI mode)        |
 | `test:e2e`  | `bunx playwright test` | Run E2E tests                   |
 | `typecheck` | `bunx tsc -b`          | TypeScript type checking        |
+| `audit`     | `bunx npm-audit --audit-level=high` | Dependency vulnerability audit |
+| `verify`    | `bun run lint && bun run typecheck && bun run test:run` | Local pre-commit quality gate |
+| `verify:full` | `bun run verify && bun run build` | Full local CI-style verification |
 
 ### 1.4 Project Structure
 
@@ -103,6 +106,8 @@ bunx vitest run       # Unit tests
 ```
 
 All three must pass before opening a PR.
+
+The repository uses the Python `pre-commit` framework. Install hooks locally with `pre-commit install`; the configured `pre-commit` hook runs `bun run verify` and blocks commits when lint, typecheck, or unit tests fail.
 
 ---
 

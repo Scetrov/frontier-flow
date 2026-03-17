@@ -1,26 +1,12 @@
 import type { NodeTypes } from "@xyflow/react";
 
-import AggressionNode from "./AggressionNode";
-import ArmorRatioNode from "./ArmorRatioNode";
-import AddToQueueNode from "./AddToQueueNode";
-import GetTribeNode from "./GetTribeNode";
-import HpRatioNode from "./HpRatioNode";
-import IsInListNode from "./IsInListNode";
-import ListOfTribeNode from "./ListOfTribeNode";
-import ProximityNode from "./ProximityNode";
-import ShieldRatioNode from "./ShieldRatioNode";
+import { nodeDefinitions } from "../data/node-definitions";
+
+import { createNodeComponent, iconByNodeType } from "./createNode";
 
 /**
- * Stable ReactFlow node registry for the verified node set.
+ * Stable ReactFlow node registry generated from the contract-aligned definitions.
  */
-export const flowNodeTypes: NodeTypes = {
-  aggression: AggressionNode,
-  proximity: ProximityNode,
-  getTribe: GetTribeNode,
-  listOfTribe: ListOfTribeNode,
-  isInList: IsInListNode,
-  addToQueue: AddToQueueNode,
-  hpRatio: HpRatioNode,
-  shieldRatio: ShieldRatioNode,
-  armorRatio: ArmorRatioNode,
-};
+export const flowNodeTypes: NodeTypes = Object.fromEntries(
+  nodeDefinitions.map((definition) => [definition.type, createNodeComponent(iconByNodeType[definition.type])]),
+);

@@ -70,5 +70,5 @@ test("preserves shell landmarks and layout constraints across viewport widths", 
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Connect" })).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Open node toolbox" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Open saved contract controls" })).toBeFocused();
 });

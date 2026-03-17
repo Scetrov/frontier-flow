@@ -612,7 +612,7 @@ See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#5-code-generation-outputs) for a c
 | `aggression`  | `turret::candidate_is_aggressor(&candidate)` — checks the `is_aggressor` field on `TargetCandidate`                            |
 | `proximity`   | Entry point: `get_target_priority_list(turret, owner_character, target_candidate_list, receipt)`                               |
 | `getTribe`    | `turret::candidate_character_tribe(&candidate)` — reads tribe ID (u32) from target candidate                                   |
-| `listOfTribe` | `let friendly_tribes: vector<u32= vector[tribe_1, tribe_2, ...]` — static tribe list                                         |
+| `listOfTribe` | `let friendly_tribes: vector<u32= vector[tribe_1, tribe_2, ...]` — static tribe list                                           |
 | `isInList`    | Tribe comparison: `turret::candidate_character_tribe(&candidate) == character::tribe(owner_character)`                         |
 | `addToQueue`  | `vector::push_back(&mut return_list, turret::new_return_target_priority_list(item_id, weight))` — appends entry to return list |
 | `hpRatio`     | `turret::candidate_hp_ratio(&candidate)` — reads HP ratio (0-100) from target candidate                                        |
@@ -701,8 +701,8 @@ See [SOLUTION-DESIGN.md §5.4.1](./SOLUTION-DESIGN.md#541-compiler-error--node-m
 ## 10. Configuration Files
 
 Configuration files (`package.json`, `vite.config.ts`, `tailwind.config.js`, `postcss.config.js`, `index.css`, `index.html`) contain boilerplates and low-level build settings.
->
-See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#6-configuration-files) for their complete contents and setups.
+
+> See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#6-configuration-files) for their complete contents and setups.
 
 ---
 

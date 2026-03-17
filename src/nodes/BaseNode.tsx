@@ -1,4 +1,5 @@
 import { Handle, type NodeProps } from "@xyflow/react";
+import type { CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
 
 import type { FlowNodeData, SocketDefinition } from "../types/nodes";
@@ -38,20 +39,25 @@ function BaseNode({ data, selected, icon: Icon, shape = "standard" }: BaseNodePr
   const leftSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "left");
   const rightSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "right");
   const bottomSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "bottom");
+  const nodeStyle = { "--ff-node-accent": nodeData.color } as CSSProperties;
 
   return (
-    <div className={`ff-node ${shape === "diamond" ? "ff-node--diamond" : ""} ${selected ? "is-selected" : ""}`}>
+    <div className={`ff-node ${shape === "diamond" ? "ff-node--diamond" : ""} ${selected ? "is-selected" : ""}`} style={nodeStyle}>
       <div className={`ff-node__surface ${shape === "diamond" ? "ff-node__surface--diamond" : ""}`}>
-        <div className="ff-node__row ff-node__row--top">
-          {topSockets.map((socket) => (
-            <SocketRow key={socket.id} socket={socket} />
-          ))}
-        </div>
+        {topSockets.length > 0 ? (
+          <div className="ff-node__row ff-node__row--top">
+            {topSockets.map((socket) => (
+              <SocketRow key={socket.id} socket={socket} />
+            ))}
+          </div>
+        ) : null}
 
         <div className="ff-node__header" style={{ backgroundColor: nodeData.color }}>
           {Icon !== undefined ? <Icon aria-hidden="true" className="ff-node__icon" /> : null}
           <span className="ff-node__title">{nodeData.label}</span>
         </div>
+
+        <div className="ff-node__description">{nodeData.description}</div>
 
         <div className="ff-node__body">
           <div className="ff-node__column ff-node__column--left">
@@ -60,8 +66,6 @@ function BaseNode({ data, selected, icon: Icon, shape = "standard" }: BaseNodePr
             ))}
           </div>
 
-          <div className="ff-node__description">{nodeData.description}</div>
-
           <div className="ff-node__column ff-node__column--right">
             {rightSockets.map((socket) => (
               <SocketRow key={socket.id} socket={socket} />
@@ -69,11 +73,13 @@ function BaseNode({ data, selected, icon: Icon, shape = "standard" }: BaseNodePr
           </div>
         </div>
 
-        <div className="ff-node__row ff-node__row--bottom">
-          {bottomSockets.map((socket) => (
-            <SocketRow key={socket.id} socket={socket} />
-          ))}
-        </div>
+        {bottomSockets.length > 0 ? (
+          <div className="ff-node__row ff-node__row--bottom">
+            {bottomSockets.map((socket) => (
+              <SocketRow key={socket.id} socket={socket} />
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
