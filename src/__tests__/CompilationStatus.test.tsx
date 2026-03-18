@@ -3,6 +3,16 @@ import { describe, expect, it, vi } from "vitest";
 
 import CompilationStatus from "../components/CompilationStatus";
 
+const compiledArtifact = {
+  moduleName: "starter_contract",
+  sourceFilePath: "sources/starter_contract.move",
+  moveToml: "[package]\nname = \"starter_contract\"\n",
+  moveSource: "module builder_extensions::starter_contract {}",
+  sourceMap: [],
+  dependencies: [],
+  bytecodeModules: [],
+} as const;
+
 describe("CompilationStatus", () => {
   it("renders all primary states", () => {
     const { rerender } = render(<CompilationStatus diagnostics={[]} status={{ state: "idle" }} />);
@@ -11,7 +21,12 @@ describe("CompilationStatus", () => {
     rerender(<CompilationStatus diagnostics={[]} status={{ state: "compiling" }} />);
     expect(screen.getByText("Compiling")).toBeVisible();
 
-    rerender(<CompilationStatus diagnostics={[]} status={{ state: "compiled", bytecode: [new Uint8Array([1])] }} />);
+    rerender(
+      <CompilationStatus
+        diagnostics={[]}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+      />,
+    );
     expect(screen.getByText("Compiled")).toBeVisible();
   });
 

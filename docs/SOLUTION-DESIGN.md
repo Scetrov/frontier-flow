@@ -705,6 +705,16 @@ Transforming a visual React Flow graph into a valid, safe, and functional Sui Mo
 
 ### 5.1 Compilation Pipeline Overview
 
+The current graph-to-Move path lives entirely inside `src/compiler/` and runs in five deterministic stages plus a WASM compile handoff:
+
+1. `buildIrGraph()` normalises React Flow nodes and edges into a stable IR, preserving deterministic execution order and tracking disconnected or unresolved graph paths.
+2. `validateGraph()` rejects unsupported node types, missing required inputs, socket mismatches, disconnected entry paths, and unresolved ordering before emission starts.
+3. `collectSanitizationDiagnostics()` and `sanitizeGraph()` enforce Move-safe identifiers while still blocking module or node names that cannot be recovered safely.
+4. `emitMove()` produces the generated package artifact (`Move.toml`, `sources/<module>.move`, and source map) with stable section ordering for preview and compile.
+5. `compileMove()` submits the artifact files to `@zktx.io/sui-move-builder/lite`, decodes returned bytecode modules, and maps compiler output back through the generated source map.
+
+`compilePipeline()` is the single orchestration boundary. It returns one result object consumed by auto-compile, manual build, footer diagnostics, and the Move preview.
+
 The generator operates in five distinct phases to ensure the output is deterministic, secure, and gas-efficient:
 
 ```mermaid
@@ -851,6 +861,15 @@ These annotations are stripped during production builds but are preserved during
 
 ### 5.4.1 Compiler Error → Node Mapping
 
+The compiler wrapper and error parser now operate on the generated artifact rather than a placeholder source string:
+
+- `src/compiler/moveCompiler.ts` passes the emitted `Move.toml` plus `sources/<module>.move` to the WASM compiler.
+- Successful builds attach decoded bytecode modules and dependency names back onto the artifact so downstream consumers can treat the artifact as the single source of truth.
+- `src/compiler/errorParser.ts` converts raw compiler text into structured diagnostics with `stage = "compilation"`, preserving unmapped line numbers when no source-map entry exists.
+- Fallback compiler messages without line information still surface as actionable diagnostics instead of being dropped.
+
+This keeps the footer, node-focus error flows, and generated-source review aligned with the exact package that was compiled.
+
 The local Constraint Engine catches the majority of graph errors before compilation. However, edge cases exist where a graph passes all local validation but triggers a native Move compiler error during WASM compilation (e.g., subtle borrow conflicts, module-level naming collisions, or dependency version mismatches). For a non-technical gamer, the raw Move compiler output is cryptic and hostile. This subsystem translates those errors into actionable, visual feedback on the canvas.
 
 **Source Map Structure:**
@@ -942,6 +961,15 @@ flowchart LR
 When one or more `CompilerDiagnostic` entries resolve to a valid `reactFlowNodeId`, the application dispatches a node-update action that applies the `.node-error-highlight` CSS class to the matching React Flow node(s). Unresolvable errors (no matching source map entry) are displayed in a generic error panel with the raw compiler output preserved for advanced users.
 
 ### 5.5 Testing Strategy (Ensuring Predictability)
+
+Graph-to-Move verification is split across unit, component, hook, and browser coverage:
+
+- Compiler unit tests cover supported graph emission, unsupported graph rejection, identifier sanitization, source-map parsing, and WASM wrapper success/failure handling.
+- Hook tests assert that `useAutoCompile()` preserves artifact-aware status, chooses artifact-backed source for preview, and aborts stale or superseded builds.
+- Component tests cover manual build entry points, footer diagnostics, and the Move preview filename/source handoff.
+- Playwright compilation coverage validates the end-to-end flow from canvas edits to compiled status to artifact-backed Move preview.
+
+The intent is that every visible compile state in the UI is backed by the same generated artifact that the WASM compiler consumed.
 
 To guarantee that contracts function exactly as they look, the code generation pipeline must be heavily verified. Predicting outputs is paramount to smart contract security.
 

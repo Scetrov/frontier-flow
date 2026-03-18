@@ -3,6 +3,10 @@ import { canConnectSocketTypes } from "../utils/socketTypes";
 import { getGenerator } from "./generators";
 import type { CompilerDiagnostic, IRGraph, ValidationResult } from "./types";
 
+const OPTIONAL_INPUT_SOCKETS = new Map<string, ReadonlySet<string>>([
+  ["addToQueue", new Set(["predicate", "target", "weight"])],
+]);
+
 function createDiagnostic(
   severity: "error" | "warning",
   reactFlowNodeId: string | null,
@@ -11,6 +15,7 @@ function createDiagnostic(
 ): CompilerDiagnostic {
   return {
     severity,
+    stage: "validation",
     rawMessage: userMessage,
     line: null,
     reactFlowNodeId,
@@ -72,9 +77,30 @@ export function validateGraph(graph: IRGraph): ValidationResult {
     diagnostics.push(createDiagnostic("error", null, "Graph must be acyclic before compilation."));
   }
 
+  for (const nodeId of graph.unresolvedNodeIds) {
+    diagnostics.push(
+      createDiagnostic(
+        "error",
+        nodeId,
+        "Execution order cannot be resolved for this graph path. Remove the dependency loop and try again.",
+      ),
+    );
+  }
+
+  for (const nodeId of graph.disconnectedNodeIds) {
+    diagnostics.push(
+      createDiagnostic(
+        "error",
+        nodeId,
+        "Node is connected outside any event-trigger entry path and cannot become part of the generated contract.",
+      ),
+    );
+  }
+
   for (const node of graph.nodes.values()) {
     const inputSockets = node.sockets.filter((socket) => socket.direction === "input");
     const outputSockets = node.sockets.filter((socket) => socket.direction === "output");
+    const optionalInputs = OPTIONAL_INPUT_SOCKETS.get(node.type) ?? new Set<string>();
     const isDisconnected = inputSockets.every((socket) => node.inputs[socket.id] === undefined)
       && outputSockets.every((socket) => (node.outputs[socket.id] ?? []).length === 0);
 
@@ -83,6 +109,10 @@ export function validateGraph(graph: IRGraph): ValidationResult {
     }
 
     for (const socket of inputSockets) {
+      if (optionalInputs.has(socket.id)) {
+        continue;
+      }
+
       if (node.inputs[socket.id] === undefined) {
         diagnostics.push(createDiagnostic("error", node.id, `Required input '${socket.label}' is not connected.`, socket.id));
       }
@@ -90,7 +120,9 @@ export function validateGraph(graph: IRGraph): ValidationResult {
 
     const generator = getGenerator(node.type);
     if (generator === undefined) {
-      diagnostics.push(createDiagnostic("error", node.id, `No code generator is registered for '${node.type}'.`));
+      diagnostics.push(
+        createDiagnostic("error", node.id, `Node type '${node.type}' is not supported for real Move generation.`),
+      );
       continue;
     }
 

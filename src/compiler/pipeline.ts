@@ -2,7 +2,7 @@ import { buildIrGraph } from "./irBuilder";
 import { emitMove } from "./emitter";
 import { compileMove } from "./moveCompiler";
 import { optimiseGraph } from "./optimiser";
-import { sanitizeGraph } from "./sanitizer";
+import { collectSanitizationDiagnostics, sanitizeGraph } from "./sanitizer";
 import type { PipelineInput, PipelineResult } from "./types";
 import { validateGraph } from "./validator";
 
@@ -28,34 +28,53 @@ export async function compilePipeline({ nodes, edges, moduleName, signal }: Pipe
       code: null,
       sourceMap: null,
       optimizationReport: null,
+      artifact: null,
     };
   }
 
   throwIfAborted(signal);
+  const sanitizationDiagnostics = collectSanitizationDiagnostics(irGraph);
+  if (sanitizationDiagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+    return {
+      status: { state: "error", diagnostics: sanitizationDiagnostics },
+      diagnostics: sanitizationDiagnostics,
+      code: null,
+      sourceMap: null,
+      optimizationReport: null,
+      artifact: null,
+    };
+  }
+
   const sanitizedGraph = sanitizeGraph(irGraph);
   const { graph: optimisedGraph, report } = optimiseGraph(sanitizedGraph);
   const emitted = emitMove(optimisedGraph);
 
   throwIfAborted(signal);
-  const compileResult = await compileMove(emitted.code, optimisedGraph.moduleName, emitted.sourceMap, emitted.moveToml);
+  const compileResult = await compileMove(emitted.artifact);
   throwIfAborted(signal);
 
   if (!compileResult.success || compileResult.modules === null) {
     const diagnostics = compileResult.errors ?? [];
     return {
-      status: { state: "error", diagnostics },
+      status: { state: "error", diagnostics, artifact: compileResult.artifact ?? emitted.artifact },
       diagnostics,
       code: emitted.code,
       sourceMap: emitted.sourceMap,
       optimizationReport: report,
+      artifact: compileResult.artifact ?? emitted.artifact,
     };
   }
 
   return {
-    status: { state: "compiled", bytecode: compileResult.modules },
+    status: {
+      state: "compiled",
+      bytecode: compileResult.modules,
+      artifact: compileResult.artifact ?? emitted.artifact,
+    },
     diagnostics: compileResult.warnings,
     code: emitted.code,
     sourceMap: emitted.sourceMap,
     optimizationReport: report,
+    artifact: compileResult.artifact ?? emitted.artifact,
   };
 }

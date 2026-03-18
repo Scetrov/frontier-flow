@@ -1,11 +1,26 @@
-import SyntaxHighlighter from "react-syntax-highlighter";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import hljs from "highlight.js/lib/core";
+import rust from "highlight.js/lib/languages/rust";
 
 import type { CompilationStatus } from "../compiler/types";
+
+hljs.registerLanguage("rust", rust);
 
 interface MoveSourcePanelProps {
   readonly sourceCode: string | null;
   readonly status: CompilationStatus;
+}
+
+function getDisplayedFilename(status: CompilationStatus): string {
+  const sourceFilePath = status.state === "compiled" || status.state === "error"
+    ? status.artifact?.sourceFilePath
+    : undefined;
+
+  if (sourceFilePath === undefined) {
+    return "module.move";
+  }
+
+  const segments = sourceFilePath.split("/");
+  return segments.at(-1) ?? "module.move";
 }
 
 function getStatusLabel(status: CompilationStatus): string {
@@ -33,6 +48,11 @@ function getEmptyMessage(status: CompilationStatus): string {
 }
 
 function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
+  const displayedLines = sourceCode?.split("\n") ?? [];
+  const highlightedSource = sourceCode === null
+    ? ""
+    : hljs.highlight(sourceCode, { language: "rust" }).value;
+
   return (
     <section aria-label="Move source view" className="ff-move-source">
       <header className="ff-move-source__header">
@@ -44,7 +64,7 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
 
         <div className="ff-move-source__meta">
           <span className="ff-move-source__badge">{getStatusLabel(status)}</span>
-          <span className="ff-move-source__filename">module.move</span>
+          <span className="ff-move-source__filename">{getDisplayedFilename(status)}</span>
         </div>
       </header>
 
@@ -55,27 +75,21 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
             <p className="ff-move-source__empty-copy">{getEmptyMessage(status)}</p>
           </div>
         ) : (
-          <SyntaxHighlighter
-            PreTag="div"
-            className="ff-move-source__syntax"
-            codeTagProps={{ className: "ff-move-source__code" }}
-            customStyle={{
-              margin: 0,
-              minHeight: "100%",
-              background: "transparent",
-              padding: "1.25rem",
-              fontFamily: '"Fira Code", "SFMono-Regular", monospace',
-              fontSize: "0.92rem",
-              lineHeight: "1.65",
-            }}
-            language="rust"
-            lineNumberStyle={{ color: "rgba(250, 250, 229, 0.35)", minWidth: "2.5rem" }}
-            showLineNumbers={true}
-            style={atomOneDark}
-            wrapLongLines={true}
-          >
-            {sourceCode}
-          </SyntaxHighlighter>
+          <div className="ff-move-source__syntax" role="presentation">
+            <ol aria-hidden="true" className="ff-move-source__gutter">
+              {displayedLines.map((_, index) => (
+                <li className="ff-move-source__line-number" key={index}>
+                  {index + 1}
+                </li>
+              ))}
+            </ol>
+            <pre aria-label="Generated Move source code" className="ff-move-source__pre">
+              <code
+                className="ff-move-source__code hljs language-rust"
+                dangerouslySetInnerHTML={{ __html: highlightedSource }}
+              />
+            </pre>
+          </div>
         )}
       </div>
     </section>

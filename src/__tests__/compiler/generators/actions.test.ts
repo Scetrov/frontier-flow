@@ -4,10 +4,15 @@ import { createGenerationContext, getGenerator } from "../../../compiler/generat
 import { createIrNode } from "../helpers";
 
 describe("action generators", () => {
-  it("emits queue mutation comments", () => {
+  it("emits a queue mutation expression", () => {
     const generator = getGenerator("addToQueue");
-    const lines = generator?.emit(createIrNode("add_to_queue_node", "addToQueue"), createGenerationContext("starter_contract")) ?? [];
+    const context = createGenerationContext("starter_contract");
+    const lines = generator?.emit(createIrNode("add_to_queue_node", "addToQueue"), context) ?? [];
+    const output = lines.map((line) => line.code).join("\n");
 
-    expect(lines.map((line) => line.code).join("\n")).toContain("addToQueue");
+    expect(output).toContain("let ");
+    expect(output).toContain("if (");
+    expect(output).toContain("priority_out");
+    expect(context.bindings.size).toBe(1);
   });
 });

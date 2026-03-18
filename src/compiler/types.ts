@@ -26,6 +26,9 @@ export interface IRGraph {
   readonly connections: readonly IRConnection[];
   readonly executionOrder: readonly string[];
   readonly moduleName: string;
+  readonly requestedModuleName: string;
+  readonly disconnectedNodeIds: readonly string[];
+  readonly unresolvedNodeIds: readonly string[];
 }
 
 export interface SourceMapEntry {
@@ -33,6 +36,16 @@ export interface SourceMapEntry {
   readonly astNodeId: string;
   readonly reactFlowNodeId: string;
   readonly context?: string;
+}
+
+export interface GeneratedContractArtifact {
+  readonly moduleName: string;
+  readonly sourceFilePath: string;
+  readonly moveToml: string;
+  readonly moveSource: string;
+  readonly sourceMap: readonly SourceMapEntry[];
+  readonly dependencies: readonly string[];
+  readonly bytecodeModules: readonly Uint8Array[];
 }
 
 export interface AnnotatedLine {
@@ -45,10 +58,12 @@ export interface EmitterOutput {
   readonly code: string;
   readonly moveToml: string;
   readonly sourceMap: readonly SourceMapEntry[];
+  readonly artifact: GeneratedContractArtifact;
 }
 
 export interface CompilerDiagnostic {
   readonly severity: "error" | "warning";
+  readonly stage?: "validation" | "sanitization" | "emission" | "compilation";
   readonly rawMessage: string;
   readonly line: number | null;
   readonly reactFlowNodeId: string | null;
@@ -64,8 +79,16 @@ export interface ValidationResult {
 export type CompilationStatus =
   | { readonly state: "idle" }
   | { readonly state: "compiling" }
-  | { readonly state: "compiled"; readonly bytecode: readonly Uint8Array[] }
-  | { readonly state: "error"; readonly diagnostics: readonly CompilerDiagnostic[] };
+  | {
+      readonly state: "compiled";
+      readonly bytecode: readonly Uint8Array[];
+      readonly artifact?: GeneratedContractArtifact;
+    }
+  | {
+      readonly state: "error";
+      readonly diagnostics: readonly CompilerDiagnostic[];
+      readonly artifact?: GeneratedContractArtifact;
+    };
 
 export interface GenerationContext {
   readonly imports: Set<string>;
@@ -104,6 +127,7 @@ export interface CompileResult {
   readonly dependencies: readonly string[] | null;
   readonly errors: readonly CompilerDiagnostic[] | null;
   readonly warnings: readonly CompilerDiagnostic[];
+  readonly artifact: GeneratedContractArtifact | null;
 }
 
 export interface PipelineResult {
@@ -112,12 +136,14 @@ export interface PipelineResult {
   readonly code: string | null;
   readonly sourceMap: readonly SourceMapEntry[] | null;
   readonly optimizationReport: OptimizationReport | null;
+  readonly artifact: GeneratedContractArtifact | null;
 }
 
 export interface CompilationState {
   readonly status: CompilationStatus;
   readonly diagnostics: readonly CompilerDiagnostic[];
   readonly sourceCode: string | null;
+  readonly artifact: GeneratedContractArtifact | null;
   readonly triggerCompile: () => void;
 }
 

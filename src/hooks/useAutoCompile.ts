@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { compilePipeline } from "../compiler/pipeline";
-import type { CompilationState, CompilationStatus, CompilerDiagnostic } from "../compiler/types";
+import type { CompilationState, CompilationStatus, CompilerDiagnostic, GeneratedContractArtifact } from "../compiler/types";
 import type { FlowEdge, FlowNode } from "../types/nodes";
 
 export const AUTO_COMPILE_IDLE_MS = 2500;
@@ -86,6 +86,7 @@ export function useAutoCompile(
   const [status, setStatus] = useState<CompilationStatus>(IDLE_STATUS);
   const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>(EMPTY_DIAGNOSTICS);
   const [sourceCode, setSourceCode] = useState<string | null>(null);
+  const [artifact, setArtifact] = useState<GeneratedContractArtifact | null>(null);
   const [activeGraphKey, setActiveGraphKey] = useState<string | null>(null);
   const [settledGraphKey, setSettledGraphKey] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -114,6 +115,7 @@ export function useAutoCompile(
     setActiveGraphKey(requestGraphKey);
     setDiagnostics(EMPTY_DIAGNOSTICS);
     setSourceCode(null);
+    setArtifact(null);
     setStatus({ state: "compiling" });
 
     try {
@@ -135,7 +137,8 @@ export function useAutoCompile(
       setActiveGraphKey(null);
       setSettledGraphKey(requestGraphKey);
       setDiagnostics(result.diagnostics);
-      setSourceCode(result.code);
+      setSourceCode(result.artifact?.moveSource ?? result.code);
+      setArtifact(result.artifact ?? null);
       setStatus(result.status);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -160,6 +163,7 @@ export function useAutoCompile(
       setActiveGraphKey(null);
       setSettledGraphKey(requestGraphKey);
       setSourceCode(null);
+      setArtifact(null);
       setDiagnostics(fallbackDiagnostics);
       setStatus({ state: "error", diagnostics: fallbackDiagnostics });
     }
@@ -203,6 +207,7 @@ export function useAutoCompile(
     status: visibleStatus,
     diagnostics: visibleDiagnostics,
     sourceCode: isCurrentGraphCompiling || isCurrentGraphSettled ? sourceCode : null,
+    artifact: isCurrentGraphCompiling || isCurrentGraphSettled ? artifact : null,
     triggerCompile,
   };
 }

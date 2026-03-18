@@ -1,4 +1,5 @@
 import { createGenerationContext, getGenerator } from "./generators";
+import { createGeneratedContractArtifact } from "./generators/shared";
 import type { AnnotatedLine, EmitterOutput, IRGraph, SourceMapEntry } from "./types";
 
 function createMoveToml(moduleName: string): string {
@@ -84,5 +85,6 @@ export function emitMove(graph: IRGraph): EmitterOutput {
     code: lines.join("\n"),
     moveToml: createMoveToml(graph.moduleName),
     sourceMap,
+    artifact: createGeneratedContractArtifact(graph.moduleName, createMoveToml(graph.moduleName), lines.join("\n"), sourceMap),
   };
 }

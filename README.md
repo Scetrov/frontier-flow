@@ -143,6 +143,14 @@ Run end-to-end tests:
 bun run test:e2e
 ```
 
+Run the opt-in real WASM compiler integration check:
+
+```bash
+bun run test:real-wasm
+```
+
+This executes a Bun-based integration script that feeds reference graph fixtures directly into the compiler pipeline and asserts that valid bytecode is produced.
+
 ### Build for production
 
 ```bash

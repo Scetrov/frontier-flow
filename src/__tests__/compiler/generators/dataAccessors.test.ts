@@ -4,13 +4,26 @@ import { createGenerationContext, getGenerator } from "../../../compiler/generat
 import { createIrNode } from "../helpers";
 
 describe("data accessor generators", () => {
-  it.each(["getTribe", "hpRatio", "shieldRatio", "armorRatio", "getGroupId", "getBehaviour", "isAggressor", "getPriorityWeight"])(
-    "emits a code fragment for %s",
-    (nodeType) => {
-      const generator = getGenerator(nodeType);
-      const lines = generator?.emit(createIrNode(`${nodeType}_node`, nodeType), createGenerationContext("starter_contract")) ?? [];
+  it.each([
+    ["getTribe", "% 7"],
+    ["hpRatio", "100 -"],
+    ["shieldRatio", "% 30"],
+    ["armorRatio", "% 20"],
+    ["getGroupId", "% 16"],
+    ["getBehaviour", "% 4"],
+    ["isAggressor", "== 0"],
+    ["getPriorityWeight", "% 90"],
+    ["getTribeListFromConfig", "vector["],
+    ["getItemListFromConfig", "vector["],
+    ["getCharacterListFromConfig", "vector["],
+  ])("emits a code fragment for %s", (nodeType, expectedFragment) => {
+    const generator = getGenerator(nodeType);
+    const context = createGenerationContext("starter_contract");
+    const lines = generator?.emit(createIrNode(`${nodeType}_node`, nodeType), context) ?? [];
+    const output = lines.map((line) => line.code).join("\n");
 
-      expect(lines.map((line) => line.code).join("\n")).toContain(nodeType);
-    },
-  );
+    expect(output).toContain("let ");
+    expect(output).toContain(expectedFragment);
+    expect(context.bindings.size).toBeGreaterThan(0);
+  });
 });

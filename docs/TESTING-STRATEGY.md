@@ -102,6 +102,13 @@ The most critical unit test surface. Each phase is tested independently:
 | Phase 3.5: AST Optimisation    | `optimiser.ts`        | `optimiser.test.ts`        | Dead branch elimination, vector folding, constant propagation correctness |
 | Phase 4: Emission              | `emitter.ts`          | `emitter.test.ts`          | Correct Move syntax, source map annotations, import deduplication         |
 
+Graph-to-Move specific regression coverage additionally verifies that:
+
+- Unsupported node types, missing inputs, disconnected entry paths, and unresolved ordering all fail before emission.
+- Sanitization blocks irrecoverable module or node identifiers while still allowing safe normalization for valid inputs.
+- `moveCompiler.ts` submits a generated package artifact, decodes bytecode modules, and preserves dependency metadata on success.
+- `errorParser.ts` keeps unmapped compiler lines and raw fallback failures visible as structured diagnostics.
+
 ### 4.2 Layout Engine
 
 | Test Case              | Assertion                          |
@@ -129,10 +136,9 @@ The most critical unit test surface. Each phase is tested independently:
 ### 5.1 Header Component
 
 - Renders logo, app name, and version badge
-- "Preview Code" button triggers `onPreview` callback
-- "Auto Arrange" button triggers `onAutoArrange` callback
-- Deploy button shows correct state (Deploy/Upgrade) based on UpgradeCap presence
-- Network selector changes active network
+- Manual Build button triggers the compile callback when available
+- Build button is disabled while compilation is active
+- Visual and Move view toggles preserve the current primary workspace
 
 ### 5.2 Sidebar Component
 
@@ -181,6 +187,14 @@ E2E tests **must not** hit real external services. All external dependencies are
 | **GitHub Save/Load**   | Login → save graph → reload → load graph          | Graph state restored identically       |
 | **Test Execution**     | Define test case → run local eval → run Move test | Both results match expected output     |
 | **Upgrade Flow**       | Deploy → edit graph → deploy again                | Upgrade toast (not publish) appears    |
+
+Graph-to-Move adds one mandatory browser journey on top of the generic canvas flows:
+
+- Start from the editor shell with the mock compiler enabled.
+- Change the canvas so auto-compile runs.
+- Confirm the footer transitions through `Idle -> Compiling -> Compiled`.
+- Trigger a manual build and verify the build button disables while the compile is in progress.
+- Switch to the Move view and confirm the preview shows the generated artifact filename plus emitted Move source from the compiled package.
 
 ### 6.3 Error Scenarios
 

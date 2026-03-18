@@ -1,27 +1,63 @@
-import type { BuildResult } from "@zktx.io/sui-move-builder/lite";
-
+import { attachCompiledArtifactResult } from "./generators/shared";
 import { parseCompilerOutput } from "./errorParser";
-import type { CompileResult, SourceMapEntry } from "./types";
+import type { CompileResult, GeneratedContractArtifact } from "./types";
 
-type MoveCompilerModule = typeof import("@zktx.io/sui-move-builder/lite");
+interface BuildSuccessResult {
+  readonly modules: readonly string[];
+  readonly dependencies?: readonly string[];
+  readonly warnings?: string;
+}
+
+interface BuildErrorResult {
+  readonly error: string;
+}
+
+type BuildResult = BuildSuccessResult | BuildErrorResult;
+
+interface MoveCompilerModule {
+  initMoveCompiler(): Promise<void>;
+  buildMovePackage(input: {
+    readonly files: Readonly<Record<string, string>>;
+    readonly silenceWarnings: boolean;
+    readonly network: string;
+  }): Promise<BuildResult>;
+}
+
+type MoveCompilerLoader = () => Promise<MoveCompilerModule>;
 
 let compilerModulePromise: Promise<MoveCompilerModule> | null = null;
 let initialisationPromise: Promise<void> | null = null;
+let compilerModuleLoader: MoveCompilerLoader = () => import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
 
-function shouldUseMockCompiler(): boolean {
+function resetCompilerState(): void {
+  compilerModulePromise = null;
+  initialisationPromise = null;
+}
+
+export function resetMoveCompilerStateForTests(): void {
+  resetCompilerState();
+  compilerModuleLoader = () => import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
+}
+
+export function setMoveCompilerLoaderForTests(loader: MoveCompilerLoader): void {
+  resetCompilerState();
+  compilerModuleLoader = loader;
+}
+
+function getMockCompilerSearchParams(): URLSearchParams | null {
   if (typeof window === "undefined") {
-    return false;
+    return null;
   }
 
-  return new URLSearchParams(window.location.search).get("ff_mock_compiler") === "1";
+  return new URLSearchParams(window.location.search);
+}
+
+function shouldUseMockCompiler(): boolean {
+  return getMockCompilerSearchParams()?.get("ff_mock_compiler") === "1";
 }
 
 function getMockCompilerDelayMs(): number {
-  if (typeof window === "undefined") {
-    return 150;
-  }
-
-  const value = new URLSearchParams(window.location.search).get("ff_mock_compile_delay_ms");
+  const value = getMockCompilerSearchParams()?.get("ff_mock_compile_delay_ms");
   if (value === null) {
     return 150;
   }
@@ -30,17 +66,56 @@ function getMockCompilerDelayMs(): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 150;
 }
 
-async function createMockCompileResult(): Promise<CompileResult> {
+function getMockWarningText(): string | null {
+  const value = getMockCompilerSearchParams()?.get("ff_mock_compile_warning");
+  if (value === undefined || value === null || value.length === 0) {
+    return null;
+  }
+
+  return value === "1"
+    ? "warning: mock compile warning at sources/starter_contract.move:8:9"
+    : value;
+}
+
+function getMockErrorText(): string | null {
+  const value = getMockCompilerSearchParams()?.get("ff_mock_compile_error");
+  if (value === undefined || value === null || value.length === 0) {
+    return null;
+  }
+
+  return value === "1"
+    ? "error[E03001]: mock compile failure at sources/starter_contract.move:10:9"
+    : value;
+}
+
+async function createMockCompileResult(artifact: GeneratedContractArtifact): Promise<CompileResult> {
   await new Promise((resolve) => {
     window.setTimeout(resolve, getMockCompilerDelayMs());
   });
 
+  const mockError = getMockErrorText();
+  if (mockError !== null) {
+    return {
+      success: false,
+      modules: null,
+      dependencies: null,
+      errors: parseCompilerOutput(mockError, artifact.sourceMap),
+      warnings: [],
+      artifact,
+    };
+  }
+
+  const warningsText = getMockWarningText();
+  const modules = [new Uint8Array([1, 2, 3, 4])];
+  const dependencies: readonly string[] = [];
+
   return {
     success: true,
-    modules: [new Uint8Array([1, 2, 3, 4])],
-    dependencies: [],
+    modules,
+    dependencies,
     errors: null,
-    warnings: [],
+    warnings: warningsText === null ? [] : parseCompilerOutput(warningsText, artifact.sourceMap),
+    artifact: attachCompiledArtifactResult(artifact, modules, dependencies),
   };
 }
 
@@ -56,7 +131,10 @@ function decodeBase64(value: string): Uint8Array {
 
 async function loadCompilerModule(): Promise<MoveCompilerModule> {
   if (compilerModulePromise === null) {
-    compilerModulePromise = import("@zktx.io/sui-move-builder/lite");
+    compilerModulePromise = compilerModuleLoader().catch((error: unknown) => {
+      resetCompilerState();
+      throw error;
+    });
   }
 
   return compilerModulePromise;
@@ -65,50 +143,60 @@ async function loadCompilerModule(): Promise<MoveCompilerModule> {
 async function ensureCompilerInitialised(): Promise<MoveCompilerModule> {
   const compilerModule = await loadCompilerModule();
   if (initialisationPromise === null) {
-    initialisationPromise = compilerModule.initMoveCompiler();
+    initialisationPromise = compilerModule.initMoveCompiler().catch((error: unknown) => {
+      resetCompilerState();
+      throw error;
+    });
   }
 
   await initialisationPromise;
   return compilerModule;
 }
 
-function isBuildSuccess(result: BuildResult): result is Extract<BuildResult, { readonly modules: string[] }> {
-  return "modules" in result;
-}
-
 /**
  * Compile Move source in memory via the browser WASM wrapper.
  */
 export async function compileMove(
-  code: string,
-  moduleName: string,
-  sourceMap: readonly SourceMapEntry[],
-  moveToml: string,
+  artifact: GeneratedContractArtifact,
 ): Promise<CompileResult> {
   if (shouldUseMockCompiler()) {
-    return createMockCompileResult();
+    return createMockCompileResult(artifact);
   }
 
   try {
     const compilerModule = await ensureCompilerInitialised();
     const result = await compilerModule.buildMovePackage({
       files: {
-        "Move.toml": moveToml,
-        [`sources/${moduleName}.move`]: code,
+        "Move.toml": artifact.moveToml,
+        [artifact.sourceFilePath]: artifact.moveSource,
       },
       silenceWarnings: false,
       network: "testnet",
     });
 
-    if (isBuildSuccess(result)) {
-      const warnings = result.warnings === undefined ? [] : parseCompilerOutput(result.warnings, sourceMap);
+    if ("modules" in result) {
+      const warnings = result.warnings === undefined ? [] : parseCompilerOutput(result.warnings, artifact.sourceMap);
+      const modules = result.modules.map((moduleBytes: string) => decodeBase64(moduleBytes));
+      const dependencies = result.dependencies ?? [];
 
       return {
         success: true,
-        modules: result.modules.map((moduleBytes) => decodeBase64(moduleBytes)),
-        dependencies: result.dependencies,
+        modules,
+        dependencies,
         errors: null,
         warnings,
+        artifact: attachCompiledArtifactResult(artifact, modules, dependencies),
+      };
+    }
+
+    if ("error" in result) {
+      return {
+        success: false,
+        modules: null,
+        dependencies: null,
+        errors: parseCompilerOutput(result.error, artifact.sourceMap),
+        warnings: [],
+        artifact,
       };
     }
 
@@ -116,8 +204,9 @@ export async function compileMove(
       success: false,
       modules: null,
       dependencies: null,
-      errors: parseCompilerOutput(result.error, sourceMap),
+      errors: parseCompilerOutput("Unknown Move compilation failure.", artifact.sourceMap),
       warnings: [],
+      artifact,
     };
   } catch (error) {
     const rawMessage = error instanceof Error ? error.message : String(error);
@@ -125,8 +214,9 @@ export async function compileMove(
       success: false,
       modules: null,
       dependencies: null,
-      errors: parseCompilerOutput(rawMessage, sourceMap),
+      errors: parseCompilerOutput(rawMessage, artifact.sourceMap),
       warnings: [],
+      artifact,
     };
   }
 }

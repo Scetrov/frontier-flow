@@ -1,19 +1,34 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+function createCompiledArtifact() {
+  return {
+    moduleName: "starter_contract",
+    sourceFilePath: "sources/starter_contract.move",
+    moveToml: "[package]\nname = \"starter_contract\"\n",
+    moveSource: "module builder_extensions::starter_contract {}",
+    sourceMap: [],
+    dependencies: [],
+    bytecodeModules: [],
+  } as const;
+}
+
 vi.mock("../../compiler/pipeline", () => ({
   compilePipeline: vi.fn().mockResolvedValue({
-    status: { state: "compiled", bytecode: [new Uint8Array([1])] },
+    status: { state: "compiled", bytecode: [new Uint8Array([1])], artifact: createCompiledArtifact() },
     diagnostics: [],
     code: "module builder_extensions::starter_contract {}",
     sourceMap: [],
     optimizationReport: null,
+    artifact: createCompiledArtifact(),
   }),
 }));
 
 import { compilePipeline } from "../../compiler/pipeline";
 import { AUTO_COMPILE_IDLE_MS, useAutoCompile } from "../../hooks/useAutoCompile";
 import { createFlowNode } from "../compiler/helpers";
+
+const compiledArtifact = createCompiledArtifact();
 
 type ReactActEnvironmentGlobal = typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean;
@@ -93,6 +108,35 @@ describe("useAutoCompile", () => {
     expect(result.current.status.state).toBe("compiled");
   });
 
+  it("prefers the generated artifact source and preserves artifact-aware status after compile", async () => {
+    vi.mocked(compilePipeline).mockResolvedValueOnce({
+      status: { state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact },
+      diagnostics: [],
+      code: "module builder_extensions::placeholder_contract {}",
+      sourceMap: [],
+      optimizationReport: null,
+      artifact: compiledArtifact,
+    });
+
+    const nodes = [createFlowNode("node_1", "aggression")];
+    const { result } = renderHook(() => useAutoCompile(nodes, emptyEdges, "starter_contract", 100));
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.status).toEqual(
+      expect.objectContaining({
+        state: "compiled",
+        artifact: compiledArtifact,
+      }),
+    );
+    expect(result.current.artifact).toEqual(compiledArtifact);
+    expect(result.current.sourceCode).toBe(compiledArtifact.moveSource);
+  });
+
   it("restarts compilation after an edit aborts an in-flight compile", async () => {
     let firstSignal: AbortSignal | undefined;
 
@@ -111,11 +155,12 @@ describe("useAutoCompile", () => {
         });
       })
       .mockResolvedValueOnce({
-        status: { state: "compiled", bytecode: [new Uint8Array([1])] },
+        status: { state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact },
         diagnostics: [],
         code: "module builder_extensions::starter_contract {}",
         sourceMap: [],
         optimizationReport: null,
+        artifact: compiledArtifact,
       });
 
     const firstNodes = [createFlowNode("node_1", "aggression")];
@@ -208,11 +253,12 @@ describe("useAutoCompile", () => {
           }),
       )
       .mockResolvedValueOnce({
-        status: { state: "compiled", bytecode: [new Uint8Array([1])] },
+        status: { state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact },
         diagnostics: [],
         code: "module builder_extensions::starter_contract {}",
         sourceMap: [],
         optimizationReport: null,
+        artifact: compiledArtifact,
       });
 
     const firstNodes = [createFlowNode("node_1", "aggression")];
@@ -238,11 +284,12 @@ describe("useAutoCompile", () => {
 
     await act(async () => {
       resolveFirstCompilation?.({
-        status: { state: "compiled", bytecode: [new Uint8Array([9])] },
+        status: { state: "compiled", bytecode: [new Uint8Array([9])], artifact: compiledArtifact },
         diagnostics: [],
         code: "module builder_extensions::stale_contract {}",
         sourceMap: [],
         optimizationReport: null,
+        artifact: compiledArtifact,
       });
       await Promise.resolve();
       await Promise.resolve();

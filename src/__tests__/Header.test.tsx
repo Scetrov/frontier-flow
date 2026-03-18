@@ -33,6 +33,16 @@ describe("Header", () => {
     expect(screen.getByRole("button", { name: "Build" })).toBeDisabled();
   });
 
+  it("invokes the build handler when manual build is requested", () => {
+    const onBuild = vi.fn();
+
+    render(<Header onBuild={onBuild} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Build" }));
+
+    expect(onBuild).toHaveBeenCalledTimes(1);
+  });
+
   it("lets the user switch the primary view", () => {
     const onViewChange = vi.fn();
 
