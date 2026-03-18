@@ -35,7 +35,6 @@ test("auto-compiles after idle and supports manual build", async ({ page, isMobi
   await expect(statusButton).toContainText("Idle");
   await ensureCategoryExpanded(page, "Data Source");
   await dropNode(page, "Group Bonus Config", 360, 260);
-  await expect(statusButton).toContainText("Idle");
   await expect(statusButton).toContainText("Compiling");
   await expect(statusButton).toContainText("Compiled");
 

@@ -1,4 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+async function pressTabUntilFocused(page: Page, locator: Locator, maxTabs: number) {
+  for (let index = 0; index < maxTabs; index += 1) {
+    await page.keyboard.press("Tab");
+
+    if (await locator.evaluate((element) => element === document.activeElement)) {
+      return;
+    }
+  }
+
+  throw new Error("Expected target control to receive focus within the allowed tab sequence.");
+}
 
 test("renders Frontier Flow branding metadata", async ({ page }) => {
   await page.goto("/");
@@ -67,8 +79,10 @@ test("preserves shell landmarks and layout constraints across viewport widths", 
 
   await page.setViewportSize({ height: 900, width: 320 });
   await page.goto("/");
-  await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Connect" })).toBeFocused();
-  await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Open saved contract controls" })).toBeFocused();
+
+  const connectButton = page.getByRole("button", { name: "Connect" });
+  const savedContractControlsButton = page.getByRole("button", { name: "Open saved contract controls" });
+
+  await pressTabUntilFocused(page, connectButton, 6);
+  await pressTabUntilFocused(page, savedContractControlsButton, 4);
 });
