@@ -1,9 +1,11 @@
-import type { IRGraph, IRNode } from "./types";
+import type { CompilerDiagnostic, IRGraph, IRNode } from "./types";
 
-/**
- * Sanitize a user-provided label into a lowercase Move-safe identifier, prefixing numeric starts when needed.
- */
-export function sanitizeIdentifier(input: string, fallback = "generated_identifier"): string {
+interface IdentifierAnalysis {
+  readonly sanitized: string;
+  readonly requiredFallback: boolean;
+}
+
+function analyseIdentifier(input: string, fallback: string): IdentifierAnalysis {
   const trimmed = input.trim();
   const collapsed = trimmed
     .replace(/[^A-Za-z0-9_]+/g, "_")
@@ -11,7 +13,54 @@ export function sanitizeIdentifier(input: string, fallback = "generated_identifi
     .replace(/^_+|_+$/g, "");
 
   const candidate = collapsed.length > 0 ? collapsed : fallback;
-  return /^[A-Za-z_]/.test(candidate) ? candidate.toLowerCase() : `id_${candidate.toLowerCase()}`;
+  return {
+    sanitized: /^[A-Za-z_]/.test(candidate) ? candidate.toLowerCase() : `id_${candidate.toLowerCase()}`,
+    requiredFallback: collapsed.length === 0,
+  };
+}
+
+function createDiagnostic(reactFlowNodeId: string | null, userMessage: string): CompilerDiagnostic {
+  return {
+    severity: "error",
+    stage: "sanitization",
+    rawMessage: userMessage,
+    line: null,
+    reactFlowNodeId,
+    socketId: null,
+    userMessage,
+  };
+}
+
+/**
+ * Sanitize a user-provided label into a lowercase Move-safe identifier, prefixing numeric starts when needed.
+ */
+export function sanitizeIdentifier(input: string, fallback = "generated_identifier"): string {
+  return analyseIdentifier(input, fallback).sanitized;
+}
+
+/**
+ * Report blocking sanitization diagnostics for graph-derived identifiers that cannot be recovered safely.
+ */
+export function collectSanitizationDiagnostics(graph: IRGraph): readonly CompilerDiagnostic[] {
+  const diagnostics: CompilerDiagnostic[] = [];
+  const moduleAnalysis = analyseIdentifier(graph.requestedModuleName, "frontier_flow");
+
+  if (moduleAnalysis.requiredFallback) {
+    diagnostics.push(
+      createDiagnostic(null, "Module name must contain at least one letter, number, or underscore for Move generation."),
+    );
+  }
+
+  for (const node of graph.nodes.values()) {
+    const labelAnalysis = analyseIdentifier(node.label, node.type);
+    if (labelAnalysis.requiredFallback) {
+      diagnostics.push(
+        createDiagnostic(node.id, "Node label cannot be sanitized into a valid Move identifier."),
+      );
+    }
+  }
+
+  return diagnostics;
 }
 
 function sanitizeNode(node: IRNode): IRNode {

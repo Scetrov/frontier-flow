@@ -1,0 +1,24 @@
+{
+  "moduleName": "graph_to_move_supported",
+  "nodes": [
+    { "id": "supported_aggression", "type": "aggression", "position": { "x": 0, "y": 0 } },
+    { "id": "supported_get_tribe", "type": "getTribe", "position": { "x": 240, "y": 0 } },
+    { "id": "supported_add_to_queue", "type": "addToQueue", "position": { "x": 480, "y": 0 } }
+  ],
+  "edges": [
+    {
+      "id": "supported_edge_target",
+      "source": "supported_aggression",
+      "sourceHandle": "target",
+      "target": "supported_get_tribe",
+      "targetHandle": "target"
+    },
+    {
+      "id": "supported_edge_priority",
+      "source": "supported_aggression",
+      "sourceHandle": "priority",
+      "target": "supported_add_to_queue",
+      "targetHandle": "priority_in"
+    }
+  ]
+}

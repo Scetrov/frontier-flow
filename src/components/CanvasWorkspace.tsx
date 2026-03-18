@@ -44,6 +44,7 @@ interface CanvasWorkspaceProps {
     status: CompilationStatus,
     diagnostics: readonly CompilerDiagnostic[],
     sourceCode: string | null,
+    artifactMoveSource?: string | null,
   ) => void;
   readonly onTriggerCompileChange?: (triggerCompile: () => void) => void;
 }
@@ -359,8 +360,13 @@ function FlowEditor({
   }, [contractLibrary, edges, nodes]);
 
   useEffect(() => {
-    onCompilationStateChange?.(compilation.status, compilation.diagnostics, compilation.sourceCode);
-  }, [compilation.diagnostics, compilation.sourceCode, compilation.status, onCompilationStateChange]);
+    onCompilationStateChange?.(
+      compilation.status,
+      compilation.diagnostics,
+      compilation.sourceCode,
+      compilation.artifact?.moveSource ?? null,
+    );
+  }, [compilation.artifact, compilation.diagnostics, compilation.sourceCode, compilation.status, onCompilationStateChange]);
 
   useEffect(() => {
     onTriggerCompileChange?.(compilation.triggerCompile);

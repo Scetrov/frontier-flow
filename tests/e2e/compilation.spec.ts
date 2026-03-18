@@ -31,8 +31,9 @@ test("auto-compiles after idle and supports manual build", async ({ page, isMobi
 
   const statusButton = page.locator(".ff-compilation-status__button");
   const buildButton = page.getByRole("button", { name: "Build" });
+  const moveTab = page.getByRole("button", { name: "Move" });
 
-  await expect(statusButton).toContainText("Idle");
+  await expect(statusButton).toBeVisible();
   await ensureCategoryExpanded(page, "Data Source");
   await dropNode(page, "Group Bonus Config", 360, 260);
   await expect(statusButton).toContainText("Compiling");
@@ -42,4 +43,9 @@ test("auto-compiles after idle and supports manual build", async ({ page, isMobi
   await expect(page.getByRole("button", { name: "Building" })).toBeDisabled();
   await expect(statusButton).toContainText("Compiling");
   await expect(statusButton).toContainText("Compiled");
+
+  await moveTab.click();
+  await expect(page.getByText("Generated source")).toBeVisible();
+  await expect(page.getByText("starter_contract.move")).toBeVisible();
+  await expect(page.getByText(/module builder_extensions::starter_contract/i)).toBeVisible();
 });

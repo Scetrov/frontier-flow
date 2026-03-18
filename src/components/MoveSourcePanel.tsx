@@ -8,6 +8,19 @@ interface MoveSourcePanelProps {
   readonly status: CompilationStatus;
 }
 
+function getDisplayedFilename(status: CompilationStatus): string {
+  const sourceFilePath = status.state === "compiled" || status.state === "error"
+    ? status.artifact?.sourceFilePath
+    : undefined;
+
+  if (sourceFilePath === undefined) {
+    return "module.move";
+  }
+
+  const segments = sourceFilePath.split("/");
+  return segments.at(-1) ?? "module.move";
+}
+
 function getStatusLabel(status: CompilationStatus): string {
   switch (status.state) {
     case "compiling":
@@ -44,7 +57,7 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
 
         <div className="ff-move-source__meta">
           <span className="ff-move-source__badge">{getStatusLabel(status)}</span>
-          <span className="ff-move-source__filename">module.move</span>
+          <span className="ff-move-source__filename">{getDisplayedFilename(status)}</span>
         </div>
       </header>
 

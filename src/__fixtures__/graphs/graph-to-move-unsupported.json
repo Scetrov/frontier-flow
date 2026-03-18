@@ -1,0 +1,16 @@
+{
+  "moduleName": "graph_to_move_unsupported",
+  "nodes": [
+    { "id": "unsupported_trigger", "type": "proximity", "position": { "x": 0, "y": 0 } },
+    { "id": "unsupported_node", "type": "nonexistentMoveNode", "position": { "x": 240, "y": 0 } }
+  ],
+  "edges": [
+    {
+      "id": "unsupported_edge",
+      "source": "unsupported_trigger",
+      "sourceHandle": "target",
+      "target": "unsupported_node",
+      "targetHandle": "target"
+    }
+  ]
+}

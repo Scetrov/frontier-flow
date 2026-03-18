@@ -52,10 +52,10 @@ function App() {
                 initialContractName={defaultContractName}
                 initialEdges={defaultContractFlow.edges}
                 initialNodes={defaultContractFlow.nodes}
-                onCompilationStateChange={(status, nextDiagnostics, nextSourceCode) => {
+                onCompilationStateChange={(status, nextDiagnostics, nextSourceCode, artifactMoveSource) => {
                   setCompilationStatus(status);
                   setDiagnostics(nextDiagnostics);
-                  setMoveSourceCode(nextSourceCode);
+                  setMoveSourceCode(artifactMoveSource ?? nextSourceCode);
                 }}
                 onTriggerCompileChange={(nextTriggerCompile) => {
                   setTriggerCompile(() => nextTriggerCompile);

@@ -43,3 +43,11 @@ export function getGenerator(nodeType: string): NodeCodeGenerator | undefined {
 export function getRegisteredGenerators(): ReadonlyMap<string, NodeCodeGenerator> {
   return generatorRegistry;
 }
+
+export function getSupportedNodeTypes(): readonly string[] {
+  return Array.from(generatorRegistry.keys()).sort((left, right) => left.localeCompare(right));
+}
+
+export function isSupportedNodeType(nodeType: string): boolean {
+  return generatorRegistry.has(nodeType);
+}

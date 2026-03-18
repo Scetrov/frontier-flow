@@ -4,13 +4,22 @@ import { createGenerationContext, getGenerator } from "../../../compiler/generat
 import { createIrNode } from "../helpers";
 
 describe("scoring modifier generators", () => {
-  it.each(["behaviourBonus", "aggressorBonus", "damageBonus", "sizeTierBonus", "groupBonusLookup", "threatBonus", "historyPenalty"])(
-    "emits a scoring fragment for %s",
-    (nodeType) => {
-      const generator = getGenerator(nodeType);
-      const lines = generator?.emit(createIrNode(`${nodeType}_node`, nodeType), createGenerationContext("starter_contract")) ?? [];
+  it.each([
+    ["behaviourBonus", "* 5"],
+    ["aggressorBonus", "if ("],
+    ["damageBonus", "100 -"],
+    ["sizeTierBonus", "% 5"],
+    ["groupBonusLookup", "% 3"],
+    ["threatBonus", "% 4"],
+    ["historyPenalty", "- 10"],
+  ])("emits a scoring fragment for %s", (nodeType, expectedFragment) => {
+    const generator = getGenerator(nodeType);
+    const context = createGenerationContext("starter_contract");
+    const lines = generator?.emit(createIrNode(`${nodeType}_node`, nodeType), context) ?? [];
+    const output = lines.map((line) => line.code).join("\n");
 
-      expect(lines.map((line) => line.code).join("\n")).toContain(nodeType);
-    },
-  );
+    expect(output).toContain("let ");
+    expect(output).toContain(expectedFragment);
+    expect(context.bindings.size).toBe(1);
+  });
 });

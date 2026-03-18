@@ -8,6 +8,11 @@ type MutableIRNode = Omit<IRNode, "inputs" | "outputs"> & {
   outputs: Record<string, IRConnection[]>;
 };
 
+interface StableOrderResult {
+  readonly order: readonly string[];
+  readonly unresolvedNodeIds: readonly string[];
+}
+
 function normaliseModuleName(input: string): string {
   const collapsed = input
     .trim()
@@ -32,7 +37,7 @@ function toIrNode(node: FlowNode): MutableIRNode {
   };
 }
 
-function createStableOrder(nodes: readonly FlowNode[], edges: readonly FlowEdge[]): readonly string[] {
+function createStableOrder(nodes: readonly FlowNode[], edges: readonly FlowEdge[]): StableOrderResult {
   const sortedIds = nodes.map((node) => node.id).sort();
   const adjacency = new Map<string, string[]>();
   const indegree = new Map<string, number>();
@@ -77,11 +82,65 @@ function createStableOrder(nodes: readonly FlowNode[], edges: readonly FlowEdge[
   }
 
   if (order.length === sortedIds.length) {
-    return order;
+    return {
+      order,
+      unresolvedNodeIds: [],
+    };
   }
 
   const remaining = sortedIds.filter((nodeId) => !order.includes(nodeId));
-  return order.concat(remaining);
+  return {
+    order: order.concat(remaining),
+    unresolvedNodeIds: remaining,
+  };
+}
+
+function collectDisconnectedNodeIds(nodesById: ReadonlyMap<string, MutableIRNode>): readonly string[] {
+  const eventTriggerIds = Array.from(nodesById.values())
+    .filter((node) => node.category === "event-trigger")
+    .map((node) => node.id)
+    .sort();
+
+  if (eventTriggerIds.length === 0) {
+    return [];
+  }
+
+  const adjacency = new Map<string, string[]>();
+  for (const nodeId of nodesById.keys()) {
+    adjacency.set(nodeId, []);
+  }
+
+  for (const node of nodesById.values()) {
+    const targets = Object.values(node.outputs)
+      .flatMap((connections) => connections.map((connection) => connection.targetNodeId))
+      .sort();
+    adjacency.set(node.id, targets);
+  }
+
+  const reachable = new Set<string>();
+  const queue = [...eventTriggerIds];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === undefined || reachable.has(current)) {
+      continue;
+    }
+
+    reachable.add(current);
+    for (const next of adjacency.get(current) ?? []) {
+      if (!reachable.has(next)) {
+        queue.push(next);
+      }
+    }
+  }
+
+  return Array.from(nodesById.values())
+    .filter((node) => {
+      const isConnected = Object.keys(node.inputs).length > 0
+        || Object.values(node.outputs).some((connections) => connections.length > 0);
+      return isConnected && node.category !== "event-trigger" && !reachable.has(node.id);
+    })
+    .map((node) => node.id)
+    .sort();
 }
 
 /**
@@ -128,10 +187,15 @@ export function buildIrGraph(nodes: readonly FlowNode[], edges: readonly FlowEdg
     };
   }
 
+  const stableOrder = createStableOrder(nodes, edges);
+
   return {
     nodes: new Map<string, IRNode>(nodesById),
     connections,
-    executionOrder: createStableOrder(nodes, edges),
+    executionOrder: stableOrder.order,
     moduleName: normaliseModuleName(moduleName),
+    requestedModuleName: moduleName,
+    disconnectedNodeIds: collectDisconnectedNodeIds(nodesById),
+    unresolvedNodeIds: stableOrder.unresolvedNodeIds,
   };
 }

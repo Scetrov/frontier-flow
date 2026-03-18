@@ -33,6 +33,7 @@ export function parseCompilerOutput(rawOutput: string, sourceMap: readonly Sourc
 
     return {
       severity: extractSeverity(rawLine),
+      stage: "compilation",
       rawMessage: rawLine,
       line,
       reactFlowNodeId: source?.reactFlowNodeId ?? null,
