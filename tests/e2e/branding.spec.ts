@@ -44,11 +44,11 @@ test("renders Frontier Flow branding metadata", async ({ page }) => {
   await expect(page.locator('meta[property="og:type"]')).toHaveAttribute("content", "website");
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
     "content",
-    "https://frontierflow.dev",
+    "https://frontier-flow.scetrov.live/",
   );
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     "content",
-    "https://frontierflow.dev/og-image.png",
+    "https://frontier-flow.scetrov.live/og-image.png",
   );
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
     "content",
