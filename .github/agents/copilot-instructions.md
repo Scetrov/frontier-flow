@@ -1,1 +1,1 @@
-- 006-wasm-compile-pipeline: Added TypeScript 5.9 (strict, ES2022, ES Modules), React 19 + `@xyflow/react`, `@zktx.io/sui-move-builder` (WASM), Vite, Tailwind CSS 4
+- 007-graph-to-move: Added strict TypeScript 5.9 support for graph-to-Move artifact generation, browser-side WASM compilation, and artifact-backed preview/build flows using React 19, `@xyflow/react` 12.x, `@zktx.io/sui-move-builder` 0.2.8, `@mysten/sui`, and `@mysten/dapp-kit`
