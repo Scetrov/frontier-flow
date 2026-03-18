@@ -23,25 +23,23 @@ interface MoveCompilerModule {
   }): Promise<BuildResult>;
 }
 
-const MOVE_COMPILER_MODULE_ID = "@zktx.io/sui-move-builder/lite";
-
 let compilerModulePromise: Promise<MoveCompilerModule> | null = null;
 let initialisationPromise: Promise<void> | null = null;
 
-function shouldUseMockCompiler(): boolean {
+function getMockCompilerSearchParams(): URLSearchParams | null {
   if (typeof window === "undefined") {
-    return false;
+    return null;
   }
 
-  return new URLSearchParams(window.location.search).get("ff_mock_compiler") === "1";
+  return new URLSearchParams(window.location.search);
+}
+
+function shouldUseMockCompiler(): boolean {
+  return getMockCompilerSearchParams()?.get("ff_mock_compiler") === "1";
 }
 
 function getMockCompilerDelayMs(): number {
-  if (typeof window === "undefined") {
-    return 150;
-  }
-
-  const value = new URLSearchParams(window.location.search).get("ff_mock_compile_delay_ms");
+  const value = getMockCompilerSearchParams()?.get("ff_mock_compile_delay_ms");
   if (value === null) {
     return 150;
   }
@@ -50,18 +48,56 @@ function getMockCompilerDelayMs(): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 150;
 }
 
-async function createMockCompileResult(): Promise<CompileResult> {
+function getMockWarningText(): string | null {
+  const value = getMockCompilerSearchParams()?.get("ff_mock_compile_warning");
+  if (value === undefined || value === null || value.length === 0) {
+    return null;
+  }
+
+  return value === "1"
+    ? "warning: mock compile warning at sources/starter_contract.move:8:9"
+    : value;
+}
+
+function getMockErrorText(): string | null {
+  const value = getMockCompilerSearchParams()?.get("ff_mock_compile_error");
+  if (value === undefined || value === null || value.length === 0) {
+    return null;
+  }
+
+  return value === "1"
+    ? "error[E03001]: mock compile failure at sources/starter_contract.move:10:9"
+    : value;
+}
+
+async function createMockCompileResult(artifact: GeneratedContractArtifact): Promise<CompileResult> {
   await new Promise((resolve) => {
     window.setTimeout(resolve, getMockCompilerDelayMs());
   });
 
+  const mockError = getMockErrorText();
+  if (mockError !== null) {
+    return {
+      success: false,
+      modules: null,
+      dependencies: null,
+      errors: parseCompilerOutput(mockError, artifact.sourceMap),
+      warnings: [],
+      artifact,
+    };
+  }
+
+  const warningsText = getMockWarningText();
+  const modules = [new Uint8Array([1, 2, 3, 4])];
+  const dependencies: readonly string[] = [];
+
   return {
     success: true,
-    modules: [new Uint8Array([1, 2, 3, 4])],
-    dependencies: [],
+    modules,
+    dependencies,
     errors: null,
-    warnings: [],
-    artifact: null,
+    warnings: warningsText === null ? [] : parseCompilerOutput(warningsText, artifact.sourceMap),
+    artifact: attachCompiledArtifactResult(artifact, modules, dependencies),
   };
 }
 
@@ -77,7 +113,7 @@ function decodeBase64(value: string): Uint8Array {
 
 async function loadCompilerModule(): Promise<MoveCompilerModule> {
   if (compilerModulePromise === null) {
-    compilerModulePromise = import(MOVE_COMPILER_MODULE_ID) as Promise<MoveCompilerModule>;
+    compilerModulePromise = import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
   }
 
   return compilerModulePromise;
@@ -100,15 +136,7 @@ export async function compileMove(
   artifact: GeneratedContractArtifact,
 ): Promise<CompileResult> {
   if (shouldUseMockCompiler()) {
-    const mockResult = await createMockCompileResult();
-    if (!mockResult.success || mockResult.modules === null || mockResult.dependencies === null) {
-      return mockResult;
-    }
-
-    return {
-      ...mockResult,
-      artifact: attachCompiledArtifactResult(artifact, mockResult.modules, mockResult.dependencies),
-    };
+    return createMockCompileResult(artifact);
   }
 
   try {

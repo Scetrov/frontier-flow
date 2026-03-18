@@ -1,10 +1,44 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { CONTRACT_LIBRARY_STORAGE_KEY } from "../../src/utils/contractStorage";
+import { referenceGraphFixtures, type GraphFixtureEdge, type GraphFixtureNode } from "./referenceGraphFixtures";
+
 async function prepareCompilationPage(page: Page) {
   await page.addInitScript(() => {
     window.localStorage.clear();
   });
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=600&ff_idle_ms=120");
+}
+
+async function prepareCompilationPageWithQuery(page: Page, query: string) {
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+  });
+  await page.goto(`/${query}`);
+}
+
+async function prepareCompilationPageWithLibrary(
+  page: Page,
+  query: string,
+  library: {
+    readonly version: 1;
+    readonly activeContractName: string;
+    readonly contracts: readonly {
+      readonly name: string;
+      readonly nodes: readonly GraphFixtureNode[];
+      readonly edges: readonly GraphFixtureEdge[];
+      readonly updatedAt: string;
+    }[];
+  },
+) {
+  await page.addInitScript(
+    ({ storageKey, storageLibrary }) => {
+      window.localStorage.clear();
+      window.localStorage.setItem(storageKey, JSON.stringify(storageLibrary));
+    },
+    { storageKey: CONTRACT_LIBRARY_STORAGE_KEY, storageLibrary: library },
+  );
+  await page.goto(`/${query}`);
 }
 
 async function dropNode(page: Page, label: string, clientX: number, clientY: number) {
@@ -47,5 +81,73 @@ test("auto-compiles after idle and supports manual build", async ({ page, isMobi
   await moveTab.click();
   await expect(page.getByText("Generated source")).toBeVisible();
   await expect(page.getByText("starter_contract.move")).toBeVisible();
+  await expect(page.getByText(/module builder_extensions::starter_contract/i)).toBeVisible();
+});
+
+test("reference graph matrix compiles multiple supported saved contracts through the same workflow", async ({ page, isMobile }) => {
+  test.skip(isMobile, "Desktop drag and drop coverage only.");
+
+  const library = {
+    version: 1 as const,
+    activeContractName: referenceGraphFixtures[0].contractName,
+    contracts: referenceGraphFixtures.map((entry) => {
+      return {
+        name: entry.contractName,
+        nodes: entry.fixture.nodes,
+        edges: entry.fixture.edges,
+        updatedAt: "2026-03-18T00:00:00.000Z",
+      };
+    }),
+  };
+
+  await prepareCompilationPageWithLibrary(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120", library);
+
+  const statusButton = page.locator(".ff-compilation-status__button");
+  const savedContractSelect = page.getByRole("combobox", { name: "Saved contract" });
+  const buildButton = page.getByRole("button", { name: "Build", exact: true });
+  const moveTab = page.getByRole("button", { name: "Move", exact: true });
+
+  for (const entry of referenceGraphFixtures) {
+    await savedContractSelect.selectOption(entry.contractName);
+    await expect(statusButton).toContainText("Compiled");
+
+    await buildButton.click();
+    await expect(statusButton).toContainText("Compiled");
+
+    await moveTab.click();
+    await expect(page.getByText(`${entry.expectedModuleName}.move`)).toBeVisible();
+    await expect(page.getByText(new RegExp(`module builder_extensions::${entry.expectedModuleName}`, "i"))).toBeVisible();
+
+    await page.getByRole("button", { name: "Visual", exact: true }).click();
+  }
+});
+
+test("surfaces mock compiler warnings while keeping the build successful", async ({ page, isMobile }) => {
+  test.skip(isMobile, "Desktop drag and drop coverage only.");
+
+  await prepareCompilationPageWithQuery(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_mock_compile_warning=1&ff_idle_ms=120");
+
+  const statusButton = page.locator(".ff-compilation-status__button");
+
+  await expect(statusButton).toContainText("Compiled");
+  await expect(statusButton).toBeEnabled();
+
+  await statusButton.click();
+  await expect(page.getByText(/mock compile warning/i)).toBeVisible();
+});
+
+test("surfaces mock compiler failures through the build status panel", async ({ page, isMobile }) => {
+  test.skip(isMobile, "Desktop drag and drop coverage only.");
+
+  await prepareCompilationPageWithQuery(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_mock_compile_error=1&ff_idle_ms=120");
+
+  const statusButton = page.locator(".ff-compilation-status__button");
+  await expect(statusButton).toContainText("Error");
+  await expect(statusButton).toBeEnabled();
+
+  await statusButton.click();
+  await expect(page.getByText(/mock compile failure/i)).toBeVisible();
+
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await expect(page.getByText(/module builder_extensions::starter_contract/i)).toBeVisible();
 });

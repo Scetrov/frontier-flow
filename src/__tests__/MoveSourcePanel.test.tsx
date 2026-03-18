@@ -14,14 +14,16 @@ const compiledArtifact = {
 } as const;
 
 describe("MoveSourcePanel", () => {
-  it("renders highlighted read-only Move source when code is available", () => {
-    render(
-      <MoveSourcePanel
-        sourceCode={`module builder_extensions::starter_contract {
+  it("renders read-only Move source without altering the generated formatting", () => {
+    const sourceCode = `module builder_extensions::starter_contract {
     public fun execute() {
         let compiled = true;
     }
-}`}
+}`;
+
+    const { container } = render(
+      <MoveSourcePanel
+        sourceCode={sourceCode}
         status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
       />,
     );
@@ -29,6 +31,8 @@ describe("MoveSourcePanel", () => {
     expect(screen.getByLabelText("Move source view")).toBeInTheDocument();
     expect(screen.getByText("Generated source")).toBeVisible();
     expect(screen.getByText(/module builder_extensions::starter_contract/)).toBeVisible();
+    expect(screen.getByLabelText("Generated Move source code").textContent).toBe(sourceCode);
+    expect(container.querySelector(".hljs-keyword")).not.toBeNull();
     expect(screen.getByRole("region", { name: "Move source view" })).toBeInTheDocument();
   });
 

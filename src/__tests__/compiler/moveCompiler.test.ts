@@ -50,6 +50,7 @@ describe("compileMove", () => {
   beforeEach(() => {
     mockInitMoveCompiler.mockClear();
     mockBuildMovePackage.mockReset();
+    window.history.replaceState({}, "", "/");
   });
 
   it("compiles the generated artifact package and attaches decoded bytecode plus dependencies", async () => {
@@ -98,6 +99,76 @@ describe("compileMove", () => {
         line: 10,
         reactFlowNodeId: "unsupported_node",
       }),
+    );
+    expect(result.artifact).toEqual(artifact);
+  });
+
+  it("uses the mock compiler path when requested by the URL and still attaches the artifact", async () => {
+    const artifact = createArtifact();
+    window.history.replaceState({}, "", "/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0");
+
+    const result = await compileMove(artifact);
+
+    expect(mockInitMoveCompiler).not.toHaveBeenCalled();
+    expect(mockBuildMovePackage).not.toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(result.modules).toEqual([new Uint8Array([1, 2, 3, 4])]);
+    expect(result.dependencies).toEqual([]);
+    expect(result.artifact?.bytecodeModules).toEqual([new Uint8Array([1, 2, 3, 4])]);
+    expect(result.artifact?.sourceFilePath).toBe(artifact.sourceFilePath);
+  });
+
+  it("surfaces configured mock compiler warnings while still succeeding", async () => {
+    const artifact = createArtifact();
+    window.history.replaceState({}, "", "/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_mock_compile_warning=1");
+
+    const result = await compileMove(artifact);
+
+    expect(result.success).toBe(true);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          line: 8,
+        }),
+      ]),
+    );
+    expect(result.artifact?.bytecodeModules).toEqual([new Uint8Array([1, 2, 3, 4])]);
+  });
+
+  it("surfaces configured mock compiler failures as compilation diagnostics", async () => {
+    const artifact = createArtifact();
+    window.history.replaceState({}, "", "/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_mock_compile_error=1");
+
+    const result = await compileMove(artifact);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "error",
+          line: 10,
+        }),
+      ]),
+    );
+    expect(result.artifact).toEqual(artifact);
+  });
+
+  it("surfaces thrown compiler-wrapper errors while preserving the generated artifact", async () => {
+    const artifact = createArtifact();
+    mockBuildMovePackage.mockRejectedValueOnce(new Error("WASM compile exploded"));
+
+    const result = await compileMove(artifact);
+
+    expect(result.success).toBe(false);
+    expect(result.modules).toBeNull();
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage: "compilation",
+          rawMessage: "WASM compile exploded",
+        }),
+      ]),
     );
     expect(result.artifact).toEqual(artifact);
   });
