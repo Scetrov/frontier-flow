@@ -13,11 +13,16 @@ import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
 const defaultContractFlow = createDefaultContractFlow();
 const defaultContractName = "Starter Contract";
 
+interface FocusedDiagnosticSelection {
+  readonly nodeId: string;
+  readonly requestKey: number;
+}
+
 function App() {
   const isKitchenSinkRoute = typeof window !== "undefined" && window.location.pathname === "/kitchen-sink";
   const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>({ state: "idle" });
   const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>([]);
-  const [focusedDiagnosticNodeId, setFocusedDiagnosticNodeId] = useState<string | null>(null);
+  const [focusedDiagnosticSelection, setFocusedDiagnosticSelection] = useState<FocusedDiagnosticSelection | null>(null);
   const [activeView, setActiveView] = useState<PrimaryView>("visual");
   const [moveSourceCode, setMoveSourceCode] = useState<string | null>(null);
   const [triggerCompile, setTriggerCompile] = useState<() => void>(() => () => undefined);
@@ -42,7 +47,8 @@ function App() {
               className="relative flex-1 overflow-hidden border-y border-[var(--ui-border-dark)]"
             >
               <CanvasWorkspace
-                focusedDiagnosticNodeId={focusedDiagnosticNodeId}
+                focusedDiagnosticNodeId={focusedDiagnosticSelection?.nodeId ?? null}
+                focusedDiagnosticRequestKey={focusedDiagnosticSelection?.requestKey ?? 0}
                 initialContractName={defaultContractName}
                 initialEdges={defaultContractFlow.edges}
                 initialNodes={defaultContractFlow.nodes}
@@ -71,7 +77,10 @@ function App() {
       <Footer
         diagnostics={diagnostics}
         onSelectDiagnostic={(nodeId) => {
-          setFocusedDiagnosticNodeId(nodeId);
+          setFocusedDiagnosticSelection((currentSelection) => ({
+            nodeId,
+            requestKey: (currentSelection?.requestKey ?? 0) + 1,
+          }));
         }}
         status={compilationStatus}
       />

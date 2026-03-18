@@ -88,12 +88,13 @@ function createStableOrder(nodes: readonly FlowNode[], edges: readonly FlowEdge[
  * Build the normalised intermediate representation from the React Flow canvas graph.
  */
 export function buildIrGraph(nodes: readonly FlowNode[], edges: readonly FlowEdge[], moduleName: string): IRGraph {
+  const flowNodesById = new Map<string, FlowNode>(nodes.map((node) => [node.id, node]));
   const nodesById = new Map<string, MutableIRNode>(nodes.map((node) => [node.id, toIrNode(node)]));
   const connections: IRConnection[] = [];
 
   for (const edge of edges) {
-    const sourceNode = nodes.find((node) => node.id === edge.source);
-    const targetNode = nodes.find((node) => node.id === edge.target);
+    const sourceNode = flowNodesById.get(edge.source);
+    const targetNode = flowNodesById.get(edge.target);
     const sourceSocket = getSocketDefinition(sourceNode, edge.sourceHandle);
     const targetSocket = getSocketDefinition(targetNode, edge.targetHandle);
 

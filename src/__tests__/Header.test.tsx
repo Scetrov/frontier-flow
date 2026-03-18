@@ -24,7 +24,7 @@ describe("Header", () => {
     render(<Header isCompiling={true} />);
 
     expect(screen.getByRole("button", { name: "Building" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Building" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Building" })).not.toHaveAttribute("aria-disabled");
   });
 
   it("lets the user switch the primary view", () => {

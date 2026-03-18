@@ -1,17 +1,38 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../App";
 import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
 
-const canvasWorkspaceSpy = vi.fn();
+interface CanvasWorkspaceSpyProps {
+  readonly initialNodes?: unknown;
+  readonly initialEdges?: unknown;
+  readonly initialContractName?: string;
+  readonly focusedDiagnosticNodeId?: string | null;
+  readonly focusedDiagnosticRequestKey?: number;
+}
+
+const canvasWorkspaceSpy = vi.fn<(props: CanvasWorkspaceSpyProps) => void>();
+const footerSpy = vi.fn();
 
 vi.mock("../components/Header", () => ({
   default: () => <div>Header Slot</div>,
 }));
 
 vi.mock("../components/Footer", () => ({
-  default: () => <div>Footer Slot</div>,
+  default: (props: { onSelectDiagnostic?: (nodeId: string) => void }) => {
+    footerSpy(props);
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          props.onSelectDiagnostic?.("node_1");
+        }}
+      >
+        Footer Slot
+      </button>
+    );
+  },
 }));
 
 vi.mock("../components/Sidebar", () => ({
@@ -19,7 +40,7 @@ vi.mock("../components/Sidebar", () => ({
 }));
 
 vi.mock("../components/CanvasWorkspace", () => ({
-  default: (props: { initialNodes?: unknown; initialEdges?: unknown }) => {
+  default: (props: CanvasWorkspaceSpyProps) => {
     canvasWorkspaceSpy(props);
     return <div>Canvas Workspace Slot</div>;
   },
@@ -39,6 +60,7 @@ describe("App", () => {
   afterEach(() => {
     window.history.replaceState({}, "", "/");
     canvasWorkspaceSpy.mockClear();
+    footerSpy.mockClear();
   });
 
   it("renders the default editor shell on the root route", () => {
@@ -67,5 +89,30 @@ describe("App", () => {
     expect(screen.getByText("Kitchen Sink Slot")).toBeInTheDocument();
     expect(screen.queryByLabelText("Application shell")).not.toBeInTheDocument();
     expect(screen.queryByText("Sidebar Slot")).not.toBeInTheDocument();
+  });
+
+  it("reissues diagnostic focus requests when the same item is selected repeatedly", () => {
+    window.history.replaceState({}, "", "/");
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Footer Slot" }));
+    const firstRequest = canvasWorkspaceSpy.mock.lastCall?.[0];
+
+    fireEvent.click(screen.getByRole("button", { name: "Footer Slot" }));
+    const secondRequest = canvasWorkspaceSpy.mock.lastCall?.[0];
+
+    expect(firstRequest).toEqual(
+      expect.objectContaining({
+        focusedDiagnosticNodeId: "node_1",
+        focusedDiagnosticRequestKey: 1,
+      }),
+    );
+    expect(secondRequest).toEqual(
+      expect.objectContaining({
+        focusedDiagnosticNodeId: "node_1",
+        focusedDiagnosticRequestKey: 2,
+      }),
+    );
   });
 });

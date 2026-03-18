@@ -39,6 +39,7 @@ interface CanvasWorkspaceProps {
   readonly initialNodes?: readonly FlowNode[];
   readonly initialEdges?: readonly FlowEdge[];
   readonly focusedDiagnosticNodeId?: string | null;
+  readonly focusedDiagnosticRequestKey?: number;
   readonly onCompilationStateChange?: (
     status: CompilationStatus,
     diagnostics: readonly CompilerDiagnostic[],
@@ -88,6 +89,7 @@ function FlowEditor({
   initialNodes = [],
   initialEdges = [],
   focusedDiagnosticNodeId,
+  focusedDiagnosticRequestKey = 0,
   onCompilationStateChange,
   onTriggerCompileChange,
 }: CanvasWorkspaceProps) {
@@ -378,7 +380,7 @@ function FlowEditor({
       duration: 180,
       zoom: 1,
     });
-  }, [focusedDiagnosticNodeId, nodes, reactFlow]);
+  }, [focusedDiagnosticNodeId, focusedDiagnosticRequestKey, nodes, reactFlow]);
 
   useEffect(() => {
     if (contextMenu === null) {
@@ -561,6 +563,7 @@ function CanvasWorkspace({
   initialNodes,
   initialEdges,
   focusedDiagnosticNodeId,
+  focusedDiagnosticRequestKey,
   onCompilationStateChange,
   onTriggerCompileChange,
 }: CanvasWorkspaceProps) {
@@ -568,6 +571,7 @@ function CanvasWorkspace({
     <ReactFlowProvider>
       <FlowEditor
         focusedDiagnosticNodeId={focusedDiagnosticNodeId}
+        focusedDiagnosticRequestKey={focusedDiagnosticRequestKey}
         initialContractName={initialContractName}
         initialEdges={initialEdges}
         initialNodes={initialNodes}

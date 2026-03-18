@@ -24,6 +24,8 @@ const reactActEnvironmentGlobal = globalThis as ReactActEnvironmentGlobal;
 let previousActEnvironment: boolean | undefined;
 
 describe("useAutoCompile", () => {
+  const emptyEdges: [] = [];
+
   beforeAll(() => {
     previousActEnvironment = reactActEnvironmentGlobal.IS_REACT_ACT_ENVIRONMENT;
     reactActEnvironmentGlobal.IS_REACT_ACT_ENVIRONMENT = true;
@@ -49,9 +51,12 @@ describe("useAutoCompile", () => {
   });
 
   it("debounces graph edits before compiling", async () => {
+    const firstNodes = [createFlowNode("node_1", "aggression")];
+    const secondNodes = [createFlowNode("node_2", "aggression")];
+
     const { rerender, result } = renderHook(
-      ({ nodeId }) => useAutoCompile([createFlowNode(nodeId, "aggression")], [], "starter_contract"),
-      { initialProps: { nodeId: "node_1" } },
+      ({ nodes }) => useAutoCompile(nodes, emptyEdges, "starter_contract"),
+      { initialProps: { nodes: firstNodes } },
     );
 
     act(() => {
@@ -60,7 +65,7 @@ describe("useAutoCompile", () => {
     expect(compilePipeline).not.toHaveBeenCalled();
 
     act(() => {
-      rerender({ nodeId: "node_2" });
+      rerender({ nodes: secondNodes });
     });
 
     await act(async () => {
@@ -74,7 +79,9 @@ describe("useAutoCompile", () => {
   });
 
   it("supports manual compilation triggers", async () => {
-    const { result } = renderHook(() => useAutoCompile([createFlowNode("node_1", "aggression")], [], "starter_contract"));
+    const nodes = [createFlowNode("node_1", "aggression")];
+
+    const { result } = renderHook(() => useAutoCompile(nodes, emptyEdges, "starter_contract"));
 
     await act(async () => {
       result.current.triggerCompile();
@@ -111,9 +118,12 @@ describe("useAutoCompile", () => {
         optimizationReport: null,
       });
 
+    const firstNodes = [createFlowNode("node_1", "aggression")];
+    const secondNodes = [createFlowNode("node_2", "aggression")];
+
     const { rerender, result } = renderHook(
-      ({ nodeId }) => useAutoCompile([createFlowNode(nodeId, "aggression")], [], "starter_contract", 100),
-      { initialProps: { nodeId: "node_1" } },
+      ({ nodes }) => useAutoCompile(nodes, emptyEdges, "starter_contract", 100),
+      { initialProps: { nodes: firstNodes } },
     );
 
     await act(async () => {
@@ -125,7 +135,7 @@ describe("useAutoCompile", () => {
     expect(result.current.status.state).toBe("compiling");
 
     act(() => {
-      rerender({ nodeId: "node_2" });
+      rerender({ nodes: secondNodes });
     });
 
     await act(async () => {
@@ -143,6 +153,112 @@ describe("useAutoCompile", () => {
     });
 
     expect(compilePipeline).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns to idle while waiting for the next debounced compile after an edit", async () => {
+    const firstNodes = [createFlowNode("node_1", "aggression")];
+    const secondNodes = [createFlowNode("node_2", "aggression")];
+
+    const { rerender, result } = renderHook(
+      ({ nodes }) => useAutoCompile(nodes, emptyEdges, "starter_contract", 100),
+      { initialProps: { nodes: firstNodes } },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
     expect(result.current.status.state).toBe("compiled");
+    expect(result.current.sourceCode).toBe("module builder_extensions::starter_contract {}");
+
+    act(() => {
+      rerender({ nodes: secondNodes });
+    });
+
+    expect(result.current.status.state).toBe("idle");
+    expect(result.current.diagnostics).toEqual([]);
+    expect(result.current.sourceCode).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(99);
+    });
+
+    expect(compilePipeline).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(compilePipeline).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores stale compilation results after an edit invalidates the request", async () => {
+    let resolveFirstCompilation: ((value: Awaited<ReturnType<typeof compilePipeline>>) => void) | undefined;
+
+    vi.mocked(compilePipeline)
+      .mockImplementationOnce(
+        () =>
+          new Promise<Awaited<ReturnType<typeof compilePipeline>>>((resolve) => {
+            resolveFirstCompilation = resolve;
+          }),
+      )
+      .mockResolvedValueOnce({
+        status: { state: "compiled", bytecode: [new Uint8Array([1])] },
+        diagnostics: [],
+        code: "module builder_extensions::starter_contract {}",
+        sourceMap: [],
+        optimizationReport: null,
+      });
+
+    const firstNodes = [createFlowNode("node_1", "aggression")];
+    const secondNodes = [createFlowNode("node_2", "aggression")];
+
+    const { rerender, result } = renderHook(
+      ({ nodes }) => useAutoCompile(nodes, emptyEdges, "starter_contract", 100),
+      { initialProps: { nodes: firstNodes } },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+    });
+
+    expect(result.current.status.state).toBe("compiling");
+
+    act(() => {
+      rerender({ nodes: secondNodes });
+    });
+
+    expect(result.current.status.state).toBe("idle");
+
+    await act(async () => {
+      resolveFirstCompilation?.({
+        status: { state: "compiled", bytecode: [new Uint8Array([9])] },
+        diagnostics: [],
+        code: "module builder_extensions::stale_contract {}",
+        sourceMap: [],
+        optimizationReport: null,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.status.state).toBe("idle");
+    expect(result.current.sourceCode).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(compilePipeline).toHaveBeenCalledTimes(2);
+    expect(result.current.status.state).toBe("compiled");
+    expect(result.current.sourceCode).toBe("module builder_extensions::starter_contract {}");
   });
 });

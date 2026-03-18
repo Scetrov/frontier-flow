@@ -59,7 +59,6 @@ function Header({ isCompiling = false, onBuild, activeView = "visual", onViewCha
 
         <div className="flex shrink-0 items-center gap-2">
           <button
-            aria-disabled={isCompiling}
             className="ff-header__button"
             disabled={isCompiling}
             onClick={() => {
