@@ -11,6 +11,7 @@
         "@types/dagre": "^0.7.53",
         "@types/react-syntax-highlighter": "^15.5.13",
         "@xyflow/react": "^12.10.0",
+        "@zktx.io/sui-move-builder": "0.2.8",
         "dagre": "^0.8.5",
         "lucide-react": "^0.577.0",
         "react": "^19.2.0",
@@ -431,6 +432,8 @@
     "@xyflow/react": ["@xyflow/react@12.10.1", "", { "dependencies": { "@xyflow/system": "0.0.75", "classcat": "^5.0.3", "zustand": "^4.4.0" }, "peerDependencies": { "react": ">=17", "react-dom": ">=17" } }, "sha512-5eSWtIK/+rkldOuFbOOz44CRgQRjtS9v5nufk77DV+XBnfCGL9HAQ8PG00o2ZYKqkEU/Ak6wrKC95Tu+2zuK3Q=="],
 
     "@xyflow/system": ["@xyflow/system@0.0.75", "", { "dependencies": { "@types/d3-drag": "^3.0.7", "@types/d3-interpolate": "^3.0.4", "@types/d3-selection": "^3.0.10", "@types/d3-transition": "^3.0.8", "@types/d3-zoom": "^3.0.8", "d3-drag": "^3.0.0", "d3-interpolate": "^3.0.1", "d3-selection": "^3.0.0", "d3-zoom": "^3.0.0" } }, "sha512-iXs+AGFLi8w/VlAoc/iSxk+CxfT6o64Uw/k0CKASOPqjqz6E0rb5jFZgJtXGZCpfQI6OQpu5EnumP5fGxQheaQ=="],
+
+    "@zktx.io/sui-move-builder": ["@zktx.io/sui-move-builder@0.2.8", "", {}, "sha512-hyxlip7UAgdZYJ63hs5VeYUCGVgILFG/Ey8JYCAa9ZEJEPniOOaqWXRo3o+D43P+91VkwZ6249zv04Qk8s71uw=="],
 
     "acorn": ["acorn@8.16.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw=="],
 

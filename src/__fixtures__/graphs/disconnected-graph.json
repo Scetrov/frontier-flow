@@ -1,0 +1,8 @@
+{
+  "moduleName": "disconnected_contract",
+  "nodes": [
+    { "id": "disconnected_aggression", "type": "aggression", "position": { "x": 0, "y": 0 } },
+    { "id": "disconnected_queue", "type": "addToQueue", "position": { "x": 320, "y": 0 } }
+  ],
+  "edges": []
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from "react";
 import {
   Background,
@@ -19,6 +19,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createFlowNodeData, getNodeDefinition } from "../data/node-definitions";
 import { flowNodeTypes } from "../nodes";
 import type { FlowEdge, FlowNode } from "../types/nodes";
+import type { CompilationStatus, CompilerDiagnostic } from "../compiler/types";
 import {
   createNamedFlowContract,
   createUniqueContractName,
@@ -29,6 +30,7 @@ import {
 } from "../utils/contractStorage";
 import { autoArrangeFlow } from "../utils/layoutFlow";
 import { getEdgeColor, getEdgeStrokeWidth, isValidFlowConnection } from "../utils/socketTypes";
+import { useAutoCompile } from "../hooks/useAutoCompile";
 
 import { restoreSavedFlow } from "./restoreSavedFlow";
 
@@ -36,6 +38,14 @@ interface CanvasWorkspaceProps {
   readonly initialContractName?: string;
   readonly initialNodes?: readonly FlowNode[];
   readonly initialEdges?: readonly FlowEdge[];
+  readonly focusedDiagnosticNodeId?: string | null;
+  readonly focusedDiagnosticRequestKey?: number;
+  readonly onCompilationStateChange?: (
+    status: CompilationStatus,
+    diagnostics: readonly CompilerDiagnostic[],
+    sourceCode: string | null,
+  ) => void;
+  readonly onTriggerCompileChange?: (triggerCompile: () => void) => void;
 }
 
 interface ContextMenuState {
@@ -44,6 +54,20 @@ interface ContextMenuState {
 }
 
 const desktopMediaQuery = "(min-width: 768px)";
+
+function getIdleMsOverride(): number | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const value = new URLSearchParams(window.location.search).get("ff_idle_ms");
+  if (value === null) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
 
 function getIsDesktop() {
   if (typeof window === "undefined") {
@@ -60,7 +84,15 @@ function getIsDesktop() {
 /**
  * Restores saved nodes from the canonical catalogue and drops edges that no longer point to valid handles.
  */
-function FlowEditor({ initialContractName = "Starter Contract", initialNodes = [], initialEdges = [] }: CanvasWorkspaceProps) {
+function FlowEditor({
+  initialContractName = "Starter Contract",
+  initialNodes = [],
+  initialEdges = [],
+  focusedDiagnosticNodeId,
+  focusedDiagnosticRequestKey = 0,
+  onCompilationStateChange,
+  onTriggerCompileChange,
+}: CanvasWorkspaceProps) {
   const [contractLibrary, setContractLibrary] = useState<ContractLibrary>(() => {
     const fallbackContract = createNamedFlowContract(initialContractName, initialNodes, initialEdges);
     const loadedLibrary = loadContractLibrary(typeof window === "undefined" ? undefined : window.localStorage, fallbackContract);
@@ -81,6 +113,45 @@ function FlowEditor({ initialContractName = "Starter Contract", initialNodes = [
   const nodeCounterRef = useRef(0);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
+  const idleMsOverride = getIdleMsOverride();
+  const compilation = useAutoCompile(nodes, edges, draftContractName, idleMsOverride);
+
+  const diagnosticsByNodeId = useMemo(() => {
+    const nextDiagnosticsByNodeId = new Map<string, readonly CompilerDiagnostic[]>();
+
+    for (const diagnostic of compilation.diagnostics) {
+      if (diagnostic.reactFlowNodeId === null) {
+        continue;
+      }
+
+      const currentDiagnostics = nextDiagnosticsByNodeId.get(diagnostic.reactFlowNodeId) ?? [];
+      nextDiagnosticsByNodeId.set(diagnostic.reactFlowNodeId, currentDiagnostics.concat(diagnostic));
+    }
+
+    return nextDiagnosticsByNodeId;
+  }, [compilation.diagnostics]);
+
+  const renderedNodes = useMemo(
+    () =>
+      nodes.map((node) => {
+        const nodeDiagnostics = diagnosticsByNodeId.get(node.id) ?? [];
+        const validationState = nodeDiagnostics.some((diagnostic) => diagnostic.severity === "error")
+          ? "error"
+          : nodeDiagnostics.some((diagnostic) => diagnostic.severity === "warning")
+            ? "warning"
+            : undefined;
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            diagnosticMessages: nodeDiagnostics.map((diagnostic) => diagnostic.userMessage),
+            validationState,
+          },
+        };
+      }),
+    [diagnosticsByNodeId, nodes],
+  );
 
   const handleDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -288,6 +359,30 @@ function FlowEditor({ initialContractName = "Starter Contract", initialNodes = [
   }, [contractLibrary, edges, nodes]);
 
   useEffect(() => {
+    onCompilationStateChange?.(compilation.status, compilation.diagnostics, compilation.sourceCode);
+  }, [compilation.diagnostics, compilation.sourceCode, compilation.status, onCompilationStateChange]);
+
+  useEffect(() => {
+    onTriggerCompileChange?.(compilation.triggerCompile);
+  }, [compilation.triggerCompile, onTriggerCompileChange]);
+
+  useEffect(() => {
+    if (focusedDiagnosticNodeId === null || focusedDiagnosticNodeId === undefined) {
+      return;
+    }
+
+    const targetNode = nodes.find((node) => node.id === focusedDiagnosticNodeId);
+    if (targetNode === undefined) {
+      return;
+    }
+
+    void reactFlow.setCenter(targetNode.position.x + 120, targetNode.position.y + 80, {
+      duration: 180,
+      zoom: 1,
+    });
+  }, [focusedDiagnosticNodeId, focusedDiagnosticRequestKey, nodes, reactFlow]);
+
+  useEffect(() => {
     if (contextMenu === null) {
       return undefined;
     }
@@ -426,7 +521,7 @@ function FlowEditor({ initialContractName = "Starter Contract", initialNodes = [
         fitView={true}
         isValidConnection={validateConnection}
         nodeTypes={flowNodeTypes}
-        nodes={nodes}
+        nodes={renderedNodes}
         onConnect={handleConnect}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
@@ -463,10 +558,26 @@ function FlowEditor({ initialContractName = "Starter Contract", initialNodes = [
   );
 }
 
-function CanvasWorkspace({ initialContractName, initialNodes, initialEdges }: CanvasWorkspaceProps) {
+function CanvasWorkspace({
+  initialContractName,
+  initialNodes,
+  initialEdges,
+  focusedDiagnosticNodeId,
+  focusedDiagnosticRequestKey,
+  onCompilationStateChange,
+  onTriggerCompileChange,
+}: CanvasWorkspaceProps) {
   return (
     <ReactFlowProvider>
-      <FlowEditor initialContractName={initialContractName} initialEdges={initialEdges} initialNodes={initialNodes} />
+      <FlowEditor
+        focusedDiagnosticNodeId={focusedDiagnosticNodeId}
+        focusedDiagnosticRequestKey={focusedDiagnosticRequestKey}
+        initialContractName={initialContractName}
+        initialEdges={initialEdges}
+        initialNodes={initialNodes}
+        onCompilationStateChange={onCompilationStateChange}
+        onTriggerCompileChange={onTriggerCompileChange}
+      />
     </ReactFlowProvider>
   );
 }

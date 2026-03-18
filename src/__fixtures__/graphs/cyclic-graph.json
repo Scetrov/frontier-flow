@@ -1,0 +1,23 @@
+{
+  "moduleName": "cyclic_contract",
+  "nodes": [
+    { "id": "cycle_a", "type": "isInList", "position": { "x": 0, "y": 0 } },
+    { "id": "cycle_b", "type": "countAggressors", "position": { "x": 320, "y": 0 } }
+  ],
+  "edges": [
+    {
+      "id": "cycle_1",
+      "source": "cycle_a",
+      "sourceHandle": "yes",
+      "target": "cycle_b",
+      "targetHandle": "candidates"
+    },
+    {
+      "id": "cycle_2",
+      "source": "cycle_b",
+      "sourceHandle": "is_raid",
+      "target": "cycle_a",
+      "targetHandle": "input_item"
+    }
+  ]
+}

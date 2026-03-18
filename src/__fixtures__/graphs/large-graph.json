@@ -1,0 +1,12 @@
+{
+  "moduleName": "large_contract",
+  "nodes": [
+    { "id": "large_1", "type": "aggression", "position": { "x": 0, "y": 0 } },
+    { "id": "large_2", "type": "getTribe", "position": { "x": 160, "y": 0 } },
+    { "id": "large_3", "type": "isAggressor", "position": { "x": 320, "y": 0 } },
+    { "id": "large_4", "type": "excludeSameTribe", "position": { "x": 480, "y": 0 } },
+    { "id": "large_5", "type": "getPriorityWeight", "position": { "x": 640, "y": 0 } },
+    { "id": "large_6", "type": "addToQueue", "position": { "x": 800, "y": 0 } }
+  ],
+  "edges": []
+}

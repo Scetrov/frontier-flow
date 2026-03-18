@@ -1,0 +1,7 @@
+{
+  "moduleName": "minimal_contract",
+  "nodes": [
+    { "id": "minimal_proximity", "type": "proximity", "position": { "x": 0, "y": 0 } }
+  ],
+  "edges": []
+}
