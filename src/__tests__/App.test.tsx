@@ -29,6 +29,10 @@ vi.mock("../components/KitchenSinkPage", () => ({
   default: () => <div>Kitchen Sink Slot</div>,
 }));
 
+vi.mock("../components/MoveSourcePanel", () => ({
+  default: () => <div>Move Source Slot</div>,
+}));
+
 describe("App", () => {
   const defaultContractFlow = createDefaultContractFlow();
 

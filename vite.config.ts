@@ -7,6 +7,9 @@ const basePath = process.env.VITE_BASE_PATH ?? "/";
 export default defineConfig({
   base: basePath,
   plugins: [react()],
+  optimizeDeps: {
+    exclude: ["@zktx.io/sui-move-builder"],
+  },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
   },

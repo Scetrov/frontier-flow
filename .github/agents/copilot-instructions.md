@@ -1,1 +1,1 @@
-- 005-contract-aligned-nodes: Added TypeScript 5.9 (strict, ES2022, ESM only) + React 19, @xyflow/react 12, lucide-react, Tailwind CSS 4, Vite
+- 006-wasm-compile-pipeline: Added TypeScript 5.9 (strict, ES2022, ES Modules), React 19 + `@xyflow/react`, `@zktx.io/sui-move-builder` (WASM), Vite, Tailwind CSS 4

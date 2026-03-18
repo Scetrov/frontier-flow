@@ -1,0 +1,24 @@
+{
+  "moduleName": "starter_contract",
+  "nodes": [
+    { "id": "default_aggression", "type": "aggression", "position": { "x": 0, "y": 0 } },
+    { "id": "default_get_tribe", "type": "getTribe", "position": { "x": 240, "y": 0 } },
+    { "id": "default_add_to_queue", "type": "addToQueue", "position": { "x": 480, "y": 0 } }
+  ],
+  "edges": [
+    {
+      "id": "edge_1",
+      "source": "default_aggression",
+      "sourceHandle": "target",
+      "target": "default_get_tribe",
+      "targetHandle": "target"
+    },
+    {
+      "id": "edge_2",
+      "source": "default_aggression",
+      "sourceHandle": "priority",
+      "target": "default_add_to_queue",
+      "targetHandle": "priority_in"
+    }
+  ]
+}

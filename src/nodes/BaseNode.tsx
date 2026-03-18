@@ -34,7 +34,10 @@ function SocketRow({ socket }: { readonly socket: SocketDefinition }) {
  * Shared node chrome used by the verified ReactFlow node set.
  */
 function BaseNode({ data, selected, icon: Icon, shape = "standard" }: BaseNodeProps) {
-  const nodeData = data as FlowNodeData;
+  const nodeData = data as FlowNodeData & {
+    readonly diagnosticMessages?: readonly string[];
+    readonly validationState?: "error" | "warning";
+  };
   const topSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "top");
   const leftSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "left");
   const rightSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "right");
@@ -42,7 +45,13 @@ function BaseNode({ data, selected, icon: Icon, shape = "standard" }: BaseNodePr
   const nodeStyle = { "--ff-node-accent": nodeData.color } as CSSProperties;
 
   return (
-    <div className={`ff-node ${shape === "diamond" ? "ff-node--diamond" : ""} ${selected ? "is-selected" : ""}`} style={nodeStyle}>
+    <div
+      className={`ff-node ${shape === "diamond" ? "ff-node--diamond" : ""} ${selected ? "is-selected" : ""}`}
+      data-validation-error={nodeData.validationState === "error" ? "true" : undefined}
+      data-validation-warning={nodeData.validationState === "warning" ? "true" : undefined}
+      style={nodeStyle}
+      title={nodeData.diagnosticMessages?.join("\n")}
+    >
       <div className={`ff-node__surface ${shape === "diamond" ? "ff-node__surface--diamond" : ""}`}>
         {topSockets.length > 0 ? (
           <div className="ff-node__row ff-node__row--top">
