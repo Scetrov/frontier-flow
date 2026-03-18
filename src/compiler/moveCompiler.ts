@@ -23,8 +23,26 @@ interface MoveCompilerModule {
   }): Promise<BuildResult>;
 }
 
+type MoveCompilerLoader = () => Promise<MoveCompilerModule>;
+
 let compilerModulePromise: Promise<MoveCompilerModule> | null = null;
 let initialisationPromise: Promise<void> | null = null;
+let compilerModuleLoader: MoveCompilerLoader = () => import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
+
+function resetCompilerState(): void {
+  compilerModulePromise = null;
+  initialisationPromise = null;
+}
+
+export function resetMoveCompilerStateForTests(): void {
+  resetCompilerState();
+  compilerModuleLoader = () => import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
+}
+
+export function setMoveCompilerLoaderForTests(loader: MoveCompilerLoader): void {
+  resetCompilerState();
+  compilerModuleLoader = loader;
+}
 
 function getMockCompilerSearchParams(): URLSearchParams | null {
   if (typeof window === "undefined") {
@@ -113,7 +131,10 @@ function decodeBase64(value: string): Uint8Array {
 
 async function loadCompilerModule(): Promise<MoveCompilerModule> {
   if (compilerModulePromise === null) {
-    compilerModulePromise = import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
+    compilerModulePromise = compilerModuleLoader().catch((error: unknown) => {
+      resetCompilerState();
+      throw error;
+    });
   }
 
   return compilerModulePromise;
@@ -122,7 +143,10 @@ async function loadCompilerModule(): Promise<MoveCompilerModule> {
 async function ensureCompilerInitialised(): Promise<MoveCompilerModule> {
   const compilerModule = await loadCompilerModule();
   if (initialisationPromise === null) {
-    initialisationPromise = compilerModule.initMoveCompiler();
+    initialisationPromise = compilerModule.initMoveCompiler().catch((error: unknown) => {
+      resetCompilerState();
+      throw error;
+    });
   }
 
   await initialisationPromise;

@@ -136,7 +136,7 @@ export interface PipelineResult {
   readonly code: string | null;
   readonly sourceMap: readonly SourceMapEntry[] | null;
   readonly optimizationReport: OptimizationReport | null;
-  readonly artifact?: GeneratedContractArtifact | null;
+  readonly artifact: GeneratedContractArtifact | null;
 }
 
 export interface CompilationState {

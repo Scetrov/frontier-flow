@@ -17,7 +17,11 @@ vi.mock("@zktx.io/sui-move-builder/lite", () => ({
   buildMovePackage: mockBuildMovePackage,
 }));
 
-import { compileMove } from "../../compiler/moveCompiler";
+import {
+  compileMove,
+  resetMoveCompilerStateForTests,
+  setMoveCompilerLoaderForTests,
+} from "../../compiler/moveCompiler";
 
 function encodeBase64(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes));
@@ -50,6 +54,8 @@ describe("compileMove", () => {
   beforeEach(() => {
     mockInitMoveCompiler.mockClear();
     mockBuildMovePackage.mockReset();
+    mockInitMoveCompiler.mockResolvedValue(undefined);
+    resetMoveCompilerStateForTests();
     window.history.replaceState({}, "", "/");
   });
 
@@ -171,5 +177,59 @@ describe("compileMove", () => {
       ]),
     );
     expect(result.artifact).toEqual(artifact);
+  });
+
+  it("retries the compiler module import after a transient loader failure", async () => {
+    const artifact = createArtifact();
+    const fallbackModule = {
+      initMoveCompiler: mockInitMoveCompiler,
+      buildMovePackage: mockBuildMovePackage,
+    };
+    const transientImportError = new Error("dynamic import failed once");
+    const loader = vi.fn<() => Promise<typeof fallbackModule>>()
+      .mockRejectedValueOnce(transientImportError)
+      .mockResolvedValue(fallbackModule);
+
+    setMoveCompilerLoaderForTests(loader);
+    mockBuildMovePackage.mockResolvedValueOnce({
+      modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
+      dependencies: graphToMoveDependencyFixture,
+    });
+
+    const firstResult = await compileMove(artifact);
+    const secondResult = await compileMove(artifact);
+
+    expect(firstResult.success).toBe(false);
+    expect(firstResult.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rawMessage: "dynamic import failed once" }),
+      ]),
+    );
+    expect(secondResult.success).toBe(true);
+    expect(loader).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries compiler initialisation after a transient init failure", async () => {
+    const artifact = createArtifact();
+    mockInitMoveCompiler
+      .mockRejectedValueOnce(new Error("init failed once"))
+      .mockResolvedValue(undefined);
+    mockBuildMovePackage.mockResolvedValueOnce({
+      modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
+      dependencies: graphToMoveDependencyFixture,
+    });
+
+    const firstResult = await compileMove(artifact);
+    const secondResult = await compileMove(artifact);
+
+    expect(firstResult.success).toBe(false);
+    expect(firstResult.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rawMessage: "init failed once" }),
+      ]),
+    );
+    expect(secondResult.success).toBe(true);
+    expect(mockInitMoveCompiler).toHaveBeenCalledTimes(2);
+    expect(mockBuildMovePackage).toHaveBeenCalledTimes(1);
   });
 });
