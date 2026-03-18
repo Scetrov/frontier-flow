@@ -2,7 +2,7 @@ import { buildIrGraph } from "./irBuilder";
 import { emitMove } from "./emitter";
 import { compileMove } from "./moveCompiler";
 import { optimiseGraph } from "./optimiser";
-import { sanitiseGraph } from "./sanitiser";
+import { sanitizeGraph } from "./sanitizer";
 import type { PipelineInput, PipelineResult } from "./types";
 import { validateGraph } from "./validator";
 
@@ -32,8 +32,8 @@ export async function compilePipeline({ nodes, edges, moduleName, signal }: Pipe
   }
 
   throwIfAborted(signal);
-  const sanitisedGraph = sanitiseGraph(irGraph);
-  const { graph: optimisedGraph, report } = optimiseGraph(sanitisedGraph);
+  const sanitizedGraph = sanitizeGraph(irGraph);
+  const { graph: optimisedGraph, report } = optimiseGraph(sanitizedGraph);
   const emitted = emitMove(optimisedGraph);
 
   throwIfAborted(signal);

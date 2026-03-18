@@ -48,7 +48,7 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
         </div>
       </header>
 
-      <div className="ff-move-source__body" role="region">
+      <div className="ff-move-source__body">
         {sourceCode === null ? (
           <div className="ff-move-source__empty-state">
             <p className="ff-move-source__empty-title">No generated Move source yet</p>

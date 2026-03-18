@@ -11,6 +11,8 @@ interface HeaderProps {
 }
 
 function Header({ isCompiling = false, onBuild, activeView = "visual", onViewChange }: HeaderProps) {
+  const isBuildDisabled = isCompiling || onBuild === undefined;
+
   return (
     <header className="border-b border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.92)] px-4 py-3 backdrop-blur-sm sm:px-6">
       <div className="flex items-center justify-between gap-4">
@@ -60,7 +62,7 @@ function Header({ isCompiling = false, onBuild, activeView = "visual", onViewCha
         <div className="flex shrink-0 items-center gap-2">
           <button
             className="ff-header__button"
-            disabled={isCompiling}
+            disabled={isBuildDisabled}
             onClick={() => {
               onBuild?.();
             }}

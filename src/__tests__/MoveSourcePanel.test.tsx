@@ -19,6 +19,7 @@ describe("MoveSourcePanel", () => {
     expect(screen.getByLabelText("Move source view")).toBeInTheDocument();
     expect(screen.getByText("Generated source")).toBeVisible();
     expect(screen.getByText(/module builder_extensions::starter_contract/)).toBeVisible();
+    expect(screen.getByRole("region", { name: "Move source view" })).toBeInTheDocument();
   });
 
   it("shows an empty state when no source is available", () => {

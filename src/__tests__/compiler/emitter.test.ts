@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { emitMove } from "../../compiler/emitter";
 import { buildIrGraph } from "../../compiler/irBuilder";
-import { sanitiseGraph } from "../../compiler/sanitiser";
+import { sanitizeGraph } from "../../compiler/sanitizer";
 import { createDefaultContractFlow } from "../../data/kitchenSinkFlow";
 
 describe("emitMove", () => {
   it("emits deterministic Move code with source map entries", () => {
     const flow = createDefaultContractFlow();
-    const graph = sanitiseGraph(buildIrGraph(flow.nodes, flow.edges, "starter_contract"));
+    const graph = sanitizeGraph(buildIrGraph(flow.nodes, flow.edges, "starter_contract"));
 
     const emitted = emitMove(graph);
 

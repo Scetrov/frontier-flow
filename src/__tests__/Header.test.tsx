@@ -27,6 +27,12 @@ describe("Header", () => {
     expect(screen.getByRole("button", { name: "Building" })).not.toHaveAttribute("aria-disabled");
   });
 
+  it("disables the build button when no build handler is provided", () => {
+    render(<Header />);
+
+    expect(screen.getByRole("button", { name: "Build" })).toBeDisabled();
+  });
+
   it("lets the user switch the primary view", () => {
     const onViewChange = vi.fn();
 

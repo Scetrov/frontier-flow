@@ -1,5 +1,7 @@
 import type { IRGraph, OptimizationReport } from "./types";
 
+const ESTIMATED_GAS_PER_NODE = 10;
+
 /**
  * Apply deterministic, low-risk optimisation passes to the IR graph.
  */
@@ -20,7 +22,7 @@ export function optimiseGraph(graph: IRGraph): { readonly graph: IRGraph; readon
       nodeId,
       {
         ...node,
-        estimatedGas: 10,
+        estimatedGas: ESTIMATED_GAS_PER_NODE,
       },
     ]),
   );
@@ -44,8 +46,8 @@ export function optimiseGraph(graph: IRGraph): { readonly graph: IRGraph; readon
           description: "stabilised literal ordering for deterministic output",
         },
       ].filter((entry) => entry.nodeId !== "none"),
-      gasBefore: graph.nodes.size * 10,
-      gasAfter: nextNodes.size * 9,
+      gasBefore: graph.nodes.size * ESTIMATED_GAS_PER_NODE,
+      gasAfter: nextNodes.size * ESTIMATED_GAS_PER_NODE,
     },
   };
 }
