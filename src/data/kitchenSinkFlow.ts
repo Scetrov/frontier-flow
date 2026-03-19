@@ -1,5 +1,6 @@
 import { authorableNodeDefinitions, createFlowNodeData, nodeDefinitions } from "./node-definitions";
 
+import type { GraphFixture } from "../__fixtures__/graphs/smartTurretExtensionFixtures";
 import type { FlowEdge, FlowNode } from "../types/nodes";
 import { autoArrangeFlow } from "../utils/layoutFlow";
 import { getEdgeColor, getEdgeStrokeWidth } from "../utils/socketTypes";
@@ -149,23 +150,37 @@ function createStyledFlowEdge(
 }
 
 /**
- * Creates the default starter contract shown on the main editor route.
+ * Builds a styled React Flow snapshot from a graph fixture.
  */
-export function createDefaultContractFlow(): { readonly nodes: FlowNode[]; readonly edges: FlowEdge[] } {
+export function createFlowFromGraphFixture(fixture: GraphFixture): { readonly nodes: FlowNode[]; readonly edges: FlowEdge[] } {
   const nodes = autoArrangeFlow(
-    DEFAULT_FLOW_NODES.map((node) => createFlowNode(node.id, node.type, node.position)),
-    DEFAULT_FLOW_CONNECTIONS.map((connection) => ({
-      id: connection.id,
-      source: connection.source,
-      sourceHandle: connection.sourceHandle,
-      target: connection.target,
-      targetHandle: connection.targetHandle,
+    fixture.nodes.map((node) => createFlowNode(node.id, node.type, node.position)),
+    fixture.edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      sourceHandle: edge.sourceHandle,
+      target: edge.target,
+      targetHandle: edge.targetHandle,
     })),
   );
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
-  const edges = DEFAULT_FLOW_CONNECTIONS.map((connection) => createStyledFlowEdge(nodesById, connection));
+  const edges = fixture.edges.map((edge) => createStyledFlowEdge(nodesById, edge));
 
-  return { nodes, edges };
+  return {
+    nodes,
+    edges,
+  };
+}
+
+/**
+ * Creates the default starter contract shown on the main editor route.
+ */
+export function createDefaultContractFlow(): { readonly nodes: FlowNode[]; readonly edges: FlowEdge[] } {
+  return createFlowFromGraphFixture({
+    moduleName: "starter_contract",
+    nodes: DEFAULT_FLOW_NODES,
+    edges: DEFAULT_FLOW_CONNECTIONS,
+  });
 }
 
 /**

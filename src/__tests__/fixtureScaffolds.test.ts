@@ -22,12 +22,14 @@ describe("smart turret extension fixture scaffolds", () => {
 
   it("provides seeded contract scaffolds for load-panel coverage", () => {
     expect(seededSmartTurretExtensionFixtures.length).toBeGreaterThan(0);
-    expect(seededSmartTurretExtensionFixtures[0]).toEqual(
-      expect.objectContaining({
-        id: expect.any(String),
-        name: expect.any(String),
-        fixture: expect.objectContaining({ moduleName: expect.any(String) }),
-      }),
-    );
+    const firstFixture = seededSmartTurretExtensionFixtures.at(0);
+
+    if (firstFixture === undefined) {
+      throw new Error("Expected at least one seeded contract fixture");
+    }
+
+    expect(typeof firstFixture.id).toBe("string");
+    expect(typeof firstFixture.name).toBe("string");
+    expect(typeof firstFixture.fixture.moduleName).toBe("string");
   });
 });

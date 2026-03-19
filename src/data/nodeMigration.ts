@@ -66,7 +66,8 @@ export function getLegacyNodeMigrationRule(legacyType: string): LegacyNodeMigrat
 }
 
 export function migrateLegacyNode(candidate: LegacyNodeMigrationCandidate): LegacyNodeMigrationResult {
-  const rule = getLegacyNodeMigrationRule(candidate.node.type);
+  const legacyType = typeof candidate.node.type === "string" ? candidate.node.type : "unknown";
+  const rule = getLegacyNodeMigrationRule(legacyType);
   if (rule !== undefined && rule.autoMigrate) {
     const migratedResult = autoMigrateLegacyNode(candidate);
     if (migratedResult !== undefined) {
@@ -79,10 +80,10 @@ export function migrateLegacyNode(candidate: LegacyNodeMigrationCandidate): Lega
       remediationNotices: [
         {
           nodeId: candidate.node.id,
-          legacyType: candidate.node.type,
-          message: `Legacy node \"${candidate.node.type}\" has a declared migration rule, but the primitive replacement path is not implemented yet.`,
+          legacyType,
+          message: `Legacy node "${legacyType}" has a declared migration rule, but the primitive replacement path is not implemented yet.`,
           severity: "warning",
-          suggestedAction: `Replace ${candidate.node.type} with ${rule.replacementTypes.join(", ")} before saving the graph again.`,
+          suggestedAction: `Replace ${legacyType} with ${rule.replacementTypes.join(", ")} before saving the graph again.`,
         },
       ],
     };
@@ -94,8 +95,8 @@ export function migrateLegacyNode(candidate: LegacyNodeMigrationCandidate): Lega
     remediationNotices: [
       {
         nodeId: candidate.node.id,
-        legacyType: candidate.node.type,
-        message: `Legacy node \"${candidate.node.type}\" could not be restored automatically.`,
+        legacyType,
+        message: `Legacy node "${legacyType}" could not be restored automatically.`,
         severity: "warning",
         suggestedAction: "Recreate this rule with the current node catalogue and verify any dependent connections before saving.",
       },

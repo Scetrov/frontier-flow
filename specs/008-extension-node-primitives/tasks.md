@@ -48,22 +48,22 @@
 
 Note: Write these tests first and confirm they fail before implementation.
 
-- [ ] T008 [P] [US1] Add primitive predicate and operator definition coverage in `src/__tests__/nodeDefinitions.test.ts`
-- [ ] T009 [P] [US1] Add legacy bundled-node migration regression tests in `src/__tests__/restoreSavedFlow.test.ts`
-- [ ] T010 [P] [US1] Add boolean operator generator tests in `src/__tests__/compiler/booleanOperators.test.ts`
-- [ ] T011 [P] [US1] Add Playwright coverage for primitive targeting composition and migrated legacy remediation in `tests/e2e/canvas.spec.ts`
+- [X] T008 [P] [US1] Add primitive predicate and operator definition coverage in `src/__tests__/nodeDefinitions.test.ts`
+- [X] T009 [P] [US1] Add legacy bundled-node migration regression tests in `src/__tests__/restoreSavedFlow.test.ts`
+- [X] T010 [P] [US1] Add boolean operator generator tests in `src/__tests__/compiler/booleanOperators.test.ts`
+- [X] T011 [P] [US1] Add Playwright coverage for primitive targeting composition and migrated legacy remediation in `tests/e2e/canvas.spec.ts`
   Acceptance criteria: Compose a rule equivalent to `exclude same tribe unless aggressor` using only primitive predicate and boolean operator nodes, save or reload the flow, and verify the graph remains intact without any retired config-object UI.
   Acceptance criteria: Load a legacy bundled-node graph fixture, verify exact mappings auto-migrate to the new primitives, and verify any non-exact mapping surfaces a visible remediation notice instead of silently dropping behavior.
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Add primitive predicate and boolean operator node definitions in `src/data/node-definitions.ts`
-- [ ] T013 [P] [US1] Register primitive node icons and metadata lookups in `src/nodes/createNode.tsx`
-- [ ] T014 [P] [US1] Register primitive flow node types in `src/nodes/index.ts`
-- [ ] T015 [US1] Update shared primitive node rendering and deprecated-node affordances in `src/nodes/BaseNode.tsx`
-- [ ] T016 [US1] Implement boolean operator and direct predicate emitters in `src/compiler/generators/logicGates.ts`
-- [ ] T017 [US1] Wire new primitive generator coverage in `src/compiler/generators/index.ts`
-- [ ] T018 [US1] Implement exact migration mappings for retired config and composite nodes in `src/data/nodeMigration.ts`
+- [X] T012 [US1] Add primitive predicate and boolean operator node definitions in `src/data/node-definitions.ts`
+- [X] T013 [P] [US1] Register primitive node icons and metadata lookups in `src/nodes/createNode.tsx`
+- [X] T014 [P] [US1] Register primitive flow node types in `src/nodes/index.ts`
+- [X] T015 [US1] Update shared primitive node rendering and deprecated-node affordances in `src/nodes/BaseNode.tsx`
+- [X] T016 [US1] Implement boolean operator and direct predicate emitters in `src/compiler/generators/logicGates.ts`
+- [X] T017 [US1] Wire new primitive generator coverage in `src/compiler/generators/index.ts`
+- [X] T018 [US1] Implement exact migration mappings for retired config and composite nodes in `src/data/nodeMigration.ts`
 
 **Checkpoint**: User Story 1 is independently functional when primitive nodes can recreate the target rule and migrated legacy nodes preserve exact semantics.
 
@@ -79,22 +79,22 @@ Note: Write these tests first and confirm they fail before implementation.
 
 Note: Write these tests first and confirm they fail before implementation.
 
-- [ ] T019 [P] [US2] Add list field editor interaction tests in `src/__tests__/NodeFieldEditor.test.tsx`
-- [ ] T020 [P] [US2] Add editable field persistence tests in `src/__tests__/nodeFieldPersistence.test.ts`
-- [ ] T021 [P] [US2] Add canvas editing flow tests for node field save and reopen behavior in `src/__tests__/canvasFlow.test.tsx`
-- [ ] T022 [P] [US2] Add Playwright coverage for list-field editing, validation, and reopen persistence in `tests/e2e/canvas.spec.ts`
+- [X] T019 [P] [US2] Add list field editor interaction tests in `src/__tests__/NodeFieldEditor.test.tsx`
+- [X] T020 [P] [US2] Add editable field persistence tests in `src/__tests__/nodeFieldPersistence.test.ts`
+- [X] T021 [P] [US2] Add canvas editing flow tests for node field save and reopen behavior in `src/__tests__/canvasFlow.test.tsx`
+- [X] T022 [P] [US2] Add Playwright coverage for list-field editing, validation, and reopen persistence in `tests/e2e/canvas.spec.ts`
   Acceptance criteria: Open a list-backed node, add multiple values, trigger validation on an invalid entry, correct the invalid value, save, reload, and verify only the final valid list persists.
   Acceptance criteria: Confirm keyboard-accessible edit and save interactions remain operable in the browser flow and that validation feedback is visible before submission succeeds.
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Add editable field schemas and list-backed defaults to node definitions in `src/data/node-definitions.ts`
-- [ ] T024 [P] [US2] Implement reusable typed node field editor UI in `src/components/NodeFieldEditor.tsx`
-- [ ] T025 [P] [US2] Add list editor styling and focus/error states in `src/index.css`
-- [ ] T026 [US2] Add node-level edit triggers and field summaries in `src/nodes/BaseNode.tsx`
-- [ ] T027 [US2] Integrate field editor state, validation, and save handling in `src/components/CanvasWorkspace.tsx`
-- [ ] T028 [US2] Persist editable field values through storage serialization in `src/utils/contractStorage.ts`
-- [ ] T029 [US2] Preserve editable field values during restore and hydration in `src/components/restoreSavedFlow.ts`
+- [X] T023 [US2] Add editable field schemas and list-backed defaults to node definitions in `src/data/node-definitions.ts`
+- [X] T024 [P] [US2] Implement reusable typed node field editor UI in `src/components/NodeFieldEditor.tsx`
+- [X] T025 [P] [US2] Add list editor styling and focus/error states in `src/index.css`
+- [X] T026 [US2] Add node-level edit triggers and field summaries in `src/nodes/BaseNode.tsx`
+- [X] T027 [US2] Integrate field editor state, validation, and save handling in `src/components/CanvasWorkspace.tsx`
+- [X] T028 [US2] Persist editable field values through storage serialization in `src/utils/contractStorage.ts`
+- [X] T029 [US2] Preserve editable field values during restore and hydration in `src/components/restoreSavedFlow.ts`
 
 **Checkpoint**: User Story 2 is independently functional when list-valued node data can be edited, validated, saved, restored, and reopened without data loss.
 
@@ -110,16 +110,16 @@ Note: Write these tests first and confirm they fail before implementation.
 
 Note: Write these tests first and confirm they fail before implementation.
 
-- [ ] T030 [P] [US3] Add seeded contract library merge and deduplication tests in `src/__tests__/contractLibrarySeed.test.ts`
-- [ ] T031 [P] [US3] Add Playwright coverage for seeded Load panel entries and replacement confirmation in `tests/e2e/load-panel.spec.ts`
+- [X] T030 [P] [US3] Add seeded contract library merge and deduplication tests in `src/__tests__/contractLibrarySeed.test.ts`
+- [X] T031 [P] [US3] Add Playwright coverage for seeded Load panel entries and replacement confirmation in `tests/e2e/load-panel.spec.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T032 [P] [US3] Define curated seeded example contracts in `src/data/exampleContracts.ts`
-- [ ] T033 [US3] Merge seeded example contracts into the contract library load path in `src/utils/contractStorage.ts`
-- [ ] T034 [US3] Update Load panel seeded-entry presentation and destructive-load confirmation in `src/components/CanvasWorkspace.tsx`
-- [ ] T035 [US3] Align starter canvas behavior with the seeded example catalogue in `src/data/kitchenSinkFlow.ts`
-- [ ] T036 [US3] Extend seeded example end-to-end fixtures in `tests/e2e/referenceGraphFixtures.ts`
+- [X] T032 [P] [US3] Define curated seeded example contracts in `src/data/exampleContracts.ts`
+- [X] T033 [US3] Merge seeded example contracts into the contract library load path in `src/utils/contractStorage.ts`
+- [X] T034 [US3] Update Load panel seeded-entry presentation and destructive-load confirmation in `src/components/CanvasWorkspace.tsx`
+- [X] T035 [US3] Align starter canvas behavior with the seeded example catalogue in `src/data/kitchenSinkFlow.ts`
+- [X] T036 [US3] Extend seeded example end-to-end fixtures in `tests/e2e/referenceGraphFixtures.ts`
 
 **Checkpoint**: User Story 3 is independently functional when curated examples appear in the Load panel, load correctly, and do not overwrite unsaved work without confirmation.
 
@@ -129,9 +129,9 @@ Note: Write these tests first and confirm they fail before implementation.
 
 **Purpose**: Tighten regression coverage, UX copy, and final verification across all stories
 
-- [ ] T037 [P] Add final regression fixtures for migrated legacy graphs and seeded examples in `src/__fixtures__/graphs/smartTurretExtensionFixtures.ts`
-- [ ] T038 [P] Add accessibility and remediation copy polish for field editing and Load panel states in `src/index.css`
-- [ ] T039 Run quickstart validation and capture final verification notes in `specs/008-extension-node-primitives/quickstart.md`
+- [X] T037 [P] Add final regression fixtures for migrated legacy graphs and seeded examples in `src/__fixtures__/graphs/smartTurretExtensionFixtures.ts`
+- [X] T038 [P] Add accessibility and remediation copy polish for field editing and Load panel states in `src/index.css`
+- [X] T039 Run quickstart validation and capture final verification notes in `specs/008-extension-node-primitives/quickstart.md`
 
 ---
 

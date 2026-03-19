@@ -46,3 +46,11 @@ Verify that the canvas supports primitive boolean composition, editable list-val
 - Seeded example contracts appear in the Load panel without erasing user-created contracts.
 - Legacy graphs with exact mappings auto-migrate successfully.
 - Legacy graphs without exact mappings produce actionable remediation instead of silent node loss.
+
+## Validation Notes
+
+- 2026-03-19: `bun run typecheck` passed.
+- 2026-03-19: `bun run lint` passed.
+- 2026-03-19: `bun run test:run` passed with 36 test files and 183 tests green.
+- 2026-03-19: `bunx playwright test tests/e2e/canvas.spec.ts tests/e2e/load-panel.spec.ts --project=chromium` passed.
+- 2026-03-19: Verified primitive-node starter output snapshot matches the canonical `default-turret.move` fixture after the starter graph switched from the retired bundled exclusion node to the explicit `Is Same Tribe` + `NOT` + `OR` chain.

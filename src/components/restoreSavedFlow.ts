@@ -26,7 +26,8 @@ export function restoreSavedFlow(
   const migratedEdges: FlowEdge[] = [];
 
   const restoredNodes = initialNodes.flatMap((node) => {
-    const migrationRule = getLegacyNodeMigrationRule(node.type);
+    const legacyType = typeof node.type === "string" ? node.type : undefined;
+    const migrationRule = legacyType === undefined ? undefined : getLegacyNodeMigrationRule(legacyType);
     if (migrationRule?.autoMigrate === true) {
       const migration = migrateLegacyNode({
         node,

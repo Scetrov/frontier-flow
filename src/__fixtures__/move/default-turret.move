@@ -19,11 +19,17 @@ module builder_extensions::starter_contract {
         // accessor isAggressor
         // read aggressor flag
         let isaggressor_default_is_aggressor_is_aggressor: bool = aggression_default_aggression_target % 2 == 0;
-        // logic gate excludeSameTribe
-        // exclude same-tribe non-aggressors
-        let excludesametribe_default_exclude_same_tribe_include: bool = gettribe_default_get_tribe_tribe != gettribe_default_get_tribe_owner_tribe || isaggressor_default_is_aggressor_is_aggressor;
+        // logic gate isSameTribe
+        // check whether the candidate tribe matches the owner tribe
+        let issametribe_default_is_same_tribe_matches: bool = gettribe_default_get_tribe_tribe == gettribe_default_get_tribe_owner_tribe;
+        // logic gate booleanNot
+        // invert the incoming boolean signal
+        let booleannot_default_not_same_tribe_result: bool = !issametribe_default_is_same_tribe_matches;
+        // logic gate booleanOr
+        // combine two booleans with logical or
+        let booleanor_default_include_rule_result: bool = booleannot_default_not_same_tribe_result || isaggressor_default_is_aggressor_is_aggressor;
         // action addToQueue
         // append candidate to the outgoing priority queue
-        let addtoqueue_default_add_to_queue_priority_out: u64 = if (excludesametribe_default_exclude_same_tribe_include) { aggression_default_aggression_priority + getpriorityweight_default_get_priority_weight_weight + (aggression_default_aggression_target % 11) } else { aggression_default_aggression_priority };
+        let addtoqueue_default_add_to_queue_priority_out: u64 = if (booleanor_default_include_rule_result) { aggression_default_aggression_priority + getpriorityweight_default_get_priority_weight_weight + (aggression_default_aggression_target % 11) } else { aggression_default_aggression_priority };
     }
 }

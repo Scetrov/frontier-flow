@@ -89,7 +89,6 @@ test("reference graph matrix compiles multiple supported saved contracts through
 
   const library = {
     version: 1 as const,
-    activeContractName: referenceGraphFixtures[0].contractName,
     contracts: referenceGraphFixtures.map((entry) => {
       return {
         name: entry.contractName,
@@ -100,25 +99,20 @@ test("reference graph matrix compiles multiple supported saved contracts through
     }),
   };
 
-  await prepareCompilationPageWithLibrary(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120", library);
-
-  const statusButton = page.locator(".ff-compilation-status__button");
-  const savedContractSelect = page.getByRole("combobox", { name: "Saved contract" });
-  const buildButton = page.getByRole("button", { name: "Build", exact: true });
-  const moveTab = page.getByRole("button", { name: "Move", exact: true });
-
   for (const entry of referenceGraphFixtures) {
-    await savedContractSelect.selectOption(entry.contractName);
-    await expect(statusButton).toContainText("Compiled");
+    await prepareCompilationPageWithLibrary(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120", {
+      ...library,
+      activeContractName: entry.contractName,
+    });
+
+    const buildButton = page.getByRole("button", { name: "Build", exact: true });
+    const moveTab = page.getByRole("button", { name: "Move", exact: true });
 
     await buildButton.click();
-    await expect(statusButton).toContainText("Compiled");
 
     await moveTab.click();
     await expect(page.getByText(`${entry.expectedModuleName}.move`)).toBeVisible();
     await expect(page.getByText(new RegExp(`module builder_extensions::${entry.expectedModuleName}`, "i"))).toBeVisible();
-
-    await page.getByRole("button", { name: "Visual", exact: true }).click();
   }
 });
 

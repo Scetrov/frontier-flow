@@ -432,6 +432,30 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     description: "Expose the blocked type id configuration as a reusable config source.",
     color: "var(--socket-vector)",
     category: "data-source",
+    fields: [
+      {
+        id: "blockedTypeIds",
+        label: "Blocked Type IDs",
+        valueType: "typeId",
+        required: false,
+        defaultValue: [],
+        validationRules: {
+          allowDuplicates: false,
+        },
+        editorKind: "list-editor",
+      },
+      {
+        id: "blockedTribes",
+        label: "Blocked Tribes",
+        valueType: "tribe",
+        required: false,
+        defaultValue: [],
+        validationRules: {
+          allowDuplicates: false,
+        },
+        editorKind: "list-editor",
+      },
+    ],
     sockets: [
       { id: "config", type: "config", position: "right", direction: "output", label: "config" },
     ],
@@ -623,4 +647,32 @@ export function hydrateFlowNode(node: FlowNode): FlowNode | undefined {
       fieldValues: hydrateFieldValueSet(definition.fields, node.data.fieldValues),
     },
   };
+}
+
+/**
+ * Formats persisted node field values into short user-facing summary lines.
+ */
+export function summarizeNodeFieldValues(data: Pick<FlowNodeData, "fields" | "fieldValues">): readonly string[] {
+  if (data.fields === undefined || data.fields.length === 0) {
+    return [];
+  }
+
+  return data.fields.flatMap((field) => {
+    const value = data.fieldValues?.values[field.id] ?? field.defaultValue;
+    if (value === undefined) {
+      return [];
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return [];
+      }
+
+      const preview = value.slice(0, 3).map((entry) => String(entry)).join(", ");
+      const suffix = value.length > 3 ? ` +${String(value.length - 3)} more` : "";
+      return [`${field.label}: ${preview}${suffix}`];
+    }
+
+    return [`${field.label}: ${String(value)}`];
+  });
 }

@@ -3,7 +3,10 @@ import type { CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
 
 import type { FlowNodeData, SocketDefinition } from "../types/nodes";
+import { summarizeNodeFieldValues } from "../data/node-definitions";
 import { getHandlePosition, getSocketColor } from "../utils/socketTypes";
+
+const editNodeFieldsEventName = "frontier-flow:edit-node-fields";
 
 interface BaseNodeProps extends NodeProps {
   readonly icon?: LucideIcon;
@@ -33,7 +36,7 @@ function SocketRow({ socket }: { readonly socket: SocketDefinition }) {
 /**
  * Shared node chrome used by the verified ReactFlow node set.
  */
-function BaseNode({ data, selected, icon: Icon, shape = "standard" }: BaseNodeProps) {
+function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNodeProps) {
   const nodeData = data as FlowNodeData & {
     readonly diagnosticMessages?: readonly string[];
     readonly validationState?: "error" | "warning";
@@ -43,6 +46,7 @@ function BaseNode({ data, selected, icon: Icon, shape = "standard" }: BaseNodePr
   const rightSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "right");
   const bottomSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "bottom");
   const nodeStyle = { "--ff-node-accent": nodeData.color } as CSSProperties;
+  const fieldSummaryLines = summarizeNodeFieldValues(nodeData);
 
   return (
     <div
@@ -77,6 +81,37 @@ function BaseNode({ data, selected, icon: Icon, shape = "standard" }: BaseNodePr
         {nodeData.remediationNotice !== undefined ? (
           <div className="ff-node__description">
             {nodeData.remediationNotice.message}
+          </div>
+        ) : null}
+
+        {fieldSummaryLines.length > 0 ? (
+          <div className="ff-node__field-summary">
+            {fieldSummaryLines.map((summaryLine) => (
+              <p className="ff-node__field-summary-line" key={summaryLine}>
+                {summaryLine}
+              </p>
+            ))}
+          </div>
+        ) : null}
+
+        {nodeData.fields !== undefined && nodeData.fields.length > 0 ? (
+          <div className="ff-node__actions">
+            <button
+              aria-label={`Edit fields for ${nodeData.label}`}
+              className="ff-node__edit-button"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent(editNodeFieldsEventName, {
+                    detail: {
+                      nodeId: id,
+                    },
+                  }),
+                );
+              }}
+              type="button"
+            >
+              Edit Fields
+            </button>
           </div>
         ) : null}
 
