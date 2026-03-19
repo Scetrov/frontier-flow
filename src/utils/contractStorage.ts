@@ -25,6 +25,10 @@ interface CreateNamedFlowContractOptions {
   readonly isSeeded?: boolean;
 }
 
+interface UpdateNamedFlowContractOptions {
+  readonly preserveUpdatedAt?: boolean;
+}
+
 function createContractId(name: string): string {
   return `contract:${sanitizeContractName(name).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
@@ -57,6 +61,23 @@ export function createNamedFlowContract(
     updatedAt: options.updatedAt ?? new Date().toISOString(),
     isSeeded: options.isSeeded,
   };
+}
+
+/**
+ * Rebuilds an existing named contract with new flow contents while preserving its metadata.
+ */
+export function updateNamedFlowContract(
+  contract: NamedFlowContract,
+  nodes: readonly FlowNode[],
+  edges: readonly FlowEdge[],
+  options: UpdateNamedFlowContractOptions = {},
+): NamedFlowContract {
+  return createNamedFlowContract(contract.name, nodes, edges, {
+    id: contract.id,
+    description: contract.description,
+    updatedAt: options.preserveUpdatedAt === true ? contract.updatedAt : undefined,
+    isSeeded: contract.isSeeded,
+  });
 }
 
 /**
@@ -111,7 +132,7 @@ function mergeContracts(
   const mergedContracts = new Map<string, NamedFlowContract>();
 
   for (const contract of [...seededContracts, ...contracts]) {
-    const key = contract.id ?? contract.name;
+    const key = sanitizeContractName(contract.name);
     mergedContracts.set(key, contract);
   }
 

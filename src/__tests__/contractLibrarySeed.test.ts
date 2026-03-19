@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createNamedFlowContract, loadContractLibrary } from "../utils/contractStorage";
+import { createNamedFlowContract, loadContractLibrary, updateNamedFlowContract } from "../utils/contractStorage";
 
 describe("contractStorage seeded library support", () => {
   it("merges seeded contracts into a fallback library", () => {
@@ -45,5 +45,88 @@ describe("contractStorage seeded library support", () => {
     const library = loadContractLibrary(storage, fallback, [seeded]);
 
     expect(library.contracts.filter((contract) => contract.id === "seed:aggressor-first")).toHaveLength(1);
+  });
+
+  it("preserves distinct contracts whose generated ids would otherwise collide", () => {
+    const fallback = createNamedFlowContract("Starter Contract", [], []);
+    const dashed = createNamedFlowContract("Tribe-A", [], []);
+    const spaced = createNamedFlowContract("Tribe A", [], []);
+    const storage = window.localStorage;
+
+    storage.setItem(
+      "frontier-flow:contracts",
+      JSON.stringify({
+        version: 2,
+        activeContractName: "Tribe-A",
+        contracts: [dashed, spaced],
+      }),
+    );
+
+    const library = loadContractLibrary(storage, fallback, []);
+
+    expect(library.contracts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Tribe-A" }),
+        expect.objectContaining({ name: "Tribe A" }),
+      ]),
+    );
+  });
+
+  it("prefers the stored contract when a seeded example shares the same name", () => {
+    const fallback = createNamedFlowContract("Starter Contract", [], []);
+    const seeded = createNamedFlowContract("Aggressor First", [], [], {
+      id: "seed:aggressor-first",
+      description: "Seeded contract",
+      isSeeded: true,
+      updatedAt: new Date(0).toISOString(),
+    });
+    const customized = createNamedFlowContract("Aggressor First", [], [], {
+      id: "contract:aggressor-first-custom",
+      description: "Customized copy",
+      updatedAt: new Date(1).toISOString(),
+    });
+    const storage = window.localStorage;
+
+    storage.setItem(
+      "frontier-flow:contracts",
+      JSON.stringify({
+        version: 2,
+        activeContractName: "Aggressor First",
+        contracts: [customized],
+      }),
+    );
+
+    const library = loadContractLibrary(storage, fallback, [seeded]);
+    const matchingContracts = library.contracts.filter((contract) => contract.name === "Aggressor First");
+
+    expect(matchingContracts).toHaveLength(1);
+    expect(matchingContracts[0]).toEqual(
+      expect.objectContaining({
+        id: "contract:aggressor-first-custom",
+        description: "Customized copy",
+        isSeeded: false,
+      }),
+    );
+  });
+
+  it("preserves contract metadata when updating a snapshot", () => {
+    const existing = createNamedFlowContract("Aggressor First", [], [], {
+      id: "seed:aggressor-first",
+      description: "Seeded contract",
+      isSeeded: true,
+      updatedAt: new Date(0).toISOString(),
+    });
+
+    const updated = updateNamedFlowContract(existing, [], [], { preserveUpdatedAt: true });
+
+    expect(updated).toEqual(
+      expect.objectContaining({
+        id: "seed:aggressor-first",
+        name: "Aggressor First",
+        description: "Seeded contract",
+        isSeeded: true,
+        updatedAt: existing.updatedAt,
+      }),
+    );
   });
 });

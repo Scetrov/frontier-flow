@@ -30,6 +30,7 @@ import {
   saveContractLibrary,
   type ContractLibrary,
   type NamedFlowContract,
+  updateNamedFlowContract,
 } from "../utils/contractStorage";
 import { autoArrangeFlow } from "../utils/layoutFlow";
 import { getEdgeColor, getEdgeStrokeWidth, isValidFlowConnection } from "../utils/socketTypes";
@@ -313,11 +314,15 @@ function FlowEditor({
 
   const handleSaveAsContract = useCallback(() => {
     const normalizedName = sanitizeContractName(draftContractName);
-    const nextContract = createNamedFlowContract(normalizedName, nodes, edges);
 
     setContractLibrary((currentLibrary) => {
       const synchronizedLibrary = withActiveContractSnapshot(currentLibrary, nodes, edges);
       const contractIndex = synchronizedLibrary.contracts.findIndex((contract) => contract.name === normalizedName);
+      const nextContract =
+        contractIndex === -1
+          ? createNamedFlowContract(normalizedName, nodes, edges)
+          : updateNamedFlowContract(synchronizedLibrary.contracts[contractIndex], nodes, edges);
+
       if (contractIndex === -1) {
         return {
           ...synchronizedLibrary,
@@ -764,7 +769,9 @@ function withActiveContractSnapshot(
   return {
     ...contractLibrary,
     contracts: contractLibrary.contracts.map((contract) =>
-      contract.name === contractLibrary.activeContractName ? createNamedFlowContract(contract.name, nodes, edges) : contract,
+      contract.name === contractLibrary.activeContractName
+        ? updateNamedFlowContract(contract, nodes, edges, { preserveUpdatedAt: true })
+        : contract,
     ),
   };
 }

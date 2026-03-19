@@ -15,6 +15,13 @@ interface BaseNodeProps extends NodeProps {
   readonly shape?: "standard" | "diamond";
 }
 
+function getDeprecationMessage(deprecation: NonNullable<FlowNodeData["deprecation"]>): string {
+  const statusLabel = deprecation.status === "deprecated" ? "Deprecated node." : "Retired node.";
+  const remediationMessage = deprecation.remediationMessage ? ` ${deprecation.remediationMessage}` : "";
+
+  return `${statusLabel} ${deprecation.reason}${remediationMessage}`;
+}
+
 function SocketRow({ socket }: { readonly socket: SocketDefinition }) {
   const isOutput = socket.direction === "output";
 
@@ -106,7 +113,7 @@ function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNo
 
         {nodeData.deprecation !== undefined ? (
           <div className="ff-node__description">
-            Retired node. {nodeData.deprecation.reason}
+            {getDeprecationMessage(nodeData.deprecation)}
           </div>
         ) : null}
 

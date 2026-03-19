@@ -113,4 +113,18 @@ describe("BaseNode", () => {
 
     expect(container.firstElementChild).toHaveStyle({ "--ff-node-accent": "var(--socket-value)" });
   });
+
+  it("renders deprecation copy from the node status", () => {
+    renderBaseNode({
+      deprecation: {
+        status: "deprecated",
+        reason: "Use Is Same Tribe for future-safe matching.",
+        remediationMessage: "Replace this node before publishing the contract.",
+      },
+    });
+
+    expect(
+      screen.getByText("Deprecated node. Use Is Same Tribe for future-safe matching. Replace this node before publishing the contract."),
+    ).toBeInTheDocument();
+  });
 });

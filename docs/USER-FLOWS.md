@@ -27,14 +27,14 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 
 **Preconditions:** No prior session data; no wallet connected.
 
-| Step | User Action                   | System Response                                    | Acceptance Criteria                                        |
-| ---- | ----------------------------- | -------------------------------------------------- | ---------------------------------------------------------- |
-| 1    | Navigate to Frontier Flow URL | Page loads with dark theme canvas                  | Page loads in < 3 seconds; no console errors               |
-| 2    | —                             | Default starter contract is displayed              | Aggression, Get Tribe, Is Aggressor, Boolean Or, and Add to Queue are visible in a connected flow |
-| 3    | —                             | Sidebar visible on right with grouped node types   | Event Trigger, Data Accessor, Logic Gate, and Action categories are visible |
-| 4    | —                             | Header shows "Frontier Flow" logo, version badge   | Version matches `package.json`                             |
-| 5    | Hover over a node             | Node border subtle glow effect                     | Visual feedback confirms interactivity                     |
-| 6    | —                             | Connect Wallet button visible (disconnected state) | No wallet info displayed; Deploy button disabled or hidden |
+| Step | User Action                   | System Response                                    | Acceptance Criteria                                                                                                                          |
+| ---- | ----------------------------- | ------------------------------------------------   | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Navigate to Frontier Flow URL | Page loads with dark theme canvas                  | Page loads in < 3 seconds; no console errors                                                                                                 |
+| 2    | —                             | Default starter contract is displayed              | Aggression, Get Tribe, Is Aggressor, Is Same Tribe, NOT, OR, Get Priority Weight, and Add to Queue are visible in a connected flow           |
+| 3    | —                             | Sidebar visible on right with grouped node types   | Event Trigger, Data Accessor, Logic Gate, and Action categories are visible                                                                  |
+| 4    | —                             | Header shows "Frontier Flow" logo, version badge   | Version matches `package.json`                                                                                                               |
+| 5    | Hover over a node             | Node border subtle glow effect                     | Visual feedback confirms interactivity                                                                                                       |
+| 6    | —                             | Connect Wallet button visible (disconnected state) | No wallet info displayed; Deploy button disabled or hidden                                                                                   |
 
 ---
 
@@ -44,20 +44,20 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 
 **Preconditions:** Empty canvas (or user has cleared the default graph).
 
-| Step | User Action                                                     | System Response                         | Acceptance Criteria                                                                     |
-| ---- | --------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------- |
-| 1    | Drag "Proximity" from sidebar onto canvas                     | Proximity node appears at drop position | Node renders with "Proximity" label and `target` / `priority` outputs                 |
-| 2    | Drag "Get Tribe" from sidebar                                 | Get Tribe node appears                  | Node shows `target` input plus `tribe` and `owner tribe` outputs                       |
-| 3    | Connect Proximity `target` → Get Tribe `target`                | Animated edge appears                   | Connection is accepted and uses the target socket styling                              |
-| 4    | Drag "Is Same Tribe" from sidebar                             | Is Same Tribe node appears              | Node shows `tribe` and `owner tribe` inputs with a boolean `matches` output            |
-| 5    | Connect Get Tribe outputs into Is Same Tribe                   | Two edges appear                        | `tribe` and `owner tribe` both connect successfully                                    |
-| 6    | Drag "Boolean Not" from sidebar                               | Boolean Not node appears                | Node shows one boolean input and one boolean output                                    |
-| 7    | Connect Is Same Tribe `matches` → Boolean Not `input`          | Edge appears                            | Boolean-to-boolean connection is accepted                                              |
-| 8    | Drag "Add to Queue" from sidebar                              | Add to Queue node appears               | Node shows `priority_in`, `target`, `predicate`, and `weight` inputs                   |
-| 9    | Connect Proximity `priority` → Add to Queue `priority_in`      | Edge appears                            | Priority passthrough connection is accepted                                            |
-| 10   | Connect Proximity `target` → Add to Queue `target`             | Edge appears                            | Target passthrough connection is accepted                                              |
-| 11   | Connect Boolean Not `result` → Add to Queue `predicate`        | Edge appears                            | Boolean predicate connection is accepted                                               |
-| 12   | Click "Auto Arrange" in header                                | All nodes reposition into clean layout  | No overlapping nodes; left-to-right flow; < 500ms                                      |
+| Step | User Action                                               | System Response                         | Acceptance Criteria                                                         |
+| ---- | --------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------- |
+| 1    | Drag "Proximity" from sidebar onto canvas                 | Proximity node appears at drop position | Node renders with "Proximity" label and `target` / `priority` outputs       |
+| 2    | Drag "Get Tribe" from sidebar                             | Get Tribe node appears                  | Node shows `target` input plus `tribe` and `owner tribe` outputs            |
+| 3    | Connect Proximity `target` → Get Tribe `target`           | Animated edge appears                   | Connection is accepted and uses the target socket styling                   |
+| 4    | Drag "Is Same Tribe" from sidebar                         | Is Same Tribe node appears              | Node shows `tribe` and `owner tribe` inputs with a boolean `matches` output |
+| 5    | Connect Get Tribe outputs into Is Same Tribe              | Two edges appear                        | `tribe` and `owner tribe` both connect successfully                         |
+| 6    | Drag "NOT" from sidebar                                   | NOT node appears                        | Node shows one boolean input and one boolean output                         |
+| 7    | Connect Is Same Tribe `matches` → NOT `input`             | Edge appears                            | Boolean-to-boolean connection is accepted                                   |
+| 8    | Drag "Add to Queue" from sidebar                          | Add to Queue node appears               | Node shows `priority_in`, `target`, `predicate`, and `weight` inputs        |
+| 9    | Connect Proximity `priority` → Add to Queue `priority_in` | Edge appears                            | Priority passthrough connection is accepted                                 |
+| 10   | Connect Proximity `target` → Add to Queue `target`        | Edge appears                            | Target passthrough connection is accepted                                   |
+| 11   | Connect NOT `result` → Add to Queue `predicate`           | Edge appears                            | Boolean predicate connection is accepted                                    |
+| 12   | Click "Auto Arrange" in header                            | All nodes reposition into clean layout  | No overlapping nodes; left-to-right flow; < 500ms                           |
 
 ---
 
