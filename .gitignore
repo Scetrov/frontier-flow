@@ -10,5 +10,6 @@ build/
 .env*
 node-compile-cache/
 playwright-transform-cache*/
+bunx-*/
 tmp.*
 qIZCEIaUOQzLo-ENN16kf/
