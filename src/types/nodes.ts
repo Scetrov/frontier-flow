@@ -30,9 +30,50 @@ export type SocketDirection = "input" | "output";
  */
 export type NodeCategory =
   | "event-trigger"
-  | "data-accessor"
+  | "static-data"
+  | "data-extractor"
   | "logic-gate"
   | "action";
+
+/**
+ * Supported graph selection targets for QoL interactions.
+ */
+export type CanvasSelectionKind = "none" | "node" | "edge";
+
+/**
+ * Tracks the active graph target for keyboard and menu actions.
+ */
+export interface CanvasSelectionTarget {
+  readonly kind: CanvasSelectionKind;
+  readonly targetId: string | null;
+  readonly origin: "pointer" | "keyboard" | "programmatic";
+}
+
+/**
+ * Shared delete confirmation lifecycle for inline node actions.
+ */
+export type DeleteConfirmationState =
+  | {
+      readonly mode: "idle";
+      readonly startedAt: null;
+    }
+  | {
+      readonly mode: "confirm";
+      readonly startedAt: number;
+    };
+
+/**
+ * Typed canvas context-menu target variants.
+ */
+export type CanvasContextMenuTarget =
+  | {
+      readonly kind: "canvas";
+      readonly targetId: null;
+    }
+  | {
+      readonly kind: "node" | "edge";
+      readonly targetId: string;
+    };
 
 export type NodeFieldScalar = string | number | boolean;
 
@@ -101,6 +142,10 @@ export interface FlowNodeData {
   readonly remediationNotice?: RemediationNotice;
   readonly diagnosticMessages?: readonly string[];
   readonly validationState?: "warning" | "error";
+  readonly deleteConfirmationState?: DeleteConfirmationState;
+  readonly onDeleteRequest?: (options?: { readonly immediate?: boolean }) => void;
+  readonly onDeleteConfirm?: () => void;
+  readonly onDeleteCancel?: () => void;
 }
 
 /**

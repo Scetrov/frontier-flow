@@ -30,7 +30,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "List of Tribe",
     description: "Curate a reusable tribe list for downstream target matching.",
     color: "var(--socket-entity)",
-    category: "data-accessor",
+    category: "static-data",
     sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
   },
   {
@@ -38,7 +38,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "List of Ship",
     description: "Curate a reusable ship list for downstream target matching.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "static-data",
     sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
   },
   {
@@ -46,7 +46,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "List of Character",
     description: "Curate a reusable list of character addresses for explicit target matching.",
     color: "var(--socket-any)",
-    category: "data-accessor",
+    category: "static-data",
     sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
   },
   {
@@ -54,7 +54,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Get Tribe",
     description: "Extract the candidate tribe and the owner tribe from the target.",
     color: "var(--socket-entity)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "tribe", type: "tribe", position: "right", direction: "output", label: "tribe" },
@@ -66,7 +66,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "HP Ratio",
     description: "Read the candidate hull integrity ratio.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "hp_ratio", type: "number", position: "right", direction: "output", label: "hp ratio" },
@@ -77,7 +77,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Shield Ratio",
     description: "Read the candidate shield integrity ratio.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "shield_ratio", type: "number", position: "right", direction: "output", label: "shield ratio" },
@@ -88,7 +88,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Armor Ratio",
     description: "Read the candidate armor integrity ratio.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "armor_ratio", type: "number", position: "right", direction: "output", label: "armor ratio" },
@@ -99,7 +99,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Get Group ID",
     description: "Extract the target group identifier used by size and specialist rules.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "group_id", type: "number", position: "right", direction: "output", label: "group id" },
@@ -110,7 +110,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Get Behaviour",
     description: "Read the candidate behaviour change code for scoring and exclusion.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "behaviour", type: "number", position: "right", direction: "output", label: "behaviour" },
@@ -121,7 +121,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Is Aggressor",
     description: "Emit whether the current target is marked as an aggressor.",
     color: "var(--socket-signal)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "is_aggressor", type: "boolean", position: "right", direction: "output", label: "is aggressor" },
@@ -132,7 +132,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Get Priority Weight",
     description: "Read the base priority weight that contract scoring starts from.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "weight", type: "number", position: "right", direction: "output", label: "weight" },
@@ -143,7 +143,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Behaviour Bonus",
     description: "Apply the contract behaviour bonus to a running target weight.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "behaviour", type: "number", position: "left", direction: "input", label: "behaviour" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
@@ -155,7 +155,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Aggressor Bonus",
     description: "Add the aggressor bonus when the target is currently attacking.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "is_aggressor", type: "boolean", position: "left", direction: "input", label: "is aggressor" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
@@ -167,7 +167,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Damage Bonus",
     description: "Apply damage-based scoring using hull, shield, and armor ratios.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "hp_ratio", type: "number", position: "left", direction: "input", label: "hp ratio" },
       { id: "shield_ratio", type: "number", position: "left", direction: "input", label: "shield ratio" },
@@ -181,7 +181,7 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     label: "Size Tier Bonus",
     description: "Convert a group id into a size-tier bonus on the running weight.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
     sockets: [
       { id: "group_id", type: "number", position: "left", direction: "input", label: "group id" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },

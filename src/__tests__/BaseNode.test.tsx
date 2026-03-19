@@ -1,12 +1,16 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { ReactFlowProvider } from "@xyflow/react";
 
 import BaseNode from "../nodes/BaseNode";
 import { createFlowNodeData } from "../data/node-definitions";
+import type { FlowNodeData } from "../types/nodes";
 
 /** Minimal props wrapper for BaseNode (which expects to live inside a ReactFlowProvider). */
-function renderBaseNode(overrides?: Partial<Parameters<typeof createFlowNodeData>[0]>) {
+function renderBaseNode(
+  definitionOverrides?: Partial<Parameters<typeof createFlowNodeData>[0]>,
+  dataOverrides?: Partial<FlowNodeData>,
+) {
   const definition = {
     type: "proximity",
     label: "Proximity",
@@ -14,10 +18,10 @@ function renderBaseNode(overrides?: Partial<Parameters<typeof createFlowNodeData
     color: "var(--brand-orange)",
     category: "event-trigger",
     sockets: [],
-    ...overrides,
+    ...definitionOverrides,
   } as const;
 
-  const data = createFlowNodeData(definition);
+  const data = { ...createFlowNodeData(definition), ...dataOverrides };
 
   return render(
     <ReactFlowProvider>
@@ -126,5 +130,50 @@ describe("BaseNode", () => {
     expect(
       screen.getByText("Deprecated node. Use Is Same Tribe for future-safe matching. Replace this node before publishing the contract."),
     ).toBeInTheDocument();
+  });
+
+  it("requests delete confirmation on standard click and immediate delete on shift-click", () => {
+    const onDeleteRequest = vi.fn();
+
+    renderBaseNode(undefined, { onDeleteRequest });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Proximity" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Proximity" }), { shiftKey: true });
+
+    expect(onDeleteRequest).toHaveBeenNthCalledWith(1, { immediate: false });
+    expect(onDeleteRequest).toHaveBeenNthCalledWith(2, { immediate: true });
+  });
+
+  it("renders confirm and cancel delete actions while a node is awaiting confirmation", () => {
+    const onDeleteConfirm = vi.fn();
+    const onDeleteCancel = vi.fn();
+
+    renderBaseNode(undefined, {
+      deleteConfirmationState: { mode: "confirm", startedAt: 1 },
+      onDeleteCancel,
+      onDeleteConfirm,
+      onDeleteRequest: vi.fn(),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete Proximity" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel delete Proximity" }));
+
+    expect(screen.getByRole("button", { name: "Confirm delete Proximity" })).toHaveFocus();
+    expect(onDeleteConfirm).toHaveBeenCalledTimes(1);
+    expect(onDeleteCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("replaces the main icon with a warning control and diagnostic tooltip for error nodes", () => {
+    renderBaseNode(undefined, {
+      diagnosticMessages: ["Queue target is missing a predicate."],
+      validationState: "error",
+    });
+
+    const warningButton = screen.getByRole("button", { name: "Show errors for Proximity" });
+
+    fireEvent.focus(warningButton);
+    expect(warningButton).toHaveAttribute("aria-describedby", "test-node-diagnostics");
+    expect(warningButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Queue target is missing a predicate.");
   });
 });

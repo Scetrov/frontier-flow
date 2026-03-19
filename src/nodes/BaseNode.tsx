@@ -1,7 +1,7 @@
 import { Handle, type NodeProps } from "@xyflow/react";
 import type { CSSProperties } from "react";
-import { Pencil, type LucideIcon } from "lucide-react";
-import { useContext, useMemo, useState } from "react";
+import { AlertTriangle, Check, Pencil, Trash2, X, type LucideIcon } from "lucide-react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { getNodeFieldSummary, hasEditableNodeFields, normalizeNodeFields } from "../data/nodeFieldCatalog";
 import type { FlowNodeData, SocketDefinition } from "../types/nodes";
@@ -49,9 +49,15 @@ function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNo
   const nodeData = data as FlowNodeData & {
     readonly diagnosticMessages?: readonly string[];
     readonly validationState?: "error" | "warning";
+    readonly deleteConfirmationState?: FlowNodeData["deleteConfirmationState"];
+    readonly onDeleteRequest?: FlowNodeData["onDeleteRequest"];
+    readonly onDeleteConfirm?: FlowNodeData["onDeleteConfirm"];
+    readonly onDeleteCancel?: FlowNodeData["onDeleteCancel"];
   };
   const handleFieldChange = useContext(NodeFieldEditingContext);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
+  const confirmDeleteButtonRef = useRef<HTMLButtonElement | null>(null);
   const topSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "top");
   const leftSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "left");
   const rightSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "right");
@@ -59,6 +65,18 @@ function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNo
   const isEditable = hasEditableNodeFields(nodeData.type);
   const fieldSummary = useMemo(() => getNodeFieldSummary(nodeData.type, nodeData.fields), [nodeData.fields, nodeData.type]);
   const nodeStyle = { "--ff-node-accent": nodeData.color } as CSSProperties;
+  const isDeleteConfirming = nodeData.deleteConfirmationState?.mode === "confirm";
+  const diagnosticMessage = nodeData.diagnosticMessages?.join(" ") ?? "";
+  const shouldShowErrorIndicator = nodeData.validationState === "error" && diagnosticMessage.length > 0;
+  const diagnosticTooltipId = `${id}-diagnostics`;
+
+  useEffect(() => {
+    if (!isDeleteConfirming) {
+      return;
+    }
+
+    confirmDeleteButtonRef.current?.focus();
+  }, [isDeleteConfirming]);
 
   return (
     <>
@@ -68,7 +86,6 @@ function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNo
         data-validation-warning={nodeData.validationState === "warning" ? "true" : undefined}
         data-editing={isEditorOpen ? "true" : undefined}
         style={nodeStyle}
-        title={nodeData.diagnosticMessages?.join("\n")}
       >
         <div className={`ff-node__surface ${shape === "diamond" ? "ff-node__surface--diamond" : ""}`}>
           {topSockets.length > 0 ? (
@@ -80,21 +97,93 @@ function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNo
           ) : null}
 
         <div className="ff-node__header" style={{ backgroundColor: nodeData.color }}>
-          {Icon !== undefined ? <Icon aria-hidden="true" className="ff-node__icon" /> : null}
+          {shouldShowErrorIndicator ? (
+            <button
+              aria-describedby={isDiagnosticOpen ? diagnosticTooltipId : undefined}
+              aria-expanded={isDiagnosticOpen}
+              aria-label={`Show errors for ${nodeData.label}`}
+              className="ff-node__warning-button nodrag nopan"
+              onBlur={() => {
+                setIsDiagnosticOpen(false);
+              }}
+              onFocus={() => {
+                setIsDiagnosticOpen(true);
+              }}
+              onMouseEnter={() => {
+                setIsDiagnosticOpen(true);
+              }}
+              onMouseLeave={() => {
+                setIsDiagnosticOpen(false);
+              }}
+              type="button"
+            >
+              <AlertTriangle aria-hidden="true" className="ff-node__warning-icon" />
+              {isDiagnosticOpen ? (
+                <span className="ff-node__diagnostic-tooltip" id={diagnosticTooltipId} role="tooltip">
+                  {diagnosticMessage}
+                </span>
+              ) : null}
+            </button>
+          ) : Icon !== undefined ? (
+            <Icon aria-hidden="true" className="ff-node__icon" />
+          ) : null}
           <span className="ff-node__title">{nodeData.label}</span>
-          {isEditable ? (
+          {isEditable || nodeData.onDeleteRequest !== undefined ? (
             <div className="ff-node__actions">
-              <button
-                aria-label={`Edit ${nodeData.label}`}
-                className="ff-node__edit-button nodrag nopan"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setIsEditorOpen(true);
-                }}
-                type="button"
-              >
-                <Pencil aria-hidden="true" className="ff-node__edit-icon" />
-              </button>
+              {isEditable ? (
+                <button
+                  aria-label={`Edit ${nodeData.label}`}
+                  className="ff-node__edit-button nodrag nopan"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIsEditorOpen(true);
+                  }}
+                  type="button"
+                >
+                  <Pencil aria-hidden="true" className="ff-node__edit-icon" />
+                </button>
+              ) : null}
+              {nodeData.onDeleteRequest !== undefined ? (
+                isDeleteConfirming ? (
+                  <div aria-label={`Confirm delete ${nodeData.label}`} className="ff-node__delete-confirmation" role="group">
+                    <button
+                      aria-label={`Confirm delete ${nodeData.label}`}
+                      className="ff-node__delete-button ff-node__delete-button--confirm nodrag nopan"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        nodeData.onDeleteConfirm?.();
+                      }}
+                      ref={confirmDeleteButtonRef}
+                      type="button"
+                    >
+                      <Check aria-hidden="true" className="ff-node__delete-icon" />
+                    </button>
+                    <button
+                      aria-label={`Cancel delete ${nodeData.label}`}
+                      className="ff-node__delete-button nodrag nopan"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        nodeData.onDeleteCancel?.();
+                      }}
+                      type="button"
+                    >
+                      <X aria-hidden="true" className="ff-node__delete-icon" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    aria-label={`Delete ${nodeData.label}`}
+                    className="ff-node__delete-button nodrag nopan"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      nodeData.onDeleteRequest?.({ immediate: event.shiftKey });
+                    }}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden="true" className="ff-node__delete-icon" />
+                  </button>
+                )
+              ) : null}
             </div>
           ) : null}
         </div>
