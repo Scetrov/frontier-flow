@@ -116,4 +116,28 @@ describe("restoreSavedFlow", () => {
     );
     expect(restoredFlow.remediationNotices).toHaveLength(0);
   });
+
+  it("rehydrates known saved nodes even when their persisted data payload is missing", () => {
+    const restoredFlow = restoreSavedFlow(
+      [
+        {
+          id: "sparse",
+          type: "typeBlocklistConfig",
+          position: { x: 0, y: 0 },
+          data: undefined as never,
+        },
+      ],
+      [],
+    );
+
+    expect(restoredFlow.nodes).toHaveLength(1);
+    expect(restoredFlow.nodes[0]?.type).toBe("typeBlocklistConfig");
+    expect(restoredFlow.nodes[0]?.data.fieldValues).toEqual({
+      values: {
+        blockedTribes: [],
+        blockedTypeIds: [],
+      },
+    });
+    expect(restoredFlow.remediationNotices).toHaveLength(0);
+  });
 });

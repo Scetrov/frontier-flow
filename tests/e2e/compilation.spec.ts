@@ -105,10 +105,13 @@ test("reference graph matrix compiles multiple supported saved contracts through
       activeContractName: entry.contractName,
     });
 
+    const statusButton = page.locator(".ff-compilation-status__button");
     const buildButton = page.getByRole("button", { name: "Build", exact: true });
     const moveTab = page.getByRole("button", { name: "Move", exact: true });
 
+    await expect(statusButton).toContainText("Compiled");
     await buildButton.click();
+    await expect(statusButton).toContainText("Compiled");
 
     await moveTab.click();
     await expect(page.getByText(`${entry.expectedModuleName}.move`)).toBeVisible();

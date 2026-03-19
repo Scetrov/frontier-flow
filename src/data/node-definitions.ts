@@ -639,12 +639,14 @@ export function hydrateFlowNode(node: FlowNode): FlowNode | undefined {
     return undefined;
   }
 
+  const persistedFieldValues = isRecord(node.data) ? node.data.fieldValues : undefined;
+
   return {
     ...node,
     type: definition.type,
     data: {
       ...createFlowNodeData(definition),
-      fieldValues: hydrateFieldValueSet(definition.fields, node.data.fieldValues),
+      fieldValues: hydrateFieldValueSet(definition.fields, persistedFieldValues),
     },
   };
 }
