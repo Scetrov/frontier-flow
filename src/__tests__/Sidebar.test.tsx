@@ -39,7 +39,50 @@ const twoCategoryDefinitions: readonly NodeDefinition[] = [
     label: "HP Ratio",
     description: "Returns the health ratio.",
     color: "var(--socket-value)",
-    category: "data-accessor",
+    category: "data-extractor",
+    sockets: [],
+  },
+];
+
+const splitDataCategoryDefinitions: readonly NodeDefinition[] = [
+  {
+    type: "aggression",
+    label: "Aggression",
+    description: "Trigger combat automations.",
+    color: "var(--brand-orange)",
+    category: "event-trigger",
+    sockets: [],
+  },
+  {
+    type: "listTribe",
+    label: "List of Tribe",
+    description: "Curate tribe lists.",
+    color: "var(--socket-entity)",
+    category: "static-data",
+    sockets: [],
+  },
+  {
+    type: "hpRatio",
+    label: "HP Ratio",
+    description: "Returns the health ratio.",
+    color: "var(--socket-value)",
+    category: "data-extractor",
+    sockets: [],
+  },
+  {
+    type: "booleanOr",
+    label: "OR",
+    description: "Combine boolean inputs.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [],
+  },
+  {
+    type: "addToQueue",
+    label: "Add to Queue",
+    description: "Queue a target.",
+    color: "var(--socket-vector)",
+    category: "action",
     sockets: [],
   },
 ];
@@ -67,13 +110,14 @@ describe("Sidebar", () => {
     window.matchMedia = originalMatchMedia;
   });
 
-  it("renders all four category headings", () => {
+  it("renders the split top-level category headings in deterministic order", () => {
     render(<Sidebar definitions={nodeDefinitions} />);
 
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
       "Event Trigger",
-      "Data Accessor",
-      "Logic Gate",
+      "Static Data",
+      "Data Extractor",
+      "Logic",
       "Action",
     ]);
   });
@@ -88,7 +132,7 @@ describe("Sidebar", () => {
       "true",
     );
 
-    for (const label of ["Data Accessor", "Logic Gate", "Action"]) {
+    for (const label of ["Static Data", "Data Extractor", "Logic", "Action"]) {
       expect(within(toolbox).getByRole("button", { name: `${label} category` })).toHaveAttribute(
         "aria-expanded",
         "false",
@@ -113,10 +157,22 @@ describe("Sidebar", () => {
 
     expect(screen.queryByRole("button", { name: /HP Ratio/ })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Data Accessor category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Data Extractor category" }));
 
     expect(screen.getByRole("button", { name: /HP Ratio/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Data Accessor category" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Data Extractor category" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("keeps static data and data extractor adjacent between event trigger and logic", () => {
+    render(<Sidebar definitions={splitDataCategoryDefinitions} />);
+
+    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "Event Trigger",
+      "Static Data",
+      "Data Extractor",
+      "Logic",
+      "Action",
+    ]);
   });
 
   it("collapses an expanded category when its header is clicked", () => {

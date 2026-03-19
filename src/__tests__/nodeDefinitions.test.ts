@@ -105,4 +105,27 @@ describe("nodeDefinitions", () => {
       "priority_out",
     ]);
   });
+
+  it("assigns the split data taxonomy to the expected node families", () => {
+    expect(nodeDefinitions.find((definition) => definition.type === "listTribe")?.category).toBe("static-data");
+    expect(nodeDefinitions.find((definition) => definition.type === "listShip")?.category).toBe("static-data");
+    expect(nodeDefinitions.find((definition) => definition.type === "listCharacter")?.category).toBe("static-data");
+
+    for (const type of [
+      "getTribe",
+      "hpRatio",
+      "shieldRatio",
+      "armorRatio",
+      "getGroupId",
+      "getBehaviour",
+      "isAggressor",
+      "getPriorityWeight",
+      "behaviourBonus",
+      "aggressorBonus",
+      "damageBonus",
+      "sizeTierBonus",
+    ] as const) {
+      expect(nodeDefinitions.find((definition) => definition.type === type)?.category).toBe("data-extractor");
+    }
+  });
 });

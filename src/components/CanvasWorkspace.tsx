@@ -6,6 +6,7 @@ import {
   Controls,
   ReactFlow,
   ReactFlowProvider,
+  ViewportPortal,
   addEdge,
   useEdgesState,
   useNodesState,
@@ -19,7 +20,14 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createFlowNodeData, getNodeDefinition } from "../data/node-definitions";
 import { seededExampleContracts } from "../data/exampleContracts";
 import { flowNodeTypes } from "../nodes";
-import type { FlowEdge, FlowNode, RemediationNotice } from "../types/nodes";
+import type {
+  CanvasContextMenuTarget,
+  CanvasSelectionTarget,
+  DeleteConfirmationState,
+  FlowEdge,
+  FlowNode,
+  RemediationNotice,
+} from "../types/nodes";
 import type { NodeFieldMap } from "../types/nodes";
 import type { CompilationStatus, CompilerDiagnostic } from "../compiler/types";
 import {
@@ -59,6 +67,7 @@ interface CanvasWorkspaceProps {
 interface ContextMenuState {
   readonly x: number;
   readonly y: number;
+  readonly target: CanvasContextMenuTarget;
 }
 
 interface HydratedContractSnapshot {
@@ -72,6 +81,9 @@ interface HydratedContractLibrarySnapshot {
 }
 
 const desktopMediaQuery = "(min-width: 768px)";
+const deleteConfirmationTimeoutMs = 15_000;
+const idleDeleteConfirmationState: DeleteConfirmationState = { mode: "idle", startedAt: null };
+const nonTextInputTypes = new Set(["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"]);
 
 function getIdleMsOverride(): number | undefined {
   if (typeof window === "undefined") {
@@ -97,6 +109,40 @@ function getIsDesktop() {
   }
 
   return window.matchMedia(desktopMediaQuery).matches;
+}
+
+function isTextEntryElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.isContentEditable || target.closest('[contenteditable="true"], [role="textbox"]') !== null) {
+    return true;
+  }
+
+  if (target instanceof HTMLTextAreaElement) {
+    return true;
+  }
+
+  if (target instanceof HTMLInputElement) {
+    return !nonTextInputTypes.has(target.type);
+  }
+
+  return false;
+}
+
+function getSelectedTarget(nodes: readonly FlowNode[], edges: readonly FlowEdge[]): CanvasSelectionTarget {
+  const selectedNode = nodes.find((node) => node.selected);
+  if (selectedNode !== undefined) {
+    return { kind: "node", targetId: selectedNode.id, origin: "programmatic" };
+  }
+
+  const selectedEdge = edges.find((edge) => edge.selected);
+  if (selectedEdge !== undefined) {
+    return { kind: "edge", targetId: selectedEdge.id, origin: "programmatic" };
+  }
+
+  return { kind: "none", targetId: null, origin: "programmatic" };
 }
 
 /**
@@ -129,15 +175,40 @@ function FlowEditor({
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(activeContract.edges);
   const [draftContractName, setDraftContractName] = useState(activeContract.name);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [nodeDeleteStates, setNodeDeleteStates] = useState<Readonly<Record<string, DeleteConfirmationState>>>({});
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
   const [isContractPanelOpen, setIsContractPanelOpen] = useState(
     () => (mode === "persistent" ? loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isContractPanelOpen : false),
   );
   const nodeCounterRef = useRef(0);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
+  const deleteConfirmationTimersRef = useRef(new Map<string, number>());
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
   const idleMsOverride = getIdleMsOverride();
   const compilation = useAutoCompile(nodes, edges, draftContractName, idleMsOverride);
+  const selectedTarget = useMemo(() => getSelectedTarget(nodes, edges), [edges, nodes]);
+  const selectedEdgeDeleteAnchor = useMemo(() => {
+    if (selectedTarget.kind !== "edge" || selectedTarget.targetId === null) {
+      return null;
+    }
+
+    const edge = edges.find((candidate) => candidate.id === selectedTarget.targetId);
+    if (edge === undefined) {
+      return null;
+    }
+
+    const sourceNode = nodes.find((candidate) => candidate.id === edge.source);
+    const targetNode = nodes.find((candidate) => candidate.id === edge.target);
+    if (sourceNode === undefined || targetNode === undefined) {
+      return null;
+    }
+
+    return {
+      edgeId: edge.id,
+      x: (sourceNode.position.x + targetNode.position.x) / 2,
+      y: (sourceNode.position.y + targetNode.position.y) / 2,
+    };
+  }, [edges, nodes, selectedTarget]);
 
   const diagnosticsByNodeId = useMemo(() => {
     const nextDiagnosticsByNodeId = new Map<string, readonly CompilerDiagnostic[]>();
@@ -173,6 +244,79 @@ function FlowEditor({
     [setNodes],
   );
 
+  const clearNodeDeleteState = useCallback((nodeId: string) => {
+    setNodeDeleteStates((currentStates) => {
+      if (!(nodeId in currentStates)) {
+        return currentStates;
+      }
+
+      return Object.fromEntries(Object.entries(currentStates).filter(([candidateNodeId]) => candidateNodeId !== nodeId));
+    });
+  }, []);
+
+  const deleteNodeById = useCallback(
+    (nodeId: string) => {
+      setNodes((currentNodes) => currentNodes.filter((node) => node.id !== nodeId));
+      setEdges((currentEdges) => currentEdges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+      clearNodeDeleteState(nodeId);
+      setContextMenu((currentMenu) => {
+        if (currentMenu?.target.kind === "node" && currentMenu.target.targetId === nodeId) {
+          return null;
+        }
+
+        return currentMenu;
+      });
+    },
+    [clearNodeDeleteState, setEdges, setNodes],
+  );
+
+  const deleteEdgeById = useCallback(
+    (edgeId: string) => {
+      setEdges((currentEdges) => currentEdges.filter((edge) => edge.id !== edgeId));
+      setContextMenu((currentMenu) => {
+        if (currentMenu?.target.kind === "edge" && currentMenu.target.targetId === edgeId) {
+          return null;
+        }
+
+        return currentMenu;
+      });
+    },
+    [setEdges],
+  );
+
+  const selectTarget = useCallback(
+    (target: CanvasContextMenuTarget) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => {
+          const selected = target.kind === "node" && target.targetId === node.id;
+          return node.selected === selected ? node : { ...node, selected };
+        }),
+      );
+      setEdges((currentEdges) =>
+        currentEdges.map((edge) => {
+          const selected = target.kind === "edge" && target.targetId === edge.id;
+          return edge.selected === selected ? edge : { ...edge, selected };
+        }),
+      );
+    },
+    [setEdges, setNodes],
+  );
+
+  const handleNodeDeleteRequest = useCallback(
+    (nodeId: string, options?: { readonly immediate?: boolean }) => {
+      if (options?.immediate === true) {
+        deleteNodeById(nodeId);
+        return;
+      }
+
+      setNodeDeleteStates((currentStates) => ({
+        ...currentStates,
+        [nodeId]: { mode: "confirm", startedAt: Date.now() },
+      }));
+    },
+    [deleteNodeById],
+  );
+
   const renderedNodes = useMemo(
     () =>
       nodes.map((node) => {
@@ -187,12 +331,22 @@ function FlowEditor({
           ...node,
           data: {
             ...node.data,
+            deleteConfirmationState: nodeDeleteStates[node.id] ?? idleDeleteConfirmationState,
             diagnosticMessages: nodeDiagnostics.map((diagnostic) => diagnostic.userMessage),
+            onDeleteCancel: () => {
+              clearNodeDeleteState(node.id);
+            },
+            onDeleteConfirm: () => {
+              deleteNodeById(node.id);
+            },
+            onDeleteRequest: (options?: { readonly immediate?: boolean }) => {
+              handleNodeDeleteRequest(node.id, options);
+            },
             validationState,
           },
         };
       }),
-    [diagnosticsByNodeId, nodes],
+    [clearNodeDeleteState, deleteNodeById, diagnosticsByNodeId, handleNodeDeleteRequest, nodeDeleteStates, nodes],
   );
 
   const activeContractDescription = activeContract.description ?? (activeContract.isSeeded ? "Curated example contract." : "Local contract snapshot.");
@@ -264,10 +418,37 @@ function FlowEditor({
     [edges, nodes, setEdges],
   );
 
-  const handlePaneContextMenu = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setContextMenu({ x: event.clientX, y: event.clientY });
-  }, []);
+  const handlePaneContextMenu = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const target = { kind: "canvas", targetId: null } satisfies CanvasContextMenuTarget;
+      selectTarget(target);
+      setContextMenu({ x: event.clientX, y: event.clientY, target });
+    },
+    [selectTarget],
+  );
+
+  const handleNodeContextMenu = useCallback(
+    (event: ReactMouseEvent, node: FlowNode) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const target = { kind: "node", targetId: node.id } satisfies CanvasContextMenuTarget;
+      selectTarget(target);
+      setContextMenu({ x: event.clientX, y: event.clientY, target });
+    },
+    [selectTarget],
+  );
+
+  const handleEdgeContextMenu = useCallback(
+    (event: ReactMouseEvent, edge: FlowEdge) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const target = { kind: "edge", targetId: edge.id } satisfies CanvasContextMenuTarget;
+      selectTarget(target);
+      setContextMenu({ x: event.clientX, y: event.clientY, target });
+    },
+    [selectTarget],
+  );
 
   const handleAutoArrange = useCallback(() => {
     setNodes((currentNodes) => autoArrangeFlow(currentNodes, edges));
@@ -276,6 +457,22 @@ function FlowEditor({
       void reactFlow.fitView({ duration: 240, padding: 0.24 });
     });
   }, [edges, reactFlow, setNodes]);
+
+  const handleDeleteFromContextMenu = useCallback(() => {
+    if (contextMenu === null) {
+      return;
+    }
+
+    if (contextMenu.target.kind === "node") {
+      deleteNodeById(contextMenu.target.targetId);
+    }
+
+    if (contextMenu.target.kind === "edge") {
+      deleteEdgeById(contextMenu.target.targetId);
+    }
+
+    setContextMenu(null);
+  }, [contextMenu, deleteEdgeById, deleteNodeById]);
 
   const handleSelectContract = useCallback(
     (contractName: string) => {
@@ -421,6 +618,51 @@ function FlowEditor({
   }, []);
 
   useEffect(() => {
+    const timerMap = deleteConfirmationTimersRef.current;
+
+    const activeConfirmations = new Set<string>();
+
+    for (const [nodeId, state] of Object.entries(nodeDeleteStates)) {
+      if (state.mode !== "confirm") {
+        continue;
+      }
+
+      activeConfirmations.add(nodeId);
+      if (timerMap.has(nodeId)) {
+        continue;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        clearNodeDeleteState(nodeId);
+        timerMap.delete(nodeId);
+      }, deleteConfirmationTimeoutMs);
+
+      timerMap.set(nodeId, timeoutId);
+    }
+
+    for (const [nodeId, timeoutId] of timerMap.entries()) {
+      if (activeConfirmations.has(nodeId)) {
+        continue;
+      }
+
+      window.clearTimeout(timeoutId);
+      timerMap.delete(nodeId);
+    }
+  }, [clearNodeDeleteState, nodeDeleteStates]);
+
+  useEffect(() => {
+    const timerMap = deleteConfirmationTimersRef.current;
+
+    return () => {
+      for (const timeoutId of timerMap.values()) {
+        window.clearTimeout(timeoutId);
+      }
+
+      timerMap.clear();
+    };
+  }, []);
+
+  useEffect(() => {
     if (mode !== "persistent") {
       return;
     }
@@ -497,6 +739,34 @@ function FlowEditor({
       window.removeEventListener("keydown", handleWindowKeyDown);
     };
   }, [contextMenu]);
+
+  useEffect(() => {
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") {
+        return;
+      }
+
+      if (isTextEntryElement(event.target)) {
+        return;
+      }
+
+      if (selectedTarget.kind === "node" && selectedTarget.targetId !== null) {
+        event.preventDefault();
+        deleteNodeById(selectedTarget.targetId);
+        return;
+      }
+
+      if (selectedTarget.kind === "edge" && selectedTarget.targetId !== null) {
+        event.preventDefault();
+        deleteEdgeById(selectedTarget.targetId);
+      }
+    };
+
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [deleteEdgeById, deleteNodeById, selectedTarget]);
 
   return (
     <NodeFieldEditingContext.Provider value={handleNodeFieldsChange}>
@@ -631,12 +901,34 @@ function FlowEditor({
         onConnect={handleConnect}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
+        onEdgeContextMenu={handleEdgeContextMenu}
         onEdgesChange={onEdgesChange}
+        onNodeContextMenu={handleNodeContextMenu}
         onNodesChange={onNodesChange}
+        onPaneClick={() => {
+          setContextMenu(null);
+        }}
         proOptions={{ hideAttribution: true }}
       >
         <Background className="ff-canvas__background" color="rgba(250, 250, 229, 0.1)" gap={32} variant={BackgroundVariant.Lines} />
         <Controls className="ff-canvas__controls" showInteractive={false} />
+        {selectedEdgeDeleteAnchor !== null ? (
+          <ViewportPortal>
+            <button
+              aria-label="Delete selected edge"
+              className="ff-edge__midpoint-delete nodrag nopan"
+              data-testid="selected-edge-delete"
+              onClick={(event) => {
+                event.stopPropagation();
+                deleteEdgeById(selectedEdgeDeleteAnchor.edgeId);
+              }}
+              style={{ left: `${String(selectedEdgeDeleteAnchor.x)}px`, top: `${String(selectedEdgeDeleteAnchor.y)}px` }}
+              type="button"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </ViewportPortal>
+        ) : null}
         {nodes.length === 0 ? (
           <div className="ff-canvas__empty-state">
             <p className="ff-canvas__eyebrow">Contract Canvas</p>
@@ -655,9 +947,31 @@ function FlowEditor({
           role="menu"
           style={{ left: `${String(contextMenu.x)}px`, top: `${String(contextMenu.y)}px` }}
         >
-          <button className="ff-canvas__context-action" role="menuitem" type="button" onClick={handleAutoArrange}>
-            Auto-arrange contract
-          </button>
+          {contextMenu.target.kind === "canvas" || contextMenu.target.kind === "node" ? (
+            <button className="ff-canvas__context-action" role="menuitem" type="button" onClick={handleAutoArrange}>
+              Auto-arrange contract
+            </button>
+          ) : null}
+          {contextMenu.target.kind === "node" ? (
+            <button
+              className="ff-canvas__context-action ff-canvas__context-action--danger"
+              role="menuitem"
+              type="button"
+              onClick={handleDeleteFromContextMenu}
+            >
+              Delete node
+            </button>
+          ) : null}
+          {contextMenu.target.kind === "edge" ? (
+            <button
+              className="ff-canvas__context-action ff-canvas__context-action--danger"
+              role="menuitem"
+              type="button"
+              onClick={handleDeleteFromContextMenu}
+            >
+              Delete edge
+            </button>
+          ) : null}
         </div>
       ) : null}
 

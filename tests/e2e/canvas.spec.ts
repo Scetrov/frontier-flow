@@ -35,9 +35,9 @@ test("drops representative contract nodes onto the canvas", async ({ page, isMob
   const workspace = page.getByTestId("canvas-workspace");
 
   await dropNode(page, "Aggression", 220, 180);
-  await ensureCategoryExpanded(page, "Data Accessor");
+  await ensureCategoryExpanded(page, "Data Extractor");
   await dropNode(page, "Get Behaviour", 360, 260);
-  await ensureCategoryExpanded(page, "Logic Gate");
+  await ensureCategoryExpanded(page, "Logic");
   await dropNode(page, "OR", 520, 320);
   await ensureCategoryExpanded(page, "Action");
   await dropNode(page, "Add to Queue", 680, 380);
@@ -53,7 +53,7 @@ test("authors primitive targeting rules without retired bundled nodes in the too
 
   await page.goto("/");
 
-  await ensureCategoryExpanded(page, "Logic Gate");
+  await ensureCategoryExpanded(page, "Logic");
 
   await expect(page.getByRole("button", { name: "Is Same Tribe", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "NOT", exact: true })).toBeVisible();

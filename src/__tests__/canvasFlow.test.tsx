@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import CanvasWorkspace from "../components/CanvasWorkspace";
 import { restoreSavedFlow } from "../components/restoreSavedFlow";
 import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
 import { createFlowNodeData } from "../data/node-definitions";
+import { createTestFlowEdge, createTestFlowNode, renderPreviewCanvas } from "../test/graphInteractionTestUtils";
 import type { FlowNode } from "../types/nodes";
 import type { ContractLibrary } from "../utils/contractStorage";
 import { CONTRACT_LIBRARY_STORAGE_KEY } from "../utils/contractStorage";
@@ -62,6 +63,7 @@ describe("CanvasWorkspace", () => {
 
   afterEach(() => {
     window.matchMedia = originalMatchMedia;
+    vi.useRealTimers();
   });
 
   it("persists the active named contract to local storage", async () => {
@@ -216,7 +218,7 @@ describe("CanvasWorkspace", () => {
                 label: "List of Tribe",
                 description: "Curate a reusable tribe list for downstream target matching.",
                 color: "var(--socket-entity)",
-                category: "data-accessor",
+                category: "static-data",
                 sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
               }),
             },
@@ -497,5 +499,144 @@ describe("CanvasWorkspace", () => {
         expect(button.tabIndex).not.toBe(-1);
       });
     });
+  });
+
+  it("deletes a node after confirm, cancel, and shift-bypass flows", async () => {
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+
+    const { container } = renderPreviewCanvas({
+      initialNodes: [
+        createTestFlowNode("delete_me", "proximity", {
+          category: "event-trigger",
+        }),
+      ],
+    });
+
+    const deleteButton = container.querySelector<HTMLButtonElement>('[data-testid="rf__node-delete_me"] [aria-label="Delete Proximity"]');
+    expect(deleteButton).not.toBeNull();
+
+    fireEvent.click(deleteButton as HTMLButtonElement);
+    expect(container.querySelector('[aria-label="Confirm delete Proximity"]')).not.toBeNull();
+
+    fireEvent.click(container.querySelector('[aria-label="Cancel delete Proximity"]') as HTMLButtonElement);
+    expect(container.querySelector('[aria-label="Confirm delete Proximity"]')).toBeNull();
+
+    fireEvent.click(container.querySelector('[data-testid="rf__node-delete_me"] [aria-label="Delete Proximity"]') as HTMLButtonElement);
+    const timeoutCallback = setTimeoutSpy.mock.calls.at(-1)?.[0] as (() => void) | undefined;
+    expect(timeoutCallback).toBeTypeOf("function");
+    act(() => {
+      if (timeoutCallback === undefined) {
+        throw new TypeError("Expected delete confirmation timer callback");
+      }
+
+      timeoutCallback();
+    });
+    expect(container.querySelector('[aria-label="Confirm delete Proximity"]')).toBeNull();
+
+    fireEvent.click(container.querySelector('[data-testid="rf__node-delete_me"] [aria-label="Delete Proximity"]') as HTMLButtonElement, {
+      shiftKey: true,
+    });
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="rf__node-delete_me"]')).toBeNull();
+    });
+
+    setTimeoutSpy.mockRestore();
+  });
+
+  it("removes the selected node with keyboard delete and ignores delete while typing", async () => {
+    const { container } = renderPreviewCanvas({
+      initialNodes: [
+        createTestFlowNode("selected_node", "proximity", {
+          category: "event-trigger",
+          selected: true,
+        }),
+      ],
+    });
+
+    const typingInput = document.createElement("input");
+    document.body.append(typingInput);
+    typingInput.focus();
+    fireEvent.keyDown(typingInput, { key: "Delete" });
+    expect(container.querySelector('[data-testid="rf__node-selected_node"]')).not.toBeNull();
+
+    typingInput.blur();
+    fireEvent.keyDown(window, { key: "Delete" });
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="rf__node-selected_node"]')).toBeNull();
+    });
+
+    typingInput.remove();
+  });
+
+  it("shows a midpoint delete control for the selected edge and removes the edge when used", async () => {
+    const { container } = renderPreviewCanvas({
+      initialEdges: [
+        createTestFlowEdge("selected_edge", "source_node", "target_node", {
+          selected: true,
+          sourceHandle: "target",
+          targetHandle: "target",
+        }),
+      ],
+      initialNodes: [
+        createTestFlowNode("source_node", "aggression", {
+          category: "event-trigger",
+          label: "Source Node",
+          position: { x: 0, y: 0 },
+        }),
+        createTestFlowNode("target_node", "addToQueue", {
+          category: "action",
+          label: "Target Node",
+          position: { x: 240, y: 120 },
+        }),
+      ],
+    });
+
+    expect(container.querySelector('[data-testid="selected-edge-delete"]')).not.toBeNull();
+
+    fireEvent.click(container.querySelector('[data-testid="selected-edge-delete"]') as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="selected-edge-delete"]')).toBeNull();
+    });
+  });
+
+  it("shows target-sensitive delete actions in node context menus and omits delete on the canvas menu", async () => {
+    const { container, unmount } = renderPreviewCanvas({
+      initialEdges: [
+        createTestFlowEdge("context_edge", "context_source", "context_target", {
+          sourceHandle: "target",
+          targetHandle: "target",
+        }),
+      ],
+      initialNodes: [
+        createTestFlowNode("context_source", "aggression", {
+          category: "event-trigger",
+          position: { x: 0, y: 0 },
+        }),
+        createTestFlowNode("context_target", "addToQueue", {
+          category: "action",
+          position: { x: 240, y: 0 },
+        }),
+      ],
+    });
+
+    fireEvent.contextMenu(container.querySelector('[data-testid="rf__node-context_source"] .ff-node') as Element);
+    expect(screen.getByRole("menuitem", { name: "Auto-arrange contract" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Delete node" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Delete edge" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete node" }));
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="rf__node-context_source"]')).toBeNull();
+    });
+
+    unmount();
+
+    renderPreviewCanvas();
+    fireEvent.contextMenu(screen.getByTestId("canvas-workspace"));
+
+    expect(screen.getByRole("menuitem", { name: "Auto-arrange contract" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Delete node" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Delete edge" })).not.toBeInTheDocument();
   });
 });

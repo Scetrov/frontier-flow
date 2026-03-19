@@ -286,6 +286,12 @@ button,
   background: rgba(255, 71, 0, 0.12);
 }
 
+.ff-canvas__context-action--danger:hover,
+.ff-canvas__context-action--danger:focus-visible {
+  border-color: var(--status-error);
+  background: rgba(239, 68, 68, 0.14);
+}
+
 .ff-contract-bar__button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -850,9 +856,47 @@ button,
   color: var(--text-secondary);
 }
 
+.ff-contract-bar,
+.ff-move-source__body,
+.ff-move-source__pre,
+.ff-node-field-editor__body,
 .ff-toolbox__scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--brand-orange) rgba(250, 250, 229, 0.08);
+}
+
+.ff-contract-bar::-webkit-scrollbar,
+.ff-move-source__body::-webkit-scrollbar,
+.ff-move-source__pre::-webkit-scrollbar,
+.ff-node-field-editor__body::-webkit-scrollbar,
+.ff-toolbox__scroll::-webkit-scrollbar {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.ff-contract-bar::-webkit-scrollbar-track,
+.ff-move-source__body::-webkit-scrollbar-track,
+.ff-move-source__pre::-webkit-scrollbar-track,
+.ff-node-field-editor__body::-webkit-scrollbar-track,
+.ff-toolbox__scroll::-webkit-scrollbar-track {
+  background: rgba(250, 250, 229, 0.06);
+}
+
+.ff-contract-bar::-webkit-scrollbar-thumb,
+.ff-move-source__body::-webkit-scrollbar-thumb,
+.ff-move-source__pre::-webkit-scrollbar-thumb,
+.ff-node-field-editor__body::-webkit-scrollbar-thumb,
+.ff-toolbox__scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--brand-orange), var(--brand-dark));
+  border: 2px solid rgba(26, 10, 10, 0.96);
+}
+
+.ff-contract-bar::-webkit-scrollbar-thumb:hover,
+.ff-move-source__body::-webkit-scrollbar-thumb:hover,
+.ff-move-source__pre::-webkit-scrollbar-thumb:hover,
+.ff-node-field-editor__body::-webkit-scrollbar-thumb:hover,
+.ff-toolbox__scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ff6a2e, var(--brand-orange));
 }
 
 .ff-toolbox__scroll::-webkit-scrollbar {
@@ -1050,28 +1094,107 @@ button,
 
 .ff-node__actions {
   margin-left: auto;
+  gap: 0.45rem;
 }
 
-.ff-node__edit-button {
+.ff-node__edit-button,
+.ff-node__delete-button,
+.ff-node__warning-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 2.25rem;
+  min-height: 2.25rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.26);
+  color: inherit;
+  cursor: pointer;
+}
+
+.ff-node__edit-button,
+.ff-node__delete-button {
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition:
+    opacity 120ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
 }
 
 .ff-node:hover .ff-node__edit-button,
+.ff-node:hover .ff-node__delete-button,
 .ff-node:focus-within .ff-node__edit-button,
+.ff-node:focus-within .ff-node__delete-button,
 .ff-node.is-selected .ff-node__edit-button,
+.ff-node.is-selected .ff-node__delete-button,
 .ff-node[data-editing="true"] .ff-node__edit-button,
-.ff-node__edit-button:focus-visible {
+.ff-node__edit-button:focus-visible,
+.ff-node__delete-button:focus-visible {
   opacity: 1;
+}
+
+.ff-node__edit-button:hover,
+.ff-node__edit-button:focus-visible {
+  box-shadow: 0 0 10px rgba(255, 71, 0, 0.24);
+}
+
+.ff-node__delete-button:hover,
+.ff-node__delete-button:focus-visible {
+  border-color: var(--status-error);
+  background: rgba(239, 68, 68, 0.14);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.28);
+}
+
+.ff-node__delete-button--confirm {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.14);
+}
+
+.ff-node__delete-confirmation {
+  display: inline-flex;
+  gap: 0.35rem;
 }
 
 .ff-node__edit-icon {
   width: 0.85rem;
   height: 0.85rem;
+}
+
+.ff-node__delete-icon,
+.ff-node__warning-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.ff-node__warning-button {
+  position: relative;
+}
+
+.ff-node__diagnostic-tooltip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 2;
+  min-width: 14rem;
+  max-width: 18rem;
+  border: 1px solid var(--status-error);
+  background: rgba(16, 21, 31, 0.96);
+  padding: 0.55rem 0.65rem;
+  color: var(--cream-white);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.2rem);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.ff-node__warning-button:hover .ff-node__diagnostic-tooltip,
+.ff-node__warning-button:focus-visible .ff-node__diagnostic-tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .ff-node__title {
@@ -1162,6 +1285,28 @@ button,
 
 .react-flow__edge.selected .react-flow__edge-path {
   filter: drop-shadow(0 0 6px rgba(255, 71, 0, 0.35));
+}
+
+.ff-edge__midpoint-delete {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--status-error);
+  background: rgba(16, 21, 31, 0.96);
+  color: var(--cream-white);
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 16px 24px rgba(3, 6, 10, 0.28);
+}
+
+.ff-edge__midpoint-delete:hover,
+.ff-edge__midpoint-delete:focus-visible {
+  background: rgba(239, 68, 68, 0.18);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.24);
 }
 
 @media (max-width: 767px) {

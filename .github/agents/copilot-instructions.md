@@ -1,1 +1,1 @@
-- 008-extension-node-primitives: Added TypeScript 5.9 (strict) for application logic, HTML5 for document structure, CSS with Tailwind CSS 4 and project CSS variables, Bun for package/runtime tooling + React 19, `@xyflow/react` 12.x, Tailwind CSS 4, Vite, Bun, existing compiler/generator infrastructure under `src/compiler/`
+- 009-graph-editor-qol: Added TypeScript 5.9.3, React 19.2.0, ES Modules + `@xyflow/react` 12.10, `lucide-react` 0.577, `dagre` 0.8.5, Tailwind CSS 4.1.18, Vite/Rolldown, CSS variables in `src/index.css`
