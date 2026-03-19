@@ -41,6 +41,10 @@ test("renders Frontier Flow branding metadata", async ({ page }) => {
   );
 
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Frontier Flow");
+  await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute(
+    "content",
+    "Frontier Flow",
+  );
   await expect(page.locator('meta[property="og:type"]')).toHaveAttribute("content", "website");
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
     "content",
@@ -49,6 +53,10 @@ test("renders Frontier Flow branding metadata", async ({ page }) => {
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     "content",
     "https://frontier-flow.scetrov.live/og-image.png",
+  );
+  await expect(page.locator('meta[property="og:image:type"]')).toHaveAttribute(
+    "content",
+    "image/png",
   );
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
     "content",
