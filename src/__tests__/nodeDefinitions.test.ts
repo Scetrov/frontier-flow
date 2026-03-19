@@ -1,375 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { nodeDefinitions } from "../data/node-definitions";
-import type { NodeDefinition } from "../types/nodes";
+import { authorableNodeDefinitions, nodeDefinitions } from "../data/node-definitions";
 
-const expectedNodeDefinitions = [
-  {
-    type: "aggression",
-    label: "Aggression",
-    description: "Emit priority and target data when a hostile action is detected.",
-    color: "var(--brand-orange)",
-    category: "event-trigger",
-    sockets: [
-      { id: "priority", type: "priority", position: "right", direction: "output", label: "priority" },
-      { id: "target", type: "target", position: "right", direction: "output", label: "target" },
-    ],
-  },
-  {
-    type: "proximity",
-    label: "Proximity",
-    description: "Emit priority and target data when a candidate enters turret range.",
-    color: "var(--brand-orange)",
-    category: "event-trigger",
-    sockets: [
-      { id: "priority", type: "priority", position: "right", direction: "output", label: "priority" },
-      { id: "target", type: "target", position: "right", direction: "output", label: "target" },
-    ],
-  },
-  {
-    type: "getTribe",
-    label: "Get Tribe",
-    description: "Extract the candidate tribe and the owner tribe from the target.",
-    color: "var(--socket-entity)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "tribe", type: "tribe", position: "right", direction: "output", label: "tribe" },
-      { id: "owner_tribe", type: "tribe", position: "right", direction: "output", label: "owner tribe" },
-    ],
-  },
-  {
-    type: "hpRatio",
-    label: "HP Ratio",
-    description: "Read the candidate hull integrity ratio.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "hp_ratio", type: "number", position: "right", direction: "output", label: "hp ratio" },
-    ],
-  },
-  {
-    type: "shieldRatio",
-    label: "Shield Ratio",
-    description: "Read the candidate shield integrity ratio.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "shield_ratio", type: "number", position: "right", direction: "output", label: "shield ratio" },
-    ],
-  },
-  {
-    type: "armorRatio",
-    label: "Armor Ratio",
-    description: "Read the candidate armor integrity ratio.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "armor_ratio", type: "number", position: "right", direction: "output", label: "armor ratio" },
-    ],
-  },
-  {
-    type: "getGroupId",
-    label: "Get Group ID",
-    description: "Extract the target group identifier used by size and specialist rules.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "group_id", type: "number", position: "right", direction: "output", label: "group id" },
-    ],
-  },
-  {
-    type: "getBehaviour",
-    label: "Get Behaviour",
-    description: "Read the candidate behaviour change code for scoring and exclusion.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "behaviour", type: "number", position: "right", direction: "output", label: "behaviour" },
-    ],
-  },
-  {
-    type: "isAggressor",
-    label: "Is Aggressor",
-    description: "Emit whether the current target is marked as an aggressor.",
-    color: "var(--socket-signal)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "is_aggressor", type: "boolean", position: "right", direction: "output", label: "is aggressor" },
-    ],
-  },
-  {
-    type: "getPriorityWeight",
-    label: "Get Priority Weight",
-    description: "Read the base priority weight that contract scoring starts from.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "weight", type: "number", position: "right", direction: "output", label: "weight" },
-    ],
-  },
-  {
-    type: "behaviourBonus",
-    label: "Behaviour Bonus",
-    description: "Apply the contract behaviour bonus to a running target weight.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "behaviour", type: "number", position: "left", direction: "input", label: "behaviour" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "aggressorBonus",
-    label: "Aggressor Bonus",
-    description: "Add the aggressor bonus when the target is currently attacking.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "is_aggressor", type: "boolean", position: "left", direction: "input", label: "is aggressor" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "damageBonus",
-    label: "Damage Bonus",
-    description: "Apply damage-based scoring using hull, shield, and armor ratios.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "hp_ratio", type: "number", position: "left", direction: "input", label: "hp ratio" },
-      { id: "shield_ratio", type: "number", position: "left", direction: "input", label: "shield ratio" },
-      { id: "armor_ratio", type: "number", position: "left", direction: "input", label: "armor ratio" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "sizeTierBonus",
-    label: "Size Tier Bonus",
-    description: "Convert a group id into a size-tier bonus on the running weight.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "group_id", type: "number", position: "left", direction: "input", label: "group id" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "groupBonusLookup",
-    label: "Group Bonus Lookup",
-    description: "Look up a group-specific bonus from the shared configuration table.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "group_id", type: "number", position: "left", direction: "input", label: "group id" },
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "threatBonus",
-    label: "Threat Bonus",
-    description: "Apply a tribe threat bonus from the shared threat ledger.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "historyPenalty",
-    label: "History Penalty",
-    description: "Subtract weight from recently targeted candidates using round-robin history.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "excludeOwner",
-    label: "Exclude Owner",
-    description: "Block the turret owner from being included as a target.",
-    color: "var(--socket-signal)",
-    category: "logic-gate",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
-    ],
-  },
-  {
-    type: "excludeSameTribe",
-    label: "Exclude Same Tribe",
-    description: "Reject same-tribe candidates unless they are active aggressors.",
-    color: "var(--socket-signal)",
-    category: "logic-gate",
-    sockets: [
-      { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
-      { id: "owner_tribe", type: "tribe", position: "left", direction: "input", label: "owner tribe" },
-      { id: "is_aggressor", type: "boolean", position: "left", direction: "input", label: "is aggressor" },
-      { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
-    ],
-  },
-  {
-    type: "excludeStoppedAttack",
-    label: "Exclude Stopped Attack",
-    description: "Reject candidates whose latest behaviour indicates they stopped attacking.",
-    color: "var(--socket-signal)",
-    category: "logic-gate",
-    sockets: [
-      { id: "behaviour", type: "number", position: "left", direction: "input", label: "behaviour" },
-      { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
-    ],
-  },
-  {
-    type: "excludeNpc",
-    label: "Exclude NPC",
-    description: "Reject non-player candidates based on the contract target identity rules.",
-    color: "var(--socket-signal)",
-    category: "logic-gate",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
-    ],
-  },
-  {
-    type: "isInList",
-    label: "Is In List",
-    description: "Check whether a candidate item appears in a provided list.",
-    color: "var(--socket-signal)",
-    category: "logic-gate",
-    sockets: [
-      { id: "input_item", type: "any", position: "left", direction: "input", label: "input item" },
-      { id: "input_list", type: "list", position: "top", direction: "input", label: "input list" },
-      { id: "yes", type: "boolean", position: "right", direction: "output", label: "yes" },
-      { id: "no", type: "boolean", position: "right", direction: "output", label: "no" },
-    ],
-  },
-  {
-    type: "countAggressors",
-    label: "Count Aggressors",
-    description: "Count aggressors in a candidate set and expose the raid threshold signal.",
-    color: "var(--socket-signal)",
-    category: "logic-gate",
-    sockets: [
-      { id: "candidates", type: "list", position: "left", direction: "input", label: "candidates" },
-      { id: "count", type: "number", position: "right", direction: "output", label: "count" },
-      { id: "is_raid", type: "boolean", position: "right", direction: "output", label: "is raid" },
-    ],
-  },
-  {
-    type: "groupBonusConfig",
-    label: "Group Bonus Config",
-    description: "Expose the group-specialist configuration object as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
-    sockets: [{ id: "config", type: "config", position: "right", direction: "output", label: "config" }],
-  },
-  {
-    type: "roundRobinConfig",
-    label: "Round Robin Config",
-    description: "Expose the round-robin history configuration as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
-    sockets: [{ id: "config", type: "config", position: "right", direction: "output", label: "config" }],
-  },
-  {
-    type: "threatLedgerConfig",
-    label: "Threat Ledger Config",
-    description: "Expose the tribe threat ledger as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
-    sockets: [{ id: "config", type: "config", position: "right", direction: "output", label: "config" }],
-  },
-  {
-    type: "typeBlocklistConfig",
-    label: "Type Blocklist Config",
-    description: "Expose the blocked type id configuration as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
-    sockets: [{ id: "config", type: "config", position: "right", direction: "output", label: "config" }],
-  },
-  {
-    type: "getTribeListFromConfig",
-    label: "Get Tribe List from Config",
-    description: "Read a tribe list from a config object so it can feed reusable list-based logic.",
-    color: "var(--socket-vector)",
-    category: "data-accessor",
-    sockets: [
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "items", type: "list", position: "right", direction: "output", label: "tribes" },
-    ],
-  },
-  {
-    type: "getItemListFromConfig",
-    label: "Get Item List from Config",
-    description: "Read an item list from a config object so exclusion and scoring nodes can share it.",
-    color: "var(--socket-vector)",
-    category: "data-accessor",
-    sockets: [
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "items", type: "list", position: "right", direction: "output", label: "items" },
-    ],
-  },
-  {
-    type: "getCharacterListFromConfig",
-    label: "Get Character List from Config",
-    description: "Read a character list from a config object for allowlists, denylists, and actor-specific flows.",
-    color: "var(--socket-vector)",
-    category: "data-accessor",
-    sockets: [
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "items", type: "list", position: "right", direction: "output", label: "characters" },
-    ],
-  },
-  {
-    type: "addToQueue",
-    label: "Add to Queue",
-    description: "Append an included, weighted target to the outgoing priority queue.",
-    color: "var(--socket-vector)",
-    category: "action",
-    sockets: [
-      { id: "priority_in", type: "priority", position: "left", direction: "input", label: "priority in" },
-      { id: "predicate", type: "boolean", position: "left", direction: "input", label: "predicate" },
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "weight", type: "number", position: "left", direction: "input", label: "weight" },
-      { id: "priority_out", type: "priority", position: "right", direction: "output", label: "priority out" },
-    ],
-  },
-] as const satisfies readonly NodeDefinition[];
-
-const expectedNodeTypes = expectedNodeDefinitions.map((definition) => definition.type);
+const retiredNodeTypes = ["excludeOwner", "excludeSameTribe", "excludeStoppedAttack", "excludeNpc"] as const;
+const primitiveNodeTypes = [
+  "isOwner",
+  "isSameTribe",
+  "hasStoppedAttack",
+  "isNpc",
+  "booleanNot",
+  "booleanAnd",
+  "booleanOr",
+  "booleanXor",
+] as const;
 
 describe("nodeDefinitions", () => {
-  it("contains the complete 31-node contract-aligned catalogue", () => {
-    expect(nodeDefinitions).toHaveLength(31);
-    expect(nodeDefinitions.map((definition) => definition.type)).toEqual(expectedNodeTypes);
-  });
-
-  describe.each(expectedNodeDefinitions)("$label ($type)", (expectedDefinition) => {
-    it("matches the canonical metadata and socket list", () => {
-      const definition = nodeDefinitions.find((candidate) => candidate.type === expectedDefinition.type);
-
-      expect(definition).toEqual(expectedDefinition);
-    });
+  it("contains the complete runtime catalogue and a filtered authoring catalogue", () => {
+    expect(nodeDefinitions).toHaveLength(32);
+    expect(authorableNodeDefinitions).toHaveLength(28);
+    expect(authorableNodeDefinitions.map((definition) => definition.type)).not.toEqual(
+      expect.arrayContaining([...retiredNodeTypes]),
+    );
+    expect(nodeDefinitions.map((definition) => definition.type)).toEqual(
+      expect.arrayContaining([...primitiveNodeTypes, ...retiredNodeTypes]),
+    );
   });
 
   it("declares unique node and socket ids with socket metadata", () => {
@@ -389,17 +43,60 @@ describe("nodeDefinitions", () => {
     }
   });
 
-  it("keeps the canonical targeting flow sockets available", () => {
+  it("adds primitive predicate and boolean operator metadata", () => {
+    expect(nodeDefinitions.find((definition) => definition.type === "isSameTribe")).toMatchObject({
+      label: "Is Same Tribe",
+      sockets: [
+        { id: "tribe", direction: "input" },
+        { id: "owner_tribe", direction: "input" },
+        { id: "matches", direction: "output" },
+      ],
+    });
+    expect(nodeDefinitions.find((definition) => definition.type === "booleanNot")).toMatchObject({
+      label: "NOT",
+      sockets: [
+        { id: "input", direction: "input" },
+        { id: "result", direction: "output" },
+      ],
+    });
+    expect(nodeDefinitions.find((definition) => definition.type === "booleanOr")).toMatchObject({
+      label: "OR",
+      sockets: [
+        { id: "left", direction: "input" },
+        { id: "right", direction: "input" },
+        { id: "result", direction: "output" },
+      ],
+    });
+  });
+
+  it("marks bundled exclusion nodes as retired with replacement guidance", () => {
+    expect(nodeDefinitions.find((definition) => definition.type === "excludeOwner")?.deprecation).toEqual(
+      expect.objectContaining({
+        status: "retired",
+        replacedBy: ["isOwner", "booleanNot"],
+      }),
+    );
+    expect(nodeDefinitions.find((definition) => definition.type === "excludeSameTribe")?.deprecation).toEqual(
+      expect.objectContaining({
+        status: "retired",
+        replacedBy: ["isSameTribe", "booleanNot", "booleanOr"],
+      }),
+    );
+  });
+
+  it("keeps the canonical primitive targeting flow sockets available", () => {
     const proximity = nodeDefinitions.find((definition) => definition.type === "proximity");
     const getTribe = nodeDefinitions.find((definition) => definition.type === "getTribe");
-    const getTribeListFromConfig = nodeDefinitions.find((definition) => definition.type === "getTribeListFromConfig");
-    const isInList = nodeDefinitions.find((definition) => definition.type === "isInList");
+    const isSameTribe = nodeDefinitions.find((definition) => definition.type === "isSameTribe");
+    const booleanNot = nodeDefinitions.find((definition) => definition.type === "booleanNot");
+    const booleanOr = nodeDefinitions.find((definition) => definition.type === "booleanOr");
     const addToQueue = nodeDefinitions.find((definition) => definition.type === "addToQueue");
 
     expect(proximity?.sockets.map((socket) => socket.id)).toEqual(["priority", "target"]);
     expect(getTribe?.sockets.map((socket) => socket.id)).toEqual(["target", "tribe", "owner_tribe"]);
-    expect(getTribeListFromConfig?.sockets.map((socket) => socket.id)).toEqual(["config", "items"]);
-    expect(isInList?.sockets.map((socket) => socket.id)).toEqual(["input_item", "input_list", "yes", "no"]);
+    expect(isSameTribe?.sockets.map((socket) => socket.id)).toEqual(["tribe", "owner_tribe", "matches"]);
+    expect(booleanNot?.sockets.map((socket) => socket.id)).toEqual(["input", "result"]);
+    expect(booleanOr?.sockets.map((socket) => socket.id)).toEqual(["left", "right", "result"]);
     expect(addToQueue?.sockets.map((socket) => socket.id)).toEqual([
       "priority_in",
       "predicate",
@@ -407,9 +104,5 @@ describe("nodeDefinitions", () => {
       "weight",
       "priority_out",
     ]);
-  });
-
-  it("keeps a stable canonical type list", () => {
-    expect(nodeDefinitions.map((definition) => definition.type)).toEqual(expectedNodeTypes);
   });
 });

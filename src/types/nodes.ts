@@ -9,10 +9,8 @@ export type SocketType =
   | "standing"
   | "wallet"
   | "priority"
-  | "config"
   | "target"
   | "boolean"
-  | "list"
   | "number"
   | "string"
   | "any";
@@ -33,9 +31,35 @@ export type SocketDirection = "input" | "output";
 export type NodeCategory =
   | "event-trigger"
   | "data-accessor"
-  | "data-source"
   | "logic-gate"
   | "action";
+
+export type NodeFieldScalar = string | number | boolean;
+
+export type NodeFieldValue = NodeFieldScalar | readonly string[] | readonly number[] | readonly boolean[];
+
+export type NodeFieldMap = Readonly<Record<string, NodeFieldValue>>;
+
+/**
+ * Metadata describing a node that has been replaced or retired.
+ */
+export interface NodeDeprecation {
+  readonly status: "deprecated" | "retired";
+  readonly reason: string;
+  readonly replacedBy?: readonly string[];
+  readonly remediationMessage?: string;
+}
+
+/**
+ * User-visible restore notice for legacy content that needs follow-up.
+ */
+export interface RemediationNotice {
+  readonly nodeId: string;
+  readonly legacyType: string;
+  readonly message: string;
+  readonly severity: "warning" | "error";
+  readonly suggestedAction: string;
+}
 
 /**
  * Declares a typed handle rendered on a visual node.
@@ -58,6 +82,7 @@ export interface NodeDefinition {
   readonly color: string;
   readonly category: NodeCategory;
   readonly sockets: readonly SocketDefinition[];
+  readonly deprecation?: NodeDeprecation;
 }
 
 /**
@@ -71,6 +96,11 @@ export interface FlowNodeData {
   readonly color: string;
   readonly category: NodeCategory;
   readonly sockets: readonly SocketDefinition[];
+  readonly fields: NodeFieldMap;
+  readonly deprecation?: NodeDeprecation;
+  readonly remediationNotice?: RemediationNotice;
+  readonly diagnosticMessages?: readonly string[];
+  readonly validationState?: "warning" | "error";
 }
 
 /**

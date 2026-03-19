@@ -458,6 +458,181 @@ button,
   color: var(--text-secondary);
 }
 
+.ff-node-field-editor {
+  position: fixed;
+  inset: 0;
+  padding: 1rem;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+}
+
+.ff-node-field-editor__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.52);
+}
+
+.ff-node-field-editor__dialog {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.98);
+  padding: 1.25rem;
+  box-shadow: 0 20px 38px rgba(3, 6, 10, 0.35);
+}
+
+.ff-node-field-editor__eyebrow,
+.ff-node-field-editor__label {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-node-field-editor__title {
+  margin: 0.5rem 0 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cream-white);
+}
+
+.ff-node-field-editor__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ff-node-field-editor__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(26, 10, 10, 0.56);
+  padding: 0.85rem;
+}
+
+.ff-node-field-editor__section-header,
+.ff-node-field-editor__list-row,
+.ff-node-field-editor__actions,
+.ff-node__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ff-node-field-editor__choice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.84);
+  padding: 0.65rem 0.75rem;
+}
+
+.ff-node-field-editor__choice-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.ff-node-field-editor__choice-meta {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.ff-node-field-editor__checkbox {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.ff-node-field-editor__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ff-node-field-editor__input,
+.ff-node-field-editor__button,
+.ff-node-field-editor__add,
+.ff-node-field-editor__remove,
+.ff-node__edit-button {
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.92);
+  color: var(--cream-white);
+  font: inherit;
+}
+
+.ff-node-field-editor__input {
+  flex: 1 1 auto;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.ff-node-field-editor__button,
+.ff-node-field-editor__add,
+.ff-node-field-editor__remove,
+.ff-node__edit-button {
+  min-height: 2.25rem;
+  padding: 0.55rem 0.8rem;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ff-node-field-editor__button:hover,
+.ff-node-field-editor__button:focus-visible,
+.ff-node-field-editor__add:hover,
+.ff-node-field-editor__add:focus-visible,
+.ff-node-field-editor__remove:hover,
+.ff-node-field-editor__remove:focus-visible,
+.ff-node__edit-button:hover,
+.ff-node__edit-button:focus-visible {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.12);
+}
+
+.ff-node-field-editor__button--primary {
+  border-color: var(--brand-orange);
+}
+
+.ff-node-field-editor__error,
+.ff-node__field-summary-line,
+.ff-node-field-editor__empty {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.ff-node-field-editor__error {
+  color: #ff9d91;
+}
+
+.ff-node__field-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0 0.85rem 0.75rem;
+  color: var(--text-secondary);
+}
+
 .ff-canvas__context-menu {
   position: fixed;
   z-index: 8;
@@ -786,6 +961,7 @@ button,
 }
 
 .ff-node__surface {
+  position: relative;
   border: 1px solid var(--ui-border-dark);
   background: rgba(20, 24, 31, 0.94);
   box-shadow: 0 20px 35px rgba(3, 6, 10, 0.35);
@@ -870,6 +1046,32 @@ button,
   width: 1rem;
   height: 1rem;
   flex: none;
+}
+
+.ff-node__actions {
+  margin-left: auto;
+}
+
+.ff-node__edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ff-node:hover .ff-node__edit-button,
+.ff-node:focus-within .ff-node__edit-button,
+.ff-node.is-selected .ff-node__edit-button,
+.ff-node[data-editing="true"] .ff-node__edit-button,
+.ff-node__edit-button:focus-visible {
+  opacity: 1;
+}
+
+.ff-node__edit-icon {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .ff-node__title {

@@ -132,16 +132,16 @@ const nodeDefinitions = [
     color: "bg-[var(--socket-entity)]",
   },
   {
-    type: "listOfTribe",
-    label: "List of Tribe",
-    description: "Enumerate tribes",
-    color: "bg-[var(--socket-vector)]",
+    type: "isAggressor",
+    label: "Is Aggressor",
+    description: "Check aggressor state",
+    color: "bg-[var(--socket-signal)]",
   },
   {
-    type: "isInList",
-    label: "Is in List",
-    description: "Verify item membership",
-    color: "bg-[var(--socket-signal)]",
+    type: "getPriorityWeight",
+    label: "Get Priority Weight",
+    description: "Read baseline priority",
+    color: "bg-[var(--socket-value)]",
   },
   {
     type: "addToQueue",
@@ -514,8 +514,8 @@ export const nodeTypes = {
   aggression: AggressionNode,
   proximity: ProximityNode,
   getTribe: GetTribeNode,
-  listOfTribe: ListOfTribeNode,
-  isInList: IsInListNode,
+  isAggressor: IsAggressorNode,
+  getPriorityWeight: GetPriorityWeightNode,
   addToQueue: AddToQueueNode,
   hpRatio: HpRatioNode,
   shieldRatio: ShieldRatioNode,
@@ -593,27 +593,27 @@ const [generatedCode, setGeneratedCode] = React.useState("");
 const initialNodes: Node[] = [
   {
     id: "1",
-    type: "proximity",
+    type: "aggression",
     position: { x: 50, y: 200 },
-    data: { label: "Proximity" },
+    data: { label: "Aggression" },
   },
   {
     id: "2",
     type: "getTribe",
     position: { x: 350, y: 200 },
-    data: { label: "Rider" },
+    data: { label: "Get Tribe" },
   },
   {
     id: "3",
-    type: "listOfTribe",
+    type: "isAggressor",
     position: { x: 350, y: 50 },
-    data: { label: "Friendlies" },
+    data: { label: "Is Aggressor" },
   },
   {
     id: "4",
-    type: "isInList",
+    type: "getPriorityWeight",
     position: { x: 620, y: 200 },
-    data: { label: "Is Friendly?" },
+    data: { label: "Get Priority Weight" },
   },
   {
     id: "5",
@@ -628,49 +628,60 @@ const initialNodes: Node[] = [
 
 ```typescript
 const initialEdges: Edge[] = [
-  // Proximity → Expand Rider (target → rider input)
+  // Aggression → Get Tribe (target passthrough)
   {
     id: "e1-2",
     source: "1",
     target: "2",
     sourceHandle: "target",
-    targetHandle: "rider",
+    targetHandle: "target",
     animated: true,
     style: { stroke: "var(--socket-entity)", strokeWidth: 2 },
     markerEnd: { type: MarkerType.ArrowClosed, color: "var(--socket-entity)" },
   },
-  // Expand Rider → Is in List (tribe → item to check)
+  // Aggression → Is Aggressor (target passthrough)
   {
-    id: "e2-4",
-    source: "2",
-    target: "4",
-    sourceHandle: "tribe",
-    targetHandle: "input_item",
+    id: "e1-3",
+    source: "1",
+    target: "3",
+    sourceHandle: "target",
+    targetHandle: "target",
     animated: true,
     style: { stroke: "var(--socket-entity)", strokeWidth: 2 },
     markerEnd: { type: MarkerType.ArrowClosed, color: "var(--socket-entity)" },
   },
-  // List of Tribe → Is in List (friendly list)
+  // Aggression → Add to Queue (priority passthrough)
   {
-    id: "e3-4",
-    source: "3",
-    target: "4",
-    sourceHandle: "items",
-    targetHandle: "input_list",
-    animated: true,
-    style: { stroke: "var(--socket-vector)", strokeWidth: 2 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: "var(--socket-vector)" },
-  },
-  // Proximity → Add to Queue (priority passthrough)
-  {
-    id: "e1-5-priority",
+    id: "e1-5",
     source: "1",
     target: "5",
     sourceHandle: "priority",
     targetHandle: "priority_in",
     animated: true,
-    style: { stroke: "var(--socket-vector)", strokeWidth: 3 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: "var(--socket-vector)" },
+    style: { stroke: "var(--socket-priority)", strokeWidth: 2 },
+    markerEnd: { type: MarkerType.ArrowClosed, color: "var(--socket-priority)" },
+  },
+  // Aggression → Add to Queue (target passthrough)
+  {
+    id: "e1-5-target",
+    source: "1",
+    target: "5",
+    sourceHandle: "target",
+    targetHandle: "target",
+    animated: true,
+    style: { stroke: "var(--socket-entity)", strokeWidth: 2 },
+    markerEnd: { type: MarkerType.ArrowClosed, color: "var(--socket-entity)" },
+  },
+  // Get Priority Weight → Add to Queue (weight input)
+  {
+    id: "e4-5",
+    source: "4",
+    target: "5",
+    sourceHandle: "weight",
+    targetHandle: "weight",
+    animated: true,
+    style: { stroke: "var(--socket-value)", strokeWidth: 2 },
+    markerEnd: { type: MarkerType.ArrowClosed, color: "var(--socket-value)" },
   },
   // Is in List (NO) → Add to Queue predicate (if NOT friendly)
   {

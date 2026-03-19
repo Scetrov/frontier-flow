@@ -1,0 +1,80 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import NodeFieldEditor from "../nodes/NodeFieldEditor";
+import { resetNodeFieldEditorOptionCacheForTests } from "../nodes/nodeFieldEditorOptions";
+
+describe("NodeFieldEditor", () => {
+  beforeEach(() => {
+    resetNodeFieldEditorOptionCacheForTests();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("provides an accessible dialog name and restores focus on close", async () => {
+    const trigger = document.createElement("button");
+    trigger.textContent = "Open List Editor";
+    document.body.append(trigger);
+    trigger.focus();
+
+    const { unmount } = render(
+      <NodeFieldEditor
+        fields={{ characterAddresses: [] }}
+        nodeLabel="List of Character"
+        nodeType="listCharacter"
+        onClose={() => undefined}
+        onSave={() => undefined}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "List of Character" });
+    expect(dialog).toHaveAttribute("aria-describedby");
+    expect(screen.getByText("Configure node-specific values before saving your changes.")).toBeVisible();
+
+    await waitFor(() => {
+      expect(dialog).toHaveFocus();
+    });
+
+    unmount();
+
+    await waitFor(() => {
+      expect(trigger).toHaveFocus();
+    });
+
+    trigger.remove();
+  });
+
+  it("filters malformed world API options without surfacing a load error", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        data: [
+          { id: 98_000_418, name: "Pegasus Cartel", nameShort: "PEG" },
+          { id: "bad", name: "Broken Tribe" },
+          { id: 98_000_419 },
+          null,
+        ],
+      }),
+      status: 200,
+    } as Response);
+
+    render(
+      <NodeFieldEditor
+        fields={{ selectedTribeIds: [] }}
+        nodeLabel="List of Tribe"
+        nodeType="listTribe"
+        onClose={() => undefined}
+        onSave={() => undefined}
+      />,
+    );
+
+    expect(await screen.findByRole("dialog", { name: "List of Tribe" })).toBeInTheDocument();
+    expect(await screen.findByText("Pegasus Cartel")).toBeVisible();
+    expect(screen.queryByText("Broken Tribe")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Unable to load options|Request failed/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  });
+});

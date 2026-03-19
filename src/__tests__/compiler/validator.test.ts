@@ -67,13 +67,120 @@ describe("validateGraph", () => {
     ).toBe(true);
   });
 
+  it("treats unconfigured configurable nodes as blocking diagnostics", () => {
+    const graph = buildIrGraph([createFlowNode("group_1", "isInGroup")], [], "group_contract");
+
+    const result = validateGraph(graph);
+
+    expect(result.valid).toBe(false);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.userMessage.includes("Select at least one ship group"))).toBe(true);
+  });
+
+  it("allows disconnected list nodes to remain unconfigured", () => {
+    const graph = buildIrGraph([createFlowNode("list_1", "listCharacter")], [], "draft_list_contract");
+
+    const result = validateGraph(graph);
+
+    expect(
+      result.diagnostics.some(
+        (diagnostic) => diagnostic.reactFlowNodeId === "list_1"
+          && diagnostic.userMessage.includes("Configure at least one value"),
+      ),
+    ).toBe(false);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) => diagnostic.reactFlowNodeId === "list_1"
+          && diagnostic.severity === "warning"
+          && diagnostic.userMessage.includes("disconnected"),
+      ),
+    ).toBe(true);
+  });
+
+  it("requires configured values once a list node feeds the active graph", () => {
+    const graph = buildIrGraph(
+      [
+        createFlowNode("trigger_1", "aggression"),
+        createFlowNode("list_1", "listCharacter"),
+        createFlowNode("list_gate_1", "isInList"),
+      ],
+      [
+        {
+          id: "edge_trigger_list_target",
+          source: "trigger_1",
+          sourceHandle: "target",
+          target: "list_gate_1",
+          targetHandle: "target",
+        },
+        {
+          id: "edge_list_gate_list",
+          source: "list_1",
+          sourceHandle: "list",
+          target: "list_gate_1",
+          targetHandle: "list",
+        },
+      ],
+      "configured_list_contract",
+    );
+
+    const result = validateGraph(graph);
+
+    expect(result.valid).toBe(false);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) => diagnostic.reactFlowNodeId === "list_1"
+          && diagnostic.userMessage.includes("Configure at least one value"),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects unsupported upstream sources for Is in List", () => {
+    const graph = buildIrGraph(
+      [
+        createFlowNode("trigger_1", "aggression"),
+        createFlowNode("weight_1", "getPriorityWeight"),
+        createFlowNode("list_gate_1", "isInList"),
+      ],
+      [
+        {
+          id: "edge_trigger_weight_target",
+          source: "trigger_1",
+          sourceHandle: "target",
+          target: "weight_1",
+          targetHandle: "target",
+        },
+        {
+          id: "edge_trigger_list_target",
+          source: "trigger_1",
+          sourceHandle: "target",
+          target: "list_gate_1",
+          targetHandle: "target",
+        },
+        {
+          id: "edge_weight_list",
+          source: "weight_1",
+          sourceHandle: "weight",
+          target: "list_gate_1",
+          targetHandle: "list",
+        },
+      ],
+      "invalid_list_contract",
+    );
+
+    const result = validateGraph(graph);
+
+    expect(result.valid).toBe(false);
+    expect(
+      result.diagnostics.some((diagnostic) => diagnostic.userMessage.includes("Connect Is in List to a supported list node")),
+    ).toBe(true);
+  });
+
   it("reports nodes connected outside any event-trigger entry path", () => {
     const graph = buildIrGraph(
       [
         createFlowNode("trigger_1", "aggression"),
         createFlowNode("queue_1", "addToQueue"),
-        createFlowNode("list_1", "getCharacterListFromConfig"),
-        createFlowNode("logic_1", "isInList"),
+        createFlowNode("weight_1", "getPriorityWeight"),
+        createFlowNode("bonus_1", "damageBonus"),
       ],
       [
         {
@@ -84,11 +191,11 @@ describe("validateGraph", () => {
           targetHandle: "priority_in",
         },
         {
-          id: "edge_list_logic",
-          source: "list_1",
-          sourceHandle: "items",
-          target: "logic_1",
-          targetHandle: "input_list",
+          id: "edge_weight_bonus",
+          source: "weight_1",
+          sourceHandle: "weight",
+          target: "bonus_1",
+          targetHandle: "weight_in",
         },
       ],
       "disconnected_path_contract",
@@ -99,7 +206,7 @@ describe("validateGraph", () => {
     expect(result.valid).toBe(false);
     expect(
       result.diagnostics.some(
-        (diagnostic) => diagnostic.reactFlowNodeId === "list_1"
+        (diagnostic) => diagnostic.reactFlowNodeId === "weight_1"
           && diagnostic.userMessage.includes("entry path"),
       ),
     ).toBe(true);

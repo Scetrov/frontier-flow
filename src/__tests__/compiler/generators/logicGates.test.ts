@@ -9,8 +9,6 @@ describe("logic gate generators", () => {
     ["excludeSameTribe", "||", 1],
     ["excludeStoppedAttack", "!= 0", 1],
     ["excludeNpc", ">= 100", 1],
-    ["isInList", "!", 2],
-    ["countAggressors", ">= 5", 2],
   ])("emits a predicate fragment for %s", (nodeType, expectedFragment, expectedBindings) => {
     const generator = getGenerator(nodeType);
     const context = createGenerationContext("starter_contract");

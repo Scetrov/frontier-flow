@@ -3,16 +3,34 @@ import type { FlowEdge, FlowNode } from "../types/nodes";
 export const CONTRACT_LIBRARY_STORAGE_KEY = "frontier-flow:contracts";
 
 export interface NamedFlowContract {
+  readonly id?: string;
   readonly name: string;
+  readonly description?: string;
   readonly nodes: FlowNode[];
   readonly edges: FlowEdge[];
   readonly updatedAt: string;
+  readonly isSeeded?: boolean;
 }
 
 export interface ContractLibrary {
-  readonly version: 1;
+  readonly version: 2;
   readonly activeContractName: string;
   readonly contracts: NamedFlowContract[];
+}
+
+interface CreateNamedFlowContractOptions {
+  readonly id?: string;
+  readonly description?: string;
+  readonly updatedAt?: string;
+  readonly isSeeded?: boolean;
+}
+
+interface UpdateNamedFlowContractOptions {
+  readonly preserveUpdatedAt?: boolean;
+}
+
+function createContractId(name: string): string {
+  return `contract:${sanitizeContractName(name).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
 
 /**
@@ -30,13 +48,36 @@ export function createNamedFlowContract(
   name: string,
   nodes: readonly FlowNode[],
   edges: readonly FlowEdge[],
+  options: CreateNamedFlowContractOptions = {},
 ): NamedFlowContract {
+  const sanitizedName = sanitizeContractName(name);
+
   return {
-    name: sanitizeContractName(name),
+    id: options.id ?? createContractId(sanitizedName),
+    name: sanitizedName,
+    description: options.description,
     nodes: [...nodes],
     edges: [...edges],
-    updatedAt: new Date().toISOString(),
+    updatedAt: options.updatedAt ?? new Date().toISOString(),
+    isSeeded: options.isSeeded,
   };
+}
+
+/**
+ * Rebuilds an existing named contract with new flow contents while preserving its metadata.
+ */
+export function updateNamedFlowContract(
+  contract: NamedFlowContract,
+  nodes: readonly FlowNode[],
+  edges: readonly FlowEdge[],
+  options: UpdateNamedFlowContractOptions = {},
+): NamedFlowContract {
+  return createNamedFlowContract(contract.name, nodes, edges, {
+    id: contract.id,
+    description: contract.description,
+    updatedAt: options.preserveUpdatedAt === true ? contract.updatedAt : undefined,
+    isSeeded: contract.isSeeded,
+  });
 }
 
 /**
@@ -59,17 +100,21 @@ export function createUniqueContractName(baseName: string, existingNames: readon
 /**
  * Loads the saved contract library from local storage, or falls back to the provided starter contract.
  */
-export function loadContractLibrary(storage: Storage | undefined, fallbackContract: NamedFlowContract): ContractLibrary {
+export function loadContractLibrary(
+  storage: Storage | undefined,
+  fallbackContract: NamedFlowContract,
+  seededContracts: readonly NamedFlowContract[] = [],
+): ContractLibrary {
   const rawValue = storage?.getItem(CONTRACT_LIBRARY_STORAGE_KEY);
   if (rawValue === null || rawValue === undefined) {
-    return createFallbackLibrary(fallbackContract);
+    return createFallbackLibrary(fallbackContract, seededContracts);
   }
 
   try {
     const parsedValue: unknown = JSON.parse(rawValue);
-    return parseContractLibrary(parsedValue, fallbackContract);
+    return parseContractLibrary(parsedValue, fallbackContract, seededContracts);
   } catch {
-    return createFallbackLibrary(fallbackContract);
+    return createFallbackLibrary(fallbackContract, seededContracts);
   }
 }
 
@@ -80,27 +125,52 @@ export function saveContractLibrary(storage: Storage | undefined, library: Contr
   storage?.setItem(CONTRACT_LIBRARY_STORAGE_KEY, JSON.stringify(library));
 }
 
-function createFallbackLibrary(fallbackContract: NamedFlowContract): ContractLibrary {
+function mergeContracts(
+  contracts: readonly NamedFlowContract[],
+  seededContracts: readonly NamedFlowContract[],
+): NamedFlowContract[] {
+  const mergedContracts = new Map<string, NamedFlowContract>();
+
+  for (const contract of [...seededContracts, ...contracts]) {
+    const key = sanitizeContractName(contract.name);
+    mergedContracts.set(key, contract);
+  }
+
+  return [...mergedContracts.values()];
+}
+
+function createFallbackLibrary(
+  fallbackContract: NamedFlowContract,
+  seededContracts: readonly NamedFlowContract[],
+): ContractLibrary {
+  const contracts = mergeContracts([fallbackContract], seededContracts);
+
   return {
-    version: 1,
+    version: 2,
     activeContractName: fallbackContract.name,
-    contracts: [fallbackContract],
+    contracts,
   };
 }
 
-function parseContractLibrary(parsedValue: unknown, fallbackContract: NamedFlowContract): ContractLibrary {
+function parseContractLibrary(
+  parsedValue: unknown,
+  fallbackContract: NamedFlowContract,
+  seededContracts: readonly NamedFlowContract[],
+): ContractLibrary {
   if (!isRecord(parsedValue)) {
-    return createFallbackLibrary(fallbackContract);
+    return createFallbackLibrary(fallbackContract, seededContracts);
   }
 
   const rawContracts = Array.isArray(parsedValue.contracts) ? parsedValue.contracts : [];
-  const contracts = rawContracts.flatMap((rawContract) => {
+  const parsedContracts = rawContracts.flatMap((rawContract) => {
     const parsedContract = parseNamedFlowContract(rawContract);
     return parsedContract === undefined ? [] : [parsedContract];
   });
 
+  const contracts = mergeContracts(parsedContracts, seededContracts);
+
   if (contracts.length === 0) {
-    return createFallbackLibrary(fallbackContract);
+    return createFallbackLibrary(fallbackContract, seededContracts);
   }
 
   const activeContractName =
@@ -109,7 +179,7 @@ function parseContractLibrary(parsedValue: unknown, fallbackContract: NamedFlowC
       : contracts[0].name;
 
   return {
-    version: 1,
+    version: 2,
     activeContractName,
     contracts,
   };
@@ -125,10 +195,13 @@ function parseNamedFlowContract(rawContract: unknown): NamedFlowContract | undef
   }
 
   return {
+    id: typeof rawContract.id === "string" ? rawContract.id : createContractId(rawContract.name),
     name: sanitizeContractName(rawContract.name),
+    description: typeof rawContract.description === "string" ? rawContract.description : undefined,
     nodes: rawContract.nodes as FlowNode[],
     edges: rawContract.edges as FlowEdge[],
     updatedAt: typeof rawContract.updatedAt === "string" ? rawContract.updatedAt : new Date(0).toISOString(),
+    isSeeded: rawContract.isSeeded === true,
   };
 }
 

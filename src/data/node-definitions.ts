@@ -1,5 +1,7 @@
 import type { FlowNode, FlowNodeData, NodeDefinition } from "../types/nodes";
 
+import { getDefaultNodeFields, normalizeNodeFields } from "./nodeFieldCatalog";
+
 export const nodeDefinitions: readonly NodeDefinition[] = [
   {
     type: "aggression",
@@ -22,6 +24,30 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
       { id: "priority", type: "priority", position: "right", direction: "output", label: "priority" },
       { id: "target", type: "target", position: "right", direction: "output", label: "target" },
     ],
+  },
+  {
+    type: "listTribe",
+    label: "List of Tribe",
+    description: "Curate a reusable tribe list for downstream target matching.",
+    color: "var(--socket-entity)",
+    category: "data-accessor",
+    sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
+  },
+  {
+    type: "listShip",
+    label: "List of Ship",
+    description: "Curate a reusable ship list for downstream target matching.",
+    color: "var(--socket-value)",
+    category: "data-accessor",
+    sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
+  },
+  {
+    type: "listCharacter",
+    label: "List of Character",
+    description: "Curate a reusable list of character addresses for explicit target matching.",
+    color: "var(--socket-any)",
+    category: "data-accessor",
+    sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
   },
   {
     type: "getTribe",
@@ -163,50 +189,17 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     ],
   },
   {
-    type: "groupBonusLookup",
-    label: "Group Bonus Lookup",
-    description: "Look up a group-specific bonus from the shared configuration table.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "group_id", type: "number", position: "left", direction: "input", label: "group id" },
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "threatBonus",
-    label: "Threat Bonus",
-    description: "Apply a tribe threat bonus from the shared threat ledger.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "historyPenalty",
-    label: "History Penalty",
-    description: "Subtract weight from recently targeted candidates using round-robin history.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
     type: "excludeOwner",
     label: "Exclude Owner",
     description: "Block the turret owner from being included as a target.",
     color: "var(--socket-signal)",
     category: "logic-gate",
+    deprecation: {
+      status: "retired",
+      reason: "Use Is Owner plus NOT for explicit boolean composition.",
+      replacedBy: ["isOwner", "booleanNot"],
+      remediationMessage: "Replace Exclude Owner with Is Owner feeding a NOT node.",
+    },
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
@@ -218,6 +211,12 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     description: "Reject same-tribe candidates unless they are active aggressors.",
     color: "var(--socket-signal)",
     category: "logic-gate",
+    deprecation: {
+      status: "retired",
+      reason: "Use Is Same Tribe with NOT and OR for explicit boolean composition.",
+      replacedBy: ["isSameTribe", "booleanNot", "booleanOr"],
+      remediationMessage: "Replace Exclude Same Tribe with Is Same Tribe feeding NOT, then combine with Is Aggressor via OR.",
+    },
     sockets: [
       { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
       { id: "owner_tribe", type: "tribe", position: "left", direction: "input", label: "owner tribe" },
@@ -231,6 +230,12 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     description: "Reject candidates whose latest behaviour indicates they stopped attacking.",
     color: "var(--socket-signal)",
     category: "logic-gate",
+    deprecation: {
+      status: "retired",
+      reason: "Use Has Stopped Attack plus NOT for explicit boolean composition.",
+      replacedBy: ["hasStoppedAttack", "booleanNot"],
+      remediationMessage: "Replace Exclude Stopped Attack with Has Stopped Attack feeding a NOT node.",
+    },
     sockets: [
       { id: "behaviour", type: "number", position: "left", direction: "input", label: "behaviour" },
       { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
@@ -242,6 +247,12 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     description: "Reject non-player candidates based on the contract target identity rules.",
     color: "var(--socket-signal)",
     category: "logic-gate",
+    deprecation: {
+      status: "retired",
+      reason: "Use Is NPC plus NOT for explicit boolean composition.",
+      replacedBy: ["isNpc", "booleanNot"],
+      remediationMessage: "Replace Exclude NPC with Is NPC feeding a NOT node.",
+    },
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
@@ -249,100 +260,117 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
   },
   {
     type: "isInList",
-    label: "Is In List",
-    description: "Check whether a candidate item appears in a provided list.",
+    label: "Is in List",
+    description: "Match the current turret target against a configured tribe, ship, or character list.",
     color: "var(--socket-signal)",
     category: "logic-gate",
     sockets: [
-      { id: "input_item", type: "any", position: "left", direction: "input", label: "input item" },
-      { id: "input_list", type: "list", position: "top", direction: "input", label: "input list" },
-      { id: "yes", type: "boolean", position: "right", direction: "output", label: "yes" },
-      { id: "no", type: "boolean", position: "right", direction: "output", label: "no" },
+      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+      { id: "list", type: "any", position: "left", direction: "input", label: "list" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
     ],
   },
   {
-    type: "countAggressors",
-    label: "Count Aggressors",
-    description: "Count aggressors in a candidate set and expose the raid threshold signal.",
+    type: "isInGroup",
+    label: "Is in Group",
+    description: "Match the current turret target against selected ship groups.",
     color: "var(--socket-signal)",
     category: "logic-gate",
     sockets: [
-      { id: "candidates", type: "list", position: "left", direction: "input", label: "candidates" },
-      { id: "count", type: "number", position: "right", direction: "output", label: "count" },
-      { id: "is_raid", type: "boolean", position: "right", direction: "output", label: "is raid" },
+      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
     ],
   },
   {
-    type: "groupBonusConfig",
-    label: "Group Bonus Config",
-    description: "Expose the group-specialist configuration object as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
+    type: "isOwner",
+    label: "Is Owner",
+    description: "Emit whether the candidate target is the turret owner.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
     sockets: [
-      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
+      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
     ],
   },
   {
-    type: "roundRobinConfig",
-    label: "Round Robin Config",
-    description: "Expose the round-robin history configuration as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
+    type: "isSameTribe",
+    label: "Is Same Tribe",
+    description: "Emit whether the candidate tribe matches the owner tribe.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
     sockets: [
-      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
+      { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
+      { id: "owner_tribe", type: "tribe", position: "left", direction: "input", label: "owner tribe" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
     ],
   },
   {
-    type: "threatLedgerConfig",
-    label: "Threat Ledger Config",
-    description: "Expose the tribe threat ledger as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
+    type: "hasStoppedAttack",
+    label: "Has Stopped Attack",
+    description: "Emit whether the latest behaviour indicates the target stopped attacking.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
     sockets: [
-      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
+      { id: "behaviour", type: "number", position: "left", direction: "input", label: "behaviour" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
     ],
   },
   {
-    type: "typeBlocklistConfig",
-    label: "Type Blocklist Config",
-    description: "Expose the blocked type id configuration as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
+    type: "isNpc",
+    label: "Is NPC",
+    description: "Emit whether the candidate target resolves to a non-player entity.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
     sockets: [
-      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
+      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
     ],
   },
   {
-    type: "getTribeListFromConfig",
-    label: "Get Tribe List from Config",
-    description: "Read a tribe list from a config object so it can feed reusable list-based logic.",
-    color: "var(--socket-vector)",
-    category: "data-accessor",
+    type: "booleanNot",
+    label: "NOT",
+    description: "Invert a boolean input for explicit rule composition.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
     sockets: [
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "items", type: "list", position: "right", direction: "output", label: "tribes" },
+      { id: "input", type: "boolean", position: "left", direction: "input", label: "input" },
+      { id: "result", type: "boolean", position: "right", direction: "output", label: "result" },
     ],
   },
   {
-    type: "getItemListFromConfig",
-    label: "Get Item List from Config",
-    description: "Read an item list from a config object so exclusion and scoring nodes can share it.",
-    color: "var(--socket-vector)",
-    category: "data-accessor",
+    type: "booleanAnd",
+    label: "AND",
+    description: "Combine two boolean inputs and emit true only when both are true.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
     sockets: [
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "items", type: "list", position: "right", direction: "output", label: "items" },
+      { id: "left", type: "boolean", position: "left", direction: "input", label: "left" },
+      { id: "right", type: "boolean", position: "left", direction: "input", label: "right" },
+      { id: "result", type: "boolean", position: "right", direction: "output", label: "result" },
     ],
   },
   {
-    type: "getCharacterListFromConfig",
-    label: "Get Character List from Config",
-    description: "Read a character list from a config object for allowlists, denylists, and actor-specific flows.",
-    color: "var(--socket-vector)",
-    category: "data-accessor",
+    type: "booleanOr",
+    label: "OR",
+    description: "Combine two boolean inputs and emit true when either input is true.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
     sockets: [
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "items", type: "list", position: "right", direction: "output", label: "characters" },
+      { id: "left", type: "boolean", position: "left", direction: "input", label: "left" },
+      { id: "right", type: "boolean", position: "left", direction: "input", label: "right" },
+      { id: "result", type: "boolean", position: "right", direction: "output", label: "result" },
+    ],
+  },
+  {
+    type: "booleanXor",
+    label: "XOR",
+    description: "Combine two boolean inputs and emit true only when the inputs differ.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "left", type: "boolean", position: "left", direction: "input", label: "left" },
+      { id: "right", type: "boolean", position: "left", direction: "input", label: "right" },
+      { id: "result", type: "boolean", position: "right", direction: "output", label: "result" },
     ],
   },
   {
@@ -360,6 +388,10 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     ],
   },
 ] as const;
+
+export const authorableNodeDefinitions: readonly NodeDefinition[] = nodeDefinitions.filter(
+  (definition) => definition.deprecation?.status !== "retired",
+);
 
 const nodeDefinitionsByType = new Map(nodeDefinitions.map((definition) => [definition.type, definition]));
 
@@ -381,6 +413,8 @@ export function createFlowNodeData(definition: NodeDefinition): FlowNodeData {
     color: definition.color,
     category: definition.category,
     sockets: definition.sockets,
+    fields: getDefaultNodeFields(definition.type),
+    deprecation: definition.deprecation,
   };
 }
 
@@ -397,9 +431,14 @@ export function hydrateFlowNode(node: FlowNode): FlowNode | undefined {
     return undefined;
   }
 
+  const persistedData = node.data as { readonly fields?: unknown } | undefined;
+
   return {
     ...node,
     type: definition.type,
-    data: createFlowNodeData(definition),
+    data: {
+      ...createFlowNodeData(definition),
+      fields: normalizeNodeFields(definition.type, persistedData?.fields),
+    },
   };
 }

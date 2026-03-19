@@ -17,8 +17,10 @@ import "@xyflow/react/dist/style.css";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { createFlowNodeData, getNodeDefinition } from "../data/node-definitions";
+import { seededExampleContracts } from "../data/exampleContracts";
 import { flowNodeTypes } from "../nodes";
-import type { FlowEdge, FlowNode } from "../types/nodes";
+import type { FlowEdge, FlowNode, RemediationNotice } from "../types/nodes";
+import type { NodeFieldMap } from "../types/nodes";
 import type { CompilationStatus, CompilerDiagnostic } from "../compiler/types";
 import {
   createNamedFlowContract,
@@ -27,6 +29,8 @@ import {
   sanitizeContractName,
   saveContractLibrary,
   type ContractLibrary,
+  type NamedFlowContract,
+  updateNamedFlowContract,
 } from "../utils/contractStorage";
 import { autoArrangeFlow } from "../utils/layoutFlow";
 import { getEdgeColor, getEdgeStrokeWidth, isValidFlowConnection } from "../utils/socketTypes";
@@ -34,11 +38,13 @@ import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
 import { useAutoCompile } from "../hooks/useAutoCompile";
 
 import { restoreSavedFlow } from "./restoreSavedFlow";
+import { NodeFieldEditingContext } from "../nodes/NodeFieldEditingContext";
 
 interface CanvasWorkspaceProps {
   readonly initialContractName?: string;
   readonly initialNodes?: readonly FlowNode[];
   readonly initialEdges?: readonly FlowEdge[];
+  readonly mode?: "persistent" | "preview";
   readonly focusedDiagnosticNodeId?: string | null;
   readonly focusedDiagnosticRequestKey?: number;
   readonly onCompilationStateChange?: (
@@ -53,6 +59,16 @@ interface CanvasWorkspaceProps {
 interface ContextMenuState {
   readonly x: number;
   readonly y: number;
+}
+
+interface HydratedContractSnapshot {
+  readonly contract: NamedFlowContract;
+  readonly remediationNotices: readonly RemediationNotice[];
+}
+
+interface HydratedContractLibrarySnapshot {
+  readonly library: ContractLibrary;
+  readonly remediationNoticesByContractName: Readonly<Record<string, readonly RemediationNotice[]>>;
 }
 
 const desktopMediaQuery = "(min-width: 768px)";
@@ -90,29 +106,32 @@ function FlowEditor({
   initialContractName = "Starter Contract",
   initialNodes = [],
   initialEdges = [],
+  mode = "persistent",
   focusedDiagnosticNodeId,
   focusedDiagnosticRequestKey = 0,
   onCompilationStateChange,
   onTriggerCompileChange,
 }: CanvasWorkspaceProps) {
+  const initialLibrarySnapshot = useMemo(
+    () => createInitialLibrarySnapshot(initialContractName, initialNodes, initialEdges, mode),
+    [initialContractName, initialEdges, initialNodes, mode],
+  );
   const [contractLibrary, setContractLibrary] = useState<ContractLibrary>(() => {
-    const fallbackContract = createNamedFlowContract(initialContractName, initialNodes, initialEdges);
-    const loadedLibrary = loadContractLibrary(typeof window === "undefined" ? undefined : window.localStorage, fallbackContract);
-
-    return {
-      ...loadedLibrary,
-      contracts: loadedLibrary.contracts.map((contract) => hydrateContract(contract.name, contract.nodes, contract.edges)),
-    };
+    return initialLibrarySnapshot.library;
   });
+  const [contractRemediationNotices, setContractRemediationNotices] = useState<Readonly<Record<string, readonly RemediationNotice[]>>>(
+    () => initialLibrarySnapshot.remediationNoticesByContractName,
+  );
   const activeContract =
     contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName) ?? contractLibrary.contracts[0];
+  const activeRemediationNotices = contractRemediationNotices[contractLibrary.activeContractName] ?? [];
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(activeContract.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(activeContract.edges);
   const [draftContractName, setDraftContractName] = useState(activeContract.name);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
   const [isContractPanelOpen, setIsContractPanelOpen] = useState(
-    () => loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isContractPanelOpen,
+    () => (mode === "persistent" ? loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isContractPanelOpen : false),
   );
   const nodeCounterRef = useRef(0);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
@@ -135,11 +154,30 @@ function FlowEditor({
     return nextDiagnosticsByNodeId;
   }, [compilation.diagnostics]);
 
+  const handleNodeFieldsChange = useCallback(
+    (nodeId: string, fields: NodeFieldMap) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  fields,
+                },
+              }
+            : node,
+        ),
+      );
+    },
+    [setNodes],
+  );
+
   const renderedNodes = useMemo(
     () =>
       nodes.map((node) => {
         const nodeDiagnostics = diagnosticsByNodeId.get(node.id) ?? [];
-        const validationState = nodeDiagnostics.some((diagnostic) => diagnostic.severity === "error")
+        const validationState: FlowNode["data"]["validationState"] = nodeDiagnostics.some((diagnostic) => diagnostic.severity === "error")
           ? "error"
           : nodeDiagnostics.some((diagnostic) => diagnostic.severity === "warning")
             ? "warning"
@@ -156,6 +194,8 @@ function FlowEditor({
       }),
     [diagnosticsByNodeId, nodes],
   );
+
+  const activeContractDescription = activeContract.description ?? (activeContract.isSeeded ? "Curated example contract." : "Local contract snapshot.");
 
   const handleDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -239,6 +279,17 @@ function FlowEditor({
 
   const handleSelectContract = useCallback(
     (contractName: string) => {
+      const currentContractSnapshot = contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName);
+      if (
+        contractName !== contractLibrary.activeContractName &&
+        currentContractSnapshot !== undefined &&
+        hasUnsavedCanvasChanges(currentContractSnapshot, nodes, edges) &&
+        typeof window !== "undefined" &&
+        !window.confirm("Replace the current unsaved canvas changes with the selected contract?")
+      ) {
+        return;
+      }
+
       const nextContract = withActiveContractSnapshot(contractLibrary, nodes, edges).contracts.find(
         (contract) => contract.name === contractName,
       );
@@ -263,11 +314,15 @@ function FlowEditor({
 
   const handleSaveAsContract = useCallback(() => {
     const normalizedName = sanitizeContractName(draftContractName);
-    const nextContract = createNamedFlowContract(normalizedName, nodes, edges);
 
     setContractLibrary((currentLibrary) => {
       const synchronizedLibrary = withActiveContractSnapshot(currentLibrary, nodes, edges);
       const contractIndex = synchronizedLibrary.contracts.findIndex((contract) => contract.name === normalizedName);
+      const nextContract =
+        contractIndex === -1
+          ? createNamedFlowContract(normalizedName, nodes, edges)
+          : updateNamedFlowContract(synchronizedLibrary.contracts[contractIndex], nodes, edges);
+
       if (contractIndex === -1) {
         return {
           ...synchronizedLibrary,
@@ -283,6 +338,10 @@ function FlowEditor({
       };
     });
     setDraftContractName(normalizedName);
+    setContractRemediationNotices((currentNotices) => ({
+      ...currentNotices,
+      [normalizedName]: [],
+    }));
   }, [draftContractName, edges, nodes]);
 
   const handleCreateContractCopy = useCallback(() => {
@@ -299,6 +358,10 @@ function FlowEditor({
       };
     });
     setDraftContractName(uniqueName);
+    setContractRemediationNotices((currentNotices) => ({
+      ...currentNotices,
+      [uniqueName]: [],
+    }));
   }, [contractLibrary.contracts, draftContractName, edges, nodes]);
 
   const handleDeleteContract = useCallback(() => {
@@ -315,6 +378,11 @@ function FlowEditor({
       activeContractName: nextActiveContract.name,
       contracts: nextContracts,
     }));
+    setContractRemediationNotices((currentNotices) => {
+      return Object.fromEntries(
+        Object.entries(currentNotices).filter(([contractName]) => contractName !== synchronizedLibrary.activeContractName),
+      );
+    });
     setDraftContractName(nextActiveContract.name);
     setNodes(nextActiveContract.nodes);
     setEdges(nextActiveContract.edges);
@@ -353,17 +421,25 @@ function FlowEditor({
   }, []);
 
   useEffect(() => {
+    if (mode !== "persistent") {
+      return;
+    }
+
     mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, {
       isContractPanelOpen,
     });
-  }, [isContractPanelOpen]);
+  }, [isContractPanelOpen, mode]);
 
   useEffect(() => {
+    if (mode !== "persistent") {
+      return;
+    }
+
     saveContractLibrary(
       typeof window === "undefined" ? undefined : window.localStorage,
       withActiveContractSnapshot(contractLibrary, nodes, edges),
     );
-  }, [contractLibrary, edges, nodes]);
+  }, [contractLibrary, edges, mode, nodes]);
 
   useEffect(() => {
     onCompilationStateChange?.(
@@ -423,8 +499,9 @@ function FlowEditor({
   }, [contextMenu]);
 
   return (
-    <div className="ff-canvas" data-testid="canvas-workspace" onContextMenu={handlePaneContextMenu}>
-      {!isDesktop && isContractPanelOpen ? (
+    <NodeFieldEditingContext.Provider value={handleNodeFieldsChange}>
+      <div className="ff-canvas" data-testid="canvas-workspace" onContextMenu={handlePaneContextMenu}>
+      {mode === "persistent" && !isDesktop && isContractPanelOpen ? (
         <button
           aria-label="Close saved contract controls overlay"
           className="ff-canvas__drawer-overlay"
@@ -436,7 +513,8 @@ function FlowEditor({
         />
       ) : null}
 
-      <div className="ff-canvas__drawer ff-canvas__drawer--left">
+      {mode === "persistent" ? (
+        <div className="ff-canvas__drawer ff-canvas__drawer--left">
         <div
           className="ff-canvas__drawer-shell"
           style={{
@@ -457,6 +535,17 @@ function FlowEditor({
               <p className="ff-contract-panel__copy">Manage local flow snapshots without taking canvas space away from the editor.</p>
             </div>
 
+            {activeRemediationNotices.length > 0 ? (
+              <div aria-live="polite" className="ff-contract-bar" role="status">
+                <p className="ff-contract-bar__label">Legacy remediation required</p>
+                {activeRemediationNotices.map((notice) => (
+                  <p key={`${notice.nodeId}_${notice.legacyType}`} className="ff-contract-bar__meta">
+                    {notice.message} {notice.suggestedAction}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+
             <div className="ff-contract-bar">
               <label className="ff-contract-bar__field">
                 <span className="ff-contract-bar__label">Saved Contract</span>
@@ -470,11 +559,15 @@ function FlowEditor({
                 >
                   {contractLibrary.contracts.map((contract) => (
                     <option key={contract.name} value={contract.name}>
-                      {contract.name}
+                      {contract.isSeeded === true ? `Example · ${contract.name}` : contract.name}
                     </option>
                   ))}
                 </select>
               </label>
+
+              <p className="ff-contract-bar__meta">
+                {activeContract.isSeeded === true ? "Seeded example" : "User contract"} · {activeContractDescription}
+              </p>
 
               <label className="ff-contract-bar__field ff-contract-bar__field--name">
                 <span className="ff-contract-bar__label">Contract Name</span>
@@ -523,7 +616,8 @@ function FlowEditor({
             {isContractPanelOpen ? <ChevronLeft aria-hidden="true" className="h-5 w-5" /> : <ChevronRight aria-hidden="true" className="h-5 w-5" />}
           </button>
         </div>
-      </div>
+        </div>
+      ) : null}
 
       <ReactFlow<FlowNode, FlowEdge>
         aria-label="Node editor canvas"
@@ -547,7 +641,7 @@ function FlowEditor({
           <div className="ff-canvas__empty-state">
             <p className="ff-canvas__eyebrow">Contract Canvas</p>
             <p className="ff-canvas__copy">
-              Start with Aggression or Proximity, then layer scoring, filters, config sources, config list accessors, and Add to Queue.
+              Start with Aggression or Proximity, then layer scoring, filters, and Add to Queue.
             </p>
           </div>
         ) : null}
@@ -566,7 +660,9 @@ function FlowEditor({
           </button>
         </div>
       ) : null}
-    </div>
+
+      </div>
+    </NodeFieldEditingContext.Provider>
   );
 }
 
@@ -574,6 +670,7 @@ function CanvasWorkspace({
   initialContractName,
   initialNodes,
   initialEdges,
+  mode,
   focusedDiagnosticNodeId,
   focusedDiagnosticRequestKey,
   onCompilationStateChange,
@@ -587,6 +684,7 @@ function CanvasWorkspace({
         initialContractName={initialContractName}
         initialEdges={initialEdges}
         initialNodes={initialNodes}
+        mode={mode}
         onCompilationStateChange={onCompilationStateChange}
         onTriggerCompileChange={onTriggerCompileChange}
       />
@@ -598,7 +696,69 @@ export default CanvasWorkspace;
 
 function hydrateContract(name: string, nodes: readonly FlowNode[], edges: readonly FlowEdge[]) {
   const restoredFlow = restoreSavedFlow(nodes, edges);
-  return createNamedFlowContract(name, restoredFlow.nodes, restoredFlow.edges);
+  return {
+    contract: createNamedFlowContract(name, restoredFlow.nodes, restoredFlow.edges),
+    remediationNotices: restoredFlow.remediationNotices,
+  } satisfies HydratedContractSnapshot;
+}
+
+function hydrateLibraryContracts(library: ContractLibrary): HydratedContractLibrarySnapshot {
+  const remediationNoticesByContractName: Record<string, readonly RemediationNotice[]> = {};
+  const contracts = library.contracts.map((contract) => {
+    const hydratedContract = hydrateContract(contract.name, contract.nodes, contract.edges);
+    remediationNoticesByContractName[contract.name] = hydratedContract.remediationNotices;
+
+    return createNamedFlowContract(contract.name, hydratedContract.contract.nodes, hydratedContract.contract.edges, {
+      id: contract.id,
+      description: contract.description,
+      updatedAt: contract.updatedAt,
+      isSeeded: contract.isSeeded,
+    });
+  });
+
+  return {
+    library: {
+      ...library,
+      contracts,
+    },
+    remediationNoticesByContractName,
+  };
+}
+
+function createInitialLibrarySnapshot(
+  initialContractName: string,
+  initialNodes: readonly FlowNode[],
+  initialEdges: readonly FlowEdge[],
+  mode: NonNullable<CanvasWorkspaceProps["mode"]>,
+): HydratedContractLibrarySnapshot {
+  const fallbackContract = createNamedFlowContract(initialContractName, initialNodes, initialEdges);
+
+  if (mode === "preview") {
+    return createPreviewLibrarySnapshot(fallbackContract);
+  }
+
+  const loadedLibrary = loadContractLibrary(
+    typeof window === "undefined" ? undefined : window.localStorage,
+    fallbackContract,
+    seededExampleContracts,
+  );
+
+  return hydrateLibraryContracts(loadedLibrary);
+}
+
+function createPreviewLibrarySnapshot(fallbackContract: NamedFlowContract): HydratedContractLibrarySnapshot {
+  const hydratedContract = hydrateContract(fallbackContract.name, fallbackContract.nodes, fallbackContract.edges);
+
+  return {
+    library: {
+      version: 2,
+      activeContractName: hydratedContract.contract.name,
+      contracts: [hydratedContract.contract],
+    },
+    remediationNoticesByContractName: {
+      [hydratedContract.contract.name]: hydratedContract.remediationNotices,
+    },
+  };
 }
 
 function withActiveContractSnapshot(
@@ -609,7 +769,13 @@ function withActiveContractSnapshot(
   return {
     ...contractLibrary,
     contracts: contractLibrary.contracts.map((contract) =>
-      contract.name === contractLibrary.activeContractName ? createNamedFlowContract(contract.name, nodes, edges) : contract,
+      contract.name === contractLibrary.activeContractName
+        ? updateNamedFlowContract(contract, nodes, edges, { preserveUpdatedAt: true })
+        : contract,
     ),
   };
+}
+
+function hasUnsavedCanvasChanges(contract: NamedFlowContract, nodes: readonly FlowNode[], edges: readonly FlowEdge[]): boolean {
+  return JSON.stringify({ nodes, edges }) !== JSON.stringify({ nodes: contract.nodes, edges: contract.edges });
 }

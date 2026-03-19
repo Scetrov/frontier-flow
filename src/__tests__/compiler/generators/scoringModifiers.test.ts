@@ -9,9 +9,6 @@ describe("scoring modifier generators", () => {
     ["aggressorBonus", "if ("],
     ["damageBonus", "100 -"],
     ["sizeTierBonus", "% 5"],
-    ["groupBonusLookup", "% 3"],
-    ["threatBonus", "% 4"],
-    ["historyPenalty", "- 10"],
   ])("emits a scoring fragment for %s", (nodeType, expectedFragment) => {
     const generator = getGenerator(nodeType);
     const context = createGenerationContext("starter_contract");

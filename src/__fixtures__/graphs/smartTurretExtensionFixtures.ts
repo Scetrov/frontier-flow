@@ -18,6 +18,20 @@ export interface GraphFixture {
   readonly edges: readonly GraphFixtureEdge[];
 }
 
+export interface LegacyGraphFixture {
+  readonly id: string;
+  readonly description: string;
+  readonly expectedOutcome: "auto-migrate" | "remediate";
+  readonly fixture: GraphFixture;
+}
+
+export interface SeededContractFixture {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly fixture: GraphFixture;
+}
+
 interface SmartTurretExtensionBase {
   readonly extensionId: string;
   readonly behaviorName: string;
@@ -88,20 +102,6 @@ export const smartTurretExtensionFixtures = [
     },
   },
   {
-    extensionId: "turret_group_specialist",
-    behaviorName: "Group Specialist",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "getGroupId", "groupBonusConfig", "groupBonusLookup", "addToQueue"],
-    blockedBy: "Config-backed group bonus flows still fail validation because config source nodes sit outside the event-trigger entry path.",
-  },
-  {
-    extensionId: "turret_last_stand",
-    behaviorName: "Last Stand",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "countAggressors", "damageBonus", "addToQueue"],
-    blockedBy: "Raid-mode selection needs a candidate-list source and branching stage that the current graph model does not provide.",
-  },
-  {
     extensionId: "turret_low_hp_finisher",
     behaviorName: "Low HP Finisher",
     compileSupported: true,
@@ -165,13 +165,6 @@ export const smartTurretExtensionFixtures = [
     },
   },
   {
-    extensionId: "turret_round_robin",
-    behaviorName: "Round Robin",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "roundRobinConfig", "historyPenalty", "addToQueue"],
-    blockedBy: "Round-robin history depends on a shared config source that the current validator treats as disconnected from the trigger path.",
-  },
-  {
     extensionId: "turret_size_priority",
     behaviorName: "Size Priority",
     compileSupported: true,
@@ -198,20 +191,6 @@ export const smartTurretExtensionFixtures = [
       ],
     },
   },
-  {
-    extensionId: "turret_threat_ledger",
-    behaviorName: "Threat Ledger",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "getTribe", "threatLedgerConfig", "threatBonus", "addToQueue"],
-    blockedBy: "Threat-ledger flows need a shared config source, which is still disconnected from the generated event-trigger path under current validation rules.",
-  },
-  {
-    extensionId: "turret_type_blocklist",
-    behaviorName: "Type Blocklist",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "typeBlocklistConfig", "getItemListFromConfig", "isInList", "addToQueue"],
-    blockedBy: "Type-blocklist coverage still lacks a target type_id accessor and a boolean combiner to merge the list check with the standard exclusion gates.",
-  },
 ] as const satisfies readonly SmartTurretExtensionFixture[];
 
 export function isCompilableSmartTurretExtension(
@@ -229,3 +208,58 @@ for (const extension of smartTurretExtensionFixtures) {
 }
 
 export const compileableSmartTurretExtensions: readonly CompilableSmartTurretExtension[] = compileableExtensions;
+
+export const legacySmartTurretExtensionFixtures: readonly LegacyGraphFixture[] = [
+  {
+    id: "legacy_same_tribe_rule",
+    description: "Legacy bundled same-tribe exclusion flow that should later auto-migrate to primitive predicates.",
+    expectedOutcome: "auto-migrate",
+    fixture: {
+      moduleName: "legacy_same_tribe_rule",
+      nodes: [
+        { id: "legacy_aggression", type: "aggression", position: { x: 0, y: 120 } },
+        { id: "legacy_get_tribe", type: "getTribe", position: { x: 220, y: 40 } },
+        { id: "legacy_is_aggressor", type: "isAggressor", position: { x: 220, y: 200 } },
+        { id: "legacy_same_tribe", type: "excludeSameTribe", position: { x: 500, y: 120 } },
+        { id: "legacy_get_weight", type: "getPriorityWeight", position: { x: 500, y: 280 } },
+        { id: "legacy_add_to_queue", type: "addToQueue", position: { x: 760, y: 220 } },
+      ],
+      edges: [
+        { id: "legacy_target_tribe", source: "legacy_aggression", sourceHandle: "target", target: "legacy_get_tribe", targetHandle: "target" },
+        { id: "legacy_target_aggressor", source: "legacy_aggression", sourceHandle: "target", target: "legacy_is_aggressor", targetHandle: "target" },
+        { id: "legacy_tribe", source: "legacy_get_tribe", sourceHandle: "tribe", target: "legacy_same_tribe", targetHandle: "tribe" },
+        { id: "legacy_owner_tribe", source: "legacy_get_tribe", sourceHandle: "owner_tribe", target: "legacy_same_tribe", targetHandle: "owner_tribe" },
+        { id: "legacy_aggressor_flag", source: "legacy_is_aggressor", sourceHandle: "is_aggressor", target: "legacy_same_tribe", targetHandle: "is_aggressor" },
+        { id: "legacy_weight_target", source: "legacy_aggression", sourceHandle: "target", target: "legacy_get_weight", targetHandle: "target" },
+        { id: "legacy_priority", source: "legacy_aggression", sourceHandle: "priority", target: "legacy_add_to_queue", targetHandle: "priority_in" },
+        { id: "legacy_target_action", source: "legacy_aggression", sourceHandle: "target", target: "legacy_add_to_queue", targetHandle: "target" },
+        { id: "legacy_predicate", source: "legacy_same_tribe", sourceHandle: "include", target: "legacy_add_to_queue", targetHandle: "predicate" },
+        { id: "legacy_weight", source: "legacy_get_weight", sourceHandle: "weight", target: "legacy_add_to_queue", targetHandle: "weight" },
+      ],
+    },
+  },
+  {
+    id: "legacy_obsolete_config_rule",
+    description: "Legacy restore candidate with an unknown config source that should load with remediation instead of failing silently.",
+    expectedOutcome: "remediate",
+    fixture: {
+      moduleName: "legacy_obsolete_config_rule",
+      nodes: [
+        { id: "obsolete_trigger", type: "aggression", position: { x: 0, y: 160 } },
+        { id: "obsolete_config", type: "obsoleteConfigSource", position: { x: 220, y: 40 } },
+        { id: "obsolete_lookup", type: "obsoleteConfigConsumer", position: { x: 520, y: 140 } },
+      ],
+      edges: [
+        { id: "obsolete_target", source: "obsolete_trigger", sourceHandle: "target", target: "obsolete_lookup", targetHandle: "group_id" },
+        { id: "obsolete_config_edge", source: "obsolete_config", sourceHandle: "config", target: "obsolete_lookup", targetHandle: "config" },
+      ],
+    },
+  },
+];
+
+export const seededSmartTurretExtensionFixtures: readonly SeededContractFixture[] = compileableSmartTurretExtensions.map((extension) => ({
+  id: extension.extensionId,
+  name: extension.contractName,
+  description: `${extension.behaviorName} seeded reference contract.`,
+  fixture: extension.fixture,
+}));

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
-import { nodeDefinitions } from "../data/node-definitions";
+import { authorableNodeDefinitions } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
 import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
 
@@ -10,13 +10,12 @@ interface SidebarProps {
   readonly definitions?: readonly NodeDefinition[];
 }
 
-const categoryOrder = ["event-trigger", "data-accessor", "logic-gate", "data-source", "action"] as const;
+const categoryOrder = ["event-trigger", "data-accessor", "logic-gate", "action"] as const;
 
 const categoryLabels: Readonly<Record<(typeof categoryOrder)[number], string>> = {
   "event-trigger": "Event Trigger",
   "data-accessor": "Data Accessor",
   "logic-gate": "Logic Gate",
-  "data-source": "Data Source",
   action: "Action",
 };
 
@@ -36,7 +35,7 @@ function getIsDesktop() {
   return window.matchMedia(desktopMediaQuery).matches;
 }
 
-function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
+function Sidebar({ definitions = authorableNodeDefinitions }: SidebarProps) {
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
   const [isOpen, setIsOpen] = useState(
     () => loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isSidebarOpen,

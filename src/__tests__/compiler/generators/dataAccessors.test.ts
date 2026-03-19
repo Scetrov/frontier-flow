@@ -3,8 +3,13 @@ import { describe, expect, it } from "vitest";
 import { createGenerationContext, getGenerator } from "../../../compiler/generators";
 import { createIrNode } from "../helpers";
 
+import type { NodeFieldMap } from "../../../types/nodes";
+
 describe("data accessor generators", () => {
   it.each([
+    ["listTribe", "configured values"],
+    ["listShip", "configured values"],
+    ["listCharacter", "configured values"],
     ["getTribe", "% 7"],
     ["hpRatio", "100 -"],
     ["shieldRatio", "% 30"],
@@ -13,13 +18,17 @@ describe("data accessor generators", () => {
     ["getBehaviour", "% 4"],
     ["isAggressor", "== 0"],
     ["getPriorityWeight", "% 90"],
-    ["getTribeListFromConfig", "vector["],
-    ["getItemListFromConfig", "vector["],
-    ["getCharacterListFromConfig", "vector["],
   ])("emits a code fragment for %s", (nodeType, expectedFragment) => {
     const generator = getGenerator(nodeType);
     const context = createGenerationContext("starter_contract");
-    const lines = generator?.emit(createIrNode(`${nodeType}_node`, nodeType), context) ?? [];
+    const fields: NodeFieldMap = nodeType === "listTribe"
+      ? { selectedTribeIds: [98000418] }
+      : nodeType === "listShip"
+        ? { selectedShipIds: [81609] }
+        : nodeType === "listCharacter"
+          ? { characterAddresses: ["0x1234"] }
+          : {};
+    const lines = generator?.emit(createIrNode(`${nodeType}_node`, nodeType, fields), context) ?? [];
     const output = lines.map((line) => line.code).join("\n");
 
     expect(output).toContain("let ");

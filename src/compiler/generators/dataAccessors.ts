@@ -1,6 +1,59 @@
 import type { NodeCodeGenerator } from "../types";
 
+import { getNumberFieldList, getStringFieldList } from "../../data/nodeFieldCatalog";
+
+import { hashCharacterAddress } from "./listHash";
 import { bindOutput, createCommentBlock, okValidationResult, resolveInput } from "./shared";
+
+function createValidationDiagnostic(node: Parameters<NodeCodeGenerator["validate"]>[0], message: string) {
+  return {
+    severity: "error" as const,
+    stage: "validation" as const,
+    rawMessage: message,
+    line: null,
+    reactFlowNodeId: node.id,
+    socketId: null,
+    userMessage: message,
+  };
+}
+
+function emitListBinding(node: Parameters<NodeCodeGenerator["emit"]>[0], context: Parameters<NodeCodeGenerator["emit"]>[1], count: number) {
+  const outputBinding = bindOutput(context, node, "list");
+
+  return [{ code: `let ${outputBinding}: u64 = ${String(count)};`, nodeId: node.id, indent: 2 }];
+}
+
+function requiresConfiguredValues(node: Parameters<NodeCodeGenerator["validate"]>[0], graph: Parameters<NodeCodeGenerator["validate"]>[1]): boolean {
+  void graph;
+  return (node.outputs.list ?? []).length > 0;
+}
+
+function createConfiguredListGenerator(
+  nodeType: string,
+  description: string,
+  readValues: (node: Parameters<NodeCodeGenerator["emit"]>[0]) => readonly (string | number)[],
+): NodeCodeGenerator {
+  return {
+    nodeType,
+    validate(node, graph) {
+      if (!requiresConfiguredValues(node, graph)) {
+        return okValidationResult();
+      }
+
+      return readValues(node).length > 0
+        ? okValidationResult()
+        : { valid: false, diagnostics: [createValidationDiagnostic(node, "Configure at least one value before compiling this list node.")] };
+    },
+    emit(node, context) {
+      const values = readValues(node);
+
+      return [
+        ...createCommentBlock(node, [`accessor ${nodeType}`, description, `configured values: ${values.join(", ") || "none"}`]),
+        ...emitListBinding(node, context, values.length),
+      ];
+    },
+  };
+}
 
 function createSingleOutputAccessor(
   nodeType: string,
@@ -19,26 +72,6 @@ function createSingleOutputAccessor(
       return [
         ...createCommentBlock(node, [`accessor ${nodeType}`, description]),
         { code: `let ${outputBinding}: ${typeAnnotation} = ${expression(inputBinding)};`, nodeId: node.id, indent: 2 },
-      ];
-    },
-  };
-}
-
-function createConfigListAccessor(nodeType: string, description: string): NodeCodeGenerator {
-  return {
-    nodeType,
-    validate: () => okValidationResult(),
-    emit(node, context) {
-      const configBinding = resolveInput(context, node, "config", "1");
-      const outputBinding = bindOutput(context, node, "items");
-
-      return [
-        ...createCommentBlock(node, [`accessor ${nodeType}`, description]),
-        {
-          code: `let ${outputBinding}: vector<u64> = vector[${configBinding}, ${configBinding} + 1, ${configBinding} + 2];`,
-          nodeId: node.id,
-          indent: 2,
-        },
       ];
     },
   };
@@ -63,6 +96,15 @@ function createGetTribeAccessor(): NodeCodeGenerator {
 }
 
 const dataAccessorGenerators: readonly NodeCodeGenerator[] = [
+  createConfiguredListGenerator("listTribe", "capture the configured tribe identifiers", (node) =>
+    getNumberFieldList(node.fields, "selectedTribeIds"),
+  ),
+  createConfiguredListGenerator("listShip", "capture the configured ship identifiers", (node) =>
+    getNumberFieldList(node.fields, "selectedShipIds"),
+  ),
+  createConfiguredListGenerator("listCharacter", "capture the configured character address hashes", (node) =>
+    getStringFieldList(node.fields, "characterAddresses").map((address) => hashCharacterAddress(address)),
+  ),
   createGetTribeAccessor(),
   createSingleOutputAccessor("hpRatio", "hp_ratio", "u64", "read hull integrity ratio", (target) => `100 - (${target} % 45)`),
   createSingleOutputAccessor("shieldRatio", "shield_ratio", "u64", "read shield integrity ratio", (target) => `100 - (${target} % 30)`),
@@ -71,9 +113,6 @@ const dataAccessorGenerators: readonly NodeCodeGenerator[] = [
   createSingleOutputAccessor("getBehaviour", "behaviour", "u64", "read behaviour code", (target) => `${target} % 4`),
   createSingleOutputAccessor("isAggressor", "is_aggressor", "bool", "read aggressor flag", (target) => `${target} % 2 == 0`),
   createSingleOutputAccessor("getPriorityWeight", "weight", "u64", "read base priority weight", (target) => `10 + (${target} % 90)`),
-  createConfigListAccessor("getTribeListFromConfig", "read tribe list from config"),
-  createConfigListAccessor("getItemListFromConfig", "read item list from config"),
-  createConfigListAccessor("getCharacterListFromConfig", "read character list from config"),
 ];
 
 export default dataAccessorGenerators;

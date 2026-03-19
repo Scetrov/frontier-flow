@@ -6,6 +6,7 @@ import { restoreSavedFlow } from "../components/restoreSavedFlow";
 import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
 import { createFlowNodeData } from "../data/node-definitions";
 import type { FlowNode } from "../types/nodes";
+import type { ContractLibrary } from "../utils/contractStorage";
 import { CONTRACT_LIBRARY_STORAGE_KEY } from "../utils/contractStorage";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
 import { isValidFlowConnection } from "../utils/socketTypes";
@@ -36,6 +37,10 @@ function createDropData(type: string, offset?: { x: number; y: number }) {
       return "";
     },
   };
+}
+
+function readStoredContractLibrary(): ContractLibrary {
+  return JSON.parse(window.localStorage.getItem(CONTRACT_LIBRARY_STORAGE_KEY) ?? "{}") as ContractLibrary;
 }
 
 describe("CanvasWorkspace", () => {
@@ -74,14 +79,15 @@ describe("CanvasWorkspace", () => {
       expect(window.localStorage.getItem(CONTRACT_LIBRARY_STORAGE_KEY)).not.toBeNull();
     });
 
-    expect(JSON.parse(window.localStorage.getItem(CONTRACT_LIBRARY_STORAGE_KEY) ?? "{}")).toMatchObject({
-      activeContractName: "Starter Contract",
-      contracts: [
-        {
-          name: "Starter Contract",
-        },
-      ],
-    });
+    const library = readStoredContractLibrary();
+
+    expect(library.activeContractName).toBe("Starter Contract");
+    expect(library.contracts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Starter Contract" }),
+        expect.objectContaining({ isSeeded: true }),
+      ]),
+    );
   });
 
   it("can save the current graph as a second named contract", async () => {
@@ -102,13 +108,15 @@ describe("CanvasWorkspace", () => {
       expect(screen.getByLabelText("Saved contract")).toHaveValue("Raid Response");
     });
 
-    expect(JSON.parse(window.localStorage.getItem(CONTRACT_LIBRARY_STORAGE_KEY) ?? "{}")).toMatchObject({
-      activeContractName: "Raid Response",
-      contracts: [
-        { name: "Starter Contract" },
-        { name: "Raid Response" },
-      ],
-    });
+    const library = readStoredContractLibrary();
+
+    expect(library.activeContractName).toBe("Raid Response");
+    expect(library.contracts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Starter Contract" }),
+        expect.objectContaining({ name: "Raid Response" }),
+      ]),
+    );
   });
 
   it("collapses and reopens saved contract controls from the left drawer handle", () => {
@@ -163,7 +171,7 @@ describe("CanvasWorkspace", () => {
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "Start with Aggression or Proximity, then layer scoring, filters, config sources, config list accessors, and Add to Queue.",
+        "Start with Aggression or Proximity, then layer scoring, filters, and Add to Queue.",
       ),
     ).toBeInTheDocument();
   });
@@ -182,6 +190,86 @@ describe("CanvasWorkspace", () => {
     expect(screen.getByText("Proximity")).toBeInTheDocument();
     expect(screen.getByText("priority")).toBeInTheDocument();
     expect(screen.getByText("target")).toBeInTheDocument();
+  });
+
+  it("opens a node field editor and saves live tribe selections", async () => {
+    const fetchSpy = vi.spyOn(window, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [{ id: 98000418, name: "Pegasus Cartel", nameShort: "PGCL" }],
+          metadata: { total: 1, limit: 100, offset: 0 },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    render(
+      <CanvasWorkspace
+        initialNodes={[
+          {
+            id: "tribe_list_1",
+            type: "listTribe",
+            position: { x: 0, y: 0 },
+            data: {
+              ...createFlowNodeData({
+                type: "listTribe",
+                label: "List of Tribe",
+                description: "Curate a reusable tribe list for downstream target matching.",
+                color: "var(--socket-entity)",
+                category: "data-accessor",
+                sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
+              }),
+            },
+          },
+        ]}
+        mode="preview"
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Edit List of Tribe"));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByText("Pegasus Cartel")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox")).toBeChecked();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith("https://world-api-stillness.live.tech.evefrontier.com/v2/tribes");
+    fetchSpy.mockRestore();
+  });
+
+  it("saves character addresses from the node field editor", async () => {
+    render(
+      <CanvasWorkspace
+        initialNodes={[
+          createFlowNode("character_list_1", "listCharacter"),
+        ]}
+        mode="preview"
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Edit List of Character"));
+    fireEvent.change(screen.getByLabelText("Character address"), { target: { value: "0xabc123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("0xabc123").length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 
   it("creates independent nodes for repeated drops", () => {
@@ -214,12 +302,12 @@ describe("CanvasWorkspace", () => {
     fireEvent.drop(canvas, {
       clientX: 300,
       clientY: 220,
-      dataTransfer: createDropData("groupBonusConfig"),
+      dataTransfer: createDropData("getBehaviour"),
     });
     fireEvent.drop(canvas, {
       clientX: 420,
       clientY: 280,
-      dataTransfer: createDropData("excludeSameTribe"),
+      dataTransfer: createDropData("booleanOr"),
     });
     fireEvent.drop(canvas, {
       clientX: 540,
@@ -228,10 +316,10 @@ describe("CanvasWorkspace", () => {
     });
 
     expect(screen.getByText("Aggression")).toBeInTheDocument();
-    expect(screen.getByText("Group Bonus Config")).toBeInTheDocument();
-    expect(screen.getByText("Exclude Same Tribe")).toBeInTheDocument();
+    expect(screen.getByText("Get Behaviour")).toBeInTheDocument();
+    expect(screen.getByText("OR")).toBeInTheDocument();
     expect(screen.getByText("Add to Queue")).toBeInTheDocument();
-    expect(screen.getByText("owner tribe")).toBeInTheDocument();
+    expect(screen.getByText("right")).toBeInTheDocument();
     expect(screen.getByText("weight")).toBeInTheDocument();
   });
 
@@ -262,6 +350,8 @@ describe("CanvasWorkspace", () => {
 
     expect(screen.getByText("Aggression")).toBeInTheDocument();
     expect(screen.queryByText("Stale Node")).not.toBeInTheDocument();
+    expect(screen.getByText("Legacy remediation required")).toBeInTheDocument();
+    expect(screen.getByText(/Legacy node "obsoleteNode" could not be restored automatically\./)).toBeInTheDocument();
     expect(warnSpy).toHaveBeenCalledWith("Omitting unknown saved node type: obsoleteNode");
 
     warnSpy.mockRestore();
@@ -313,10 +403,47 @@ describe("CanvasWorkspace", () => {
 
     expect(screen.getByText("Aggression")).toBeInTheDocument();
     expect(screen.getByText("Get Tribe")).toBeInTheDocument();
-    expect(screen.getByText("Exclude Same Tribe")).toBeInTheDocument();
+    expect(screen.getByText("Is Same Tribe")).toBeInTheDocument();
+    expect(screen.getByText("NOT")).toBeInTheDocument();
+    expect(screen.getByText("OR")).toBeInTheDocument();
     expect(screen.getByText("Get Priority Weight")).toBeInTheDocument();
     expect(screen.getByText("Add to Queue")).toBeInTheDocument();
     expect(screen.queryByText("Contract Canvas")).not.toBeInTheDocument();
+  });
+
+  it("ignores saved contracts when rendered in preview mode", () => {
+    window.localStorage.setItem(
+      CONTRACT_LIBRARY_STORAGE_KEY,
+      JSON.stringify({
+        version: 2,
+        activeContractName: "Stored Contract",
+        contracts: [
+          {
+            id: "contract:stored-contract",
+            name: "Stored Contract",
+            nodes: [createFlowNode("stored_node", "getBehaviour")],
+            edges: [],
+            updatedAt: new Date(0).toISOString(),
+          },
+        ],
+      } satisfies ContractLibrary),
+    );
+
+    render(
+      <CanvasWorkspace
+        initialContractName="Kitchen Sink"
+        initialNodes={[
+          createFlowNode("preview_aggression", "aggression"),
+          createFlowNode("preview_proximity", "proximity", { x: 240, y: 0 }),
+        ]}
+        mode="preview"
+      />,
+    );
+
+    expect(screen.getByText("Aggression")).toBeInTheDocument();
+    expect(screen.getByText("Proximity")).toBeInTheDocument();
+    expect(screen.queryByText("Get Behaviour")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Saved contract controls" })).not.toBeInTheDocument();
   });
 
   it("opens a right-click context menu that offers auto-arrange", async () => {

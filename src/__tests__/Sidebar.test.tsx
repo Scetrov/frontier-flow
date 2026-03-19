@@ -67,14 +67,13 @@ describe("Sidebar", () => {
     window.matchMedia = originalMatchMedia;
   });
 
-  it("renders all five category headings", () => {
+  it("renders all four category headings", () => {
     render(<Sidebar definitions={nodeDefinitions} />);
 
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
       "Event Trigger",
       "Data Accessor",
       "Logic Gate",
-      "Data Source",
       "Action",
     ]);
   });
@@ -89,7 +88,7 @@ describe("Sidebar", () => {
       "true",
     );
 
-    for (const label of ["Data Accessor", "Logic Gate", "Data Source", "Action"]) {
+    for (const label of ["Data Accessor", "Logic Gate", "Action"]) {
       expect(within(toolbox).getByRole("button", { name: `${label} category` })).toHaveAttribute(
         "aria-expanded",
         "false",

@@ -26,10 +26,51 @@ All custom nodes receive their data through React Flow's `NodeProps<T>`. The `da
 
 ```typescript
 interface FlowNodeData {
+  /** Additional runtime metadata carried on the React Flow node payload */
+  [key: string]: unknown;
+  /** Node type identifier used by the compiler pipeline */
+  type: string;
   /** Display label shown in the node header */
   label: string;
-  /** Optional user-editable fields (e.g., tribe IDs for ListOfTribe) */
-  fields?: Record<string, string | number | boolean>;
+  /** Short description displayed in the node body */
+  description: string;
+  /** Accent colour token used for the node header */
+  color: string;
+  /** High-level toolbox grouping */
+  category: NodeCategory;
+  /** Typed sockets rendered on the node */
+  sockets: readonly SocketDefinition[];
+  /** Persisted per-instance configuration */
+  fields: NodeFieldMap;
+  /** Optional lifecycle metadata for deprecated or retired nodes */
+  deprecation?: NodeDeprecation;
+  /** Restore-time notice for legacy content that needs user follow-up */
+  remediationNotice?: RemediationNotice;
+  /** Current validation or restore messages shown inline on the node */
+  diagnosticMessages?: readonly string[];
+  /** Highest severity represented in diagnosticMessages */
+  validationState?: "warning" | "error";
+}
+
+type NodeFieldScalar = string | number | boolean;
+
+type NodeFieldValue = NodeFieldScalar | readonly string[] | readonly number[] | readonly boolean[];
+
+type NodeFieldMap = Readonly<Record<string, NodeFieldValue>>;
+
+interface NodeDeprecation {
+  status: "deprecated" | "retired";
+  reason: string;
+  replacedBy?: readonly string[];
+  remediationMessage?: string;
+}
+
+interface RemediationNotice {
+  nodeId: string;
+  legacyType: string;
+  message: string;
+  severity: "warning" | "error";
+  suggestedAction: string;
 }
 ```
 
@@ -40,16 +81,7 @@ import type { Node } from "@xyflow/react";
 
 type FlowNode = Node<FlowNodeData, NodeType>;
 
-type NodeType =
-  | "aggression"
-  | "proximity"
-  | "getTribe"
-  | "listOfTribe"
-  | "isInList"
-  | "addToQueue"
-  | "hpRatio"
-  | "shieldRatio"
-  | "armorRatio";
+type NodeType = string;
 ```
 
 ### 1.3 Edge Shape (React Flow)
@@ -91,7 +123,6 @@ type SocketType =
   | "priority"
   | "target"
   | "boolean"
-  | "list"
   | "number"
   | "string"
   | "any";
@@ -110,7 +141,6 @@ const socketCompatibility: Record<SocketType, SocketType[]= {
   priority: ["priority", "any"],
   target: ["target", "rider", "any"],
   boolean: ["boolean", "any"],
-  list: ["list", "any"],
   number: ["number", "standing", "any"],
   string: ["string", "any"],
   any: [
@@ -121,7 +151,6 @@ const socketCompatibility: Record<SocketType, SocketType[]= {
     "priority",
     "target",
     "boolean",
-    "list",
     "number",
     "string",
     "any",

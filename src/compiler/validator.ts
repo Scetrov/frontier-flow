@@ -126,7 +126,7 @@ export function validateGraph(graph: IRGraph): ValidationResult {
       continue;
     }
 
-    diagnostics.push(...generator.validate(node).diagnostics);
+    diagnostics.push(...generator.validate(node, graph).diagnostics);
   }
 
   for (const connection of graph.connections) {
