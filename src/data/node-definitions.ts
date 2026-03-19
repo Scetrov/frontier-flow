@@ -1,4 +1,12 @@
-import type { FlowNode, FlowNodeData, NodeDefinition } from "../types/nodes";
+import type {
+  EditableFieldDefinition,
+  FlowNode,
+  FlowNodeData,
+  NodeDefinition,
+  NodeFieldScalarValue,
+  NodeFieldValue,
+  NodeFieldValueSet,
+} from "../types/nodes";
 
 export const nodeDefinitions: readonly NodeDefinition[] = [
   {
@@ -207,6 +215,12 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     description: "Block the turret owner from being included as a target.",
     color: "var(--socket-signal)",
     category: "logic-gate",
+    deprecation: {
+      status: "retired",
+      reason: "Use Is Owner plus NOT for explicit boolean composition.",
+      replacedBy: ["isOwner", "booleanNot"],
+      remediationMessage: "Replace Exclude Owner with Is Owner feeding a NOT node.",
+    },
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
@@ -218,6 +232,12 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     description: "Reject same-tribe candidates unless they are active aggressors.",
     color: "var(--socket-signal)",
     category: "logic-gate",
+    deprecation: {
+      status: "retired",
+      reason: "Use Is Same Tribe with NOT and OR for explicit boolean composition.",
+      replacedBy: ["isSameTribe", "booleanNot", "booleanOr"],
+      remediationMessage: "Replace Exclude Same Tribe with Is Same Tribe feeding NOT, then combine with Is Aggressor via OR.",
+    },
     sockets: [
       { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
       { id: "owner_tribe", type: "tribe", position: "left", direction: "input", label: "owner tribe" },
@@ -231,6 +251,12 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     description: "Reject candidates whose latest behaviour indicates they stopped attacking.",
     color: "var(--socket-signal)",
     category: "logic-gate",
+    deprecation: {
+      status: "retired",
+      reason: "Use Has Stopped Attack plus NOT for explicit boolean composition.",
+      replacedBy: ["hasStoppedAttack", "booleanNot"],
+      remediationMessage: "Replace Exclude Stopped Attack with Has Stopped Attack feeding a NOT node.",
+    },
     sockets: [
       { id: "behaviour", type: "number", position: "left", direction: "input", label: "behaviour" },
       { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
@@ -242,9 +268,107 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     description: "Reject non-player candidates based on the contract target identity rules.",
     color: "var(--socket-signal)",
     category: "logic-gate",
+    deprecation: {
+      status: "retired",
+      reason: "Use Is NPC plus NOT for explicit boolean composition.",
+      replacedBy: ["isNpc", "booleanNot"],
+      remediationMessage: "Replace Exclude NPC with Is NPC feeding a NOT node.",
+    },
     sockets: [
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "include", type: "boolean", position: "right", direction: "output", label: "include" },
+    ],
+  },
+  {
+    type: "isOwner",
+    label: "Is Owner",
+    description: "Emit whether the candidate target is the turret owner.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
+    ],
+  },
+  {
+    type: "isSameTribe",
+    label: "Is Same Tribe",
+    description: "Emit whether the candidate tribe matches the owner tribe.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
+      { id: "owner_tribe", type: "tribe", position: "left", direction: "input", label: "owner tribe" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
+    ],
+  },
+  {
+    type: "hasStoppedAttack",
+    label: "Has Stopped Attack",
+    description: "Emit whether the latest behaviour indicates the target stopped attacking.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "behaviour", type: "number", position: "left", direction: "input", label: "behaviour" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
+    ],
+  },
+  {
+    type: "isNpc",
+    label: "Is NPC",
+    description: "Emit whether the candidate target resolves to a non-player entity.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
+    ],
+  },
+  {
+    type: "booleanNot",
+    label: "NOT",
+    description: "Invert a boolean input for explicit rule composition.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "input", type: "boolean", position: "left", direction: "input", label: "input" },
+      { id: "result", type: "boolean", position: "right", direction: "output", label: "result" },
+    ],
+  },
+  {
+    type: "booleanAnd",
+    label: "AND",
+    description: "Combine two boolean inputs and emit true only when both are true.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "left", type: "boolean", position: "left", direction: "input", label: "left" },
+      { id: "right", type: "boolean", position: "left", direction: "input", label: "right" },
+      { id: "result", type: "boolean", position: "right", direction: "output", label: "result" },
+    ],
+  },
+  {
+    type: "booleanOr",
+    label: "OR",
+    description: "Combine two boolean inputs and emit true when either input is true.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "left", type: "boolean", position: "left", direction: "input", label: "left" },
+      { id: "right", type: "boolean", position: "left", direction: "input", label: "right" },
+      { id: "result", type: "boolean", position: "right", direction: "output", label: "result" },
+    ],
+  },
+  {
+    type: "booleanXor",
+    label: "XOR",
+    description: "Combine two boolean inputs and emit true only when the inputs differ.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "left", type: "boolean", position: "left", direction: "input", label: "left" },
+      { id: "right", type: "boolean", position: "left", direction: "input", label: "right" },
+      { id: "result", type: "boolean", position: "right", direction: "output", label: "result" },
     ],
   },
   {
@@ -361,7 +485,98 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
   },
 ] as const;
 
+export const authorableNodeDefinitions: readonly NodeDefinition[] = nodeDefinitions.filter(
+  (definition) => definition.deprecation?.status !== "retired",
+);
+
 const nodeDefinitionsByType = new Map(nodeDefinitions.map((definition) => [definition.type, definition]));
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isScalarValue(value: unknown): value is NodeFieldScalarValue {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+}
+
+function matchesFieldValueType(field: EditableFieldDefinition, value: NodeFieldScalarValue): boolean {
+  switch (field.valueType) {
+    case "boolean":
+      return typeof value === "boolean";
+    case "number":
+    case "typeId":
+      return typeof value === "number";
+    case "string":
+    case "tribe":
+      return typeof value === "string";
+  }
+}
+
+function normalizeFieldValue(field: EditableFieldDefinition, value: unknown): NodeFieldValue | undefined {
+  if (field.editorKind === "list-editor") {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+
+    const normalizedValues = value.filter(isScalarValue).filter((entry) => matchesFieldValueType(field, entry));
+    if (normalizedValues.length !== value.length) {
+      return undefined;
+    }
+
+    return normalizedValues;
+  }
+
+  if (!isScalarValue(value) || !matchesFieldValueType(field, value)) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function createDefaultFieldValueSet(fields: readonly EditableFieldDefinition[] | undefined): NodeFieldValueSet | undefined {
+  if (fields === undefined || fields.length === 0) {
+    return undefined;
+  }
+
+  const values = Object.fromEntries(
+    fields.flatMap((field) => (field.defaultValue === undefined ? [] : [[field.id, field.defaultValue]])),
+  );
+
+  return {
+    values,
+  };
+}
+
+function hydrateFieldValueSet(
+  fields: readonly EditableFieldDefinition[] | undefined,
+  persistedFieldValues: unknown,
+): NodeFieldValueSet | undefined {
+  const defaultFieldValues = createDefaultFieldValueSet(fields);
+  if (fields === undefined || fields.length === 0) {
+    return undefined;
+  }
+
+  if (!isRecord(persistedFieldValues) || !isRecord(persistedFieldValues.values)) {
+    return defaultFieldValues;
+  }
+
+  const nextValues: Record<string, NodeFieldValue> = {
+    ...(defaultFieldValues?.values ?? {}),
+  };
+
+  for (const field of fields) {
+    const persistedValue = persistedFieldValues.values[field.id];
+    const normalizedValue = normalizeFieldValue(field, persistedValue);
+    if (normalizedValue !== undefined) {
+      nextValues[field.id] = normalizedValue;
+    }
+  }
+
+  return {
+    values: nextValues,
+    lastEditedAt: typeof persistedFieldValues.lastEditedAt === "string" ? persistedFieldValues.lastEditedAt : undefined,
+  };
+}
 
 /**
  * Looks up a node definition by its ReactFlow type key.
@@ -381,6 +596,9 @@ export function createFlowNodeData(definition: NodeDefinition): FlowNodeData {
     color: definition.color,
     category: definition.category,
     sockets: definition.sockets,
+    fields: definition.fields,
+    fieldValues: createDefaultFieldValueSet(definition.fields),
+    deprecation: definition.deprecation,
   };
 }
 
@@ -400,6 +618,9 @@ export function hydrateFlowNode(node: FlowNode): FlowNode | undefined {
   return {
     ...node,
     type: definition.type,
-    data: createFlowNodeData(definition),
+    data: {
+      ...createFlowNodeData(definition),
+      fieldValues: hydrateFieldValueSet(definition.fields, node.data.fieldValues),
+    },
   };
 }

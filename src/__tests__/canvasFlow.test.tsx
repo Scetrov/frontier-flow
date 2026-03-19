@@ -219,7 +219,7 @@ describe("CanvasWorkspace", () => {
     fireEvent.drop(canvas, {
       clientX: 420,
       clientY: 280,
-      dataTransfer: createDropData("excludeSameTribe"),
+      dataTransfer: createDropData("booleanOr"),
     });
     fireEvent.drop(canvas, {
       clientX: 540,
@@ -229,9 +229,9 @@ describe("CanvasWorkspace", () => {
 
     expect(screen.getByText("Aggression")).toBeInTheDocument();
     expect(screen.getByText("Group Bonus Config")).toBeInTheDocument();
-    expect(screen.getByText("Exclude Same Tribe")).toBeInTheDocument();
+    expect(screen.getByText("OR")).toBeInTheDocument();
     expect(screen.getByText("Add to Queue")).toBeInTheDocument();
-    expect(screen.getByText("owner tribe")).toBeInTheDocument();
+    expect(screen.getByText("right")).toBeInTheDocument();
     expect(screen.getByText("weight")).toBeInTheDocument();
   });
 
@@ -262,6 +262,8 @@ describe("CanvasWorkspace", () => {
 
     expect(screen.getByText("Aggression")).toBeInTheDocument();
     expect(screen.queryByText("Stale Node")).not.toBeInTheDocument();
+    expect(screen.getByText("Legacy remediation required")).toBeInTheDocument();
+    expect(screen.getByText(/Legacy node "obsoleteNode" could not be restored automatically\./)).toBeInTheDocument();
     expect(warnSpy).toHaveBeenCalledWith("Omitting unknown saved node type: obsoleteNode");
 
     warnSpy.mockRestore();
@@ -313,7 +315,9 @@ describe("CanvasWorkspace", () => {
 
     expect(screen.getByText("Aggression")).toBeInTheDocument();
     expect(screen.getByText("Get Tribe")).toBeInTheDocument();
-    expect(screen.getByText("Exclude Same Tribe")).toBeInTheDocument();
+    expect(screen.getByText("Is Same Tribe")).toBeInTheDocument();
+    expect(screen.getByText("NOT")).toBeInTheDocument();
+    expect(screen.getByText("OR")).toBeInTheDocument();
     expect(screen.getByText("Get Priority Weight")).toBeInTheDocument();
     expect(screen.getByText("Add to Queue")).toBeInTheDocument();
     expect(screen.queryByText("Contract Canvas")).not.toBeInTheDocument();

@@ -68,6 +68,18 @@ function BaseNode({ data, selected, icon: Icon, shape = "standard" }: BaseNodePr
 
         <div className="ff-node__description">{nodeData.description}</div>
 
+        {nodeData.deprecation !== undefined ? (
+          <div className="ff-node__description">
+            Retired node. {nodeData.deprecation.reason}
+          </div>
+        ) : null}
+
+        {nodeData.remediationNotice !== undefined ? (
+          <div className="ff-node__description">
+            {nodeData.remediationNotice.message}
+          </div>
+        ) : null}
+
         <div className="ff-node__body">
           <div className="ff-node__column ff-node__column--left">
             {leftSockets.map((socket) => (
