@@ -1,8 +1,8 @@
 import { createFlowNodeData, getNodeDefinition } from "../../data/node-definitions";
-import type { FlowNode } from "../../types/nodes";
+import type { FlowNode, NodeFieldMap } from "../../types/nodes";
 import type { IRNode } from "../../compiler/types";
 
-export function createFlowNode(id: string, type: string, position = { x: 0, y: 0 }): FlowNode {
+export function createFlowNode(id: string, type: string, position = { x: 0, y: 0 }, fields?: NodeFieldMap): FlowNode {
   const definition = getNodeDefinition(type);
   if (definition === undefined) {
     throw new Error(`Unknown node type: ${type}`);
@@ -12,11 +12,14 @@ export function createFlowNode(id: string, type: string, position = { x: 0, y: 0
     id,
     type,
     position,
-    data: createFlowNodeData(definition),
+    data: {
+      ...createFlowNodeData(definition),
+      fields: fields ?? createFlowNodeData(definition).fields,
+    },
   };
 }
 
-export function createIrNode(id: string, type: string): IRNode {
+export function createIrNode(id: string, type: string, fields: NodeFieldMap = {}): IRNode {
   const definition = getNodeDefinition(type);
   if (definition === undefined) {
     throw new Error(`Unknown node type: ${type}`);
@@ -27,7 +30,7 @@ export function createIrNode(id: string, type: string): IRNode {
     type,
     label: definition.label,
     category: definition.category,
-    fields: {},
+    fields,
     inputs: {},
     outputs: {},
     sockets: definition.sockets,

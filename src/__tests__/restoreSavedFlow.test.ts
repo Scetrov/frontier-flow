@@ -18,6 +18,7 @@ function createNode(id: string, type: string): FlowNode {
         description: "Legacy node",
         color: "var(--socket-any)",
         category: "logic-gate",
+        fields: {},
         sockets: [],
       },
     };

@@ -23,6 +23,7 @@ export function createGenerationContext(moduleName: string): GenerationContext {
   return {
     imports: new Set<string>(),
     bindings: new Map<string, string>(),
+    graph: undefined,
     structs: [],
     entryFunctions: [],
     moduleName,

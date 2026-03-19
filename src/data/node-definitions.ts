@@ -1,5 +1,7 @@
 import type { FlowNode, FlowNodeData, NodeDefinition } from "../types/nodes";
 
+import { getDefaultNodeFields, normalizeNodeFields } from "./nodeFieldCatalog";
+
 export const nodeDefinitions: readonly NodeDefinition[] = [
   {
     type: "aggression",
@@ -22,6 +24,30 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
       { id: "priority", type: "priority", position: "right", direction: "output", label: "priority" },
       { id: "target", type: "target", position: "right", direction: "output", label: "target" },
     ],
+  },
+  {
+    type: "listTribe",
+    label: "List of Tribe",
+    description: "Curate a reusable tribe list for downstream target matching.",
+    color: "var(--socket-entity)",
+    category: "data-accessor",
+    sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
+  },
+  {
+    type: "listShip",
+    label: "List of Ship",
+    description: "Curate a reusable ship list for downstream target matching.",
+    color: "var(--socket-value)",
+    category: "data-accessor",
+    sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
+  },
+  {
+    type: "listCharacter",
+    label: "List of Character",
+    description: "Curate a reusable list of character addresses for explicit target matching.",
+    color: "var(--socket-any)",
+    category: "data-accessor",
+    sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
   },
   {
     type: "getTribe",
@@ -233,6 +259,29 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     ],
   },
   {
+    type: "isInList",
+    label: "Is in List",
+    description: "Match the current turret target against a configured tribe, ship, or character list.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+      { id: "list", type: "any", position: "left", direction: "input", label: "list" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
+    ],
+  },
+  {
+    type: "isInGroup",
+    label: "Is in Group",
+    description: "Match the current turret target against selected ship groups.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    sockets: [
+      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
+    ],
+  },
+  {
     type: "isOwner",
     label: "Is Owner",
     description: "Emit whether the candidate target is the turret owner.",
@@ -364,6 +413,7 @@ export function createFlowNodeData(definition: NodeDefinition): FlowNodeData {
     color: definition.color,
     category: definition.category,
     sockets: definition.sockets,
+    fields: getDefaultNodeFields(definition.type),
     deprecation: definition.deprecation,
   };
 }
@@ -381,9 +431,14 @@ export function hydrateFlowNode(node: FlowNode): FlowNode | undefined {
     return undefined;
   }
 
+  const persistedData = node.data as { readonly fields?: unknown } | undefined;
+
   return {
     ...node,
     type: definition.type,
-    data: createFlowNodeData(definition),
+    data: {
+      ...createFlowNodeData(definition),
+      fields: normalizeNodeFields(definition.type, persistedData?.fields),
+    },
   };
 }

@@ -16,8 +16,8 @@ const primitiveNodeTypes = [
 
 describe("nodeDefinitions", () => {
   it("contains the complete runtime catalogue and a filtered authoring catalogue", () => {
-    expect(nodeDefinitions).toHaveLength(27);
-    expect(authorableNodeDefinitions).toHaveLength(23);
+    expect(nodeDefinitions).toHaveLength(32);
+    expect(authorableNodeDefinitions).toHaveLength(28);
     expect(authorableNodeDefinitions.map((definition) => definition.type)).not.toEqual(
       expect.arrayContaining([...retiredNodeTypes]),
     );

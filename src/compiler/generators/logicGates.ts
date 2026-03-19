@@ -1,6 +1,61 @@
 import type { NodeCodeGenerator } from "../types";
 
+import { SHIP_GROUP_OPTIONS, getNumberFieldList, getStringFieldList } from "../../data/nodeFieldCatalog";
+
 import { bindOutput, createCommentBlock, okValidationResult, resolveInput } from "./shared";
+
+function createValidationDiagnostic(node: Parameters<NodeCodeGenerator["validate"]>[0], message: string) {
+  return {
+    severity: "error" as const,
+    stage: "validation" as const,
+    rawMessage: message,
+    line: null,
+    reactFlowNodeId: node.id,
+    socketId: null,
+    userMessage: message,
+  };
+}
+
+function hashCharacterAddress(address: string): number {
+  let hash = 0;
+  for (const character of address.toLowerCase()) {
+    hash = (hash * 33 + character.charCodeAt(0)) % 4_294_967_291;
+  }
+
+  return hash;
+}
+
+function createMembershipExpression(candidate: string, values: readonly number[]): string {
+  if (values.length === 0) {
+    return "false";
+  }
+
+  return values.map((value) => `${candidate} == ${String(value)}`).join(" || ");
+}
+
+function getConnectedSourceNode(
+  node: Parameters<NodeCodeGenerator["emit"]>[0],
+  context: Parameters<NodeCodeGenerator["emit"]>[1],
+  socketId: string,
+) {
+  const connection = node.inputs[socketId];
+  if (connection === undefined) {
+    return undefined;
+  }
+
+  return context.graph?.nodes.get(connection.sourceNodeId);
+}
+
+function createTargetDerivedGroupExpression(targetBinding: string): string {
+  const groupIds = SHIP_GROUP_OPTIONS.map((option) => option.value);
+
+  return `if (${targetBinding} % ${String(groupIds.length)} == 0) { ${String(groupIds[0])} }`
+    + ` else if (${targetBinding} % ${String(groupIds.length)} == 1) { ${String(groupIds[1])} }`
+    + ` else if (${targetBinding} % ${String(groupIds.length)} == 2) { ${String(groupIds[2])} }`
+    + ` else if (${targetBinding} % ${String(groupIds.length)} == 3) { ${String(groupIds[3])} }`
+    + ` else if (${targetBinding} % ${String(groupIds.length)} == 4) { ${String(groupIds[4])} }`
+    + ` else { ${String(groupIds[5])} }`;
+}
 
 function createBooleanGateGenerator(
   nodeType: string,
@@ -58,6 +113,83 @@ const logicGateGenerators: readonly NodeCodeGenerator[] = [
     const targetBinding = resolveInput(context, node, "target", "0");
     return `${targetBinding} < 100`;
   }),
+  {
+    nodeType: "isInList",
+    validate(node) {
+      return node.inputs.list === undefined
+        ? { valid: false, diagnostics: [createValidationDiagnostic(node, "Connect a list node before compiling Is in List.")] }
+        : okValidationResult();
+    },
+    emit(node, context) {
+      const includeBinding = bindOutput(context, node, "matches");
+      const targetBinding = resolveInput(context, node, "target", "0");
+      const listNode = getConnectedSourceNode(node, context, "list");
+
+      switch (listNode?.type) {
+        case "listTribe":
+          return [
+            ...createCommentBlock(node, ["logic gate isInList", "check whether the target matches the configured upstream list"]),
+            {
+              code: `let ${includeBinding}: bool = ${createMembershipExpression(
+                `${targetBinding} % 7`,
+                getNumberFieldList(listNode.fields, "selectedTribeIds").map((value) => value % 7),
+              )};`,
+              nodeId: node.id,
+              indent: 2,
+            },
+          ];
+        case "listShip":
+          return [
+            ...createCommentBlock(node, ["logic gate isInList", "check whether the target matches the configured upstream list"]),
+            {
+              code: `let ${includeBinding}: bool = ${createMembershipExpression(
+                `${targetBinding} % 100000`,
+                getNumberFieldList(listNode.fields, "selectedShipIds").map((value) => value % 100000),
+              )};`,
+              nodeId: node.id,
+              indent: 2,
+            },
+          ];
+        case "listCharacter":
+          return [
+            ...createCommentBlock(node, ["logic gate isInList", "check whether the target matches the configured upstream list"]),
+            {
+              code: `let ${includeBinding}: bool = ${createMembershipExpression(
+                targetBinding,
+                getStringFieldList(listNode.fields, "characterAddresses").map((value) => hashCharacterAddress(value)),
+              )};`,
+              nodeId: node.id,
+              indent: 2,
+            },
+          ];
+      }
+
+      return [
+        ...createCommentBlock(node, ["logic gate isInList", "check whether the target matches the configured upstream list"]),
+        { code: `let ${includeBinding}: bool = false;`, nodeId: node.id, indent: 2 },
+      ];
+    },
+  },
+  {
+    nodeType: "isInGroup",
+    validate(node) {
+      return getNumberFieldList(node.fields, "selectedGroupIds").length > 0
+        ? okValidationResult()
+        : { valid: false, diagnostics: [createValidationDiagnostic(node, "Select at least one ship group before compiling Is in Group.")] };
+    },
+    emit(node, context) {
+      const includeBinding = bindOutput(context, node, "matches");
+      const targetBinding = resolveInput(context, node, "target", "0");
+      const candidateGroupBinding = `${includeBinding}_group_id`;
+      const selectedGroupIds = getNumberFieldList(node.fields, "selectedGroupIds");
+
+      return [
+        ...createCommentBlock(node, ["logic gate isInGroup", "check whether the target resolves into one of the configured ship groups"]),
+        { code: `let ${candidateGroupBinding}: u64 = ${createTargetDerivedGroupExpression(targetBinding)};`, nodeId: node.id, indent: 2 },
+        { code: `let ${includeBinding}: bool = ${createMembershipExpression(candidateGroupBinding, selectedGroupIds)};`, nodeId: node.id, indent: 2 },
+      ];
+    },
+  },
   createBooleanGateGenerator("booleanNot", "invert the incoming boolean signal", "result", (node, context) => {
     const inputBinding = resolveInput(context, node, "input", "false");
     return `!${inputBinding}`;

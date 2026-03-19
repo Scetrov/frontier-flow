@@ -34,6 +34,12 @@ export type NodeCategory =
   | "logic-gate"
   | "action";
 
+export type NodeFieldScalar = string | number | boolean;
+
+export type NodeFieldValue = NodeFieldScalar | readonly string[] | readonly number[] | readonly boolean[];
+
+export type NodeFieldMap = Readonly<Record<string, NodeFieldValue>>;
+
 /**
  * Metadata describing a node that has been replaced or retired.
  */
@@ -90,6 +96,7 @@ export interface FlowNodeData {
   readonly color: string;
   readonly category: NodeCategory;
   readonly sockets: readonly SocketDefinition[];
+  readonly fields: NodeFieldMap;
   readonly deprecation?: NodeDeprecation;
   readonly remediationNotice?: RemediationNotice;
   readonly diagnosticMessages?: readonly string[];

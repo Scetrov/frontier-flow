@@ -1,4 +1,4 @@
-import type { FlowEdge, FlowNode, NodeCategory, SocketDefinition, SocketType } from "../types/nodes";
+import type { FlowEdge, FlowNode, NodeCategory, NodeFieldMap, SocketDefinition, SocketType } from "../types/nodes";
 
 export interface IRConnection {
   readonly sourceNodeId: string;
@@ -13,7 +13,7 @@ export interface IRNode {
   readonly type: string;
   readonly label: string;
   readonly category: NodeCategory;
-  readonly fields: Readonly<Record<string, string | number | boolean>>;
+  readonly fields: NodeFieldMap;
   readonly inputs: Readonly<Partial<Record<string, IRConnection>>>;
   readonly outputs: Readonly<Partial<Record<string, readonly IRConnection[]>>>;
   readonly sockets: readonly SocketDefinition[];
@@ -93,6 +93,7 @@ export type CompilationStatus =
 export interface GenerationContext {
   readonly imports: Set<string>;
   readonly bindings: Map<string, string>;
+  readonly graph?: IRGraph;
   readonly structs: string[];
   readonly entryFunctions: string[];
   readonly moduleName: string;

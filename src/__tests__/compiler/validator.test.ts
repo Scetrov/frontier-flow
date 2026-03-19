@@ -67,6 +67,15 @@ describe("validateGraph", () => {
     ).toBe(true);
   });
 
+  it("treats unconfigured configurable nodes as blocking diagnostics", () => {
+    const graph = buildIrGraph([createFlowNode("group_1", "isInGroup")], [], "group_contract");
+
+    const result = validateGraph(graph);
+
+    expect(result.valid).toBe(false);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.userMessage.includes("Select at least one ship group"))).toBe(true);
+  });
+
   it("reports nodes connected outside any event-trigger entry path", () => {
     const graph = buildIrGraph(
       [

@@ -9,7 +9,7 @@ function KitchenSinkPage() {
   return (
     <main className="ff-kitchen-sink" aria-label="Kitchen sink preview">
       <section className="ff-kitchen-sink__canvas-shell" aria-label="All available nodes preview">
-        <CanvasWorkspace initialNodes={kitchenSinkNodes} />
+        <CanvasWorkspace initialContractName="Kitchen Sink" initialNodes={kitchenSinkNodes} mode="preview" />
 
         <div className="ff-kitchen-sink__panel">
           <p className="ff-kitchen-sink__eyebrow">Kitchen Sink</p>

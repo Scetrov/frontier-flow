@@ -33,7 +33,10 @@ function pushLine(lines: string[], sourceMap: SourceMapEntry[], code: string, no
  * Emit deterministic Move source and source map output from the validated IR graph.
  */
 export function emitMove(graph: IRGraph): EmitterOutput {
-  const context = createGenerationContext(graph.moduleName);
+  const context = {
+    ...createGenerationContext(graph.moduleName),
+    graph,
+  };
   const annotatedLines: AnnotatedLine[] = [];
 
   for (const nodeId of graph.executionOrder) {

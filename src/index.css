@@ -459,8 +459,9 @@ button,
 }
 
 .ff-node-field-editor {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  padding: 1rem;
   z-index: 10;
   display: grid;
   place-items: center;
@@ -531,6 +532,34 @@ button,
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.ff-node-field-editor__choice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.84);
+  padding: 0.65rem 0.75rem;
+}
+
+.ff-node-field-editor__choice-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.ff-node-field-editor__choice-meta {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.ff-node-field-editor__checkbox {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
 }
 
 .ff-node-field-editor__list {
@@ -932,6 +961,7 @@ button,
 }
 
 .ff-node__surface {
+  position: relative;
   border: 1px solid var(--ui-border-dark);
   background: rgba(20, 24, 31, 0.94);
   box-shadow: 0 20px 35px rgba(3, 6, 10, 0.35);
@@ -1016,6 +1046,32 @@ button,
   width: 1rem;
   height: 1rem;
   flex: none;
+}
+
+.ff-node__actions {
+  margin-left: auto;
+}
+
+.ff-node__edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ff-node:hover .ff-node__edit-button,
+.ff-node:focus-within .ff-node__edit-button,
+.ff-node.is-selected .ff-node__edit-button,
+.ff-node[data-editing="true"] .ff-node__edit-button,
+.ff-node__edit-button:focus-visible {
+  opacity: 1;
+}
+
+.ff-node__edit-icon {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .ff-node__title {

@@ -1,6 +1,8 @@
 import { getSocketDefinition } from "../utils/socketTypes";
 import type { FlowEdge, FlowNode } from "../types/nodes";
 
+import { normalizeNodeFields } from "../data/nodeFieldCatalog";
+
 import type { IRConnection, IRGraph, IRNode } from "./types";
 
 type MutableIRNode = Omit<IRNode, "inputs" | "outputs"> & {
@@ -30,7 +32,7 @@ function toIrNode(node: FlowNode): MutableIRNode {
     type: typeof node.type === "string" ? node.type : "unknown",
     label: node.data.label,
     category: node.data.category,
-    fields: {},
+    fields: normalizeNodeFields(typeof node.type === "string" ? node.type : "unknown", node.data.fields),
     inputs: {},
     outputs: {},
     sockets: node.data.sockets,

@@ -192,6 +192,86 @@ describe("CanvasWorkspace", () => {
     expect(screen.getByText("target")).toBeInTheDocument();
   });
 
+  it("opens a node field editor and saves live tribe selections", async () => {
+    const fetchSpy = vi.spyOn(window, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [{ id: 98000418, name: "Pegasus Cartel", nameShort: "PGCL" }],
+          metadata: { total: 1, limit: 100, offset: 0 },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    render(
+      <CanvasWorkspace
+        initialNodes={[
+          {
+            id: "tribe_list_1",
+            type: "listTribe",
+            position: { x: 0, y: 0 },
+            data: {
+              ...createFlowNodeData({
+                type: "listTribe",
+                label: "List of Tribe",
+                description: "Curate a reusable tribe list for downstream target matching.",
+                color: "var(--socket-entity)",
+                category: "data-accessor",
+                sockets: [{ id: "list", type: "any", position: "right", direction: "output", label: "list" }],
+              }),
+            },
+          },
+        ]}
+        mode="preview"
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Edit List of Tribe"));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByText("Pegasus Cartel")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox")).toBeChecked();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith("https://world-api-stillness.live.tech.evefrontier.com/v2/tribes");
+    fetchSpy.mockRestore();
+  });
+
+  it("saves character addresses from the node field editor", async () => {
+    render(
+      <CanvasWorkspace
+        initialNodes={[
+          createFlowNode("character_list_1", "listCharacter"),
+        ]}
+        mode="preview"
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Edit List of Character"));
+    fireEvent.change(screen.getByLabelText("Character address"), { target: { value: "0xabc123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("0xabc123").length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
   it("creates independent nodes for repeated drops", () => {
     render(<CanvasWorkspace />);
 
@@ -329,6 +409,41 @@ describe("CanvasWorkspace", () => {
     expect(screen.getByText("Get Priority Weight")).toBeInTheDocument();
     expect(screen.getByText("Add to Queue")).toBeInTheDocument();
     expect(screen.queryByText("Contract Canvas")).not.toBeInTheDocument();
+  });
+
+  it("ignores saved contracts when rendered in preview mode", () => {
+    window.localStorage.setItem(
+      CONTRACT_LIBRARY_STORAGE_KEY,
+      JSON.stringify({
+        version: 2,
+        activeContractName: "Stored Contract",
+        contracts: [
+          {
+            id: "contract:stored-contract",
+            name: "Stored Contract",
+            nodes: [createFlowNode("stored_node", "getBehaviour")],
+            edges: [],
+            updatedAt: new Date(0).toISOString(),
+          },
+        ],
+      } satisfies ContractLibrary),
+    );
+
+    render(
+      <CanvasWorkspace
+        initialContractName="Kitchen Sink"
+        initialNodes={[
+          createFlowNode("preview_aggression", "aggression"),
+          createFlowNode("preview_proximity", "proximity", { x: 240, y: 0 }),
+        ]}
+        mode="preview"
+      />,
+    );
+
+    expect(screen.getByText("Aggression")).toBeInTheDocument();
+    expect(screen.getByText("Proximity")).toBeInTheDocument();
+    expect(screen.queryByText("Get Behaviour")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Saved contract controls" })).not.toBeInTheDocument();
   });
 
   it("opens a right-click context menu that offers auto-arrange", async () => {
