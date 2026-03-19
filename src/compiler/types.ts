@@ -103,7 +103,7 @@ export interface GenerationContext {
 
 export interface NodeCodeGenerator {
   readonly nodeType: string;
-  validate(node: IRNode): ValidationResult;
+  validate(node: IRNode, graph: IRGraph): ValidationResult;
   emit(node: IRNode, context: GenerationContext): readonly AnnotatedLine[];
 }
 

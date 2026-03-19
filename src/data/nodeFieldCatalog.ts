@@ -15,12 +15,12 @@ export const SHIP_GROUP_OPTIONS: readonly NumericOption[] = [
   { value: 419, label: "Combat Battlecruiser", description: "Heavy frontline hull" },
 ] as const;
 
-const DEFAULT_FIELDS_BY_NODE_TYPE = {
+const DEFAULT_FIELDS_BY_NODE_TYPE: Readonly<Partial<Record<string, NodeFieldMap>>> = {
   listTribe: { selectedTribeIds: [] },
   listShip: { selectedShipIds: [] },
   listCharacter: { characterAddresses: [] },
   isInGroup: { selectedGroupIds: [] },
-} satisfies Readonly<Record<string, NodeFieldMap>>;
+};
 
 const EDITABLE_NODE_TYPES = new Set(Object.keys(DEFAULT_FIELDS_BY_NODE_TYPE));
 
@@ -73,7 +73,7 @@ export function hasEditableNodeFields(nodeType: string): boolean {
 }
 
 export function getDefaultNodeFields(nodeType: string): NodeFieldMap {
-  return DEFAULT_FIELDS_BY_NODE_TYPE[nodeType as keyof typeof DEFAULT_FIELDS_BY_NODE_TYPE];
+  return DEFAULT_FIELDS_BY_NODE_TYPE[nodeType] ?? {};
 }
 
 export function normalizeNodeFields(nodeType: string, incoming: unknown): NodeFieldMap {

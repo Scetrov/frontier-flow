@@ -4,6 +4,8 @@ import { SHIP_GROUP_OPTIONS, getNumberFieldList, getStringFieldList } from "../.
 
 import { bindOutput, createCommentBlock, okValidationResult, resolveInput } from "./shared";
 
+const SUPPORTED_LIST_NODE_TYPES = new Set(["listTribe", "listShip", "listCharacter"]);
+
 function createValidationDiagnostic(node: Parameters<NodeCodeGenerator["validate"]>[0], message: string) {
   return {
     severity: "error" as const,
@@ -48,13 +50,24 @@ function getConnectedSourceNode(
 
 function createTargetDerivedGroupExpression(targetBinding: string): string {
   const groupIds = SHIP_GROUP_OPTIONS.map((option) => option.value);
+  const modulus = String(groupIds.length);
 
-  return `if (${targetBinding} % ${String(groupIds.length)} == 0) { ${String(groupIds[0])} }`
-    + ` else if (${targetBinding} % ${String(groupIds.length)} == 1) { ${String(groupIds[1])} }`
-    + ` else if (${targetBinding} % ${String(groupIds.length)} == 2) { ${String(groupIds[2])} }`
-    + ` else if (${targetBinding} % ${String(groupIds.length)} == 3) { ${String(groupIds[3])} }`
-    + ` else if (${targetBinding} % ${String(groupIds.length)} == 4) { ${String(groupIds[4])} }`
-    + ` else { ${String(groupIds[5])} }`;
+  if (groupIds.length === 0) {
+    return "0";
+  }
+
+  return groupIds.reduce((expression, groupId, index) => {
+    const branch = `${targetBinding} % ${modulus} == ${String(index)}`;
+    if (index === 0) {
+      return `if (${branch}) { ${String(groupId)} }`;
+    }
+
+    if (index === groupIds.length - 1) {
+      return `${expression} else { ${String(groupId)} }`;
+    }
+
+    return `${expression} else if (${branch}) { ${String(groupId)} }`;
+  }, "");
 }
 
 function createBooleanGateGenerator(
@@ -115,10 +128,26 @@ const logicGateGenerators: readonly NodeCodeGenerator[] = [
   }),
   {
     nodeType: "isInList",
-    validate(node) {
-      return node.inputs.list === undefined
-        ? { valid: false, diagnostics: [createValidationDiagnostic(node, "Connect a list node before compiling Is in List.")] }
-        : okValidationResult();
+    validate(node, graph) {
+      const listConnection = node.inputs.list;
+      if (listConnection === undefined) {
+        return { valid: false, diagnostics: [createValidationDiagnostic(node, "Connect a list node before compiling Is in List.")] };
+      }
+
+      const sourceNode = graph.nodes.get(listConnection.sourceNodeId);
+      if (sourceNode === undefined || !SUPPORTED_LIST_NODE_TYPES.has(sourceNode.type)) {
+        return {
+          valid: false,
+          diagnostics: [
+            createValidationDiagnostic(
+              node,
+              "Connect Is in List to a supported list node (List of Tribe, List of Ship, or List of Character) before compiling.",
+            ),
+          ],
+        };
+      }
+
+      return okValidationResult();
     },
     emit(node, context) {
       const includeBinding = bindOutput(context, node, "matches");

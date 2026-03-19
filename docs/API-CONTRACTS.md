@@ -26,6 +26,8 @@ All custom nodes receive their data through React Flow's `NodeProps<T>`. The `da
 
 ```typescript
 interface FlowNodeData {
+  /** Additional runtime metadata carried on the React Flow node payload */
+  [key: string]: unknown;
   /** Node type identifier used by the compiler pipeline */
   type: string;
   /** Display label shown in the node header */
@@ -38,6 +40,37 @@ interface FlowNodeData {
   category: NodeCategory;
   /** Typed sockets rendered on the node */
   sockets: readonly SocketDefinition[];
+  /** Persisted per-instance configuration */
+  fields: NodeFieldMap;
+  /** Optional lifecycle metadata for deprecated or retired nodes */
+  deprecation?: NodeDeprecation;
+  /** Restore-time notice for legacy content that needs user follow-up */
+  remediationNotice?: RemediationNotice;
+  /** Current validation or restore messages shown inline on the node */
+  diagnosticMessages?: readonly string[];
+  /** Highest severity represented in diagnosticMessages */
+  validationState?: "warning" | "error";
+}
+
+type NodeFieldScalar = string | number | boolean;
+
+type NodeFieldValue = NodeFieldScalar | readonly string[] | readonly number[] | readonly boolean[];
+
+type NodeFieldMap = Readonly<Record<string, NodeFieldValue>>;
+
+interface NodeDeprecation {
+  status: "deprecated" | "retired";
+  reason: string;
+  replacedBy?: readonly string[];
+  remediationMessage?: string;
+}
+
+interface RemediationNotice {
+  nodeId: string;
+  legacyType: string;
+  message: string;
+  severity: "warning" | "error";
+  suggestedAction: string;
 }
 ```
 
