@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from "react";
+import type { CSSProperties, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -17,7 +17,7 @@ import {
   type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, LayoutGrid, Trash2, X } from "lucide-react";
 
 import { createFlowNodeData, getNodeDefinition } from "../data/node-definitions";
 import { seededExampleContracts } from "../data/exampleContracts";
@@ -82,6 +82,18 @@ interface HydratedContractLibrarySnapshot {
   readonly remediationNoticesByContractName: Readonly<Record<string, readonly RemediationNotice[]>>;
 }
 
+interface SelectedEdgeDeleteAnchor {
+  readonly edgeId: string;
+  readonly x: number;
+  readonly y: number;
+  readonly color: string;
+}
+
+interface SelectedEdgeDeleteState {
+  readonly edgeId: string | null;
+  readonly confirmationState: DeleteConfirmationState;
+}
+
 const desktopMediaQuery = "(min-width: 768px)";
 const deleteConfirmationTimeoutMs = 15_000;
 const idleDeleteConfirmationState: DeleteConfirmationState = { mode: "idle", startedAt: null };
@@ -143,6 +155,30 @@ function getNodeCenter(node: FlowNode) {
   };
 }
 
+function getFallbackEdgeDeleteAnchor(edge: FlowEdge, nodes: readonly FlowNode[]) {
+  const sourceNode = nodes.find((candidate) => candidate.id === edge.source);
+  const targetNode = nodes.find((candidate) => candidate.id === edge.target);
+  if (sourceNode === undefined || targetNode === undefined) {
+    return null;
+  }
+
+  const sourceCenter = getNodeCenter(sourceNode);
+  const targetCenter = getNodeCenter(targetNode);
+  const [, labelX, labelY] = getBezierPath({
+    sourceX: sourceCenter.x,
+    sourceY: sourceCenter.y,
+    targetX: targetCenter.x,
+    targetY: targetCenter.y,
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
+  });
+
+  return {
+    x: labelX,
+    y: labelY,
+  };
+}
+
 function getSelectedTarget(nodes: readonly FlowNode[], edges: readonly FlowEdge[]): CanvasSelectionTarget {
   const selectedNode = nodes.find((node) => node.selected);
   if (selectedNode !== undefined) {
@@ -188,6 +224,11 @@ function FlowEditor({
   const [draftContractName, setDraftContractName] = useState(activeContract.name);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [nodeDeleteStates, setNodeDeleteStates] = useState<Readonly<Record<string, DeleteConfirmationState>>>({});
+  const [selectedEdgeDeleteAnchor, setSelectedEdgeDeleteAnchor] = useState<SelectedEdgeDeleteAnchor | null>(null);
+  const [selectedEdgeDeleteState, setSelectedEdgeDeleteState] = useState<SelectedEdgeDeleteState>({
+    edgeId: null,
+    confirmationState: idleDeleteConfirmationState,
+  });
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
   const [isContractPanelOpen, setIsContractPanelOpen] = useState(
     () => (mode === "persistent" ? loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isContractPanelOpen : false),
@@ -195,11 +236,12 @@ function FlowEditor({
   const nodeCounterRef = useRef(0);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const deleteConfirmationTimersRef = useRef(new Map<string, number>());
+  const edgeDeleteConfirmationTimerRef = useRef<number | null>(null);
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
   const idleMsOverride = getIdleMsOverride();
   const compilation = useAutoCompile(nodes, edges, draftContractName, idleMsOverride);
   const selectedTarget = useMemo(() => getSelectedTarget(nodes, edges), [edges, nodes]);
-  const selectedEdgeDeleteAnchor = useMemo(() => {
+  const fallbackSelectedEdgeDeleteAnchor = useMemo(() => {
     if (selectedTarget.kind !== "edge" || selectedTarget.targetId === null) {
       return null;
     }
@@ -209,30 +251,38 @@ function FlowEditor({
       return null;
     }
 
-    const sourceNode = nodes.find((candidate) => candidate.id === edge.source);
-    const targetNode = nodes.find((candidate) => candidate.id === edge.target);
-    if (sourceNode === undefined || targetNode === undefined) {
+    const fallbackAnchor = getFallbackEdgeDeleteAnchor(edge, nodes);
+    if (fallbackAnchor === null) {
       return null;
     }
 
-    const sourceCenter = getNodeCenter(sourceNode);
-    const targetCenter = getNodeCenter(targetNode);
-    const [, labelX, labelY] = getBezierPath({
-      sourceX: sourceCenter.x,
-      sourceY: sourceCenter.y,
-      targetX: targetCenter.x,
-      targetY: targetCenter.y,
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
-    });
+    const sourceNode = nodes.find((candidate) => candidate.id === edge.source);
+    const fallbackColor = typeof edge.style?.stroke === "string"
+      ? edge.style.stroke
+      : getEdgeColor(sourceNode, edge.sourceHandle ?? null);
 
     return {
       edgeId: edge.id,
-      x: labelX,
-      y: labelY,
-    };
+      x: fallbackAnchor.x,
+      y: fallbackAnchor.y,
+      color: fallbackColor,
+    } satisfies SelectedEdgeDeleteAnchor;
   }, [edges, nodes, selectedTarget]);
+  const activeSelectedEdgeDeleteAnchor = useMemo(() => {
+    if (selectedTarget.kind !== "edge" || selectedTarget.targetId === null) {
+      return null;
+    }
 
+    if (selectedEdgeDeleteAnchor?.edgeId === selectedTarget.targetId) {
+      return selectedEdgeDeleteAnchor;
+    }
+
+    if (fallbackSelectedEdgeDeleteAnchor?.edgeId === selectedTarget.targetId) {
+      return fallbackSelectedEdgeDeleteAnchor;
+    }
+
+    return null;
+  }, [fallbackSelectedEdgeDeleteAnchor, selectedEdgeDeleteAnchor, selectedTarget]);
   const diagnosticsByNodeId = useMemo(() => {
     const nextDiagnosticsByNodeId = new Map<string, readonly CompilerDiagnostic[]>();
 
@@ -295,6 +345,15 @@ function FlowEditor({
 
   const deleteEdgeById = useCallback(
     (edgeId: string) => {
+      setSelectedEdgeDeleteAnchor((currentAnchor) => (currentAnchor?.edgeId === edgeId ? null : currentAnchor));
+      setSelectedEdgeDeleteState((currentState) =>
+        currentState.edgeId === edgeId
+          ? {
+              edgeId: null,
+              confirmationState: idleDeleteConfirmationState,
+            }
+          : currentState,
+      );
       setEdges((currentEdges) => currentEdges.filter((edge) => edge.id !== edgeId));
       setContextMenu((currentMenu) => {
         if (currentMenu?.target.kind === "edge" && currentMenu.target.targetId === edgeId) {
@@ -305,6 +364,34 @@ function FlowEditor({
       });
     },
     [setEdges],
+  );
+
+  const clearSelectedEdgeDeleteState = useCallback(() => {
+    setSelectedEdgeDeleteState((currentState) => {
+      if (currentState.confirmationState.mode === "idle" && currentState.edgeId === null) {
+        return currentState;
+      }
+
+      return {
+        edgeId: null,
+        confirmationState: idleDeleteConfirmationState,
+      };
+    });
+  }, []);
+
+  const handleSelectedEdgeDeleteRequest = useCallback(
+    (edgeId: string, options?: { readonly immediate?: boolean }) => {
+      if (options?.immediate === true) {
+        deleteEdgeById(edgeId);
+        return;
+      }
+
+      setSelectedEdgeDeleteState({
+        edgeId,
+        confirmationState: { mode: "confirm", startedAt: Date.now() },
+      });
+    },
+    [deleteEdgeById],
   );
 
   const selectTarget = useCallback(
@@ -630,6 +717,77 @@ function FlowEditor({
   );
 
   useEffect(() => {
+    if (selectedTarget.kind !== "edge" || selectedTarget.targetId === null) {
+      return;
+    }
+
+    const edge = edges.find((candidate) => candidate.id === selectedTarget.targetId);
+    if (edge === undefined) {
+      return;
+    }
+
+    const fallbackColor = fallbackSelectedEdgeDeleteAnchor?.edgeId === edge.id
+      ? fallbackSelectedEdgeDeleteAnchor.color
+      : getEdgeColor(nodes.find((candidate) => candidate.id === edge.source), edge.sourceHandle ?? null);
+
+    const updateAnchor = () => {
+      const edgePath = document.querySelector<SVGPathElement>(`.react-flow__edge[data-id="${edge.id}"] .react-flow__edge-path`);
+      if (
+        edgePath !== null
+        && typeof edgePath.getTotalLength === "function"
+        && typeof edgePath.getPointAtLength === "function"
+      ) {
+        const midpoint = edgePath.getPointAtLength(edgePath.getTotalLength() / 2);
+        const computedStroke = typeof window === "undefined" ? "" : window.getComputedStyle(edgePath).stroke;
+
+        setSelectedEdgeDeleteAnchor({
+          edgeId: edge.id,
+          x: midpoint.x,
+          y: midpoint.y,
+          color: computedStroke || fallbackColor,
+        });
+      }
+    };
+
+    if (typeof window === "undefined") {
+      updateAnchor();
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(updateAnchor);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [edges, fallbackSelectedEdgeDeleteAnchor, nodes, selectedTarget]);
+
+  useEffect(() => {
+    if (selectedEdgeDeleteState.confirmationState.mode !== "confirm" || selectedEdgeDeleteState.edgeId === null) {
+      if (edgeDeleteConfirmationTimerRef.current !== null) {
+        window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
+        edgeDeleteConfirmationTimerRef.current = null;
+      }
+
+      return;
+    }
+
+    if (edgeDeleteConfirmationTimerRef.current !== null) {
+      window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
+    }
+
+    edgeDeleteConfirmationTimerRef.current = window.setTimeout(() => {
+      clearSelectedEdgeDeleteState();
+      edgeDeleteConfirmationTimerRef.current = null;
+    }, deleteConfirmationTimeoutMs);
+
+    return () => {
+      if (edgeDeleteConfirmationTimerRef.current !== null) {
+        window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
+        edgeDeleteConfirmationTimerRef.current = null;
+      }
+    };
+  }, [clearSelectedEdgeDeleteState, selectedEdgeDeleteState]);
+
+  useEffect(() => {
     if (typeof window.matchMedia !== "function") {
       return;
     }
@@ -688,6 +846,11 @@ function FlowEditor({
       }
 
       timerMap.clear();
+
+      if (edgeDeleteConfirmationTimerRef.current !== null) {
+        window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
+        edgeDeleteConfirmationTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -941,21 +1104,88 @@ function FlowEditor({
       >
         <Background className="ff-canvas__background" color="rgba(250, 250, 229, 0.1)" gap={32} variant={BackgroundVariant.Lines} />
         <Controls className="ff-canvas__controls" showInteractive={false} />
-        {selectedEdgeDeleteAnchor !== null ? (
+        {selectedTarget.kind === "edge"
+        && selectedTarget.targetId !== null
+        && activeSelectedEdgeDeleteAnchor !== null
+        && activeSelectedEdgeDeleteAnchor.edgeId === selectedTarget.targetId ? (
           <ViewportPortal>
-            <button
-              aria-label="Delete selected edge"
-              className="ff-edge__midpoint-delete nodrag nopan"
-              data-testid="selected-edge-delete"
-              onClick={(event) => {
-                event.stopPropagation();
-                deleteEdgeById(selectedEdgeDeleteAnchor.edgeId);
-              }}
-              style={{ left: `${String(selectedEdgeDeleteAnchor.x)}px`, top: `${String(selectedEdgeDeleteAnchor.y)}px` }}
-              type="button"
+            <div
+              aria-label={selectedEdgeDeleteState.confirmationState.mode === "confirm" ? "Confirm delete selected edge" : undefined}
+              className="ff-edge__midpoint-delete-group nodrag nopan"
+              role={selectedEdgeDeleteState.confirmationState.mode === "confirm" ? "group" : undefined}
+              style={{
+                left: `${String(activeSelectedEdgeDeleteAnchor.x)}px`,
+                top: `${String(activeSelectedEdgeDeleteAnchor.y)}px`,
+                "--ff-edge-delete-accent": activeSelectedEdgeDeleteAnchor.color,
+              } as CSSProperties}
             >
-              <span aria-hidden="true">×</span>
-            </button>
+              {selectedEdgeDeleteState.confirmationState.mode === "confirm" && selectedEdgeDeleteState.edgeId === activeSelectedEdgeDeleteAnchor.edgeId ? (
+                <>
+                  <button
+                    aria-label="Confirm delete selected edge"
+                    className="ff-edge__midpoint-delete ff-edge__midpoint-delete--confirm"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      deleteEdgeById(activeSelectedEdgeDeleteAnchor.edgeId);
+                    }}
+                    type="button"
+                  >
+                    <Check aria-hidden="true" className="ff-edge__midpoint-delete-icon" />
+                  </button>
+                  <button
+                    aria-label="Cancel delete selected edge"
+                    className="ff-edge__midpoint-delete"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      clearSelectedEdgeDeleteState();
+                    }}
+                    type="button"
+                  >
+                    <X aria-hidden="true" className="ff-edge__midpoint-delete-icon" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  aria-label="Delete selected edge"
+                  className="ff-edge__midpoint-delete"
+                  data-testid="selected-edge-delete"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleSelectedEdgeDeleteRequest(activeSelectedEdgeDeleteAnchor.edgeId, { immediate: event.shiftKey });
+                  }}
+                  type="button"
+                >
+                  <Trash2 aria-hidden="true" className="ff-edge__midpoint-delete-icon" />
+                </button>
+              )}
+            </div>
           </ViewportPortal>
         ) : null}
         {nodes.length === 0 ? (
@@ -978,7 +1208,8 @@ function FlowEditor({
         >
           {contextMenu.target.kind === "canvas" || contextMenu.target.kind === "node" ? (
             <button className="ff-canvas__context-action" role="menuitem" type="button" onClick={handleAutoArrange}>
-              Auto-arrange contract
+              <LayoutGrid aria-hidden="true" className="ff-canvas__context-action-icon" />
+              <span>Auto-arrange contract</span>
             </button>
           ) : null}
           {contextMenu.target.kind === "node" ? (
@@ -988,7 +1219,8 @@ function FlowEditor({
               type="button"
               onClick={handleDeleteFromContextMenu}
             >
-              Delete node
+              <Trash2 aria-hidden="true" className="ff-canvas__context-action-icon" />
+              <span>Delete node</span>
             </button>
           ) : null}
           {contextMenu.target.kind === "edge" ? (
@@ -998,7 +1230,8 @@ function FlowEditor({
               type="button"
               onClick={handleDeleteFromContextMenu}
             >
-              Delete edge
+              <Trash2 aria-hidden="true" className="ff-canvas__context-action-icon" />
+              <span>Delete edge</span>
             </button>
           ) : null}
         </div>

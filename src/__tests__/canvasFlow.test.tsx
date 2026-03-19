@@ -558,7 +558,9 @@ describe("CanvasWorkspace", () => {
     typingInput.remove();
   });
 
-  it("shows a midpoint delete control for the selected edge and removes the edge when used", async () => {
+  it("shows a midpoint delete control for the selected edge and removes the edge when used", () => {
+    vi.useFakeTimers();
+
     const { container } = renderPreviewCanvas({
       initialEdges: [
         createTestFlowEdge("selected_edge", "source_node", "target_node", {
@@ -588,13 +590,25 @@ describe("CanvasWorkspace", () => {
     const deleteButton = container.querySelector<HTMLButtonElement>('[data-testid="selected-edge-delete"]');
 
     expect(deleteButton).not.toBeNull();
-    expect(deleteButton).toHaveStyle({ left: "160px", top: "90px" });
+    expect(deleteButton?.querySelector("svg")).not.toBeNull();
 
     fireEvent.click(deleteButton as HTMLButtonElement);
+    expect(container.querySelector('[aria-label="Confirm delete selected edge"]')).not.toBeNull();
 
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="selected-edge-delete"]')).toBeNull();
+    fireEvent.click(container.querySelector('[aria-label="Cancel delete selected edge"]') as HTMLButtonElement);
+    expect(container.querySelector('[aria-label="Confirm delete selected edge"]')).toBeNull();
+
+    fireEvent.click(container.querySelector('[aria-label="Delete selected edge"]') as HTMLButtonElement);
+    act(() => {
+      vi.advanceTimersByTime(15_000);
     });
+    expect(container.querySelector('[aria-label="Confirm delete selected edge"]')).toBeNull();
+
+    fireEvent.click(container.querySelector('[aria-label="Delete selected edge"]') as HTMLButtonElement, {
+      shiftKey: true,
+    });
+
+    expect(container.querySelector('[data-testid="selected-edge-delete"]')).toBeNull();
   });
 
   it("shows target-sensitive delete actions in node context menus and omits delete on the canvas menu", async () => {
@@ -620,6 +634,7 @@ describe("CanvasWorkspace", () => {
     fireEvent.contextMenu(container.querySelector('[data-testid="rf__node-context_source"] .ff-node') as Element);
     expect(screen.getByRole("menuitem", { name: "Auto-arrange contract" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Delete node" })).toBeInTheDocument();
+    expect(container.querySelectorAll('.ff-canvas__context-action-icon')).toHaveLength(2);
     expect(screen.queryByRole("menuitem", { name: "Delete edge" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete node" }));

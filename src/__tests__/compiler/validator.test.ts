@@ -131,6 +131,12 @@ describe("validateGraph", () => {
           && diagnostic.userMessage.includes("Configure at least one value"),
       ),
     ).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) => diagnostic.reactFlowNodeId === "list_1"
+          && diagnostic.userMessage.includes("event-trigger entry path"),
+      ),
+    ).toBe(false);
   });
 
   it("rejects unsupported upstream sources for Is in List", () => {

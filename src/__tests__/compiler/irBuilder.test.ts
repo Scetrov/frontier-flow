@@ -47,6 +47,35 @@ describe("buildIrGraph", () => {
     expect(graph.disconnectedNodeIds).toEqual(expect.arrayContaining(["weight_1", "bonus_1"]));
   });
 
+  it("keeps source-only data nodes out of disconnected trigger diagnostics", () => {
+    const graph = buildIrGraph(
+      [
+        createFlowNode("trigger_1", "aggression"),
+        createFlowNode("list_1", "listCharacter"),
+        createFlowNode("list_gate_1", "isInList"),
+      ],
+      [
+        {
+          id: "edge_trigger_list_gate_target",
+          source: "trigger_1",
+          sourceHandle: "target",
+          target: "list_gate_1",
+          targetHandle: "target",
+        },
+        {
+          id: "edge_list_source",
+          source: "list_1",
+          sourceHandle: "list",
+          target: "list_gate_1",
+          targetHandle: "list",
+        },
+      ],
+      "source_nodes_contract",
+    );
+
+    expect(graph.disconnectedNodeIds).not.toContain("list_1");
+  });
+
   it("tracks nodes whose execution order cannot be resolved", () => {
     const graph = buildIrGraph(
       [createFlowNode("queue_1", "addToQueue"), createFlowNode("queue_2", "addToQueue")],

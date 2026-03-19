@@ -137,9 +137,10 @@ function collectDisconnectedNodeIds(nodesById: ReadonlyMap<string, MutableIRNode
 
   return Array.from(nodesById.values())
     .filter((node) => {
+      const hasInputSockets = node.sockets.some((socket) => socket.direction === "input");
       const isConnected = Object.keys(node.inputs).length > 0
         || Object.values(node.outputs).some((connections) => connections.length > 0);
-      return isConnected && node.category !== "event-trigger" && !reachable.has(node.id);
+      return hasInputSockets && isConnected && node.category !== "event-trigger" && !reachable.has(node.id);
     })
     .map((node) => node.id)
     .sort();
