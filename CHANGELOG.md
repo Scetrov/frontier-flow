@@ -1,5 +1,23 @@
 # Changelog
 
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## 0.0.0 (2026-03-19)
+
+
+### Features
+
+* add contract-aligned node palette and kitchen sink preview ([#1](https://github.com/Scetrov/frontier-flow/issues/1)) ([a1b5299](https://github.com/Scetrov/frontier-flow/commit/a1b5299c701b1874cba138991d2bf225c4a021d7))
+* add WASM compile pipeline UI and docs ([#5](https://github.com/Scetrov/frontier-flow/issues/5)) ([416e790](https://github.com/Scetrov/frontier-flow/commit/416e7907d2dc6b6394d3137b757de754df8a1dc5))
+* **specs/004:** implement ReactFlow canvas nodes, socket types, node components, and tests ([88c3845](https://github.com/Scetrov/frontier-flow/commit/88c38450b43e4b7fd3fd06cdae49c9326e05b72a))
+
+
+### Bug Fixes
+
+* base url ([706b7cd](https://github.com/Scetrov/frontier-flow/commit/706b7cd851a09592ccf05c4b3326c15cef6b3218))
+
+# Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
