@@ -36,7 +36,6 @@ import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
 import { useAutoCompile } from "../hooks/useAutoCompile";
 
 import { restoreSavedFlow } from "./restoreSavedFlow";
-import NodeFieldEditor from "./NodeFieldEditor";
 
 interface CanvasWorkspaceProps {
   readonly initialContractName?: string;
@@ -69,7 +68,6 @@ interface HydratedContractLibrarySnapshot {
 }
 
 const desktopMediaQuery = "(min-width: 768px)";
-const editNodeFieldsEventName = "frontier-flow:edit-node-fields";
 
 function getIdleMsOverride(): number | undefined {
   if (typeof window === "undefined") {
@@ -130,7 +128,6 @@ function FlowEditor({
   const [isContractPanelOpen, setIsContractPanelOpen] = useState(
     () => loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isContractPanelOpen,
   );
-  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const nodeCounterRef = useRef(0);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
@@ -174,7 +171,6 @@ function FlowEditor({
     [diagnosticsByNodeId, nodes],
   );
 
-  const editingNode = editingNodeId === null ? undefined : nodes.find((node) => node.id === editingNodeId);
   const activeContractDescription = activeContract.description ?? (activeContract.isSeeded ? "Curated example contract." : "Local contract snapshot.");
 
   const handleDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
@@ -284,7 +280,6 @@ function FlowEditor({
       setDraftContractName(contractName);
       setNodes(nextContract.nodes);
       setEdges(nextContract.edges);
-      setEditingNodeId(null);
       setContextMenu(null);
       requestAnimationFrame(() => {
         void reactFlow.fitView({ duration: 200, padding: 0.24 });
@@ -467,28 +462,6 @@ function FlowEditor({
     };
   }, [contextMenu]);
 
-  useEffect(() => {
-    const handleEditNodeFields = (event: Event) => {
-      const customEvent = event as CustomEvent<{ readonly nodeId?: string }>;
-      const detail = customEvent.detail;
-      if (typeof detail.nodeId !== "string") {
-        return;
-      }
-
-      const matchingNode = nodes.find((node) => node.id === detail.nodeId && node.data.fields !== undefined);
-      if (matchingNode === undefined) {
-        return;
-      }
-
-      setEditingNodeId(matchingNode.id);
-    };
-
-    window.addEventListener(editNodeFieldsEventName, handleEditNodeFields);
-    return () => {
-      window.removeEventListener(editNodeFieldsEventName, handleEditNodeFields);
-    };
-  }, [nodes]);
-
   return (
     <div className="ff-canvas" data-testid="canvas-workspace" onContextMenu={handlePaneContextMenu}>
       {!isDesktop && isContractPanelOpen ? (
@@ -620,11 +593,6 @@ function FlowEditor({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onEdgesChange={onEdgesChange}
-        onNodeDoubleClick={(_, node) => {
-          if (node.data.fields !== undefined && node.data.fields.length > 0) {
-            setEditingNodeId(node.id);
-          }
-        }}
         onNodesChange={onNodesChange}
         proOptions={{ hideAttribution: true }}
       >
@@ -634,7 +602,7 @@ function FlowEditor({
           <div className="ff-canvas__empty-state">
             <p className="ff-canvas__eyebrow">Contract Canvas</p>
             <p className="ff-canvas__copy">
-              Start with Aggression or Proximity, then layer scoring, filters, config sources, config list accessors, and Add to Queue.
+              Start with Aggression or Proximity, then layer scoring, filters, and Add to Queue.
             </p>
           </div>
         ) : null}
@@ -654,32 +622,6 @@ function FlowEditor({
         </div>
       ) : null}
 
-      {editingNode !== undefined && editingNode.data.fields !== undefined ? (
-        <NodeFieldEditor
-          fields={editingNode.data.fields}
-          nodeLabel={editingNode.data.label}
-          onCancel={() => {
-            setEditingNodeId(null);
-          }}
-          onSave={(fieldValues) => {
-            setNodes((currentNodes) =>
-              currentNodes.map((node) =>
-                node.id === editingNode.id
-                  ? {
-                      ...node,
-                      data: {
-                        ...node.data,
-                        fieldValues,
-                      },
-                    }
-                  : node,
-              ),
-            );
-            setEditingNodeId(null);
-          }}
-          valueSet={editingNode.data.fieldValues}
-        />
-      ) : null}
     </div>
   );
 }

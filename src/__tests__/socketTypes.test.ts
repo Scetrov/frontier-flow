@@ -24,10 +24,6 @@ describe("socketTypes", () => {
     expect(canConnectSocketTypes("target", "target")).toBe(true);
   });
 
-  it("accepts valid config connections", () => {
-    expect(canConnectSocketTypes("config", "config")).toBe(true);
-  });
-
   it("rejects invalid number to tribe connections", () => {
     expect(canConnectSocketTypes("number", "tribe")).toBe(false);
   });
@@ -70,16 +66,16 @@ describe("socketTypes", () => {
     ).toBe(false);
   });
 
-  it("accepts numeric output into the any list-membership input", () => {
-    const nodes = [createNode("group", "getGroupId"), createNode("list", "isInList")];
+  it("accepts numeric output into the any input of Add to Queue", () => {
+    const nodes = [createNode("group", "getGroupId"), createNode("queue", "addToQueue")];
 
     expect(
       isValidFlowConnection(
         {
           source: "group",
-          target: "list",
+          target: "queue",
           sourceHandle: "group_id",
-          targetHandle: "input_item",
+          targetHandle: "weight",
         },
         nodes,
         [],
@@ -89,10 +85,10 @@ describe("socketTypes", () => {
 
   it("derives edge styling from the source socket type", () => {
     const priorityNode = createNode("event", "aggression");
-    const listNode = createNode("source", "groupBonusConfig");
+    const valueNode = createNode("source", "getGroupId");
 
     expect(getEdgeColor(priorityNode, "target")).toBe("var(--socket-entity)");
     expect(getEdgeStrokeWidth(priorityNode, "priority")).toBe(3);
-    expect(getEdgeStrokeWidth(listNode, "config")).toBe(3);
+    expect(getEdgeStrokeWidth(valueNode, "group_id")).toBe(2);
   });
 });

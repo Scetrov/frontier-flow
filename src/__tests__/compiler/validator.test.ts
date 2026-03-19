@@ -72,8 +72,8 @@ describe("validateGraph", () => {
       [
         createFlowNode("trigger_1", "aggression"),
         createFlowNode("queue_1", "addToQueue"),
-        createFlowNode("list_1", "getCharacterListFromConfig"),
-        createFlowNode("logic_1", "isInList"),
+        createFlowNode("weight_1", "getPriorityWeight"),
+        createFlowNode("bonus_1", "damageBonus"),
       ],
       [
         {
@@ -84,11 +84,11 @@ describe("validateGraph", () => {
           targetHandle: "priority_in",
         },
         {
-          id: "edge_list_logic",
-          source: "list_1",
-          sourceHandle: "items",
-          target: "logic_1",
-          targetHandle: "input_list",
+          id: "edge_weight_bonus",
+          source: "weight_1",
+          sourceHandle: "weight",
+          target: "bonus_1",
+          targetHandle: "weight_in",
         },
       ],
       "disconnected_path_contract",
@@ -99,7 +99,7 @@ describe("validateGraph", () => {
     expect(result.valid).toBe(false);
     expect(
       result.diagnostics.some(
-        (diagnostic) => diagnostic.reactFlowNodeId === "list_1"
+        (diagnostic) => diagnostic.reactFlowNodeId === "weight_1"
           && diagnostic.userMessage.includes("entry path"),
       ),
     ).toBe(true);

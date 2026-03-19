@@ -2,7 +2,6 @@ import type { GenerationContext, NodeCodeGenerator } from "../types";
 
 import actionGenerators from "./actions";
 import dataAccessorGenerators from "./dataAccessors";
-import dataSourceGenerators from "./dataSources";
 import eventTriggerGenerators from "./eventTriggers";
 import logicGateGenerators from "./logicGates";
 import scoringModifierGenerators from "./scoringModifiers";
@@ -12,7 +11,6 @@ const generators = [
   ...dataAccessorGenerators,
   ...scoringModifierGenerators,
   ...logicGateGenerators,
-  ...dataSourceGenerators,
   ...actionGenerators,
 ] as const;
 

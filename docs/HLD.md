@@ -209,18 +209,20 @@ The application uses `@xyflow/react` (React Flow v12) with:
 
 ```mermaid
 flowchart LR
-    PROX["Proximity"]
+    AGG["Aggression"]
     GETTRIBE["Get Tribe"]
-    LISTTRIBE["List of Tribe"]
-    ISINLIST{"Is in List"}
+    ISAGG["Is Aggressor"]
+    BOOLOR{"Boolean Or"}
+    GETWEIGHT["Get Priority Weight"]
     ADDQUEUE["Add to Priority Queue"]
 
-    PROX -->|Target| GETTRIBE
-    PROX ==>|Priority| ADDQUEUE
-    GETTRIBE -->|Tribe| ISINLIST
-    LISTTRIBE -->|Items| ISINLIST
-    ISINLIST -->|No| ADDQUEUE
-    PROX -->|Target| ADDQUEUE
+    AGG -->|Target| GETTRIBE
+    AGG -->|Target| ISAGG
+    ISAGG -->|Is Aggressor| BOOLOR
+    AGG ==>|Priority| ADDQUEUE
+    AGG -->|Target| ADDQUEUE
+    GETWEIGHT -->|Weight| ADDQUEUE
+    BOOLOR -->|Result| ADDQUEUE
 ```
 
 ---
@@ -612,8 +614,8 @@ See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#5-code-generation-outputs) for a c
 | `aggression`  | `turret::candidate_is_aggressor(&candidate)` — checks the `is_aggressor` field on `TargetCandidate`                            |
 | `proximity`   | Entry point: `get_target_priority_list(turret, owner_character, target_candidate_list, receipt)`                               |
 | `getTribe`    | `turret::candidate_character_tribe(&candidate)` — reads tribe ID (u32) from target candidate                                   |
-| `listOfTribe` | `let friendly_tribes: vector<u32= vector[tribe_1, tribe_2, ...]` — static tribe list                                           |
-| `isInList`    | Tribe comparison: `turret::candidate_character_tribe(&candidate) == character::tribe(owner_character)`                         |
+| `isAggressor` | `turret::candidate_is_aggressor(&candidate)` — reads the aggressor flag from the target candidate                               |
+| `isSameTribe` | `turret::candidate_character_tribe(&candidate) == character::tribe(owner_character)`                                            |
 | `addToQueue`  | `vector::push_back(&mut return_list, turret::new_return_target_priority_list(item_id, weight))` — appends entry to return list |
 | `hpRatio`     | `turret::candidate_hp_ratio(&candidate)` — reads HP ratio (0-100) from target candidate                                        |
 | `shieldRatio` | `turret::candidate_shield_ratio(&candidate)` — reads shield ratio (0-100) from target candidate                                |

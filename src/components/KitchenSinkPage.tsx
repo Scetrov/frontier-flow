@@ -18,7 +18,7 @@ function KitchenSinkPage() {
             This preview lays out every available node on the canvas background so you can inspect the full palette at once.
           </p>
           <p className="ff-kitchen-sink__meta">
-            {String(nodeDefinitions.length)} nodes across event triggers, accessors, logic gates, data sources, and actions.
+            {String(nodeDefinitions.length)} nodes across event triggers, accessors, logic gates, and actions.
           </p>
         </div>
       </section>

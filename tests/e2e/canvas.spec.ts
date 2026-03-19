@@ -35,15 +35,15 @@ test("drops representative contract nodes onto the canvas", async ({ page, isMob
   const workspace = page.getByTestId("canvas-workspace");
 
   await dropNode(page, "Aggression", 220, 180);
-  await ensureCategoryExpanded(page, "Data Source");
-  await dropNode(page, "Group Bonus Config", 360, 260);
+  await ensureCategoryExpanded(page, "Data Accessor");
+  await dropNode(page, "Get Behaviour", 360, 260);
   await ensureCategoryExpanded(page, "Logic Gate");
   await dropNode(page, "OR", 520, 320);
   await ensureCategoryExpanded(page, "Action");
   await dropNode(page, "Add to Queue", 680, 380);
 
   await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Aggression$/ })).toHaveCount(2);
-  await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Group Bonus Config$/ })).toHaveCount(1);
+  await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Get Behaviour$/ })).toHaveCount(1);
   await expect(workspace.locator(".ff-node__title").filter({ hasText: /^OR$/ })).toHaveCount(2);
   await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Add to Queue$/ })).toHaveCount(2);
 });
@@ -128,44 +128,4 @@ test("shows a visible remediation notice for unsupported legacy content", async 
 
   await expect(page.getByText("Legacy remediation required")).toBeVisible();
   await expect(page.getByText(/Legacy node "obsoleteNode" could not be restored automatically\./)).toBeVisible();
-});
-
-test("edits list-backed node fields, validates input, and preserves values after reload", async ({ page, isMobile }) => {
-  test.skip(isMobile, "Desktop field editing coverage only.");
-
-  await page.goto("/");
-
-  await ensureCategoryExpanded(page, "Data Source");
-  await dropNode(page, "Type Blocklist Config", 420, 220);
-
-  const blocklistNode = page.locator(".ff-node").filter({ hasText: "Type Blocklist Config" }).first();
-  await blocklistNode.locator(".ff-node__edit-button").evaluate((buttonElement) => {
-    (buttonElement as HTMLButtonElement).click();
-  });
-
-  await page.getByRole("button", { name: "Add Blocked Type IDs value" }).click();
-  await page.getByRole("button", { name: "Add Blocked Tribes value" }).click();
-  await page.getByRole("button", { name: "Save node fields" }).click();
-
-  await expect(page.getByText("Blocked Type IDs item 1 cannot be blank.")).toBeVisible();
-  await expect(page.getByText("Blocked Tribes item 1 cannot be blank.")).toBeVisible();
-
-  await page.locator('input[aria-label="Blocked Type IDs value 1"]').fill("700001");
-  await page.locator('input[aria-label="Blocked Tribes value 1"]').fill("pirate-clan");
-  await page.getByRole("button", { name: "Save node fields" }).click();
-
-  await expect(page.getByRole("dialog", { name: "Edit fields for Type Blocklist Config" })).toHaveCount(0);
-  await expect(blocklistNode.getByText("Blocked Type IDs: 700001")).toBeVisible();
-  await expect(blocklistNode.getByText("Blocked Tribes: pirate-clan")).toBeVisible();
-
-  await page.getByRole("button", { name: "Save", exact: true }).click();
-  await page.reload();
-
-  const restoredNode = page.locator(".ff-node").filter({ hasText: "Type Blocklist Config" }).first();
-  await restoredNode.locator(".ff-node__edit-button").evaluate((buttonElement) => {
-    (buttonElement as HTMLButtonElement).click();
-  });
-
-  await expect(page.locator('input[aria-label="Blocked Type IDs value 1"]')).toHaveValue("700001");
-  await expect(page.locator('input[aria-label="Blocked Tribes value 1"]')).toHaveValue("pirate-clan");
 });

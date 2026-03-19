@@ -21,8 +21,8 @@ describe("buildIrGraph", () => {
       [
         createFlowNode("trigger_1", "aggression"),
         createFlowNode("queue_1", "addToQueue"),
-        createFlowNode("list_1", "getCharacterListFromConfig"),
-        createFlowNode("logic_1", "isInList"),
+        createFlowNode("weight_1", "getPriorityWeight"),
+        createFlowNode("bonus_1", "damageBonus"),
       ],
       [
         {
@@ -33,17 +33,18 @@ describe("buildIrGraph", () => {
           targetHandle: "priority_in",
         },
         {
-          id: "edge_list_logic",
-          source: "list_1",
-          sourceHandle: "items",
-          target: "logic_1",
-          targetHandle: "input_list",
+          id: "edge_weight_bonus",
+          source: "weight_1",
+          sourceHandle: "weight",
+          target: "bonus_1",
+          targetHandle: "weight_in",
         },
       ],
       "Disconnected Contract",
     );
 
-    expect(graph.disconnectedNodeIds).toEqual(["list_1", "logic_1"]);
+    expect(graph.disconnectedNodeIds).toHaveLength(2);
+    expect(graph.disconnectedNodeIds).toEqual(expect.arrayContaining(["weight_1", "bonus_1"]));
   });
 
   it("tracks nodes whose execution order cannot be resolved", () => {

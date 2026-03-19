@@ -13,9 +13,6 @@ describe("data accessor generators", () => {
     ["getBehaviour", "% 4"],
     ["isAggressor", "== 0"],
     ["getPriorityWeight", "% 90"],
-    ["getTribeListFromConfig", "vector["],
-    ["getItemListFromConfig", "vector["],
-    ["getCharacterListFromConfig", "vector["],
   ])("emits a code fragment for %s", (nodeType, expectedFragment) => {
     const generator = getGenerator(nodeType);
     const context = createGenerationContext("starter_contract");

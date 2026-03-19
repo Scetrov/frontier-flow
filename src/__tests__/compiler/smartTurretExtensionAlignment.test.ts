@@ -8,14 +8,9 @@ import {
 
 const expectedExtensionIds = [
   "turret_aggressor_first",
-  "turret_group_specialist",
-  "turret_last_stand",
   "turret_low_hp_finisher",
   "turret_player_screen",
-  "turret_round_robin",
   "turret_size_priority",
-  "turret_threat_ledger",
-  "turret_type_blocklist",
 ] as const;
 
 describe("smart turret extension alignment", () => {
@@ -41,11 +36,5 @@ describe("smart turret extension alignment", () => {
       "turret_player_screen",
       "turret_size_priority",
     ]);
-
-    for (const extension of smartTurretExtensionFixtures) {
-      if (!extension.compileSupported) {
-        expect(extension.blockedBy.length).toBeGreaterThan(0);
-      }
-    }
   });
 });

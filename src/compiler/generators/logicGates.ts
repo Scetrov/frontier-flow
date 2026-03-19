@@ -77,35 +77,6 @@ const logicGateGenerators: readonly NodeCodeGenerator[] = [
     const rightBinding = resolveInput(context, node, "right", "false");
     return `${leftBinding} != ${rightBinding}`;
   }),
-  {
-    nodeType: "isInList",
-    validate: () => okValidationResult(),
-    emit(node, context) {
-      const yesBinding = bindOutput(context, node, "yes");
-      const noBinding = bindOutput(context, node, "no");
-      const itemBinding = resolveInput(context, node, "input_item", "0");
-
-      return [
-        ...createCommentBlock(node, ["logic gate isInList", "branch on list membership"]),
-        { code: `let ${yesBinding}: bool = ${itemBinding} % 2 == 0;`, nodeId: node.id, indent: 2 },
-        { code: `let ${noBinding}: bool = !${yesBinding};`, nodeId: node.id, indent: 2 },
-      ];
-    },
-  },
-  {
-    nodeType: "countAggressors",
-    validate: () => okValidationResult(),
-    emit(node, context) {
-      const countBinding = bindOutput(context, node, "count");
-      const raidBinding = bindOutput(context, node, "is_raid");
-
-      return [
-        ...createCommentBlock(node, ["logic gate countAggressors", "count aggressors and raid threshold"]),
-        { code: `let ${countBinding}: u64 = 3;`, nodeId: node.id, indent: 2 },
-        { code: `let ${raidBinding}: bool = ${countBinding} >= 5;`, nodeId: node.id, indent: 2 },
-      ];
-    },
-  },
 ];
 
 export default logicGateGenerators;

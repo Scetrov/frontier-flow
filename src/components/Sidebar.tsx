@@ -10,13 +10,12 @@ interface SidebarProps {
   readonly definitions?: readonly NodeDefinition[];
 }
 
-const categoryOrder = ["event-trigger", "data-accessor", "logic-gate", "data-source", "action"] as const;
+const categoryOrder = ["event-trigger", "data-accessor", "logic-gate", "action"] as const;
 
 const categoryLabels: Readonly<Record<(typeof categoryOrder)[number], string>> = {
   "event-trigger": "Event Trigger",
   "data-accessor": "Data Accessor",
   "logic-gate": "Logic Gate",
-  "data-source": "Data Source",
   action: "Action",
 };
 

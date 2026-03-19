@@ -119,43 +119,6 @@ describe("CanvasWorkspace", () => {
     );
   });
 
-  it("edits, saves, and reopens list-backed node field values", async () => {
-    const { container } = render(<CanvasWorkspace />);
-
-    const canvas = screen.getByLabelText("Node editor canvas");
-    fireEvent.drop(canvas, {
-      clientX: 320,
-      clientY: 220,
-      dataTransfer: createDropData("typeBlocklistConfig"),
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Type Blocklist Config")).toBeInTheDocument();
-    });
-
-    const editButton = container.querySelector<HTMLButtonElement>(".ff-node__edit-button");
-    expect(editButton).not.toBeNull();
-
-    fireEvent.click(editButton as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Add Blocked Type IDs value" }));
-    fireEvent.change(screen.getByLabelText("Blocked Type IDs value 1"), { target: { value: "700001" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add Blocked Tribes value" }));
-    fireEvent.change(screen.getByLabelText("Blocked Tribes value 1"), { target: { value: "pirate-clan" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save node fields" }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Edit fields for Type Blocklist Config" })).not.toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Blocked Type IDs: 700001")).toBeInTheDocument();
-    expect(screen.getByText("Blocked Tribes: pirate-clan")).toBeInTheDocument();
-
-    fireEvent.click(container.querySelector(".ff-node__edit-button") as HTMLButtonElement);
-
-    expect(screen.getByLabelText("Blocked Type IDs value 1")).toHaveValue("700001");
-    expect(screen.getByLabelText("Blocked Tribes value 1")).toHaveValue("pirate-clan");
-  });
-
   it("collapses and reopens saved contract controls from the left drawer handle", () => {
     render(<CanvasWorkspace />);
 
@@ -208,7 +171,7 @@ describe("CanvasWorkspace", () => {
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "Start with Aggression or Proximity, then layer scoring, filters, config sources, config list accessors, and Add to Queue.",
+        "Start with Aggression or Proximity, then layer scoring, filters, and Add to Queue.",
       ),
     ).toBeInTheDocument();
   });
@@ -259,7 +222,7 @@ describe("CanvasWorkspace", () => {
     fireEvent.drop(canvas, {
       clientX: 300,
       clientY: 220,
-      dataTransfer: createDropData("groupBonusConfig"),
+      dataTransfer: createDropData("getBehaviour"),
     });
     fireEvent.drop(canvas, {
       clientX: 420,
@@ -273,7 +236,7 @@ describe("CanvasWorkspace", () => {
     });
 
     expect(screen.getByText("Aggression")).toBeInTheDocument();
-    expect(screen.getByText("Group Bonus Config")).toBeInTheDocument();
+    expect(screen.getByText("Get Behaviour")).toBeInTheDocument();
     expect(screen.getByText("OR")).toBeInTheDocument();
     expect(screen.getByText("Add to Queue")).toBeInTheDocument();
     expect(screen.getByText("right")).toBeInTheDocument();

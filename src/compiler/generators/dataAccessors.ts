@@ -24,26 +24,6 @@ function createSingleOutputAccessor(
   };
 }
 
-function createConfigListAccessor(nodeType: string, description: string): NodeCodeGenerator {
-  return {
-    nodeType,
-    validate: () => okValidationResult(),
-    emit(node, context) {
-      const configBinding = resolveInput(context, node, "config", "1");
-      const outputBinding = bindOutput(context, node, "items");
-
-      return [
-        ...createCommentBlock(node, [`accessor ${nodeType}`, description]),
-        {
-          code: `let ${outputBinding}: vector<u64> = vector[${configBinding}, ${configBinding} + 1, ${configBinding} + 2];`,
-          nodeId: node.id,
-          indent: 2,
-        },
-      ];
-    },
-  };
-}
-
 function createGetTribeAccessor(): NodeCodeGenerator {
   return {
     nodeType: "getTribe",
@@ -71,9 +51,6 @@ const dataAccessorGenerators: readonly NodeCodeGenerator[] = [
   createSingleOutputAccessor("getBehaviour", "behaviour", "u64", "read behaviour code", (target) => `${target} % 4`),
   createSingleOutputAccessor("isAggressor", "is_aggressor", "bool", "read aggressor flag", (target) => `${target} % 2 == 0`),
   createSingleOutputAccessor("getPriorityWeight", "weight", "u64", "read base priority weight", (target) => `10 + (${target} % 90)`),
-  createConfigListAccessor("getTribeListFromConfig", "read tribe list from config"),
-  createConfigListAccessor("getItemListFromConfig", "read item list from config"),
-  createConfigListAccessor("getCharacterListFromConfig", "read character list from config"),
 ];
 
 export default dataAccessorGenerators;

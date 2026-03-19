@@ -102,20 +102,6 @@ export const smartTurretExtensionFixtures = [
     },
   },
   {
-    extensionId: "turret_group_specialist",
-    behaviorName: "Group Specialist",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "getGroupId", "groupBonusConfig", "groupBonusLookup", "addToQueue"],
-    blockedBy: "Config-backed group bonus flows still fail validation because config source nodes sit outside the event-trigger entry path.",
-  },
-  {
-    extensionId: "turret_last_stand",
-    behaviorName: "Last Stand",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "countAggressors", "damageBonus", "addToQueue"],
-    blockedBy: "Raid-mode selection needs a candidate-list source and branching stage that the current graph model does not provide.",
-  },
-  {
     extensionId: "turret_low_hp_finisher",
     behaviorName: "Low HP Finisher",
     compileSupported: true,
@@ -179,13 +165,6 @@ export const smartTurretExtensionFixtures = [
     },
   },
   {
-    extensionId: "turret_round_robin",
-    behaviorName: "Round Robin",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "roundRobinConfig", "historyPenalty", "addToQueue"],
-    blockedBy: "Round-robin history depends on a shared config source that the current validator treats as disconnected from the trigger path.",
-  },
-  {
     extensionId: "turret_size_priority",
     behaviorName: "Size Priority",
     compileSupported: true,
@@ -211,20 +190,6 @@ export const smartTurretExtensionFixtures = [
         { id: "sp_weight_action", source: "size_priority_size_tier_bonus", sourceHandle: "weight_out", target: "size_priority_add_to_queue", targetHandle: "weight" },
       ],
     },
-  },
-  {
-    extensionId: "turret_threat_ledger",
-    behaviorName: "Threat Ledger",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "getTribe", "threatLedgerConfig", "threatBonus", "addToQueue"],
-    blockedBy: "Threat-ledger flows need a shared config source, which is still disconnected from the generated event-trigger path under current validation rules.",
-  },
-  {
-    extensionId: "turret_type_blocklist",
-    behaviorName: "Type Blocklist",
-    compileSupported: false,
-    requiredNodeTypes: ["aggression", "typeBlocklistConfig", "getItemListFromConfig", "isInList", "addToQueue"],
-    blockedBy: "Type-blocklist coverage still lacks a target type_id accessor and a boolean combiner to merge the list check with the standard exclusion gates.",
   },
 ] as const satisfies readonly SmartTurretExtensionFixture[];
 
@@ -282,7 +247,7 @@ export const legacySmartTurretExtensionFixtures: readonly LegacyGraphFixture[] =
       nodes: [
         { id: "obsolete_trigger", type: "aggression", position: { x: 0, y: 160 } },
         { id: "obsolete_config", type: "obsoleteConfigSource", position: { x: 220, y: 40 } },
-        { id: "obsolete_lookup", type: "groupBonusLookup", position: { x: 520, y: 140 } },
+        { id: "obsolete_lookup", type: "obsoleteConfigConsumer", position: { x: 520, y: 140 } },
       ],
       edges: [
         { id: "obsolete_target", source: "obsolete_trigger", sourceHandle: "target", target: "obsolete_lookup", targetHandle: "group_id" },

@@ -9,10 +9,8 @@ export type SocketType =
   | "standing"
   | "wallet"
   | "priority"
-  | "config"
   | "target"
   | "boolean"
-  | "list"
   | "number"
   | "string"
   | "any";
@@ -33,59 +31,8 @@ export type SocketDirection = "input" | "output";
 export type NodeCategory =
   | "event-trigger"
   | "data-accessor"
-  | "data-source"
   | "logic-gate"
   | "action";
-
-/**
- * Primitive field value types supported by node field editors.
- */
-export type EditableFieldValueType = "string" | "number" | "boolean" | "tribe" | "typeId";
-
-/**
- * Editor rendering modes for editable node fields.
- */
-export type EditableFieldEditorKind = "single-value" | "list-editor";
-
-/**
- * Scalar values persisted by editable node fields.
- */
-export type NodeFieldScalarValue = string | number | boolean;
-
-/**
- * Persisted value for a single node field.
- */
-export type NodeFieldValue = NodeFieldScalarValue | readonly NodeFieldScalarValue[];
-
-/**
- * Validation rules used by editable node fields.
- */
-export interface EditableFieldValidationRules {
-  readonly allowBlank?: boolean;
-  readonly allowDuplicates?: boolean;
-  readonly minItems?: number;
-}
-
-/**
- * Schema definition for one editable node field.
- */
-export interface EditableFieldDefinition {
-  readonly id: string;
-  readonly label: string;
-  readonly valueType: EditableFieldValueType;
-  readonly required: boolean;
-  readonly defaultValue?: NodeFieldValue;
-  readonly validationRules?: EditableFieldValidationRules;
-  readonly editorKind: EditableFieldEditorKind;
-}
-
-/**
- * Persisted field values stored for an individual node instance.
- */
-export interface NodeFieldValueSet {
-  readonly values: Readonly<Record<string, NodeFieldValue>>;
-  readonly lastEditedAt?: string;
-}
 
 /**
  * Metadata describing a node that has been replaced or retired.
@@ -129,7 +76,6 @@ export interface NodeDefinition {
   readonly color: string;
   readonly category: NodeCategory;
   readonly sockets: readonly SocketDefinition[];
-  readonly fields?: readonly EditableFieldDefinition[];
   readonly deprecation?: NodeDeprecation;
 }
 
@@ -144,8 +90,6 @@ export interface FlowNodeData {
   readonly color: string;
   readonly category: NodeCategory;
   readonly sockets: readonly SocketDefinition[];
-  readonly fields?: readonly EditableFieldDefinition[];
-  readonly fieldValues?: NodeFieldValueSet;
   readonly deprecation?: NodeDeprecation;
   readonly remediationNotice?: RemediationNotice;
   readonly diagnosticMessages?: readonly string[];

@@ -122,7 +122,7 @@ describe("restoreSavedFlow", () => {
       [
         {
           id: "sparse",
-          type: "typeBlocklistConfig",
+          type: "proximity",
           position: { x: 0, y: 0 },
           data: undefined as never,
         },
@@ -131,13 +131,8 @@ describe("restoreSavedFlow", () => {
     );
 
     expect(restoredFlow.nodes).toHaveLength(1);
-    expect(restoredFlow.nodes[0]?.type).toBe("typeBlocklistConfig");
-    expect(restoredFlow.nodes[0]?.data.fieldValues).toEqual({
-      values: {
-        blockedTribes: [],
-        blockedTypeIds: [],
-      },
-    });
+    expect(restoredFlow.nodes[0]?.type).toBe("proximity");
+    expect(restoredFlow.nodes[0]?.data.sockets.map((socket) => socket.id)).toEqual(["priority", "target"]);
     expect(restoredFlow.remediationNotices).toHaveLength(0);
   });
 });

@@ -59,8 +59,8 @@ test("asks before replacing unsaved canvas work with a seeded example contract",
   });
   await page.goto("/");
 
-  await ensureCategoryExpanded(page, "Data Source");
-  await dropNode(page, "Type Blocklist Config", 420, 220);
+  await ensureCategoryExpanded(page, "Event Trigger");
+  await dropNode(page, "Proximity", 420, 220);
 
   const [dialog] = await selectSavedContractAndWaitForDialog(page, "Example · Turret Aggressor First");
 
@@ -68,5 +68,5 @@ test("asks before replacing unsaved canvas work with a seeded example contract",
   await dialog.accept();
 
   await expect(page.locator(".ff-node").filter({ hasText: "Aggressor Bonus" })).toHaveCount(1);
-  await expect(page.locator(".ff-node").filter({ hasText: "Type Blocklist Config" })).toHaveCount(0);
+  await expect(page.locator(".ff-node").filter({ hasText: "Proximity" })).toHaveCount(0);
 });

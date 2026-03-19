@@ -1,12 +1,4 @@
-import type {
-  EditableFieldDefinition,
-  FlowNode,
-  FlowNodeData,
-  NodeDefinition,
-  NodeFieldScalarValue,
-  NodeFieldValue,
-  NodeFieldValueSet,
-} from "../types/nodes";
+import type { FlowNode, FlowNodeData, NodeDefinition } from "../types/nodes";
 
 export const nodeDefinitions: readonly NodeDefinition[] = [
   {
@@ -166,45 +158,6 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     category: "data-accessor",
     sockets: [
       { id: "group_id", type: "number", position: "left", direction: "input", label: "group id" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "groupBonusLookup",
-    label: "Group Bonus Lookup",
-    description: "Look up a group-specific bonus from the shared configuration table.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "group_id", type: "number", position: "left", direction: "input", label: "group id" },
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "threatBonus",
-    label: "Threat Bonus",
-    description: "Apply a tribe threat bonus from the shared threat ledger.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "tribe", type: "tribe", position: "left", direction: "input", label: "tribe" },
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
-      { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
-    ],
-  },
-  {
-    type: "historyPenalty",
-    label: "History Penalty",
-    description: "Subtract weight from recently targeted candidates using round-robin history.",
-    color: "var(--socket-value)",
-    category: "data-accessor",
-    sockets: [
-      { id: "target", type: "target", position: "left", direction: "input", label: "target" },
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
       { id: "weight_in", type: "number", position: "left", direction: "input", label: "weight in" },
       { id: "weight_out", type: "number", position: "right", direction: "output", label: "weight out" },
     ],
@@ -372,128 +325,6 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     ],
   },
   {
-    type: "isInList",
-    label: "Is In List",
-    description: "Check whether a candidate item appears in a provided list.",
-    color: "var(--socket-signal)",
-    category: "logic-gate",
-    sockets: [
-      { id: "input_item", type: "any", position: "left", direction: "input", label: "input item" },
-      { id: "input_list", type: "list", position: "top", direction: "input", label: "input list" },
-      { id: "yes", type: "boolean", position: "right", direction: "output", label: "yes" },
-      { id: "no", type: "boolean", position: "right", direction: "output", label: "no" },
-    ],
-  },
-  {
-    type: "countAggressors",
-    label: "Count Aggressors",
-    description: "Count aggressors in a candidate set and expose the raid threshold signal.",
-    color: "var(--socket-signal)",
-    category: "logic-gate",
-    sockets: [
-      { id: "candidates", type: "list", position: "left", direction: "input", label: "candidates" },
-      { id: "count", type: "number", position: "right", direction: "output", label: "count" },
-      { id: "is_raid", type: "boolean", position: "right", direction: "output", label: "is raid" },
-    ],
-  },
-  {
-    type: "groupBonusConfig",
-    label: "Group Bonus Config",
-    description: "Expose the group-specialist configuration object as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
-    sockets: [
-      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
-    ],
-  },
-  {
-    type: "roundRobinConfig",
-    label: "Round Robin Config",
-    description: "Expose the round-robin history configuration as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
-    sockets: [
-      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
-    ],
-  },
-  {
-    type: "threatLedgerConfig",
-    label: "Threat Ledger Config",
-    description: "Expose the tribe threat ledger as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
-    sockets: [
-      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
-    ],
-  },
-  {
-    type: "typeBlocklistConfig",
-    label: "Type Blocklist Config",
-    description: "Expose the blocked type id configuration as a reusable config source.",
-    color: "var(--socket-vector)",
-    category: "data-source",
-    fields: [
-      {
-        id: "blockedTypeIds",
-        label: "Blocked Type IDs",
-        valueType: "typeId",
-        required: false,
-        defaultValue: [],
-        validationRules: {
-          allowDuplicates: false,
-        },
-        editorKind: "list-editor",
-      },
-      {
-        id: "blockedTribes",
-        label: "Blocked Tribes",
-        valueType: "tribe",
-        required: false,
-        defaultValue: [],
-        validationRules: {
-          allowDuplicates: false,
-        },
-        editorKind: "list-editor",
-      },
-    ],
-    sockets: [
-      { id: "config", type: "config", position: "right", direction: "output", label: "config" },
-    ],
-  },
-  {
-    type: "getTribeListFromConfig",
-    label: "Get Tribe List from Config",
-    description: "Read a tribe list from a config object so it can feed reusable list-based logic.",
-    color: "var(--socket-vector)",
-    category: "data-accessor",
-    sockets: [
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "items", type: "list", position: "right", direction: "output", label: "tribes" },
-    ],
-  },
-  {
-    type: "getItemListFromConfig",
-    label: "Get Item List from Config",
-    description: "Read an item list from a config object so exclusion and scoring nodes can share it.",
-    color: "var(--socket-vector)",
-    category: "data-accessor",
-    sockets: [
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "items", type: "list", position: "right", direction: "output", label: "items" },
-    ],
-  },
-  {
-    type: "getCharacterListFromConfig",
-    label: "Get Character List from Config",
-    description: "Read a character list from a config object for allowlists, denylists, and actor-specific flows.",
-    color: "var(--socket-vector)",
-    category: "data-accessor",
-    sockets: [
-      { id: "config", type: "config", position: "left", direction: "input", label: "config" },
-      { id: "items", type: "list", position: "right", direction: "output", label: "characters" },
-    ],
-  },
-  {
     type: "addToQueue",
     label: "Add to Queue",
     description: "Append an included, weighted target to the outgoing priority queue.",
@@ -515,93 +346,6 @@ export const authorableNodeDefinitions: readonly NodeDefinition[] = nodeDefiniti
 
 const nodeDefinitionsByType = new Map(nodeDefinitions.map((definition) => [definition.type, definition]));
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isScalarValue(value: unknown): value is NodeFieldScalarValue {
-  return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
-}
-
-function matchesFieldValueType(field: EditableFieldDefinition, value: NodeFieldScalarValue): boolean {
-  switch (field.valueType) {
-    case "boolean":
-      return typeof value === "boolean";
-    case "number":
-    case "typeId":
-      return typeof value === "number";
-    case "string":
-    case "tribe":
-      return typeof value === "string";
-  }
-}
-
-function normalizeFieldValue(field: EditableFieldDefinition, value: unknown): NodeFieldValue | undefined {
-  if (field.editorKind === "list-editor") {
-    if (!Array.isArray(value)) {
-      return undefined;
-    }
-
-    const normalizedValues = value.filter(isScalarValue).filter((entry) => matchesFieldValueType(field, entry));
-    if (normalizedValues.length !== value.length) {
-      return undefined;
-    }
-
-    return normalizedValues;
-  }
-
-  if (!isScalarValue(value) || !matchesFieldValueType(field, value)) {
-    return undefined;
-  }
-
-  return value;
-}
-
-function createDefaultFieldValueSet(fields: readonly EditableFieldDefinition[] | undefined): NodeFieldValueSet | undefined {
-  if (fields === undefined || fields.length === 0) {
-    return undefined;
-  }
-
-  const values = Object.fromEntries(
-    fields.flatMap((field) => (field.defaultValue === undefined ? [] : [[field.id, field.defaultValue]])),
-  );
-
-  return {
-    values,
-  };
-}
-
-function hydrateFieldValueSet(
-  fields: readonly EditableFieldDefinition[] | undefined,
-  persistedFieldValues: unknown,
-): NodeFieldValueSet | undefined {
-  const defaultFieldValues = createDefaultFieldValueSet(fields);
-  if (fields === undefined || fields.length === 0) {
-    return undefined;
-  }
-
-  if (!isRecord(persistedFieldValues) || !isRecord(persistedFieldValues.values)) {
-    return defaultFieldValues;
-  }
-
-  const nextValues: Record<string, NodeFieldValue> = {
-    ...(defaultFieldValues?.values ?? {}),
-  };
-
-  for (const field of fields) {
-    const persistedValue = persistedFieldValues.values[field.id];
-    const normalizedValue = normalizeFieldValue(field, persistedValue);
-    if (normalizedValue !== undefined) {
-      nextValues[field.id] = normalizedValue;
-    }
-  }
-
-  return {
-    values: nextValues,
-    lastEditedAt: typeof persistedFieldValues.lastEditedAt === "string" ? persistedFieldValues.lastEditedAt : undefined,
-  };
-}
-
 /**
  * Looks up a node definition by its ReactFlow type key.
  */
@@ -620,8 +364,6 @@ export function createFlowNodeData(definition: NodeDefinition): FlowNodeData {
     color: definition.color,
     category: definition.category,
     sockets: definition.sockets,
-    fields: definition.fields,
-    fieldValues: createDefaultFieldValueSet(definition.fields),
     deprecation: definition.deprecation,
   };
 }
@@ -639,42 +381,9 @@ export function hydrateFlowNode(node: FlowNode): FlowNode | undefined {
     return undefined;
   }
 
-  const persistedFieldValues = isRecord(node.data) ? node.data.fieldValues : undefined;
-
   return {
     ...node,
     type: definition.type,
-    data: {
-      ...createFlowNodeData(definition),
-      fieldValues: hydrateFieldValueSet(definition.fields, persistedFieldValues),
-    },
+    data: createFlowNodeData(definition),
   };
-}
-
-/**
- * Formats persisted node field values into short user-facing summary lines.
- */
-export function summarizeNodeFieldValues(data: Pick<FlowNodeData, "fields" | "fieldValues">): readonly string[] {
-  if (data.fields === undefined || data.fields.length === 0) {
-    return [];
-  }
-
-  return data.fields.flatMap((field) => {
-    const value = data.fieldValues?.values[field.id] ?? field.defaultValue;
-    if (value === undefined) {
-      return [];
-    }
-
-    if (Array.isArray(value)) {
-      if (value.length === 0) {
-        return [];
-      }
-
-      const preview = value.slice(0, 3).map((entry) => String(entry)).join(", ");
-      const suffix = value.length > 3 ? ` +${String(value.length - 3)} more` : "";
-      return [`${field.label}: ${preview}${suffix}`];
-    }
-
-    return [`${field.label}: ${String(value)}`];
-  });
 }

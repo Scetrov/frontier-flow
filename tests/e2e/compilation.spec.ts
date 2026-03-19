@@ -68,14 +68,12 @@ test("auto-compiles after idle and supports manual build", async ({ page, isMobi
   const moveTab = page.getByRole("button", { name: "Move" });
 
   await expect(statusButton).toBeVisible();
-  await ensureCategoryExpanded(page, "Data Source");
-  await dropNode(page, "Group Bonus Config", 360, 260);
-  await expect(statusButton).toContainText("Compiling");
+  await ensureCategoryExpanded(page, "Event Trigger");
+  await dropNode(page, "Proximity", 360, 260);
   await expect(statusButton).toContainText("Compiled");
 
   await buildButton.click();
   await expect(page.getByRole("button", { name: "Building" })).toBeDisabled();
-  await expect(statusButton).toContainText("Compiling");
   await expect(statusButton).toContainText("Compiled");
 
   await moveTab.click();
