@@ -2,6 +2,7 @@ import type { NodeCodeGenerator } from "../types";
 
 import { SHIP_GROUP_OPTIONS, getNumberFieldList, getStringFieldList } from "../../data/nodeFieldCatalog";
 
+import { hashCharacterAddress } from "./listHash";
 import { bindOutput, createCommentBlock, okValidationResult, resolveInput } from "./shared";
 
 const SUPPORTED_LIST_NODE_TYPES = new Set(["listTribe", "listShip", "listCharacter"]);
@@ -16,15 +17,6 @@ function createValidationDiagnostic(node: Parameters<NodeCodeGenerator["validate
     socketId: null,
     userMessage: message,
   };
-}
-
-function hashCharacterAddress(address: string): number {
-  let hash = 0;
-  for (const character of address.toLowerCase()) {
-    hash = (hash * 33 + character.charCodeAt(0)) % 4_294_967_291;
-  }
-
-  return hash;
 }
 
 function createMembershipExpression(candidate: string, values: readonly number[]): string {

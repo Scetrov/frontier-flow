@@ -76,6 +76,63 @@ describe("validateGraph", () => {
     expect(result.diagnostics.some((diagnostic) => diagnostic.userMessage.includes("Select at least one ship group"))).toBe(true);
   });
 
+  it("allows disconnected list nodes to remain unconfigured", () => {
+    const graph = buildIrGraph([createFlowNode("list_1", "listCharacter")], [], "draft_list_contract");
+
+    const result = validateGraph(graph);
+
+    expect(
+      result.diagnostics.some(
+        (diagnostic) => diagnostic.reactFlowNodeId === "list_1"
+          && diagnostic.userMessage.includes("Configure at least one value"),
+      ),
+    ).toBe(false);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) => diagnostic.reactFlowNodeId === "list_1"
+          && diagnostic.severity === "warning"
+          && diagnostic.userMessage.includes("disconnected"),
+      ),
+    ).toBe(true);
+  });
+
+  it("requires configured values once a list node feeds the active graph", () => {
+    const graph = buildIrGraph(
+      [
+        createFlowNode("trigger_1", "aggression"),
+        createFlowNode("list_1", "listCharacter"),
+        createFlowNode("list_gate_1", "isInList"),
+      ],
+      [
+        {
+          id: "edge_trigger_list_target",
+          source: "trigger_1",
+          sourceHandle: "target",
+          target: "list_gate_1",
+          targetHandle: "target",
+        },
+        {
+          id: "edge_list_gate_list",
+          source: "list_1",
+          sourceHandle: "list",
+          target: "list_gate_1",
+          targetHandle: "list",
+        },
+      ],
+      "configured_list_contract",
+    );
+
+    const result = validateGraph(graph);
+
+    expect(result.valid).toBe(false);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) => diagnostic.reactFlowNodeId === "list_1"
+          && diagnostic.userMessage.includes("Configure at least one value"),
+      ),
+    ).toBe(true);
+  });
+
   it("rejects unsupported upstream sources for Is in List", () => {
     const graph = buildIrGraph(
       [

@@ -2,6 +2,7 @@ import type { NodeCodeGenerator } from "../types";
 
 import { getNumberFieldList, getStringFieldList } from "../../data/nodeFieldCatalog";
 
+import { hashCharacterAddress } from "./listHash";
 import { bindOutput, createCommentBlock, okValidationResult, resolveInput } from "./shared";
 
 function createValidationDiagnostic(node: Parameters<NodeCodeGenerator["validate"]>[0], message: string) {
@@ -22,13 +23,9 @@ function emitListBinding(node: Parameters<NodeCodeGenerator["emit"]>[0], context
   return [{ code: `let ${outputBinding}: u64 = ${String(count)};`, nodeId: node.id, indent: 2 }];
 }
 
-function hashCharacterAddress(address: string): number {
-  let hash = 0;
-  for (const character of address.toLowerCase()) {
-    hash = (hash * 33 + character.charCodeAt(0)) % 4_294_967_291;
-  }
-
-  return hash;
+function requiresConfiguredValues(node: Parameters<NodeCodeGenerator["validate"]>[0], graph: Parameters<NodeCodeGenerator["validate"]>[1]): boolean {
+  void graph;
+  return (node.outputs.list ?? []).length > 0;
 }
 
 function createConfiguredListGenerator(
@@ -38,7 +35,11 @@ function createConfiguredListGenerator(
 ): NodeCodeGenerator {
   return {
     nodeType,
-    validate(node) {
+    validate(node, graph) {
+      if (!requiresConfiguredValues(node, graph)) {
+        return okValidationResult();
+      }
+
       return readValues(node).length > 0
         ? okValidationResult()
         : { valid: false, diagnostics: [createValidationDiagnostic(node, "Configure at least one value before compiling this list node.")] };

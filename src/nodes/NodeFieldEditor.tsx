@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -9,28 +9,7 @@ import {
   type NumericOption,
 } from "../data/nodeFieldCatalog";
 import type { NodeFieldMap } from "../types/nodes";
-
-interface WorldApiCollectionResponse<T> {
-  readonly data?: readonly T[];
-}
-
-interface TribeRecord {
-  readonly id: number;
-  readonly name: string;
-  readonly nameShort?: string;
-}
-
-interface ShipRecord {
-  readonly id: number;
-  readonly name: string;
-  readonly className?: string;
-}
-
-interface SelectableOption {
-  readonly value: number;
-  readonly label: string;
-  readonly description?: string;
-}
+import { buildShipOption, buildTribeOption, loadWorldApiOptions, type SelectableOption } from "./nodeFieldEditorOptions";
 
 interface NodeFieldEditorProps {
   readonly nodeLabel: string;
@@ -38,41 +17,6 @@ interface NodeFieldEditorProps {
   readonly fields: NodeFieldMap;
   readonly onClose: () => void;
   readonly onSave: (fields: NodeFieldMap) => void;
-}
-
-const optionCache = new Map<string, readonly SelectableOption[]>();
-
-async function loadWorldApiOptions(url: string, mapOption: (value: unknown) => SelectableOption): Promise<readonly SelectableOption[]> {
-  const cached = optionCache.get(url);
-  if (cached !== undefined) {
-    return cached;
-  }
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${String(response.status)}`);
-  }
-
-  const payload = (await response.json()) as WorldApiCollectionResponse<unknown>;
-  const options = Array.isArray(payload.data) ? payload.data.map(mapOption) : [];
-  optionCache.set(url, options);
-  return options;
-}
-
-function buildTribeOption(tribe: TribeRecord): SelectableOption {
-  return {
-    value: tribe.id,
-    label: tribe.name,
-    description: tribe.nameShort,
-  };
-}
-
-function buildShipOption(ship: ShipRecord): SelectableOption {
-  return {
-    value: ship.id,
-    label: ship.name,
-    description: ship.className,
-  };
 }
 
 function NumericOptionEditor({
@@ -192,10 +136,26 @@ function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeF
   const [remoteOptions, setRemoteOptions] = useState<readonly SelectableOption[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const dialogTitleId = useId();
+  const dialogDescriptionId = useId();
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setDraftFields(normalizeNodeFields(nodeType, fields));
   }, [fields, nodeType]);
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.focus();
+
+    return () => {
+      const previousFocus = previousFocusRef.current;
+      if (previousFocus !== null && previousFocus.isConnected) {
+        previousFocus.focus();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -228,11 +188,11 @@ function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeF
         const options = nodeType === "listTribe"
           ? await loadWorldApiOptions(
               "https://world-api-stillness.live.tech.evefrontier.com/v2/tribes",
-              (value) => buildTribeOption(value as TribeRecord),
+              buildTribeOption,
             )
           : await loadWorldApiOptions(
               "https://world-api-stillness.live.tech.evefrontier.com/v2/ships",
-              (value) => buildShipOption(value as ShipRecord),
+              buildShipOption,
             );
 
         if (!isCancelled) {
@@ -264,10 +224,19 @@ function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeF
   const dialog = (
     <div className="ff-node-field-editor" role="presentation">
       <button aria-label="Close node editor" className="ff-node-field-editor__backdrop" onClick={onClose} type="button" />
-      <div aria-modal="true" className="ff-node-field-editor__dialog" role="dialog">
+      <div
+        aria-describedby={dialogDescriptionId}
+        aria-labelledby={dialogTitleId}
+        aria-modal="true"
+        className="ff-node-field-editor__dialog"
+        ref={dialogRef}
+        role="dialog"
+        tabIndex={-1}
+      >
         <div>
           <p className="ff-node-field-editor__eyebrow">Node Editor</p>
-          <h2 className="ff-node-field-editor__title">{nodeLabel}</h2>
+          <h2 className="ff-node-field-editor__title" id={dialogTitleId}>{nodeLabel}</h2>
+          <p className="ff-contract-bar__meta" id={dialogDescriptionId}>Configure node-specific values before saving your changes.</p>
         </div>
 
         <div className="ff-node-field-editor__body">
