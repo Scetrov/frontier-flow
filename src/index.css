@@ -1155,6 +1155,10 @@ button,
   gap: 0.35rem;
 }
 
+.ff-node__delete-confirmation .ff-node__delete-button {
+  opacity: 1;
+}
+
 .ff-node__edit-icon {
   width: 0.85rem;
   height: 0.85rem;

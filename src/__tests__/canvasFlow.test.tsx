@@ -501,8 +501,8 @@ describe("CanvasWorkspace", () => {
     });
   });
 
-  it("deletes a node after confirm, cancel, and shift-bypass flows", async () => {
-    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+  it("deletes a node after confirm, cancel, and shift-bypass flows", () => {
+    vi.useFakeTimers();
 
     const { container } = renderPreviewCanvas({
       initialNodes: [
@@ -522,25 +522,15 @@ describe("CanvasWorkspace", () => {
     expect(container.querySelector('[aria-label="Confirm delete Proximity"]')).toBeNull();
 
     fireEvent.click(container.querySelector('[data-testid="rf__node-delete_me"] [aria-label="Delete Proximity"]') as HTMLButtonElement);
-    const timeoutCallback = setTimeoutSpy.mock.calls.at(-1)?.[0] as (() => void) | undefined;
-    expect(timeoutCallback).toBeTypeOf("function");
     act(() => {
-      if (timeoutCallback === undefined) {
-        throw new TypeError("Expected delete confirmation timer callback");
-      }
-
-      timeoutCallback();
+      vi.advanceTimersByTime(15_000);
     });
     expect(container.querySelector('[aria-label="Confirm delete Proximity"]')).toBeNull();
 
     fireEvent.click(container.querySelector('[data-testid="rf__node-delete_me"] [aria-label="Delete Proximity"]') as HTMLButtonElement, {
       shiftKey: true,
     });
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="rf__node-delete_me"]')).toBeNull();
-    });
-
-    setTimeoutSpy.mockRestore();
+    expect(container.querySelector('[data-testid="rf__node-delete_me"]')).toBeNull();
   });
 
   it("removes the selected node with keyboard delete and ignores delete while typing", async () => {
@@ -581,19 +571,26 @@ describe("CanvasWorkspace", () => {
         createTestFlowNode("source_node", "aggression", {
           category: "event-trigger",
           label: "Source Node",
+          height: 80,
           position: { x: 0, y: 0 },
+          width: 100,
         }),
         createTestFlowNode("target_node", "addToQueue", {
           category: "action",
+          height: 40,
           label: "Target Node",
           position: { x: 240, y: 120 },
+          width: 60,
         }),
       ],
     });
 
-    expect(container.querySelector('[data-testid="selected-edge-delete"]')).not.toBeNull();
+    const deleteButton = container.querySelector<HTMLButtonElement>('[data-testid="selected-edge-delete"]');
 
-    fireEvent.click(container.querySelector('[data-testid="selected-edge-delete"]') as HTMLButtonElement);
+    expect(deleteButton).not.toBeNull();
+    expect(deleteButton).toHaveStyle({ left: "160px", top: "90px" });
+
+    fireEvent.click(deleteButton as HTMLButtonElement);
 
     await waitFor(() => {
       expect(container.querySelector('[data-testid="selected-edge-delete"]')).toBeNull();

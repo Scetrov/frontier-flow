@@ -158,6 +158,7 @@ describe("BaseNode", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm delete Proximity" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel delete Proximity" }));
 
+    expect(screen.getByRole("button", { name: "Confirm delete Proximity" })).toHaveFocus();
     expect(onDeleteConfirm).toHaveBeenCalledTimes(1);
     expect(onDeleteCancel).toHaveBeenCalledTimes(1);
   });
@@ -168,7 +169,11 @@ describe("BaseNode", () => {
       validationState: "error",
     });
 
-    fireEvent.focus(screen.getByRole("button", { name: "Show errors for Proximity" }));
+    const warningButton = screen.getByRole("button", { name: "Show errors for Proximity" });
+
+    fireEvent.focus(warningButton);
+    expect(warningButton).toHaveAttribute("aria-describedby", "test-node-diagnostics");
+    expect(warningButton).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("tooltip")).toHaveTextContent("Queue target is missing a predicate.");
   });
 });

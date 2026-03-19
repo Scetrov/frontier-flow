@@ -7,7 +7,9 @@ import {
   ReactFlow,
   ReactFlowProvider,
   ViewportPortal,
+  Position,
   addEdge,
+  getBezierPath,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -131,6 +133,16 @@ function isTextEntryElement(target: EventTarget | null): boolean {
   return false;
 }
 
+function getNodeCenter(node: FlowNode) {
+  const width = node.measured?.width ?? node.width ?? 0;
+  const height = node.measured?.height ?? node.height ?? 0;
+
+  return {
+    x: node.position.x + width / 2,
+    y: node.position.y + height / 2,
+  };
+}
+
 function getSelectedTarget(nodes: readonly FlowNode[], edges: readonly FlowEdge[]): CanvasSelectionTarget {
   const selectedNode = nodes.find((node) => node.selected);
   if (selectedNode !== undefined) {
@@ -203,10 +215,21 @@ function FlowEditor({
       return null;
     }
 
+    const sourceCenter = getNodeCenter(sourceNode);
+    const targetCenter = getNodeCenter(targetNode);
+    const [, labelX, labelY] = getBezierPath({
+      sourceX: sourceCenter.x,
+      sourceY: sourceCenter.y,
+      targetX: targetCenter.x,
+      targetY: targetCenter.y,
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+    });
+
     return {
       edgeId: edge.id,
-      x: (sourceNode.position.x + targetNode.position.x) / 2,
-      y: (sourceNode.position.y + targetNode.position.y) / 2,
+      x: labelX,
+      y: labelY,
     };
   }, [edges, nodes, selectedTarget]);
 
@@ -307,6 +330,12 @@ function FlowEditor({
       if (options?.immediate === true) {
         deleteNodeById(nodeId);
         return;
+      }
+
+      const existingTimeoutId = deleteConfirmationTimersRef.current.get(nodeId);
+      if (existingTimeoutId !== undefined) {
+        window.clearTimeout(existingTimeoutId);
+        deleteConfirmationTimersRef.current.delete(nodeId);
       }
 
       setNodeDeleteStates((currentStates) => ({

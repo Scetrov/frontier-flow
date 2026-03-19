@@ -1,7 +1,7 @@
 import { Handle, type NodeProps } from "@xyflow/react";
 import type { CSSProperties } from "react";
 import { AlertTriangle, Check, Pencil, Trash2, X, type LucideIcon } from "lucide-react";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { getNodeFieldSummary, hasEditableNodeFields, normalizeNodeFields } from "../data/nodeFieldCatalog";
 import type { FlowNodeData, SocketDefinition } from "../types/nodes";
@@ -57,6 +57,7 @@ function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNo
   const handleFieldChange = useContext(NodeFieldEditingContext);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
+  const confirmDeleteButtonRef = useRef<HTMLButtonElement | null>(null);
   const topSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "top");
   const leftSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "left");
   const rightSockets = nodeData.sockets.filter((socket: SocketDefinition) => socket.position === "right");
@@ -68,6 +69,14 @@ function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNo
   const diagnosticMessage = nodeData.diagnosticMessages?.join(" ") ?? "";
   const shouldShowErrorIndicator = nodeData.validationState === "error" && diagnosticMessage.length > 0;
   const diagnosticTooltipId = `${id}-diagnostics`;
+
+  useEffect(() => {
+    if (!isDeleteConfirming) {
+      return;
+    }
+
+    confirmDeleteButtonRef.current?.focus();
+  }, [isDeleteConfirming]);
 
   return (
     <>
@@ -90,6 +99,8 @@ function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNo
         <div className="ff-node__header" style={{ backgroundColor: nodeData.color }}>
           {shouldShowErrorIndicator ? (
             <button
+              aria-describedby={isDiagnosticOpen ? diagnosticTooltipId : undefined}
+              aria-expanded={isDiagnosticOpen}
               aria-label={`Show errors for ${nodeData.label}`}
               className="ff-node__warning-button nodrag nopan"
               onBlur={() => {
@@ -142,6 +153,7 @@ function BaseNode({ data, id, selected, icon: Icon, shape = "standard" }: BaseNo
                         event.stopPropagation();
                         nodeData.onDeleteConfirm?.();
                       }}
+                      ref={confirmDeleteButtonRef}
                       type="button"
                     >
                       <Check aria-hidden="true" className="ff-node__delete-icon" />

@@ -13,15 +13,19 @@ export function createTestFlowNode(
     readonly label?: string;
     readonly description?: string;
     readonly color?: string;
+    readonly height?: number;
     readonly position?: { readonly x: number; readonly y: number };
     readonly selected?: boolean;
+    readonly width?: number;
   },
 ): FlowNode {
   return {
+    height: options?.height,
     id,
     type,
     position: options?.position ?? { x: 0, y: 0 },
     selected: options?.selected,
+    width: options?.width,
     data: createFlowNodeData({
       type,
       label: options?.label ?? type,
