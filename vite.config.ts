@@ -9,6 +9,35 @@ const basePath = process.env.VITE_BASE_PATH ?? "/";
 export default defineConfig({
   base: basePath,
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return undefined;
+          }
+
+          if (id.includes("@xyflow/react") || id.includes("dagre")) {
+            return "flow-vendor";
+          }
+
+          if (id.includes("@mysten/dapp-kit") || id.includes("@mysten/sui") || id.includes("@tanstack/react-query")) {
+            return "wallet-vendor";
+          }
+
+          if (id.includes("highlight.js")) {
+            return "code-vendor";
+          }
+
+          if (id.includes("react") || id.includes("scheduler")) {
+            return "react-vendor";
+          }
+
+          return undefined;
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@zktx.io/sui-move-builder/lite": fileURLToPath(

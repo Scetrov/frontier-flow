@@ -8,7 +8,7 @@ describe("Footer", () => {
     render(<Footer />);
 
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
-    expect(screen.getByText(`Build v${__APP_VERSION__}`)).toBeVisible();
+    expect(screen.getByText(`v${__APP_VERSION__}`)).toBeVisible();
     expect(screen.getByText("Idle")).toBeVisible();
     expect(screen.getByRole("link", { name: "Source Repository" })).toHaveAttribute(
       "href",

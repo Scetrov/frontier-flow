@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Sidebar from "../components/Sidebar";
 import { nodeDefinitions } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
+import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
 
 const singleCategoryDefinitions: readonly NodeDefinition[] = [
   {
@@ -47,6 +48,7 @@ const originalMatchMedia = window.matchMedia;
 
 describe("Sidebar", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     window.matchMedia = (query: string) => ({
       matches: query === "(min-width: 768px)",
       media: query,
@@ -150,6 +152,35 @@ describe("Sidebar", () => {
 
     expect(toolbox).toHaveAttribute("aria-hidden", "false");
     expect(screen.getByRole("button", { name: "Close node toolbox" })).toBeInTheDocument();
+  });
+
+  it("restores the toolbox state from local storage on mount", () => {
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "visual",
+        isSidebarOpen: false,
+        isContractPanelOpen: true,
+      }),
+    );
+
+    render(<Sidebar definitions={nodeDefinitions} />);
+
+    expect(document.getElementById("node-toolbox")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("button", { name: "Open node toolbox" })).toBeInTheDocument();
+  });
+
+  it("persists the toolbox state when toggled", () => {
+    render(<Sidebar definitions={nodeDefinitions} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Close node toolbox" }));
+
+    expect(JSON.parse(window.localStorage.getItem(UI_STATE_STORAGE_KEY) ?? "{}")).toMatchObject({
+      isSidebarOpen: false,
+      isContractPanelOpen: true,
+      activeView: "visual",
+    });
   });
 
   it("does not render the deprecated toolbox footer summary", () => {

@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../App";
@@ -24,7 +24,16 @@ let lastMoveSourcePanelProps: MoveSourcePanelProps | null = null;
 let hasReportedCompilation = false;
 
 vi.mock("../components/Header", () => ({
-  default: () => <div>Header Slot</div>,
+  default: (props: { onViewChange?: (view: "visual" | "move") => void }) => (
+    <button
+      type="button"
+      onClick={() => {
+        props.onViewChange?.("move");
+      }}
+    >
+      Header Slot
+    </button>
+  ),
 }));
 
 vi.mock("../components/Footer", () => ({
@@ -83,12 +92,16 @@ describe("App compilation handoff", () => {
     lastMoveSourcePanelProps = null;
     hasReportedCompilation = false;
     window.history.replaceState({}, "", "/");
+    window.localStorage.clear();
   });
 
-  it("prefers artifact-backed Move source when the workspace reports it", () => {
+  it("prefers artifact-backed Move source when the workspace reports it", async () => {
     render(<App />);
 
-    return waitFor(() => {
+    expect(await screen.findByText("Canvas Workspace Slot")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Header Slot" }));
+
+    await waitFor(() => {
       expect(moveSourcePanelSpy).toHaveBeenCalled();
       expect(lastMoveSourcePanelProps).not.toBeNull();
       expect(lastMoveSourcePanelProps?.sourceCode).toBe("module builder_extensions::artifact_contract {}");

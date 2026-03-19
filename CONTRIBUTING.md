@@ -54,6 +54,11 @@ bun dev
 | `build`     | `bun run build`        | Type-check and production build |
 | `lint`      | `bun run lint`         | Run ESLint                      |
 | `preview`   | `bun run preview`      | Preview production build        |
+| `release`   | `bun run release`      | Bump version + update changelog from Conventional Commits |
+| `release:first` | `bun run release:first` | Create the first tagged release without prior tags |
+| `release:patch` | `bun run release:patch` | Force a patch release |
+| `release:minor` | `bun run release:minor` | Force a minor release |
+| `release:major` | `bun run release:major` | Force a major release |
 | `test`      | `bunx vitest`          | Run unit/component tests        |
 | `test:run`  | `bunx vitest run`      | Run tests once (CI mode)        |
 | `test:e2e`  | `bunx playwright test` | Run E2E tests                   |
@@ -142,6 +147,14 @@ Examples:
 ```
 
 **Types:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `style`, `ci`
+
+Version numbers are derived from this commit history. Run one of the release scripts before a production release to update [package.json](package.json) and [CHANGELOG.md](CHANGELOG.md) consistently:
+
+```bash
+bun run release
+```
+
+Use the explicit `release:patch`, `release:minor`, or `release:major` variants when you need to override the inferred bump.
 
 ### 3.3 Signed Commits
 

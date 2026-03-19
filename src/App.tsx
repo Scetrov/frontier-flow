@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 
 import type { CompilationStatus, CompilerDiagnostic } from "./compiler/types";
 import Footer from "./components/Footer";
-import CanvasWorkspace from "./components/CanvasWorkspace";
 import Header from "./components/Header";
-import KitchenSinkPage from "./components/KitchenSinkPage";
-import MoveSourcePanel from "./components/MoveSourcePanel";
-import Sidebar from "./components/Sidebar";
 import type { PrimaryView } from "./components/Header";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
+import { loadUiState, mergeUiState } from "./utils/uiStateStorage";
 
 const defaultContractFlow = createDefaultContractFlow();
 const defaultContractName = "Starter Contract";
+const CanvasWorkspace = lazy(() => import("./components/CanvasWorkspace"));
+const KitchenSinkPage = lazy(() => import("./components/KitchenSinkPage"));
+const MoveSourcePanel = lazy(() => import("./components/MoveSourcePanel"));
+const Sidebar = lazy(() => import("./components/Sidebar"));
 
 interface FocusedDiagnosticSelection {
   readonly nodeId: string;
@@ -23,9 +24,15 @@ function App() {
   const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>({ state: "idle" });
   const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>([]);
   const [focusedDiagnosticSelection, setFocusedDiagnosticSelection] = useState<FocusedDiagnosticSelection | null>(null);
-  const [activeView, setActiveView] = useState<PrimaryView>("visual");
+  const [activeView, setActiveView] = useState<PrimaryView>(
+    () => loadUiState(typeof window === "undefined" ? undefined : window.localStorage).activeView,
+  );
   const [moveSourceCode, setMoveSourceCode] = useState<string | null>(null);
   const [triggerCompile, setTriggerCompile] = useState<() => void>(() => () => undefined);
+
+  useEffect(() => {
+    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, { activeView });
+  }, [activeView]);
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -38,40 +45,48 @@ function App() {
         onViewChange={isKitchenSinkRoute ? undefined : setActiveView}
       />
       {isKitchenSinkRoute ? (
-        <KitchenSinkPage />
+        <Suspense fallback={<main className="flex flex-1 min-h-0" aria-label="Application shell" />}>
+          <KitchenSinkPage />
+        </Suspense>
       ) : (
         <main className="relative flex flex-1 min-h-0 overflow-hidden" aria-label="Application shell">
-          <div aria-hidden={activeView !== "visual"} className="flex flex-1 min-h-0 overflow-hidden" hidden={activeView !== "visual"}>
-            <section
-              aria-label="Node editor canvas"
-              className="relative flex-1 overflow-hidden border-y border-[var(--ui-border-dark)]"
-            >
-              <CanvasWorkspace
-                focusedDiagnosticNodeId={focusedDiagnosticSelection?.nodeId ?? null}
-                focusedDiagnosticRequestKey={focusedDiagnosticSelection?.requestKey ?? 0}
-                initialContractName={defaultContractName}
-                initialEdges={defaultContractFlow.edges}
-                initialNodes={defaultContractFlow.nodes}
-                onCompilationStateChange={(status, nextDiagnostics, nextSourceCode, artifactMoveSource) => {
-                  setCompilationStatus(status);
-                  setDiagnostics(nextDiagnostics);
-                  setMoveSourceCode(artifactMoveSource ?? nextSourceCode);
-                }}
-                onTriggerCompileChange={(nextTriggerCompile) => {
-                  setTriggerCompile(() => nextTriggerCompile);
-                }}
-              />
-            </section>
-            <Sidebar />
-          </div>
+          {activeView === "visual" ? (
+            <Suspense fallback={<div className="flex flex-1 min-h-0 overflow-hidden" aria-hidden="false" />}>
+              <div className="flex flex-1 min-h-0 overflow-hidden">
+                <section
+                  aria-label="Node editor canvas"
+                  className="relative flex-1 overflow-hidden border-y border-[var(--ui-border-dark)]"
+                >
+                  <CanvasWorkspace
+                    focusedDiagnosticNodeId={focusedDiagnosticSelection?.nodeId ?? null}
+                    focusedDiagnosticRequestKey={focusedDiagnosticSelection?.requestKey ?? 0}
+                    initialContractName={defaultContractName}
+                    initialEdges={defaultContractFlow.edges}
+                    initialNodes={defaultContractFlow.nodes}
+                    onCompilationStateChange={(status, nextDiagnostics, nextSourceCode, artifactMoveSource) => {
+                      setCompilationStatus(status);
+                      setDiagnostics(nextDiagnostics);
+                      setMoveSourceCode(artifactMoveSource ?? nextSourceCode);
+                    }}
+                    onTriggerCompileChange={(nextTriggerCompile) => {
+                      setTriggerCompile(() => nextTriggerCompile);
+                    }}
+                  />
+                </section>
+                <Sidebar />
+              </div>
+            </Suspense>
+          ) : null}
 
-          <section
-            aria-hidden={activeView !== "move"}
-            className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]"
-            hidden={activeView !== "move"}
-          >
-            <MoveSourcePanel sourceCode={moveSourceCode} status={compilationStatus} />
-          </section>
+          {activeView === "move" ? (
+            <Suspense
+              fallback={<section aria-label="Move source view" className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]" />}
+            >
+              <section aria-label="Move source view" className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
+                <MoveSourcePanel sourceCode={moveSourceCode} status={compilationStatus} />
+              </section>
+            </Suspense>
+          ) : null}
         </main>
       )}
       <Footer

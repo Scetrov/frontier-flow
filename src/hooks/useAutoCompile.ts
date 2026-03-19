@@ -1,12 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { compilePipeline } from "../compiler/pipeline";
 import type { CompilationState, CompilationStatus, CompilerDiagnostic, GeneratedContractArtifact } from "../compiler/types";
 import type { FlowEdge, FlowNode } from "../types/nodes";
 
 export const AUTO_COMPILE_IDLE_MS = 2500;
 const IDLE_STATUS: CompilationStatus = { state: "idle" };
 const EMPTY_DIAGNOSTICS: readonly CompilerDiagnostic[] = [];
+
+type CompilePipelineModule = typeof import("../compiler/pipeline");
+
+let compilePipelineModulePromise: Promise<CompilePipelineModule> | null = null;
+
+function resetCompilePipelineLoader() {
+  compilePipelineModulePromise = null;
+}
+
+async function loadCompilePipeline(): Promise<CompilePipelineModule> {
+  if (compilePipelineModulePromise === null) {
+    compilePipelineModulePromise = import("../compiler/pipeline").catch((error: unknown) => {
+      resetCompilePipelineLoader();
+      throw error;
+    });
+  }
+
+  return compilePipelineModulePromise;
+}
 
 function compareNullableStrings(left: string | null, right: string | null): number {
   if (left === right) {
@@ -119,6 +137,7 @@ export function useAutoCompile(
     setStatus({ state: "compiling" });
 
     try {
+      const { compilePipeline } = await loadCompilePipeline();
       const result = await compilePipeline({
         nodes: nodesRef.current,
         edges: edgesRef.current,

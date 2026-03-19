@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../App";
 import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
+import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
 
 interface CanvasWorkspaceSpyProps {
   readonly initialNodes?: unknown;
@@ -14,9 +15,22 @@ interface CanvasWorkspaceSpyProps {
 
 const canvasWorkspaceSpy = vi.fn<(props: CanvasWorkspaceSpyProps) => void>();
 const footerSpy = vi.fn();
+const headerSpy = vi.fn();
 
 vi.mock("../components/Header", () => ({
-  default: () => <div>Header Slot</div>,
+  default: (props: { activeView?: string; onViewChange?: (view: "visual" | "move") => void }) => {
+    headerSpy(props);
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          props.onViewChange?.("move");
+        }}
+      >
+        Header Slot
+      </button>
+    );
+  },
 }));
 
 vi.mock("../components/Footer", () => ({
@@ -59,18 +73,20 @@ describe("App", () => {
 
   afterEach(() => {
     window.history.replaceState({}, "", "/");
+    window.localStorage.clear();
     canvasWorkspaceSpy.mockClear();
     footerSpy.mockClear();
+    headerSpy.mockClear();
   });
 
-  it("renders the default editor shell on the root route", () => {
+  it("renders the default editor shell on the root route", async () => {
     window.history.replaceState({}, "", "/");
 
     render(<App />);
 
     expect(screen.getByLabelText("Application shell")).toBeInTheDocument();
-    expect(screen.getByText("Canvas Workspace Slot")).toBeInTheDocument();
-    expect(screen.getByText("Sidebar Slot")).toBeInTheDocument();
+    expect(await screen.findByText("Canvas Workspace Slot")).toBeInTheDocument();
+    expect(await screen.findByText("Sidebar Slot")).toBeInTheDocument();
     expect(screen.queryByText("Kitchen Sink Slot")).not.toBeInTheDocument();
     expect(canvasWorkspaceSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -81,12 +97,42 @@ describe("App", () => {
     );
   });
 
-  it("renders the kitchen sink page on the /kitchen-sink route", () => {
+  it("restores the primary view from local storage", () => {
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "move",
+        isSidebarOpen: true,
+        isContractPanelOpen: true,
+      }),
+    );
+
+    render(<App />);
+
+    expect(headerSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        activeView: "move",
+      }),
+    );
+  });
+
+  it("persists the primary view when the header switches tabs", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Header Slot" }));
+
+    expect(JSON.parse(window.localStorage.getItem(UI_STATE_STORAGE_KEY) ?? "{}")).toMatchObject({
+      activeView: "move",
+    });
+  });
+
+  it("renders the kitchen sink page on the /kitchen-sink route", async () => {
     window.history.replaceState({}, "", "/kitchen-sink");
 
     render(<App />);
 
-    expect(screen.getByText("Kitchen Sink Slot")).toBeInTheDocument();
+    expect(await screen.findByText("Kitchen Sink Slot")).toBeInTheDocument();
     expect(screen.queryByLabelText("Application shell")).not.toBeInTheDocument();
     expect(screen.queryByText("Sidebar Slot")).not.toBeInTheDocument();
   });

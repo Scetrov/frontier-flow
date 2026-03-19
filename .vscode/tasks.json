@@ -5,8 +5,11 @@
       "label": "Dev Server",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "dev"],
+      "args": ["run", "dev", "--", "--open"],
       "isBackground": true,
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
       "presentation": {
         "clear": false,
         "echo": true,

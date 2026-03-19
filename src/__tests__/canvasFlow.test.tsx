@@ -7,6 +7,7 @@ import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
 import { createFlowNodeData } from "../data/node-definitions";
 import type { FlowNode } from "../types/nodes";
 import { CONTRACT_LIBRARY_STORAGE_KEY } from "../utils/contractStorage";
+import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
 import { isValidFlowConnection } from "../utils/socketTypes";
 
 const originalMatchMedia = window.matchMedia;
@@ -124,6 +125,35 @@ describe("CanvasWorkspace", () => {
 
     expect(controls).toHaveAttribute("aria-hidden", "false");
     expect(screen.getByRole("button", { name: "Close saved contract controls" })).toBeInTheDocument();
+  });
+
+  it("restores the saved contract drawer state from local storage on mount", () => {
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "visual",
+        isSidebarOpen: true,
+        isContractPanelOpen: false,
+      }),
+    );
+
+    render(<CanvasWorkspace />);
+
+    expect(document.getElementById("saved-contract-controls")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("button", { name: "Open saved contract controls" })).toBeInTheDocument();
+  });
+
+  it("persists the saved contract drawer state when toggled", () => {
+    render(<CanvasWorkspace />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Close saved contract controls" }));
+
+    expect(JSON.parse(window.localStorage.getItem(UI_STATE_STORAGE_KEY) ?? "{}")).toMatchObject({
+      isContractPanelOpen: false,
+      isSidebarOpen: true,
+      activeView: "visual",
+    });
   });
 
   it("renders an empty-state prompt before any node is dropped", () => {

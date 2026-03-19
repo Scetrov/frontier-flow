@@ -4,6 +4,7 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { nodeDefinitions } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
+import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
 
 interface SidebarProps {
   readonly definitions?: readonly NodeDefinition[];
@@ -37,7 +38,9 @@ function getIsDesktop() {
 
 function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
-  const [isOpen, setIsOpen] = useState(getIsDesktop);
+  const [isOpen, setIsOpen] = useState(
+    () => loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isSidebarOpen,
+  );
   const groupedDefinitions = categoryOrder
     .map((category) => ({
       category,
@@ -72,7 +75,6 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
 
     const handleChange = (event: MediaQueryListEvent) => {
       setIsDesktop(event.matches);
-      setIsOpen(event.matches);
     };
 
     mediaQuery.addEventListener("change", handleChange);
@@ -80,6 +82,10 @@ function Sidebar({ definitions = nodeDefinitions }: SidebarProps) {
       mediaQuery.removeEventListener("change", handleChange);
     };
   }, []);
+
+  useEffect(() => {
+    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, { isSidebarOpen: isOpen });
+  }, [isOpen]);
 
   const handleDragStart = (
     event: ReactDragEvent<HTMLButtonElement>,

@@ -30,6 +30,7 @@ import {
 } from "../utils/contractStorage";
 import { autoArrangeFlow } from "../utils/layoutFlow";
 import { getEdgeColor, getEdgeStrokeWidth, isValidFlowConnection } from "../utils/socketTypes";
+import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
 import { useAutoCompile } from "../hooks/useAutoCompile";
 
 import { restoreSavedFlow } from "./restoreSavedFlow";
@@ -110,7 +111,9 @@ function FlowEditor({
   const [draftContractName, setDraftContractName] = useState(activeContract.name);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
-  const [isContractPanelOpen, setIsContractPanelOpen] = useState(getIsDesktop);
+  const [isContractPanelOpen, setIsContractPanelOpen] = useState(
+    () => loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isContractPanelOpen,
+  );
   const nodeCounterRef = useRef(0);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
@@ -341,9 +344,6 @@ function FlowEditor({
 
     const handleChange = (event: MediaQueryListEvent) => {
       setIsDesktop(event.matches);
-      if (event.matches) {
-        setIsContractPanelOpen(true);
-      }
     };
 
     mediaQuery.addEventListener("change", handleChange);
@@ -351,6 +351,12 @@ function FlowEditor({
       mediaQuery.removeEventListener("change", handleChange);
     };
   }, []);
+
+  useEffect(() => {
+    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, {
+      isContractPanelOpen,
+    });
+  }, [isContractPanelOpen]);
 
   useEffect(() => {
     saveContractLibrary(
