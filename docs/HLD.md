@@ -614,8 +614,8 @@ See [SOLUTION-DESIGN.md](./SOLUTION-DESIGN.md#5-code-generation-outputs) for a c
 | `aggression`  | `turret::candidate_is_aggressor(&candidate)` — checks the `is_aggressor` field on `TargetCandidate`                            |
 | `proximity`   | Entry point: `get_target_priority_list(turret, owner_character, target_candidate_list, receipt)`                               |
 | `getTribe`    | `turret::candidate_character_tribe(&candidate)` — reads tribe ID (u32) from target candidate                                   |
-| `isAggressor` | `turret::candidate_is_aggressor(&candidate)` — reads the aggressor flag from the target candidate                               |
-| `isSameTribe` | `turret::candidate_character_tribe(&candidate) == character::tribe(owner_character)`                                            |
+| `isAggressor` | `turret::candidate_is_aggressor(&candidate)` — reads the aggressor flag from the target candidate                              |
+| `isSameTribe` | `turret::candidate_character_tribe(&candidate) == character::tribe(owner_character)`                                           |
 | `addToQueue`  | `vector::push_back(&mut return_list, turret::new_return_target_priority_list(item_id, weight))` — appends entry to return list |
 | `hpRatio`     | `turret::candidate_hp_ratio(&candidate)` — reads HP ratio (0-100) from target candidate                                        |
 | `shieldRatio` | `turret::candidate_shield_ratio(&candidate)` — reads shield ratio (0-100) from target candidate                                |
