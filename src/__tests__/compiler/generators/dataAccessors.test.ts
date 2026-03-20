@@ -10,14 +10,14 @@ describe("data accessor generators", () => {
     ["listTribe", "configured values"],
     ["listShip", "configured values"],
     ["listCharacter", "configured values"],
-    ["getTribe", "% 7"],
-    ["hpRatio", "100 -"],
-    ["shieldRatio", "% 30"],
-    ["armorRatio", "% 20"],
-    ["getGroupId", "% 16"],
-    ["getBehaviour", "% 4"],
-    ["isAggressor", "== 0"],
-    ["getPriorityWeight", "% 90"],
+    ["getTribe", "character_tribe"],
+    ["hpRatio", "candidate.hp_ratio"],
+    ["shieldRatio", "candidate.shield_ratio"],
+    ["armorRatio", "candidate.armor_ratio"],
+    ["getGroupId", "candidate.group_id"],
+    ["getBehaviour", "candidate.behaviour_change"],
+    ["isAggressor", "candidate.is_aggressor"],
+    ["getPriorityWeight", "candidate.priority_weight"],
   ])("emits a code fragment for %s", (nodeType, expectedFragment) => {
     const generator = getGenerator(nodeType);
     const context = createGenerationContext("starter_contract");

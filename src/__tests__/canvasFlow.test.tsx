@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import CanvasWorkspace from "../components/CanvasWorkspace";
@@ -125,8 +126,11 @@ describe("CanvasWorkspace", () => {
     render(<CanvasWorkspace />);
 
     const controls = screen.getByRole("region", { name: "Saved contract controls" });
+    const toggle = screen.getByRole("button", { name: "Close saved contract controls" });
+    expect(within(toggle).getByText("Contracts")).toBeInTheDocument();
+    expect(toggle).toHaveClass("ff-canvas__drawer-handle");
 
-    fireEvent.click(screen.getByRole("button", { name: "Close saved contract controls" }));
+    fireEvent.click(toggle);
 
     expect(controls).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("button", { name: "Open saved contract controls" })).toBeInTheDocument();

@@ -24,21 +24,21 @@ function createScoringGenerator(
 const scoringModifierGenerators: readonly NodeCodeGenerator[] = [
   createScoringGenerator("behaviourBonus", (node, context, weightInBinding) => {
     const behaviourBinding = resolveInput(context, node, "behaviour", "0");
-    return `${weightInBinding} + (${behaviourBinding} * 5)`;
+    return `if (${behaviourBinding} == BEHAVIOUR_STARTED_ATTACK) { ${weightInBinding} + STARTED_ATTACK_BONUS } else if (${behaviourBinding} == BEHAVIOUR_ENTERED) { ${weightInBinding} + ENTERED_BONUS } else { ${weightInBinding} }`;
   }),
   createScoringGenerator("aggressorBonus", (node, context, weightInBinding) => {
     const aggressorBinding = resolveInput(context, node, "is_aggressor", "false");
-    return `if (${aggressorBinding}) { ${weightInBinding} + 25 } else { ${weightInBinding} }`;
+    return `if (${aggressorBinding}) { ${weightInBinding} + AGGRESSOR_BONUS } else { ${weightInBinding} }`;
   }),
   createScoringGenerator("damageBonus", (node, context, weightInBinding) => {
     const hpBinding = resolveInput(context, node, "hp_ratio", "100");
     const shieldBinding = resolveInput(context, node, "shield_ratio", "100");
     const armorBinding = resolveInput(context, node, "armor_ratio", "100");
-    return `${weightInBinding} + ((100 - ${hpBinding}) + (100 - ${shieldBinding}) + (100 - ${armorBinding}))`;
+    return `${weightInBinding} + ((100 - ${shieldBinding}) * SHIELD_BREAK_BONUS_MULTIPLIER) + ((100 - ${armorBinding}) * ARMOR_BREAK_BONUS_MULTIPLIER) + ((100 - ${hpBinding}) * HULL_BREAK_BONUS_MULTIPLIER)`;
   }),
   createScoringGenerator("sizeTierBonus", (node, context, weightInBinding) => {
     const groupIdBinding = resolveInput(context, node, "group_id", "0");
-    return `${weightInBinding} + ((${groupIdBinding} % 5) * 10)`;
+    return `${weightInBinding} + (tier_for_group(${groupIdBinding}) * TIER_WEIGHT)`;
   }),
 ];
 

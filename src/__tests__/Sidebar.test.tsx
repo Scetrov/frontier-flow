@@ -147,9 +147,21 @@ describe("Sidebar", () => {
     // event-trigger nodes visible (expanded by default)
     expect(within(toolbox).getByRole("button", { name: /Aggression/ })).toBeInTheDocument();
     expect(within(toolbox).getByRole("button", { name: /Proximity/ })).toBeInTheDocument();
+    expect(within(toolbox).getByText("Emit priority and target data when a hostile action is detected.")).toBeInTheDocument();
 
     // action node not in DOM (collapsed)
     expect(within(toolbox).queryByRole("button", { name: /Add to Queue/ })).not.toBeInTheDocument();
+  });
+
+  it("renders toolbox entries with shared node chrome and no edit or delete controls", () => {
+    render(<Sidebar definitions={singleCategoryDefinitions} />);
+
+    const preview = screen.getByRole("button", { name: "Aggression" });
+
+    expect(preview.querySelector(".ff-node__surface")).not.toBeNull();
+    expect(preview.querySelector(".ff-node__edit-button")).toBeNull();
+    expect(preview.querySelector(".ff-node__delete-button")).toBeNull();
+    expect(preview.querySelector(".react-flow__handle")).toBeNull();
   });
 
   it("expands a collapsed category when its header is clicked", () => {
@@ -197,6 +209,9 @@ describe("Sidebar", () => {
 
     const toggle = screen.getByRole("button", { name: "Close node toolbox" });
     const toolbox = screen.getByRole("complementary", { name: "Node toolbox" });
+
+    expect(within(toggle).getByText("Toolbox")).toBeInTheDocument();
+    expect(toggle).toHaveClass("ff-canvas__drawer-handle");
 
     fireEvent.click(toggle);
 

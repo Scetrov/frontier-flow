@@ -117,34 +117,42 @@ export function getStringFieldList(fields: NodeFieldMap | undefined, key: string
   return normalizeStringList(fields[key]);
 }
 
-export function getNodeFieldSummary(nodeType: string, fields: NodeFieldMap | undefined): readonly string[] {
-  switch (nodeType) {
-    case "listTribe": {
-      const count = getNumberFieldList(fields, "selectedTribeIds").length;
-      return [count === 0 ? "No tribes selected" : `${String(count)} tribe${count === 1 ? "" : "s"} selected`];
-    }
-    case "listShip": {
-      const count = getNumberFieldList(fields, "selectedShipIds").length;
-      return [count === 0 ? "No ships selected" : `${String(count)} ship${count === 1 ? "" : "s"} selected`];
-    }
-    case "listCharacter": {
-      const addresses = getStringFieldList(fields, "characterAddresses");
-      if (addresses.length === 0) {
-        return ["No character addresses added"];
-      }
+type NodeFieldSummaryBuilder = (fields: NodeFieldMap | undefined) => readonly string[];
 
-      return [`${String(addresses.length)} character${addresses.length === 1 ? "" : "s"} configured`, addresses[0]];
-    }
-    case "isInGroup": {
-      const selectedGroupIds = new Set(getNumberFieldList(fields, "selectedGroupIds"));
-      const selectedLabels = SHIP_GROUP_OPTIONS.filter((option) => selectedGroupIds.has(option.value)).map((option) => option.label);
-      if (selectedLabels.length === 0) {
-        return ["No ship groups selected"];
-      }
+function formatSelectionSummary(count: number, singularLabel: string, emptyLabel: string): readonly string[] {
+  return [count === 0 ? emptyLabel : `${String(count)} ${singularLabel}${count === 1 ? "" : "s"} selected`];
+}
 
-      return [selectedLabels.join(", ")];
-    }
-    default:
-      return [];
+function summarizeTribes(fields: NodeFieldMap | undefined): readonly string[] {
+  return formatSelectionSummary(getNumberFieldList(fields, "selectedTribeIds").length, "tribe", "No tribes selected");
+}
+
+function summarizeShips(fields: NodeFieldMap | undefined): readonly string[] {
+  return formatSelectionSummary(getNumberFieldList(fields, "selectedShipIds").length, "ship", "No ships selected");
+}
+
+function summarizeCharacters(fields: NodeFieldMap | undefined): readonly string[] {
+  const addresses = getStringFieldList(fields, "characterAddresses");
+  if (addresses.length === 0) {
+    return ["No character addresses added"];
   }
+
+  return [`${String(addresses.length)} character${addresses.length === 1 ? "" : "s"} configured`, addresses[0]];
+}
+
+function summarizeShipGroups(fields: NodeFieldMap | undefined): readonly string[] {
+  const selectedGroupIds = new Set(getNumberFieldList(fields, "selectedGroupIds"));
+  const selectedLabels = SHIP_GROUP_OPTIONS.filter((option) => selectedGroupIds.has(option.value)).map((option) => option.label);
+  return selectedLabels.length === 0 ? ["No ship groups selected"] : [selectedLabels.join(", ")];
+}
+
+const NODE_FIELD_SUMMARY_BUILDERS: Readonly<Partial<Record<string, NodeFieldSummaryBuilder>>> = {
+  isInGroup: summarizeShipGroups,
+  listCharacter: summarizeCharacters,
+  listShip: summarizeShips,
+  listTribe: summarizeTribes,
+};
+
+export function getNodeFieldSummary(nodeType: string, fields: NodeFieldMap | undefined): readonly string[] {
+  return NODE_FIELD_SUMMARY_BUILDERS[nodeType]?.(fields) ?? [];
 }

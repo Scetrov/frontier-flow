@@ -726,6 +726,8 @@ The current graph-to-Move path lives entirely inside `src/compiler/` and runs in
 
 `compilePipeline()` is the single orchestration boundary. It returns one result object consumed by auto-compile, manual build, footer diagnostics, and the Move preview.
 
+The generated artifact also carries post-emission lifecycle metadata. Compile success is represented by `CompilationStatus`, while downstream rollout state is represented separately on the artifact via `compileReadiness` and `deploymentStatus`. The footer and Move preview keep those channels separate so a compiled artifact can still communicate blocked deployment prerequisites without implying compilation failure.
+
 The generator operates in five distinct phases to ensure the output is deterministic, secure, and gas-efficient:
 
 ```mermaid
@@ -876,7 +878,7 @@ The compiler wrapper and error parser now operate on the generated artifact rath
 
 - `src/compiler/moveCompiler.ts` passes the emitted `Move.toml` plus `sources/<module>.move` to the WASM compiler.
 - Successful builds attach decoded bytecode modules and dependency names back onto the artifact so downstream consumers can treat the artifact as the single source of truth.
-- `src/compiler/errorParser.ts` converts raw compiler text into structured diagnostics with `stage = "compilation"`, preserving unmapped line numbers when no source-map entry exists.
+- `src/compiler/errorParser.ts` converts raw compiler text into structured diagnostics with `stage = "compilation"`, grouping compiler header lines with following `sources/...:line:column` location lines so warnings do not become duplicate error diagnostics.
 - Fallback compiler messages without line information still surface as actionable diagnostics instead of being dropped.
 
 This keeps the footer, node-focus error flows, and generated-source review aligned with the exact package that was compiled.
@@ -909,7 +911,7 @@ interface EmitterOutput {
 
 **Compiler Error Parser:**
 
-When `buildMovePackage` from `@zktx.io/sui-move-builder/lite` returns an error (or the WASM process throws), the raw error string is parsed using a set of regex patterns tuned to the Move compiler's output format:
+When `buildMovePackage` from `@zktx.io/sui-move-builder/lite` returns an error (or the WASM process throws), the raw error string is parsed using a small multiline diagnostic parser tuned to the Move compiler's output format. Header lines establish severity and user-facing copy, and any immediately following `sources/<module>.move:line:column` location line is attached to the same diagnostic record before source-map resolution runs:
 
 ```typescript
 interface CompilerDiagnostic {

@@ -3,28 +3,13 @@ import type { FlowEdge, FlowNode } from "../types/nodes";
 
 import { normalizeNodeFields } from "../data/nodeFieldCatalog";
 
+import { createStableNodeOrder, normalizeModuleName } from "./determinism";
 import type { IRConnection, IRGraph, IRNode } from "./types";
 
 type MutableIRNode = Omit<IRNode, "inputs" | "outputs"> & {
   inputs: Record<string, IRConnection>;
   outputs: Record<string, IRConnection[]>;
 };
-
-interface StableOrderResult {
-  readonly order: readonly string[];
-  readonly unresolvedNodeIds: readonly string[];
-}
-
-function normaliseModuleName(input: string): string {
-  const collapsed = input
-    .trim()
-    .replace(/[^A-Za-z0-9_]+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-  const value = collapsed.length > 0 ? collapsed : "frontier_flow";
-  return /^[A-Za-z_]/.test(value) ? value.toLowerCase() : `module_${value.toLowerCase()}`;
-}
 
 function toIrNode(node: FlowNode): MutableIRNode {
   return {
@@ -36,64 +21,6 @@ function toIrNode(node: FlowNode): MutableIRNode {
     inputs: {},
     outputs: {},
     sockets: node.data.sockets,
-  };
-}
-
-function createStableOrder(nodes: readonly FlowNode[], edges: readonly FlowEdge[]): StableOrderResult {
-  const sortedIds = nodes.map((node) => node.id).sort();
-  const adjacency = new Map<string, string[]>();
-  const indegree = new Map<string, number>();
-
-  for (const nodeId of sortedIds) {
-    adjacency.set(nodeId, []);
-    indegree.set(nodeId, 0);
-  }
-
-  for (const edge of edges) {
-    if (!adjacency.has(edge.source) || !adjacency.has(edge.target)) {
-      continue;
-    }
-
-    adjacency.get(edge.source)?.push(edge.target);
-    indegree.set(edge.target, (indegree.get(edge.target) ?? 0) + 1);
-  }
-
-  for (const targets of adjacency.values()) {
-    targets.sort();
-  }
-
-  const queue = sortedIds.filter((nodeId) => (indegree.get(nodeId) ?? 0) === 0);
-  const order: string[] = [];
-
-  while (queue.length > 0) {
-    queue.sort();
-    const current = queue.shift();
-    if (current === undefined) {
-      break;
-    }
-
-    order.push(current);
-
-    for (const next of adjacency.get(current) ?? []) {
-      const nextDegree = (indegree.get(next) ?? 0) - 1;
-      indegree.set(next, nextDegree);
-      if (nextDegree === 0) {
-        queue.push(next);
-      }
-    }
-  }
-
-  if (order.length === sortedIds.length) {
-    return {
-      order,
-      unresolvedNodeIds: [],
-    };
-  }
-
-  const remaining = sortedIds.filter((nodeId) => !order.includes(nodeId));
-  return {
-    order: order.concat(remaining),
-    unresolvedNodeIds: remaining,
   };
 }
 
@@ -190,13 +117,13 @@ export function buildIrGraph(nodes: readonly FlowNode[], edges: readonly FlowEdg
     };
   }
 
-  const stableOrder = createStableOrder(nodes, edges);
+  const stableOrder = createStableNodeOrder(nodes, edges);
 
   return {
     nodes: new Map<string, IRNode>(nodesById),
     connections,
     executionOrder: stableOrder.order,
-    moduleName: normaliseModuleName(moduleName),
+    moduleName: normalizeModuleName(moduleName),
     requestedModuleName: moduleName,
     disconnectedNodeIds: collectDisconnectedNodeIds(nodesById),
     unresolvedNodeIds: stableOrder.unresolvedNodeIds,

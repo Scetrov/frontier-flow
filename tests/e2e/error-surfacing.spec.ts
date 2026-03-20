@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
+function getCompilationStatusButton(page: Page) {
+  return page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
+}
+
 async function prepareCompilationPage(page: Page) {
   await page.addInitScript(() => {
     window.localStorage.clear();
@@ -28,7 +32,7 @@ test("surfaces invalid disconnected nodes and returns to compiled after removal"
   test.skip(isMobile, "Desktop drag and drop coverage only.");
 
   await prepareCompilationPage(page);
-  const statusButton = page.locator(".ff-compilation-status__button");
+  const statusButton = getCompilationStatusButton(page);
 
   await expect(statusButton).toContainText("Compiling");
   await expect(statusButton).toContainText("Compiled");

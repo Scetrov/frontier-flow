@@ -7,7 +7,7 @@ import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-  globalIgnores(["dist", "coverage", "playwright-report", "test-results"]),
+  globalIgnores(["dist", "build", "coverage", "playwright-report", "test-results", "node_modules", "node-compile-cache", "playwright-transform-cache*"]),
   {
     files: ["src/**/*.{ts,tsx}", "tests/**/*.ts"],
     extends: [
@@ -27,6 +27,21 @@ export default defineConfig([
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
+    },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/__tests__/**", "src/test/**", "src/__fixtures__/**"],
+    rules: {
+      complexity: ["warn", 10],
+      "max-depth": ["warn", 4],
+      "max-lines-per-function": ["warn", {
+        max: 100,
+        skipBlankLines: true,
+        skipComments: true,
+        IIFEs: true,
+      }],
+      "max-params": ["warn", 4],
     },
   },
   {

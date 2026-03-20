@@ -2,7 +2,7 @@ import type { NodeCodeGenerator } from "../types";
 
 import { addEntryFunction, bindOutput, createCommentBlock, okValidationResult } from "./shared";
 
-function createTriggerGenerator(nodeType: string, targetSeed: number, prioritySeed: number): NodeCodeGenerator {
+function createTriggerGenerator(nodeType: string): NodeCodeGenerator {
   return {
     nodeType,
     validate: () => okValidationResult(),
@@ -13,17 +13,17 @@ function createTriggerGenerator(nodeType: string, targetSeed: number, prioritySe
       const priorityBinding = bindOutput(context, node, "priority");
 
       return [
-        ...createCommentBlock(node, [`event trigger ${node.type}`]),
-        { code: `let ${targetBinding}: u64 = ${String(targetSeed)};`, nodeId: node.id, indent: 2 },
-        { code: `let ${priorityBinding}: u64 = ${String(prioritySeed)};`, nodeId: node.id, indent: 2 },
+        ...createCommentBlock(node, [`event trigger ${node.type}`, "bind the current target candidate into the scoring pipeline"]),
+        { code: `let ${targetBinding}: &TargetCandidateArg = candidate;`, nodeId: node.id, indent: 2 },
+        { code: `let ${priorityBinding}: u64 = candidate.priority_weight;`, nodeId: node.id, indent: 2 },
       ];
     },
   };
 }
 
 const eventTriggerGenerators: readonly NodeCodeGenerator[] = [
-  createTriggerGenerator("aggression", 101, 80),
-  createTriggerGenerator("proximity", 205, 45),
+  createTriggerGenerator("aggression"),
+  createTriggerGenerator("proximity"),
 ];
 
 export default eventTriggerGenerators;

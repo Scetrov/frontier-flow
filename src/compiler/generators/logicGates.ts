@@ -1,6 +1,6 @@
 import type { NodeCodeGenerator } from "../types";
 
-import { SHIP_GROUP_OPTIONS, getNumberFieldList, getStringFieldList } from "../../data/nodeFieldCatalog";
+import { getNumberFieldList, getStringFieldList } from "../../data/nodeFieldCatalog";
 
 import { hashCharacterAddress } from "./listHash";
 import { bindOutput, createCommentBlock, okValidationResult, resolveInput } from "./shared";
@@ -40,28 +40,6 @@ function getConnectedSourceNode(
   return context.graph?.nodes.get(connection.sourceNodeId);
 }
 
-function createTargetDerivedGroupExpression(targetBinding: string): string {
-  const groupIds = SHIP_GROUP_OPTIONS.map((option) => option.value);
-  const modulus = String(groupIds.length);
-
-  if (groupIds.length === 0) {
-    return "0";
-  }
-
-  return groupIds.reduce((expression, groupId, index) => {
-    const branch = `${targetBinding} % ${modulus} == ${String(index)}`;
-    if (index === 0) {
-      return `if (${branch}) { ${String(groupId)} }`;
-    }
-
-    if (index === groupIds.length - 1) {
-      return `${expression} else { ${String(groupId)} }`;
-    }
-
-    return `${expression} else if (${branch}) { ${String(groupId)} }`;
-  }, "");
-}
-
 function createBooleanGateGenerator(
   nodeType: string,
   description: string,
@@ -84,39 +62,39 @@ function createBooleanGateGenerator(
 
 const logicGateGenerators: readonly NodeCodeGenerator[] = [
   createBooleanGateGenerator("excludeOwner", "exclude the owner entity", "include", (node, context) => {
-    const targetBinding = resolveInput(context, node, "target", "0");
-    return `${targetBinding} != 1`;
+    const targetBinding = resolveInput(context, node, "target", "candidate");
+    return `${targetBinding}.character_id != owner_character_id`;
   }),
   createBooleanGateGenerator("excludeSameTribe", "exclude same-tribe non-aggressors", "include", (node, context) => {
     const tribeBinding = resolveInput(context, node, "tribe", "0");
-    const ownerTribeBinding = resolveInput(context, node, "owner_tribe", "1");
+    const ownerTribeBinding = resolveInput(context, node, "owner_tribe", "owner_tribe");
     const aggressorBinding = resolveInput(context, node, "is_aggressor", "false");
     return `${tribeBinding} != ${ownerTribeBinding} || ${aggressorBinding}`;
   }),
   createBooleanGateGenerator("excludeStoppedAttack", "exclude stopped attacks", "include", (node, context) => {
     const behaviourBinding = resolveInput(context, node, "behaviour", "0");
-    return `${behaviourBinding} != 0`;
+    return `${behaviourBinding} != BEHAVIOUR_STOPPED_ATTACK`;
   }),
   createBooleanGateGenerator("excludeNpc", "exclude npc targets", "include", (node, context) => {
-    const targetBinding = resolveInput(context, node, "target", "0");
-    return `${targetBinding} >= 100`;
+    const targetBinding = resolveInput(context, node, "target", "candidate");
+    return `${targetBinding}.character_id != 0`;
   }),
   createBooleanGateGenerator("isOwner", "check whether the candidate target is the owner", "matches", (node, context) => {
-    const targetBinding = resolveInput(context, node, "target", "0");
-    return `${targetBinding} == 1`;
+    const targetBinding = resolveInput(context, node, "target", "candidate");
+    return `${targetBinding}.character_id == owner_character_id`;
   }),
   createBooleanGateGenerator("isSameTribe", "check whether the candidate tribe matches the owner tribe", "matches", (node, context) => {
     const tribeBinding = resolveInput(context, node, "tribe", "0");
-    const ownerTribeBinding = resolveInput(context, node, "owner_tribe", "1");
+    const ownerTribeBinding = resolveInput(context, node, "owner_tribe", "owner_tribe");
     return `${tribeBinding} == ${ownerTribeBinding}`;
   }),
   createBooleanGateGenerator("hasStoppedAttack", "check whether the target stopped attacking", "matches", (node, context) => {
     const behaviourBinding = resolveInput(context, node, "behaviour", "0");
-    return `${behaviourBinding} == 0`;
+    return `${behaviourBinding} == BEHAVIOUR_STOPPED_ATTACK`;
   }),
   createBooleanGateGenerator("isNpc", "check whether the candidate target is an npc", "matches", (node, context) => {
-    const targetBinding = resolveInput(context, node, "target", "0");
-    return `${targetBinding} < 100`;
+    const targetBinding = resolveInput(context, node, "target", "candidate");
+    return `${targetBinding}.character_id == 0`;
   }),
   {
     nodeType: "isInList",
@@ -143,7 +121,7 @@ const logicGateGenerators: readonly NodeCodeGenerator[] = [
     },
     emit(node, context) {
       const includeBinding = bindOutput(context, node, "matches");
-      const targetBinding = resolveInput(context, node, "target", "0");
+      const targetBinding = resolveInput(context, node, "target", "candidate");
       const listNode = getConnectedSourceNode(node, context, "list");
 
       switch (listNode?.type) {
@@ -152,8 +130,8 @@ const logicGateGenerators: readonly NodeCodeGenerator[] = [
             ...createCommentBlock(node, ["logic gate isInList", "check whether the target matches the configured upstream list"]),
             {
               code: `let ${includeBinding}: bool = ${createMembershipExpression(
-                `${targetBinding} % 7`,
-                getNumberFieldList(listNode.fields, "selectedTribeIds").map((value) => value % 7),
+                `${targetBinding}.character_tribe`,
+                getNumberFieldList(listNode.fields, "selectedTribeIds"),
               )};`,
               nodeId: node.id,
               indent: 2,
@@ -164,8 +142,8 @@ const logicGateGenerators: readonly NodeCodeGenerator[] = [
             ...createCommentBlock(node, ["logic gate isInList", "check whether the target matches the configured upstream list"]),
             {
               code: `let ${includeBinding}: bool = ${createMembershipExpression(
-                `${targetBinding} % 100000`,
-                getNumberFieldList(listNode.fields, "selectedShipIds").map((value) => value % 100000),
+                `${targetBinding}.item_id`,
+                getNumberFieldList(listNode.fields, "selectedShipIds"),
               )};`,
               nodeId: node.id,
               indent: 2,
@@ -176,7 +154,7 @@ const logicGateGenerators: readonly NodeCodeGenerator[] = [
             ...createCommentBlock(node, ["logic gate isInList", "check whether the target matches the configured upstream list"]),
             {
               code: `let ${includeBinding}: bool = ${createMembershipExpression(
-                targetBinding,
+                `${targetBinding}.character_id`,
                 getStringFieldList(listNode.fields, "characterAddresses").map((value) => hashCharacterAddress(value)),
               )};`,
               nodeId: node.id,
@@ -200,13 +178,13 @@ const logicGateGenerators: readonly NodeCodeGenerator[] = [
     },
     emit(node, context) {
       const includeBinding = bindOutput(context, node, "matches");
-      const targetBinding = resolveInput(context, node, "target", "0");
+      const targetBinding = resolveInput(context, node, "target", "candidate");
       const candidateGroupBinding = `${includeBinding}_group_id`;
       const selectedGroupIds = getNumberFieldList(node.fields, "selectedGroupIds");
 
       return [
         ...createCommentBlock(node, ["logic gate isInGroup", "check whether the target resolves into one of the configured ship groups"]),
-        { code: `let ${candidateGroupBinding}: u64 = ${createTargetDerivedGroupExpression(targetBinding)};`, nodeId: node.id, indent: 2 },
+        { code: `let ${candidateGroupBinding}: u64 = ${targetBinding}.group_id;`, nodeId: node.id, indent: 2 },
         { code: `let ${includeBinding}: bool = ${createMembershipExpression(candidateGroupBinding, selectedGroupIds)};`, nodeId: node.id, indent: 2 },
       ];
     },

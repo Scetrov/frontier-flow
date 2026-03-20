@@ -200,6 +200,34 @@ describe("useAutoCompile", () => {
     expect(compilePipeline).toHaveBeenCalledTimes(2);
   });
 
+  it("aborts an in-flight compile when the hook unmounts", async () => {
+    let activeSignal: AbortSignal | undefined;
+
+    vi.mocked(compilePipeline).mockImplementationOnce(({ signal }) => {
+      activeSignal = signal;
+      return new Promise<Awaited<ReturnType<typeof compilePipeline>>>((_, reject) => {
+        signal?.addEventListener("abort", () => {
+          reject(new DOMException("Aborted", "AbortError"));
+        }, { once: true });
+      });
+    });
+
+    const nodes = [createFlowNode("node_1", "aggression")];
+    const { unmount } = renderHook(() => useAutoCompile(nodes, emptyEdges, "starter_contract", 100));
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+    });
+
+    expect(activeSignal).toBeDefined();
+    expect(activeSignal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(activeSignal?.aborted).toBe(true);
+  });
+
   it("returns to idle while waiting for the next debounced compile after an edit", async () => {
     const firstNodes = [createFlowNode("node_1", "aggression")];
     const secondNodes = [createFlowNode("node_2", "aggression")];

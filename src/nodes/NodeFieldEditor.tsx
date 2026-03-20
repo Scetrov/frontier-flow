@@ -19,6 +19,71 @@ interface NodeFieldEditorProps {
   readonly onSave: (fields: NodeFieldMap) => void;
 }
 
+function toggleNumericField(currentFields: NodeFieldMap, key: string, value: number, nodeType: string): NodeFieldMap {
+  const next = new Set(getNumberFieldList(currentFields, key));
+  if (next.has(value)) {
+    next.delete(value);
+  } else {
+    next.add(value);
+  }
+
+  return normalizeNodeFields(nodeType, { ...currentFields, [key]: [...next].sort((left, right) => left - right) });
+}
+
+function useRemoteNodeFieldOptions(nodeType: string) {
+  const [remoteOptions, setRemoteOptions] = useState<readonly SelectableOption[]>([]);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadOptions() {
+      if (nodeType !== "listTribe" && nodeType !== "listShip") {
+        setRemoteOptions([]);
+        setLoadError(null);
+        setIsLoadingOptions(false);
+        return;
+      }
+
+      setIsLoadingOptions(true);
+      setLoadError(null);
+
+      try {
+        const options = nodeType === "listTribe"
+          ? await loadWorldApiOptions(
+              "https://world-api-stillness.live.tech.evefrontier.com/v2/tribes",
+              buildTribeOption,
+            )
+          : await loadWorldApiOptions(
+              "https://world-api-stillness.live.tech.evefrontier.com/v2/ships",
+              buildShipOption,
+            );
+
+        if (!isCancelled) {
+          setRemoteOptions(options);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setLoadError(error instanceof Error ? error.message : "Unable to load options.");
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingOptions(false);
+        }
+      }
+    }
+
+    void loadOptions();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [nodeType]);
+
+  return { remoteOptions, isLoadingOptions, loadError };
+}
+
 function NumericOptionEditor({
   heading,
   options,
@@ -46,24 +111,32 @@ function NumericOptionEditor({
 
       {!loading && error === null ? (
         <div className="ff-node-field-editor__list">
-          {options.map((option) => (
-            <label key={option.value} className="ff-node-field-editor__choice">
+          {options.map((option) => {
+            const isSelected = selectedValues.has(option.value);
+
+            return (
+            <label
+              key={option.value}
+              className={`ff-node-field-editor__choice${isSelected ? " is-selected" : ""}`}
+            >
               <span className="ff-node-field-editor__choice-main">
                 <input
-                  checked={selectedValues.has(option.value)}
+                  checked={isSelected}
                   className="ff-node-field-editor__checkbox"
                   onChange={() => {
                     onToggle(option.value);
                   }}
                   type="checkbox"
                 />
+                <span aria-hidden="true" className="ff-node-field-editor__checkbox-indicator" />
                 <span>{option.label}</span>
               </span>
               {option.description !== undefined && option.description.length > 0 ? (
                 <span className="ff-node-field-editor__choice-meta">{option.description}</span>
               ) : null}
             </label>
-          ))}
+            );
+          })}
         </div>
       ) : null}
     </section>
@@ -130,16 +203,147 @@ function CharacterListEditor({
   );
 }
 
+function NodeFieldEditorBody({
+  characterAddresses,
+  isLoadingOptions,
+  loadError,
+  nextCharacterAddress,
+  nodeType,
+  onAddCharacter,
+  onAddressChange,
+  onRemoveCharacter,
+  onSetDraftFields,
+  remoteOptions,
+  selectedGroupIds,
+  selectedShipIds,
+  selectedTribeIds,
+}: {
+  readonly characterAddresses: readonly string[];
+  readonly isLoadingOptions: boolean;
+  readonly loadError: string | null;
+  readonly nextCharacterAddress: string;
+  readonly nodeType: string;
+  readonly onAddCharacter: () => void;
+  readonly onAddressChange: (value: string) => void;
+  readonly onRemoveCharacter: (value: string) => void;
+  readonly onSetDraftFields: React.Dispatch<React.SetStateAction<NodeFieldMap>>;
+  readonly remoteOptions: readonly SelectableOption[];
+  readonly selectedGroupIds: ReadonlySet<number>;
+  readonly selectedShipIds: ReadonlySet<number>;
+  readonly selectedTribeIds: ReadonlySet<number>;
+}) {
+  return (
+    <div className="ff-node-field-editor__body">
+      {nodeType === "listTribe" ? (
+        <NumericOptionEditor
+          error={loadError}
+          heading="Select one or more tribes from the live world API."
+          loading={isLoadingOptions}
+          onToggle={(value) => {
+            onSetDraftFields((currentFields) => toggleNumericField(currentFields, "selectedTribeIds", value, nodeType));
+          }}
+          options={remoteOptions}
+          selectedValues={selectedTribeIds}
+        />
+      ) : null}
+
+      {nodeType === "listShip" ? (
+        <NumericOptionEditor
+          error={loadError}
+          heading="Select one or more ships from the live world API."
+          loading={isLoadingOptions}
+          onToggle={(value) => {
+            onSetDraftFields((currentFields) => toggleNumericField(currentFields, "selectedShipIds", value, nodeType));
+          }}
+          options={remoteOptions}
+          selectedValues={selectedShipIds}
+        />
+      ) : null}
+
+      {nodeType === "listCharacter" ? (
+        <CharacterListEditor
+          addresses={characterAddresses}
+          nextAddress={nextCharacterAddress}
+          onAdd={onAddCharacter}
+          onAddressChange={onAddressChange}
+          onRemove={onRemoveCharacter}
+        />
+      ) : null}
+
+      {nodeType === "isInGroup" ? (
+        <NumericOptionEditor
+          error={null}
+          heading="Select the ship groups this predicate should match."
+          loading={false}
+          onToggle={(value) => {
+            onSetDraftFields((currentFields) => toggleNumericField(currentFields, "selectedGroupIds", value, nodeType));
+          }}
+          options={SHIP_GROUP_OPTIONS}
+          selectedValues={selectedGroupIds}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function NodeFieldEditorDialog({
+  children,
+  dialogDescriptionId,
+  dialogRef,
+  dialogTitleId,
+  nodeLabel,
+  onClose,
+  onSave,
+}: {
+  readonly children: React.ReactNode;
+  readonly dialogDescriptionId: string;
+  readonly dialogRef: React.RefObject<HTMLDivElement | null>;
+  readonly dialogTitleId: string;
+  readonly nodeLabel: string;
+  readonly onClose: () => void;
+  readonly onSave: () => void;
+}) {
+  return (
+    <div className="ff-node-field-editor" role="presentation">
+      <button aria-label="Close node editor" className="ff-node-field-editor__backdrop" onClick={onClose} type="button" />
+      <div
+        aria-describedby={dialogDescriptionId}
+        aria-labelledby={dialogTitleId}
+        aria-modal="true"
+        className="ff-node-field-editor__dialog"
+        ref={dialogRef}
+        role="dialog"
+        tabIndex={-1}
+      >
+        <div>
+          <p className="ff-node-field-editor__eyebrow">Node Editor</p>
+          <h2 className="ff-node-field-editor__title" id={dialogTitleId}>{nodeLabel}</h2>
+          <p className="ff-contract-bar__meta" id={dialogDescriptionId}>Configure node-specific values before saving your changes.</p>
+        </div>
+
+        {children}
+
+        <div className="ff-node-field-editor__actions">
+          <button className="ff-node-field-editor__button" onClick={onClose} type="button">
+            Cancel
+          </button>
+          <button className="ff-node-field-editor__button ff-node-field-editor__button--primary" onClick={onSave} type="button">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeFieldEditorProps) {
   const [draftFields, setDraftFields] = useState<NodeFieldMap>(() => normalizeNodeFields(nodeType, fields));
   const [nextCharacterAddress, setNextCharacterAddress] = useState("");
-  const [remoteOptions, setRemoteOptions] = useState<readonly SelectableOption[]>([]);
-  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const dialogTitleId = useId();
   const dialogDescriptionId = useId();
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const { remoteOptions, isLoadingOptions, loadError } = useRemoteNodeFieldOptions(nodeType);
 
   useEffect(() => {
     setDraftFields(normalizeNodeFields(nodeType, fields));
@@ -170,192 +374,60 @@ function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeF
     };
   }, [onClose]);
 
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadOptions() {
-      if (nodeType !== "listTribe" && nodeType !== "listShip") {
-        setRemoteOptions([]);
-        setLoadError(null);
-        setIsLoadingOptions(false);
-        return;
-      }
-
-      setIsLoadingOptions(true);
-      setLoadError(null);
-
-      try {
-        const options = nodeType === "listTribe"
-          ? await loadWorldApiOptions(
-              "https://world-api-stillness.live.tech.evefrontier.com/v2/tribes",
-              buildTribeOption,
-            )
-          : await loadWorldApiOptions(
-              "https://world-api-stillness.live.tech.evefrontier.com/v2/ships",
-              buildShipOption,
-            );
-
-        if (!isCancelled) {
-          setRemoteOptions(options);
-        }
-      } catch (error) {
-        if (!isCancelled) {
-          setLoadError(error instanceof Error ? error.message : "Unable to load options.");
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingOptions(false);
-        }
-      }
-    }
-
-    void loadOptions();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [nodeType]);
-
   const selectedTribeIds = useMemo(() => new Set(getNumberFieldList(draftFields, "selectedTribeIds")), [draftFields]);
   const selectedShipIds = useMemo(() => new Set(getNumberFieldList(draftFields, "selectedShipIds")), [draftFields]);
   const selectedGroupIds = useMemo(() => new Set(getNumberFieldList(draftFields, "selectedGroupIds")), [draftFields]);
   const characterAddresses = getStringFieldList(draftFields, "characterAddresses");
 
-  const dialog = (
-    <div className="ff-node-field-editor" role="presentation">
-      <button aria-label="Close node editor" className="ff-node-field-editor__backdrop" onClick={onClose} type="button" />
-      <div
-        aria-describedby={dialogDescriptionId}
-        aria-labelledby={dialogTitleId}
-        aria-modal="true"
-        className="ff-node-field-editor__dialog"
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
-      >
-        <div>
-          <p className="ff-node-field-editor__eyebrow">Node Editor</p>
-          <h2 className="ff-node-field-editor__title" id={dialogTitleId}>{nodeLabel}</h2>
-          <p className="ff-contract-bar__meta" id={dialogDescriptionId}>Configure node-specific values before saving your changes.</p>
-        </div>
+  return createPortal(
+    <NodeFieldEditorDialog
+      dialogDescriptionId={dialogDescriptionId}
+      dialogRef={dialogRef}
+      dialogTitleId={dialogTitleId}
+      nodeLabel={nodeLabel}
+      onClose={onClose}
+      onSave={() => {
+        onSave(draftFields);
+      }}
+    >
+      <NodeFieldEditorBody
+        characterAddresses={characterAddresses}
+        isLoadingOptions={isLoadingOptions}
+        loadError={loadError}
+        nextCharacterAddress={nextCharacterAddress}
+        nodeType={nodeType}
+        onAddCharacter={() => {
+          const trimmedValue = nextCharacterAddress.trim();
+          if (trimmedValue.length === 0) {
+            return;
+          }
 
-        <div className="ff-node-field-editor__body">
-          {nodeType === "listTribe" ? (
-            <NumericOptionEditor
-              error={loadError}
-              heading="Select one or more tribes from the live world API."
-              loading={isLoadingOptions}
-              onToggle={(value) => {
-                setDraftFields((currentFields) => {
-                  const next = new Set(getNumberFieldList(currentFields, "selectedTribeIds"));
-                  if (next.has(value)) {
-                    next.delete(value);
-                  } else {
-                    next.add(value);
-                  }
-
-                  return normalizeNodeFields(nodeType, { ...currentFields, selectedTribeIds: [...next] });
-                });
-              }}
-              options={remoteOptions}
-              selectedValues={selectedTribeIds}
-            />
-          ) : null}
-
-          {nodeType === "listShip" ? (
-            <NumericOptionEditor
-              error={loadError}
-              heading="Select one or more ships from the live world API."
-              loading={isLoadingOptions}
-              onToggle={(value) => {
-                setDraftFields((currentFields) => {
-                  const next = new Set(getNumberFieldList(currentFields, "selectedShipIds"));
-                  if (next.has(value)) {
-                    next.delete(value);
-                  } else {
-                    next.add(value);
-                  }
-
-                  return normalizeNodeFields(nodeType, { ...currentFields, selectedShipIds: [...next] });
-                });
-              }}
-              options={remoteOptions}
-              selectedValues={selectedShipIds}
-            />
-          ) : null}
-
-          {nodeType === "listCharacter" ? (
-            <CharacterListEditor
-              addresses={characterAddresses}
-              nextAddress={nextCharacterAddress}
-              onAdd={() => {
-                const trimmedValue = nextCharacterAddress.trim();
-                if (trimmedValue.length === 0) {
-                  return;
-                }
-
-                setDraftFields((currentFields) =>
-                  normalizeNodeFields(nodeType, {
-                    ...currentFields,
-                    characterAddresses: [...getStringFieldList(currentFields, "characterAddresses"), trimmedValue],
-                  }),
-                );
-                setNextCharacterAddress("");
-              }}
-              onAddressChange={setNextCharacterAddress}
-              onRemove={(value) => {
-                setDraftFields((currentFields) =>
-                  normalizeNodeFields(nodeType, {
-                    ...currentFields,
-                    characterAddresses: getStringFieldList(currentFields, "characterAddresses").filter((address) => address !== value),
-                  }),
-                );
-              }}
-            />
-          ) : null}
-
-          {nodeType === "isInGroup" ? (
-            <NumericOptionEditor
-              error={null}
-              heading="Select the ship groups this predicate should match."
-              loading={false}
-              onToggle={(value) => {
-                setDraftFields((currentFields) => {
-                  const next = new Set(getNumberFieldList(currentFields, "selectedGroupIds"));
-                  if (next.has(value)) {
-                    next.delete(value);
-                  } else {
-                    next.add(value);
-                  }
-
-                  return normalizeNodeFields(nodeType, { ...currentFields, selectedGroupIds: [...next] });
-                });
-              }}
-              options={SHIP_GROUP_OPTIONS}
-              selectedValues={selectedGroupIds}
-            />
-          ) : null}
-        </div>
-
-        <div className="ff-node-field-editor__actions">
-          <button className="ff-node-field-editor__button" onClick={onClose} type="button">
-            Cancel
-          </button>
-          <button
-            className="ff-node-field-editor__button ff-node-field-editor__button--primary"
-            onClick={() => {
-              onSave(draftFields);
-            }}
-            type="button"
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
+          setDraftFields((currentFields) =>
+            normalizeNodeFields(nodeType, {
+              ...currentFields,
+              characterAddresses: [...getStringFieldList(currentFields, "characterAddresses"), trimmedValue],
+            }),
+          );
+          setNextCharacterAddress("");
+        }}
+        onAddressChange={setNextCharacterAddress}
+        onRemoveCharacter={(value) => {
+          setDraftFields((currentFields) =>
+            normalizeNodeFields(nodeType, {
+              ...currentFields,
+              characterAddresses: getStringFieldList(currentFields, "characterAddresses").filter((address) => address !== value),
+            }),
+          );
+        }}
+        onSetDraftFields={setDraftFields}
+        remoteOptions={remoteOptions}
+        selectedGroupIds={selectedGroupIds}
+        selectedShipIds={selectedShipIds}
+        selectedTribeIds={selectedTribeIds}
+      />
+    </NodeFieldEditorDialog>,
+    document.body,
   );
-
-  return createPortal(dialog, document.body);
 }
 
 export default NodeFieldEditor;

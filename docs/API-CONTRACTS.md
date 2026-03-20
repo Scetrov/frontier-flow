@@ -3,7 +3,7 @@ title: Frontier Flow - API Contracts & Data Dictionary
 version: 1.0.0
 status: draft
 created: 2026-02-22
-updated: 2026-02-22
+updated: 2026-03-20
 author: Scetrov
 description: Data shapes, interface contracts, and the IR specification for the Frontier Flow code generation pipeline.
 ---
@@ -15,6 +15,7 @@ description: Data shapes, interface contracts, and the IR specification for the 
 3. [Code Generator Contracts](#3-code-generator-contracts)
 4. [Persistence Formats](#4-persistence-formats)
 5. [External API Interfaces](#5-external-api-interfaces)
+6. [Artifact Lifecycle Metadata](#6-artifact-lifecycle-metadata)
 
 ---
 
@@ -216,6 +217,12 @@ interface IRGraph {
   executionOrder: string[];
   /** Module name for the generated Move package */
   moduleName: string;
+  /** User-requested module name before sanitisation */
+  requestedModuleName: string;
+  /** Graph node ids excluded from any event-trigger execution path */
+  disconnectedNodeIds: readonly string[];
+  /** Graph node ids that could not be ordered because of dependency issues */
+  unresolvedNodeIds: readonly string[];
 }
 ```
 
@@ -247,6 +254,71 @@ interface OptimizationReport {
     nodesRemoved: number;
     nodesRewritten: number;
   }>;
+}
+```
+
+### 2.5 Generated Contract Artifact
+
+```typescript
+interface ContractIdentity {
+  packageName: string;
+  moduleName: string;
+  requestedModuleName: string;
+}
+
+interface GeneratedSourceFile {
+  path: string;
+  content: string;
+}
+
+interface ArtifactManifest {
+  moveToml: string;
+  dependencies: readonly string[];
+}
+
+interface ContractSectionTrace {
+  id: string;
+  label: string;
+  nodeIds: readonly string[];
+  lineStart: number;
+  lineEnd: number;
+}
+
+interface CompileReadiness {
+  ready: boolean;
+  blockedReasons: readonly string[];
+  nextActionSummary: string;
+}
+
+type DeploymentStatusType = "blocked" | "ready" | "deployed";
+
+interface DeploymentStatus {
+  artifactId: string;
+  status: DeploymentStatusType;
+  targetMode: "existing-turret";
+  requiredInputs: readonly string[];
+  resolvedInputs: readonly string[];
+  blockedReasons: readonly string[];
+  nextActionSummary: string;
+}
+
+interface GeneratedContractArtifact {
+  artifactId?: string;
+  sourceDagId?: string;
+  contractIdentity?: ContractIdentity;
+  sourceFiles?: readonly GeneratedSourceFile[];
+  manifest?: ArtifactManifest;
+  traceSections?: readonly ContractSectionTrace[];
+  diagnostics?: readonly CompilerDiagnostic[];
+  compileReadiness?: CompileReadiness;
+  deploymentStatus?: DeploymentStatus;
+  moduleName: string;
+  sourceFilePath: string;
+  moveToml: string;
+  moveSource: string;
+  sourceMap: readonly SourceMapEntry[];
+  dependencies: readonly string[];
+  bytecodeModules: readonly Uint8Array[];
 }
 ```
 
@@ -507,3 +579,21 @@ sequenceDiagram
 
 [!NOTE]
 All Sui interactions are mediated by `@mysten/sui` SDK and `@mysten/dapp-kit` hooks. Direct JSON-RPC calls are abstracted away.
+
+---
+
+## 6. Artifact Lifecycle Metadata
+
+Compilation and deployment are separate concerns in the current UI and type model.
+
+```typescript
+type CompilationStatus =
+  | { state: "idle" }
+  | { state: "compiling" }
+  | { state: "compiled"; bytecode: readonly Uint8Array[]; artifact?: GeneratedContractArtifact }
+  | { state: "error"; diagnostics: readonly CompilerDiagnostic[]; artifact?: GeneratedContractArtifact };
+```
+
+- `CompilationStatus` describes the active compile attempt.
+- `GeneratedContractArtifact.compileReadiness` describes whether the emitted package is ready for compile-adjacent handoff.
+- `GeneratedContractArtifact.deploymentStatus` describes downstream deployment state and must not be conflated with compile success in UI surfaces.

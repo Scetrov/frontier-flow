@@ -133,13 +133,15 @@ function createMigrationNode(id: string, type: string, position: FlowNode["posit
   };
 }
 
-function createMigrationEdge(
-  id: string,
-  source: string,
-  sourceHandle: string,
-  target: string,
-  targetHandle: string,
-): FlowEdge {
+interface MigrationEdgeInput {
+  readonly id: string;
+  readonly source: string;
+  readonly sourceHandle: string;
+  readonly target: string;
+  readonly targetHandle: string;
+}
+
+function createMigrationEdge({ id, source, sourceHandle, target, targetHandle }: MigrationEdgeInput): FlowEdge {
   return {
     id,
     source,
@@ -179,7 +181,13 @@ function migratePredicateWithNot(
     nodes: [predicateNode, notNode],
     edges: [
       ...incomingEdges,
-      createMigrationEdge(`${candidate.node.id}__predicate_to_not`, predicateNode.id, "matches", notNode.id, "input"),
+      createMigrationEdge({
+        id: `${candidate.node.id}__predicate_to_not`,
+        source: predicateNode.id,
+        sourceHandle: "matches",
+        target: notNode.id,
+        targetHandle: "input",
+      }),
       ...outgoingEdges,
     ],
     remediationNotices: [],
@@ -232,8 +240,20 @@ function migrateExcludeSameTribe(candidate: LegacyNodeMigrationCandidate): Legac
     nodes: [sameTribeNode, notNode, orNode],
     edges: [
       ...incomingEdges,
-      createMigrationEdge(`${candidate.node.id}__same_tribe_to_not`, sameTribeNode.id, "matches", notNode.id, "input"),
-      createMigrationEdge(`${candidate.node.id}__not_to_or`, notNode.id, "result", orNode.id, "left"),
+      createMigrationEdge({
+        id: `${candidate.node.id}__same_tribe_to_not`,
+        source: sameTribeNode.id,
+        sourceHandle: "matches",
+        target: notNode.id,
+        targetHandle: "input",
+      }),
+      createMigrationEdge({
+        id: `${candidate.node.id}__not_to_or`,
+        source: notNode.id,
+        sourceHandle: "result",
+        target: orNode.id,
+        targetHandle: "left",
+      }),
       ...outgoingEdges,
     ],
     remediationNotices: [],

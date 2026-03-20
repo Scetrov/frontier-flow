@@ -151,6 +151,13 @@ bun run test:real-wasm
 
 This executes a Bun-based integration script that feeds reference graph fixtures directly into the compiler pipeline and asserts that valid bytecode is produced.
 
+Run the focused reference-regression and authorization-readiness checks:
+
+```bash
+bun run test:run -- src/__tests__/compiler/referenceDagValidation.test.ts
+bun run test:e2e -- generated-contracts.spec.ts authorization-readiness.spec.ts
+```
+
 ### Build for production
 
 ```bash

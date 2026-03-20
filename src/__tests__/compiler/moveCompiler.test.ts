@@ -106,7 +106,12 @@ describe("compileMove", () => {
         reactFlowNodeId: "unsupported_node",
       }),
     );
-    expect(result.artifact).toEqual(artifact);
+    expect(result.artifact).toEqual(
+      expect.objectContaining({
+        ...artifact,
+        diagnostics: result.errors,
+      }),
+    );
   });
 
   it("uses the mock compiler path when requested by the URL and still attaches the artifact", async () => {
@@ -157,7 +162,12 @@ describe("compileMove", () => {
         }),
       ]),
     );
-    expect(result.artifact).toEqual(artifact);
+    expect(result.artifact).toEqual(
+      expect.objectContaining({
+        ...artifact,
+        diagnostics: result.errors,
+      }),
+    );
   });
 
   it("surfaces thrown compiler-wrapper errors while preserving the generated artifact", async () => {
@@ -176,7 +186,12 @@ describe("compileMove", () => {
         }),
       ]),
     );
-    expect(result.artifact).toEqual(artifact);
+    expect(result.artifact).toEqual(
+      expect.objectContaining({
+        ...artifact,
+        diagnostics: result.errors,
+      }),
+    );
   });
 
   it("retries the compiler module import after a transient loader failure", async () => {

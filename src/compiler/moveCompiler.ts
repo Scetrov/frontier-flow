@@ -1,4 +1,4 @@
-import { attachCompiledArtifactResult } from "./generators/shared";
+import { attachArtifactDiagnostics, attachCompiledArtifactResult } from "./generators/shared";
 import { parseCompilerOutput } from "./errorParser";
 import type { CompileResult, GeneratedContractArtifact } from "./types";
 
@@ -95,27 +95,29 @@ async function createMockCompileResult(artifact: GeneratedContractArtifact): Pro
 
   const mockError = getMockErrorText();
   if (mockError !== null) {
+    const errors = parseCompilerOutput(mockError, artifact.sourceMap);
     return {
       success: false,
       modules: null,
       dependencies: null,
-      errors: parseCompilerOutput(mockError, artifact.sourceMap),
+      errors,
       warnings: [],
-      artifact,
+      artifact: attachArtifactDiagnostics(artifact, errors),
     };
   }
 
   const warningsText = getMockWarningText();
   const modules = [new Uint8Array([1, 2, 3, 4])];
   const dependencies: readonly string[] = [];
+  const warnings = warningsText === null ? [] : parseCompilerOutput(warningsText, artifact.sourceMap);
 
   return {
     success: true,
     modules,
     dependencies,
     errors: null,
-    warnings: warningsText === null ? [] : parseCompilerOutput(warningsText, artifact.sourceMap),
-    artifact: attachCompiledArtifactResult(artifact, modules, dependencies),
+    warnings,
+    artifact: attachArtifactDiagnostics(attachCompiledArtifactResult(artifact, modules, dependencies), warnings),
   };
 }
 
@@ -185,38 +187,41 @@ export async function compileMove(
         dependencies,
         errors: null,
         warnings,
-        artifact: attachCompiledArtifactResult(artifact, modules, dependencies),
+        artifact: attachArtifactDiagnostics(attachCompiledArtifactResult(artifact, modules, dependencies), warnings),
       };
     }
 
     if ("error" in result) {
+      const errors = parseCompilerOutput(result.error, artifact.sourceMap);
       return {
         success: false,
         modules: null,
         dependencies: null,
-        errors: parseCompilerOutput(result.error, artifact.sourceMap),
+        errors,
         warnings: [],
-        artifact,
+        artifact: attachArtifactDiagnostics(artifact, errors),
       };
     }
 
+    const unknownErrors = parseCompilerOutput("Unknown Move compilation failure.", artifact.sourceMap);
     return {
       success: false,
       modules: null,
       dependencies: null,
-      errors: parseCompilerOutput("Unknown Move compilation failure.", artifact.sourceMap),
+      errors: unknownErrors,
       warnings: [],
-      artifact,
+      artifact: attachArtifactDiagnostics(artifact, unknownErrors),
     };
   } catch (error) {
     const rawMessage = error instanceof Error ? error.message : String(error);
+    const errors = parseCompilerOutput(rawMessage, artifact.sourceMap);
     return {
       success: false,
       modules: null,
       dependencies: null,
-      errors: parseCompilerOutput(rawMessage, artifact.sourceMap),
+      errors,
       warnings: [],
-      artifact,
+      artifact: attachArtifactDiagnostics(artifact, errors),
     };
   }
 }

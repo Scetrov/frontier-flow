@@ -6,9 +6,9 @@ import { createIrNode } from "./helpers";
 describe("primitive boolean operator generators", () => {
   it.each([
     ["isSameTribe", "==", 1],
-    ["isOwner", "== 1", 1],
-    ["hasStoppedAttack", "== 0", 1],
-    ["isNpc", "< 100", 1],
+    ["isOwner", ".character_id == owner_character_id", 1],
+    ["hasStoppedAttack", "== BEHAVIOUR_STOPPED_ATTACK", 1],
+    ["isNpc", ".character_id == 0", 1],
     ["booleanNot", "!", 1],
     ["booleanAnd", "&&", 1],
     ["booleanOr", "||", 1],

@@ -1,1 +1,1 @@
-- 009-graph-editor-qol: Added TypeScript 5.9.3, React 19.2.0, ES Modules + `@xyflow/react` 12.10, `lucide-react` 0.577, `dagre` 0.8.5, Tailwind CSS 4.1.18, Vite/Rolldown, CSS variables in `src/index.css`
+- 010-functional-dag-contracts: Added TypeScript 5.9, React 19, ES Modules + `@xyflow/react`, `@zktx.io/sui-move-builder`, `@mysten/sui`, `@mysten/dapp-kit`, `dagre`, `lucide-react`
