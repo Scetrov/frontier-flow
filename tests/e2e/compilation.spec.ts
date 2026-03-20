@@ -58,12 +58,16 @@ async function ensureCategoryExpanded(page: Page, categoryLabel: string) {
   }
 }
 
+function getCompilationStatusButton(page: Page) {
+  return page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
+}
+
 test("auto-compiles after idle and supports manual build", async ({ page, isMobile }) => {
   test.skip(isMobile, "Desktop drag and drop coverage only.");
 
   await prepareCompilationPage(page);
 
-  const statusButton = page.locator(".ff-compilation-status__button");
+  const statusButton = getCompilationStatusButton(page);
   const buildButton = page.getByRole("button", { name: "Build" });
   const moveTab = page.getByRole("button", { name: "Move" });
 
@@ -103,7 +107,7 @@ test("reference graph matrix compiles multiple supported saved contracts through
       activeContractName: entry.contractName,
     });
 
-    const statusButton = page.locator(".ff-compilation-status__button");
+    const statusButton = getCompilationStatusButton(page);
     const buildButton = page.getByRole("button", { name: "Build", exact: true });
     const moveTab = page.getByRole("button", { name: "Move", exact: true });
 
@@ -122,7 +126,7 @@ test("surfaces mock compiler warnings while keeping the build successful", async
 
   await prepareCompilationPageWithQuery(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_mock_compile_warning=1&ff_idle_ms=120");
 
-  const statusButton = page.locator(".ff-compilation-status__button");
+  const statusButton = getCompilationStatusButton(page);
 
   await expect(statusButton).toContainText("Compiled");
   await expect(statusButton).toBeEnabled();
@@ -136,7 +140,7 @@ test("surfaces mock compiler failures through the build status panel", async ({ 
 
   await prepareCompilationPageWithQuery(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_mock_compile_error=1&ff_idle_ms=120");
 
-  const statusButton = page.locator(".ff-compilation-status__button");
+  const statusButton = getCompilationStatusButton(page);
   await expect(statusButton).toContainText("Error");
   await expect(statusButton).toBeEnabled();
 

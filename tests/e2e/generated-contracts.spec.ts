@@ -9,7 +9,7 @@ test("preview and build consume the same generated artifact", async ({ page, isM
   const referenceFixture = referenceGraphFixtures[0];
   await openAuthorizationReadinessPage(page, referenceFixture.contractName);
 
-  const statusButton = page.locator(".ff-compilation-status__button");
+  const statusButton = page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
   await expect(statusButton).toContainText("Compiled");
 
   await page.getByRole("button", { name: "Build", exact: true }).click();

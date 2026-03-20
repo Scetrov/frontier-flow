@@ -17,6 +17,10 @@ async function ensureCategoryExpanded(page: Page, categoryLabel: string) {
   }
 }
 
+function getCanvasNodes(page: Page) {
+  return page.locator('[data-testid="canvas-workspace"] .react-flow__viewport .ff-node');
+}
+
 async function selectSavedContractAndWaitForDialog(page: Page, contractLabel: string) {
   return Promise.all([
     page.waitForEvent("dialog"),
@@ -67,6 +71,7 @@ test("asks before replacing unsaved canvas work with a seeded example contract",
   expect(dialog.message()).toContain("unsaved canvas changes");
   await dialog.accept();
 
-  await expect(page.locator(".ff-node").filter({ hasText: "Aggressor Bonus" })).toHaveCount(1);
-  await expect(page.locator(".ff-node").filter({ hasText: "Proximity" })).toHaveCount(0);
+  const canvasNodes = getCanvasNodes(page);
+  await expect(canvasNodes.filter({ hasText: "Aggressor Bonus" })).toHaveCount(1);
+  await expect(canvasNodes.filter({ hasText: "Proximity" })).toHaveCount(0);
 });
