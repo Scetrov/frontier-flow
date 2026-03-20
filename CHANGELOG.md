@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.3.0](https://github.com/Scetrov/frontier-flow/compare/v0.2.0...v0.3.0) (2026-03-20)
+
+
+### Features
+
+* implement graph editor QoL improvements ([#8](https://github.com/Scetrov/frontier-flow/issues/8)) ([00df708](https://github.com/Scetrov/frontier-flow/commit/00df708b84eee29407629ae34c0ae3061936a2f7))
+
 ## 0.2.0 (2026-03-19)
 
 
