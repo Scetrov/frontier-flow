@@ -106,4 +106,35 @@ describe("NodeFieldEditor", () => {
     expect(selectedRow).toHaveClass("is-selected");
     expect(selectedRow?.querySelector(".ff-node-field-editor__checkbox-indicator")).not.toBeNull();
   });
+
+  it("saves numeric selections in deterministic sorted order", async () => {
+    const onSave = vi.fn();
+
+    vi.spyOn(window, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        data: [
+          { id: 3, name: "Third Tribe", nameShort: "TRI" },
+          { id: 1, name: "First Tribe", nameShort: "ONE" },
+        ],
+      }),
+      status: 200,
+    } as Response);
+
+    render(
+      <NodeFieldEditor
+        fields={{ selectedTribeIds: [2] }}
+        nodeLabel="List of Tribe"
+        nodeType="listTribe"
+        onClose={() => undefined}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("checkbox", { name: /Third Tribe/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /First Tribe/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ selectedTribeIds: [1, 2, 3] }));
+  });
 });

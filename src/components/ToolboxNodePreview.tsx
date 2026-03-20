@@ -1,4 +1,4 @@
-import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { DragEvent as ReactDragEvent } from "react";
 
 import { createFlowNodeData } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
@@ -19,13 +19,6 @@ function ToolboxNodePreview({ definition, onDragStart }: ToolboxNodePreviewProps
       onDragStart={(event) => {
         onDragStart(event, definition);
       }}
-      onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-        }
-      }}
-      role="button"
-      tabIndex={0}
     >
       <NodeShell
         icon={iconByNodeType[definition.type]}

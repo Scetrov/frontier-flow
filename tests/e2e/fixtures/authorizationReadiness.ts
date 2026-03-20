@@ -8,6 +8,7 @@ export const AUTHORIZATION_READINESS_QUERY = "?ff_mock_compiler=1&ff_mock_compil
 
 export async function openAuthorizationReadinessPage(page: Page, contractName = referenceGraphFixtures[0]?.contractName): Promise<void> {
   const contracts = referenceGraphFixtures.map((entry) => ({
+    id: `contract:${entry.contractName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
     name: entry.contractName,
     nodes: entry.fixture.nodes,
     edges: entry.fixture.edges,
@@ -20,7 +21,7 @@ export async function openAuthorizationReadinessPage(page: Page, contractName = 
       window.localStorage.setItem(
         storageKey,
         JSON.stringify({
-          version: 1,
+          version: 2,
           activeContractName,
           contracts: storageContracts,
         }),

@@ -108,10 +108,6 @@ function WalletHelpStatus({
   );
 }
 
-function ConnectTriggerButton({ className }: { readonly className: string }) {
-  return <WalletActionButton className={className}>Connect</WalletActionButton>;
-}
-
 function WalletStatus() {
   const account = useCurrentAccount();
   const wallets = useWallets();
@@ -174,7 +170,7 @@ function WalletStatus() {
   return (
     <ConnectModal
       trigger={
-        <ConnectTriggerButton className={primaryButtonClassName} />
+        <button className={primaryButtonClassName} type="button">Connect</button>
       }
     />
   );

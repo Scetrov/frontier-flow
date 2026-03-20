@@ -176,6 +176,10 @@ export function useAutoCompile(
   const moduleNameRef = useRef(moduleName);
   const graphKey = useMemo(() => createCompilationGraphKey(nodes, edges, moduleName), [edges, moduleName, nodes]);
   const graphKeyRef = useRef(graphKey);
+  const abortActiveCompilation = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+  }, []);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -231,10 +235,9 @@ export function useAutoCompile(
   }, []);
 
   useEffect(() => {
-    abortControllerRef.current?.abort();
+    abortActiveCompilation();
 
     clearCompileTimer(timerRef);
-    const activeAbortController = abortControllerRef.current;
 
     timerRef.current = window.setTimeout(() => {
       void runCompilation();
@@ -242,9 +245,9 @@ export function useAutoCompile(
 
     return () => {
       clearCompileTimer(timerRef);
-      activeAbortController?.abort();
+      abortActiveCompilation();
     };
-  }, [graphKey, idleMs, runCompilation]);
+  }, [abortActiveCompilation, graphKey, idleMs, runCompilation]);
 
   const triggerCompile = useCallback(() => {
     clearCompileTimer(timerRef);

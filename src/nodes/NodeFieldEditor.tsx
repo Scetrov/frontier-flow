@@ -27,7 +27,7 @@ function toggleNumericField(currentFields: NodeFieldMap, key: string, value: num
     next.add(value);
   }
 
-  return normalizeNodeFields(nodeType, { ...currentFields, [key]: [...next] });
+  return normalizeNodeFields(nodeType, { ...currentFields, [key]: [...next].sort((left, right) => left - right) });
 }
 
 function useRemoteNodeFieldOptions(nodeType: string) {
