@@ -53,4 +53,13 @@ describe("Header", () => {
     expect(onViewChange).toHaveBeenCalledWith("move");
     expect(screen.getByRole("button", { name: "Visual" })).toHaveAttribute("aria-current", "page");
   });
+
+  it("does not surface lifecycle automation actions outside the current feature scope", () => {
+    render(<Header onBuild={() => undefined} />);
+
+    expect(screen.queryByRole("button", { name: /Anchor/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Online/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Offline/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Unanchor/i })).not.toBeInTheDocument();
+  });
 });

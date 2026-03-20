@@ -13,7 +13,7 @@ Represents the rules that define whether a DAG pattern is intentionally supporte
 | `requiredNodeFamilies`    | list   | Node families that must be present for this profile                |
 | `disallowedPatterns`      | list   | Known graph patterns that invalidate support                       |
 | `expectedBehaviorSummary` | string | Plain-language summary of the intended contract behavior           |
-| `authorizationMode`       | enum   | Authorization readiness expectation for existing-turret attachment |
+| `deploymentMode`          | enum   | Deployment-status expectation for existing-turret attachment       |
 
 **Validation rules**:
 
@@ -50,16 +50,16 @@ Represents a concrete DAG fixture used for deterministic validation and regressi
 
 Represents the compile-ready package generated from a supported DAG.
 
-| Field                      | Type   | Description                                              |
-| -------------------------- | ------ | -------------------------------------------------------- |
-| `artifactId`               | string | Stable generated artifact identifier                     |
-| `dagCaseId`                | string | Source `ReferenceDagCase` or active graph identifier     |
-| `contractIdentity`         | object | Deterministic package and module identity data           |
-| `sourceFiles`              | list   | Generated Move source content grouped by file            |
-| `manifest`                 | object | Compile-ready package metadata and dependency references |
-| `traceSections`            | list   | Stable links from generated sections to graph elements   |
-| `compileReadiness`         | enum   | `ready` or `blocked`                                     |
-| `authorizationReadinessId` | string | Linked readiness record for existing-turret attachment   |
+**Fields**:
+
+- `artifactId` (`string`): Stable generated artifact identifier
+- `dagCaseId` (`string`): Source `ReferenceDagCase` or active graph identifier
+- `contractIdentity` (`object`): Deterministic package and module identity data
+- `sourceFiles` (`list`): Generated Move source content grouped by file
+- `manifest` (`object`): Compile-ready package metadata and dependency references
+- `traceSections` (`list`): Stable links from generated sections to graph elements
+- `compileReadiness` (`enum`): `ready` or `blocked`
+- `deploymentStatusId` (`string`): Linked deployment-status record for turret attachment
 
 **Validation rules**:
 
@@ -69,13 +69,13 @@ Represents the compile-ready package generated from a supported DAG.
 
 ## 4. GenerationDiagnostic
 
-Represents a user-visible warning or blocking issue from validation, generation, dependency readiness, compilation, or authorization preparation.
+Represents a user-visible warning or blocking issue from validation, generation, dependency readiness, compilation, or deployment preparation.
 
 | Field             | Type    | Description                                                         |
 | ----------------- | ------- | ------------------------------------------------------------------- |
 | `id`              | string  | Stable diagnostic identifier                                        |
 | `severity`        | enum    | `warning` or `error`                                                |
-| `category`        | enum    | `structural`, `semantic`, `dependency`, `compiler`, `authorization` |
+| `category`        | enum    | `structural`, `semantic`, `dependency`, `compiler`, `deployment`    |
 | `message`         | string  | Human-readable explanation                                          |
 | `blocking`        | boolean | Whether the workflow must stop                                      |
 | `graphRefs`       | list    | Related node, socket, edge, or path references                      |
@@ -95,7 +95,7 @@ Represents the persistent mapping between generated contract sections and source
 | ------------------ | ------ | ----------------------------------------------------------------------------------- |
 | `traceId`          | string | Stable section-trace identifier                                                     |
 | `artifactId`       | string | Parent artifact                                                                     |
-| `semanticRole`     | string | Section purpose such as trigger handling, filtering, scoring, or authorization glue |
+| `semanticRole`     | string | Section purpose such as trigger handling, filtering, scoring, or deployment glue    |
 | `graphNodeIds`     | list   | Contributing node identifiers                                                       |
 | `graphEdgeIds`     | list   | Contributing edge identifiers                                                       |
 | `generatedSymbols` | list   | Stable symbols or section labels emitted for that trace                             |
@@ -105,15 +105,15 @@ Represents the persistent mapping between generated contract sections and source
 - Every major generated contract section must have one trace entry.
 - Trace ordering must follow artifact ordering for deterministic review and diagnostics.
 
-## 6. AuthorizationReadiness
+## 6. DeploymentStatus
 
-Represents whether a generated artifact can be attached to an existing turret through extension registration or authorization flows.
+Represents whether a generated artifact can be attached to an existing turret through extension registration and deployment flows.
 
 | Field               | Type   | Description                                                  |
 | ------------------- | ------ | ------------------------------------------------------------ |
 | `id`                | string | Stable readiness identifier                                  |
 | `artifactId`        | string | Parent generated artifact                                    |
-| `status`            | enum   | `ready`, `blocked`, or `unknown-external`                    |
+| `status`            | enum   | `ready`, `blocked`, or `deployed`                            |
 | `requiredInputs`    | list   | Information or actions required from the user or environment |
 | `resolvedInputs`    | list   | Inputs already satisfied by generation output                |
 | `blockedReasons`    | list   | Reasons readiness cannot proceed                             |
@@ -122,13 +122,13 @@ Represents whether a generated artifact can be attached to an existing turret th
 **Validation rules**:
 
 - `ready` state requires no remaining blocking reasons.
-- Any unresolved external platform detail must surface as either `blocked` or `unknown-external`, never silently pass.
+- Any unresolved external platform detail must surface as `blocked`, never silently pass.
 
 ## State Transitions
 
 ### Graph-to-Artifact Lifecycle
 
-`draft graph` -> `validated graph` -> `supported or unsupported classification` -> `artifact generated` -> `compile ready or compile blocked` -> `authorization ready or authorization blocked`
+`draft graph` -> `validated graph` -> `supported or unsupported classification` -> `artifact generated` -> `compile ready or compile blocked` -> `deployment ready, deployment blocked, or deployed`
 
 ### Diagnostic Lifecycle
 

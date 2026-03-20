@@ -2,16 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import MoveSourcePanel from "../components/MoveSourcePanel";
+import { createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
 
-const compiledArtifact = {
-  moduleName: "starter_contract",
-  sourceFilePath: "sources/starter_contract.move",
-  moveToml: "[package]\nname = \"starter_contract\"\n",
-  moveSource: "module builder_extensions::starter_contract {}",
-  sourceMap: [],
-  dependencies: [],
-  bytecodeModules: [],
-} as const;
+const compiledArtifact = createGeneratedArtifactStub();
 
 describe("MoveSourcePanel", () => {
   it("renders read-only Move source without altering the generated formatting", () => {
@@ -52,5 +45,36 @@ describe("MoveSourcePanel", () => {
     );
 
     expect(screen.getByText("starter_contract.move")).toBeVisible();
+  });
+
+  it("surfaces deployment status metadata alongside the artifact", () => {
+    render(
+      <MoveSourcePanel
+        sourceCode={compiledArtifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+      />,
+    );
+
+    expect(screen.getByText("Deployment Blocked")).toBeVisible();
+    expect(screen.getByText(/Provide the target turret package and extension registration details to continue deployment/i)).toBeVisible();
+  });
+
+  it.each([
+    ["ready", "Deployment Ready", "Ready to deploy the generated artifact to the selected turret."],
+    ["deployed", "Deployment Deployed", "Deployment completed for the selected turret."],
+  ] as const)("renders %s deployment state", (status, label, summary) => {
+    const artifact = createGeneratedArtifactStub({
+      deploymentStatus: createDeploymentStatus(status, { nextActionSummary: summary }),
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={artifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }}
+      />,
+    );
+
+    expect(screen.getByText(label)).toBeVisible();
+    expect(screen.getByText(summary)).toBeVisible();
   });
 });

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 
 import type { CompilationStatus, CompilerDiagnostic } from "../compiler/types";
+import { createGeneratedArtifactStub } from "./compiler/helpers";
 
 interface CanvasWorkspaceProps {
   readonly onCompilationStateChange?: (
@@ -57,15 +58,13 @@ vi.mock("../components/CanvasWorkspace", () => ({
           {
             state: "compiled",
             bytecode: [new Uint8Array([1, 2, 3])],
-            artifact: {
+            artifact: createGeneratedArtifactStub({
               moduleName: "artifact_contract",
-              sourceFilePath: "sources/artifact_contract.move",
+              sourceDagId: "artifact_contract",
               moveToml: "[package]",
               moveSource: "module builder_extensions::artifact_contract {}",
-              sourceMap: [],
-              dependencies: [],
               bytecodeModules: [new Uint8Array([1, 2, 3])],
-            },
+            }),
           },
           [],
           null,

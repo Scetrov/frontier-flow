@@ -13,9 +13,9 @@ Implement deterministic DAG-to-contract generation for the current contract-alig
 ## Implementation Sequence
 
 1. Formalize the supported reference DAG library and support matrix.
-2. Tighten the compiler pipeline contract so the generated package artifact is the canonical output consumed by preview, compile, deploy, and authorization-preparation flows.
+2. Tighten the compiler pipeline contract so the generated package artifact is the canonical output consumed by preview, compile, deploy, and deployment-status flows.
 3. Make contract identity, traversal order, and trace ordering deterministic.
-4. Add or refine readiness states for external dependency resolution and existing-turret authorization.
+4. Add or refine readiness states for external dependency resolution and existing-turret deployment handoff.
 5. Build deterministic Vitest coverage before expanding browser-level coverage.
 
 ## Deterministic Test Baseline
@@ -54,6 +54,14 @@ bun run test:e2e
 
 - Supported reference DAGs generate identical artifacts across repeated runs.
 - Unsupported reference DAGs fail before compilation with explicit blockers.
-- Preview/build/deploy/authorization-preparation workflows consume the same artifact boundary.
-- Authorization readiness is available for existing turrets without implying full lifecycle automation.
+- Preview/build/deploy/deployment-status workflows consume the same artifact boundary.
+- Deployment status is available for existing turrets without implying full lifecycle automation.
 - Critical-path compiler and validation coverage remains at or above project thresholds.
+
+## Verification Notes
+
+- FR-021: `bun run test:run -- src/__tests__/compiler/referenceDagValidation.test.ts` verifies the supported reference DAG inventory emits deterministic artifacts and blocks unsupported cases before compilation.
+- FR-031: `bun run test:run -- src/__tests__/compiler src/__tests__/CompilationStatus.test.tsx src/__tests__/MoveSourcePanel.test.tsx` covers deterministic output, supported-versus-unsupported boundaries, and artifact traceability through the compiler and UI surfaces.
+- FR-032: `bun run test:e2e -- generated-contracts.spec.ts authorization-readiness.spec.ts` confirms preview, build, and deployment-status flows consume the same artifact contract in the browser.
+- Validation run on this branch: `bun run typecheck`, `bun run lint`, `bun run test:run`, `bun run build`, `bun run test:real-wasm`, and the targeted Playwright specs above passed.
+- Real-WASM smoke validation now succeeds for the supported smart-turret reference DAG inventory after removing the unused explicit `Sui` dependency from generated package manifests.

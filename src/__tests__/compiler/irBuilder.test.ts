@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { createStableNodeOrder } from "../../compiler/determinism";
 import { buildIrGraph } from "../../compiler/irBuilder";
 import { createDefaultContractFlow } from "../../data/kitchenSinkFlow";
 import { createFlowNode } from "./helpers";
@@ -100,5 +101,14 @@ describe("buildIrGraph", () => {
 
     expect(graph.unresolvedNodeIds).toEqual(["queue_1", "queue_2"]);
     expect(graph.executionOrder).toEqual(["queue_1", "queue_2"]);
+  });
+
+  it("uses the deterministic helper to produce the same canonical order on repeated runs", () => {
+    const flow = createDefaultContractFlow();
+
+    const firstOrder = createStableNodeOrder(flow.nodes, flow.edges);
+    const secondOrder = createStableNodeOrder(flow.nodes, flow.edges);
+
+    expect(firstOrder).toEqual(secondOrder);
   });
 });

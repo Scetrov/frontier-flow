@@ -11,9 +11,9 @@
 
 **Purpose**: Establish shared fixture and regression scaffolding for deterministic DAG-to-contract work.
 
-- [ ] T001 Create `smart-turrets`-derived reference DAG fixture scaffolding mapped to `docs/CONTRACT_EXAMPLES.md` in `src/__tests__/compiler/referenceDagFixtures.ts`
-- [ ] T002 Create generated artifact assertion helpers in `src/__tests__/compiler/referenceArtifactAssertions.ts`
-- [ ] T003 [P] Create authorization readiness browser fixtures in `tests/e2e/fixtures/authorizationReadiness.ts`
+- [X] T001 Create `smart-turrets`-derived reference DAG fixture scaffolding mapped to `docs/CONTRACT_EXAMPLES.md` in `src/__tests__/compiler/referenceDagFixtures.ts`
+- [X] T002 Create generated artifact assertion helpers in `src/__tests__/compiler/referenceArtifactAssertions.ts`
+- [X] T003 [P] Create deployment-status browser fixtures in `tests/e2e/fixtures/authorizationReadiness.ts`
 
 ---
 
@@ -23,11 +23,11 @@
 
 **⚠️ CRITICAL**: No user story work should start before this phase is complete.
 
-- [ ] T004 Extend compiler domain contracts for supported DAGs, generated artifacts, traces, readiness, and diagnostics in `src/compiler/types.ts`
-- [ ] T005 Create deterministic ordering and identity helpers in `src/compiler/determinism.ts`
-- [ ] T006 Normalize the generated artifact result envelope in `src/compiler/pipeline.ts` and `src/compiler/irBuilder.ts`
-- [ ] T007 [P] Add shared compiler fixture builders in `src/__tests__/compiler/helpers.ts` and `src/test/setup.ts`
-- [ ] T008 Add generated-artifact UI state wiring in `src/components/MoveSourcePanel.tsx` and `src/components/CompilationStatus.tsx`
+- [X] T004 Extend compiler domain contracts for supported DAGs, generated artifacts, traces, readiness, and diagnostics in `src/compiler/types.ts`
+- [X] T005 Create deterministic ordering and identity helpers in `src/compiler/determinism.ts`
+- [X] T006 Normalize the generated artifact result envelope in `src/compiler/pipeline.ts` and `src/compiler/irBuilder.ts`
+- [X] T007 [P] Add shared compiler fixture builders in `src/__tests__/compiler/helpers.ts` and `src/test/setup.ts`
+- [X] T008 Add generated-artifact UI state wiring in `src/components/MoveSourcePanel.tsx` and `src/components/CompilationStatus.tsx`
 
 **Checkpoint**: Compiler contracts, deterministic helpers, and workflow state are ready for user story implementation.
 
@@ -41,18 +41,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Add deterministic IR ordering tests in `src/__tests__/compiler/irBuilder.test.ts`
-- [ ] T010 [P] [US1] Add canonical artifact emission tests in `src/__tests__/compiler/emitter.test.ts`
-- [ ] T011 [P] [US1] Add supported-DAG pipeline generation tests in `src/__tests__/compiler/pipeline.test.ts`
+- [X] T009 [P] [US1] Add deterministic IR ordering tests in `src/__tests__/compiler/irBuilder.test.ts`
+- [X] T010 [P] [US1] Add canonical artifact emission tests in `src/__tests__/compiler/emitter.test.ts`
+- [X] T011 [P] [US1] Add supported-DAG pipeline generation tests in `src/__tests__/compiler/pipeline.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement canonical DAG traversal and stable trace assembly in `src/compiler/irBuilder.ts`
-- [ ] T013 [US1] Implement deterministic contract identity and manifest emission in `src/compiler/emitter.ts`
-- [ ] T014 [P] [US1] Align event and data accessor generator output in `src/compiler/generators/eventTriggers.ts` and `src/compiler/generators/dataAccessors.ts`
-- [ ] T015 [P] [US1] Align logic and scoring generator output in `src/compiler/generators/logicGates.ts` and `src/compiler/generators/scoringModifiers.ts`
-- [ ] T016 [P] [US1] Align action and shared generator helpers in `src/compiler/generators/actions.ts` and `src/compiler/generators/shared.ts`
-- [ ] T017 [US1] Assemble compile-ready generated artifacts in `src/compiler/pipeline.ts` and `src/compiler/types.ts`
+- [X] T012 [US1] Implement canonical DAG traversal and stable trace assembly in `src/compiler/irBuilder.ts`
+- [X] T013 [US1] Implement deterministic contract identity and manifest emission in `src/compiler/emitter.ts`
+- [X] T014 [P] [US1] Align event and data accessor generator output in `src/compiler/generators/eventTriggers.ts` and `src/compiler/generators/dataAccessors.ts`
+- [X] T015 [P] [US1] Align logic and scoring generator output in `src/compiler/generators/logicGates.ts` and `src/compiler/generators/scoringModifiers.ts`
+- [X] T016 [P] [US1] Align action and shared generator helpers in `src/compiler/generators/actions.ts` and `src/compiler/generators/shared.ts`
+- [X] T017 [US1] Assemble compile-ready generated artifacts in `src/compiler/pipeline.ts` and `src/compiler/types.ts`
 
 **Checkpoint**: Supported DAGs now generate deterministic, compile-ready artifacts.
 
@@ -66,16 +66,16 @@
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Add structural and semantic validator failure tests in `src/__tests__/compiler/validator.test.ts`
-- [ ] T019 [P] [US2] Add compiler diagnostic and fallback mapping tests in `src/__tests__/compiler/errorParser.test.ts` and `src/__tests__/compiler/moveCompiler.test.ts`
-- [ ] T020 [P] [US2] Add unsupported-case regression tests in `src/__tests__/compiler/pipeline.test.ts` and `src/__tests__/compiler/sanitizer.test.ts`
+- [X] T018 [P] [US2] Add structural and semantic validator failure tests in `src/__tests__/compiler/validator.test.ts`
+- [X] T019 [P] [US2] Add compiler diagnostic and fallback mapping tests in `src/__tests__/compiler/errorParser.test.ts` and `src/__tests__/compiler/moveCompiler.test.ts`
+- [X] T020 [P] [US2] Add unsupported-case regression tests in `src/__tests__/compiler/pipeline.test.ts` and `src/__tests__/compiler/sanitizer.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Implement supported-versus-unsupported DAG classification in `src/compiler/validator.ts` and `src/compiler/types.ts`
-- [ ] T022 [US2] Implement blocking dependency-readiness states for compilation in `src/compiler/moveCompiler.ts` and `src/compiler/pipeline.ts`
-- [ ] T023 [US2] Preserve artifact-to-graph diagnostic traces in `src/compiler/errorParser.ts` and `src/compiler/emitter.ts`
-- [ ] T024 [US2] Surface invalid graph and compile-blocked states in `src/nodes/BaseNode.tsx` and `src/components/CompilationStatus.tsx`
+- [X] T021 [US2] Implement supported-versus-unsupported DAG classification in `src/compiler/validator.ts` and `src/compiler/types.ts`
+- [X] T022 [US2] Implement blocking dependency-readiness states for compilation in `src/compiler/moveCompiler.ts` and `src/compiler/pipeline.ts`
+- [X] T023 [US2] Preserve artifact-to-graph diagnostic traces in `src/compiler/errorParser.ts` and `src/compiler/emitter.ts`
+- [X] T024 [US2] Surface invalid graph and compile-blocked states in `src/nodes/BaseNode.tsx` and `src/components/CompilationStatus.tsx`
 - [ ] T025 [US2] Restore and persist validation messaging for broken or migrated flows, supporting FR-013 and FR-018, in `src/components/restoreSavedFlow.ts` and `src/components/Footer.tsx`
 
 **Checkpoint**: Unsupported and incomplete DAGs fail safely before compilation with actionable diagnostics.
@@ -90,17 +90,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T026 [P] [US3] Add supported `smart-turrets` reference DAG semantic regression tests derived from `docs/CONTRACT_EXAMPLES.md` in `src/__tests__/compiler/referenceDagValidation.test.ts`
-- [ ] T027 [P] [US3] Add deterministic artifact fingerprint snapshot tests for the `smart-turrets` DAG inventory in `src/__tests__/compiler/referenceDagValidation.test.ts`
-- [ ] T028 [P] [US3] Add browser regression for preview/build artifact consistency in `tests/e2e/generated-contracts.spec.ts`
+- [X] T026 [P] [US3] Add supported `smart-turrets` reference DAG semantic regression tests derived from `docs/CONTRACT_EXAMPLES.md` in `src/__tests__/compiler/referenceDagValidation.test.ts`
+- [X] T027 [P] [US3] Add deterministic artifact fingerprint snapshot tests for the `smart-turrets` DAG inventory in `src/__tests__/compiler/referenceDagValidation.test.ts`
+- [X] T028 [P] [US3] Add browser regression for preview/build artifact consistency in `tests/e2e/generated-contracts.spec.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T029 [US3] Implement the reference DAG catalog and support matrix derived from `Scetrov/smart-turrets` and keyed to `docs/CONTRACT_EXAMPLES.md` in `src/__tests__/compiler/referenceDagFixtures.ts` and `src/compiler/types.ts`
-- [ ] T030 [US3] Implement semantic outcome assertions and artifact fingerprint helpers from the concrete behaviors in `docs/CONTRACT_EXAMPLES.md` in `src/__tests__/compiler/referenceArtifactAssertions.ts` and `src/__tests__/compiler/helpers.ts`
-- [ ] T031 [US3] Wire reference DAG validation into compiler regression coverage using the contract example mappings in `src/__tests__/compiler/pipeline.test.ts` and `src/__tests__/compiler/smartTurretExtensionAlignment.test.ts`
-- [ ] T032 [US3] Add compile-validation coverage for every supported `smart-turrets` reference DAG and contract example mapping in `src/__tests__/compiler/referenceDagValidation.test.ts` and `scripts/real-wasm-integration.ts`
-- [ ] T033 [US3] Document deterministic snapshot approval and full-inventory compile validation workflow from `docs/CONTRACT_EXAMPLES.md` in `specs/010-functional-dag-contracts/quickstart.md` and `src/__tests__/compiler/referenceDagValidation.test.ts`
+- [X] T029 [US3] Implement the reference DAG catalog and support matrix derived from `Scetrov/smart-turrets` and keyed to `docs/CONTRACT_EXAMPLES.md` in `src/__tests__/compiler/referenceDagFixtures.ts` and `src/compiler/types.ts`
+- [X] T030 [US3] Implement semantic outcome assertions and artifact fingerprint helpers from the concrete behaviors in `docs/CONTRACT_EXAMPLES.md` in `src/__tests__/compiler/referenceArtifactAssertions.ts` and `src/__tests__/compiler/helpers.ts`
+- [X] T031 [US3] Wire reference DAG validation into compiler regression coverage using the contract example mappings in `src/__tests__/compiler/pipeline.test.ts` and `src/__tests__/compiler/smartTurretExtensionAlignment.test.ts`
+- [X] T032 [US3] Add compile-validation coverage for every supported `smart-turrets` reference DAG and contract example mapping in `src/__tests__/compiler/referenceDagValidation.test.ts` and `scripts/real-wasm-integration.ts`
+- [X] T033 [US3] Document deterministic snapshot approval and full-inventory compile validation workflow from `docs/CONTRACT_EXAMPLES.md` in `specs/010-functional-dag-contracts/quickstart.md` and `src/__tests__/compiler/referenceDagValidation.test.ts`
 
 **Checkpoint**: Reference DAG validation protects the supported generation surface from future regressions.
 
@@ -114,17 +114,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T034 [P] [US4] Add generated-artifact preview and build-state tests in `src/__tests__/MoveSourcePanel.test.tsx` and `src/__tests__/App.compilation.test.tsx`
-- [ ] T035 [P] [US4] Add authorization readiness component tests in `src/__tests__/CompilationStatus.test.tsx` and `src/__tests__/Header.test.tsx`
-- [ ] T036 [P] [US4] Add existing-turret authorization workflow coverage in `tests/e2e/authorization-readiness.spec.ts`
-- [ ] T037 [P] [US4] Add negative-scope regression coverage ensuring anchor, online, offline, and unanchor lifecycle actions are not surfaced in `src/__tests__/Header.test.tsx` and `tests/e2e/authorization-readiness.spec.ts`
+- [X] T034 [P] [US4] Add generated-artifact preview and build-state tests in `src/__tests__/MoveSourcePanel.test.tsx` and `src/__tests__/App.compilation.test.tsx`
+- [X] T035 [P] [US4] Add authorization readiness component tests in `src/__tests__/CompilationStatus.test.tsx` and `src/__tests__/Header.test.tsx`
+- [X] T036 [P] [US4] Add existing-turret authorization workflow coverage in `tests/e2e/authorization-readiness.spec.ts`
+- [X] T037 [P] [US4] Add negative-scope regression coverage ensuring anchor, online, offline, and unanchor lifecycle actions are not surfaced in `src/__tests__/Header.test.tsx` and `tests/e2e/authorization-readiness.spec.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T038 [US4] Make generated artifacts the single source of truth for preview and compile flows in `src/compiler/pipeline.ts` and `src/components/MoveSourcePanel.tsx`
-- [ ] T039 [US4] Wire compile-ready artifact status through build and preview actions in `src/components/Header.tsx` and `src/components/Footer.tsx`
-- [ ] T040 [US4] Implement existing-turret authorization readiness state in `src/compiler/types.ts` and `src/compiler/moveCompiler.ts`
-- [ ] T041 [US4] Surface authorization next actions and blocked reasons in `src/components/CompilationStatus.tsx` and `src/components/MoveSourcePanel.tsx`
+- [X] T038 [US4] Make generated artifacts the single source of truth for preview and compile flows in `src/compiler/pipeline.ts` and `src/components/MoveSourcePanel.tsx`
+- [X] T039 [US4] Wire compile-ready artifact status through build and preview actions in `src/components/Header.tsx` and `src/components/Footer.tsx`
+- [X] T040 [US4] Implement existing-turret authorization readiness state in `src/compiler/types.ts` and `src/compiler/moveCompiler.ts`
+- [X] T041 [US4] Surface authorization next actions and blocked reasons in `src/components/CompilationStatus.tsx` and `src/components/MoveSourcePanel.tsx`
 - [ ] T042 [US4] Integrate deploy and upgrade preparation with the generated artifact contract in `src/components/Header.tsx` and `src/components/MoveSourcePanel.tsx`
 
 **Checkpoint**: Preview, build, deploy preparation, and authorization readiness all operate on the same generated artifact.
@@ -135,9 +135,9 @@
 
 **Purpose**: Finish cross-story hardening, documentation, and full verification.
 
-- [ ] T043 [P] Update deterministic implementation guidance in `specs/010-functional-dag-contracts/quickstart.md` and `README.md`
+- [X] T043 [P] Update deterministic implementation guidance in `specs/010-functional-dag-contracts/quickstart.md` and `README.md`
 - [ ] T044 Harden sanitizer regression coverage for cross-story safety in `src/compiler/sanitizer.ts` and `src/__tests__/compiler/sanitizer.test.ts`
-- [ ] T045 Run full quickstart validation and capture cross-cutting verification notes for FR-021, FR-031, and FR-032 in `specs/010-functional-dag-contracts/quickstart.md`
+- [X] T045 Run full quickstart validation and capture cross-cutting verification notes for FR-021, FR-031, and FR-032 in `specs/010-functional-dag-contracts/quickstart.md`
 
 ---
 

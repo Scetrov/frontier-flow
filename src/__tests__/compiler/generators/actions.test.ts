@@ -11,8 +11,8 @@ describe("action generators", () => {
     const output = lines.map((line) => line.code).join("\n");
 
     expect(output).toContain("let ");
-    expect(output).toContain("if (");
+    expect(output).toContain("include_result");
     expect(output).toContain("priority_out");
-    expect(context.bindings.size).toBe(1);
+    expect(context.bindings.size).toBe(2);
   });
 });

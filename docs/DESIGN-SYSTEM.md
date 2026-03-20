@@ -3,7 +3,7 @@ title: Frontier Flow - Design System
 version: 1.0.0
 status: active
 created: 2026-02-22
-updated: 2026-02-27
+updated: 2026-03-20
 author: Scetrov
 description: Typography, colour palette, component styling, and accessibility standards for the Frontier Flow application.
 ---
@@ -82,6 +82,9 @@ To differentiate between different nodes then the following colours may be used:
 - **Buttons**: `Disket Mono` font, uppercase, strict square corners (`0px` radius).
 - **Cards**: "Frontier" style with angular brackets, technical borders, and no box shadow.
 - **Inputs**: Square corners, minimal, technical feel.
+- **Status Surfaces**: Compilation and deployment are rendered as separate peer status indicators. A successful compile must not visually mask blocked deployment prerequisites, and explanatory detail should expand on demand instead of being always inline.
+- **Drawer Handles**: Left and right workspace drawers share one handle treatment: narrow vertical tab, orange hover/focus state, mono label, and explicit text indicating drawer contents.
+- **Selectable List Cells**: Multi-select option rows use full-row selection styling rather than browser-default checkboxes. Selected rows should tint orange and render a high-contrast boxed glyph.
 - **Global**: Border radius is explicitly disabled (`0px`) for a technical, industrial sci-fi look (EVE Frontier inspired), including on technical shapes like sockets and nodes.
 
 ## Accessibility & Focus States

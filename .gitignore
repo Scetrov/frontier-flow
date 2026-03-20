@@ -13,3 +13,7 @@ playwright-transform-cache*/
 bunx-*/
 tmp.*
 qIZCEIaUOQzLo-ENN16kf/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

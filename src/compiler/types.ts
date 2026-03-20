@@ -38,7 +38,58 @@ export interface SourceMapEntry {
   readonly context?: string;
 }
 
+export type DeploymentStatusType = "blocked" | "ready" | "deployed";
+
+export interface ContractIdentity {
+  readonly packageName: string;
+  readonly moduleName: string;
+  readonly requestedModuleName: string;
+}
+
+export interface GeneratedSourceFile {
+  readonly path: string;
+  readonly content: string;
+}
+
+export interface ArtifactManifest {
+  readonly moveToml: string;
+  readonly dependencies: readonly string[];
+}
+
+export interface ContractSectionTrace {
+  readonly id: string;
+  readonly label: string;
+  readonly nodeIds: readonly string[];
+  readonly lineStart: number;
+  readonly lineEnd: number;
+}
+
+export interface CompileReadiness {
+  readonly ready: boolean;
+  readonly blockedReasons: readonly string[];
+  readonly nextActionSummary: string;
+}
+
+export interface DeploymentStatus {
+  readonly artifactId: string;
+  readonly status: DeploymentStatusType;
+  readonly targetMode: "existing-turret";
+  readonly requiredInputs: readonly string[];
+  readonly resolvedInputs: readonly string[];
+  readonly blockedReasons: readonly string[];
+  readonly nextActionSummary: string;
+}
+
 export interface GeneratedContractArtifact {
+  readonly artifactId?: string;
+  readonly sourceDagId?: string;
+  readonly contractIdentity?: ContractIdentity;
+  readonly sourceFiles?: readonly GeneratedSourceFile[];
+  readonly manifest?: ArtifactManifest;
+  readonly traceSections?: readonly ContractSectionTrace[];
+  readonly diagnostics?: readonly CompilerDiagnostic[];
+  readonly compileReadiness?: CompileReadiness;
+  readonly deploymentStatus?: DeploymentStatus;
   readonly moduleName: string;
   readonly sourceFilePath: string;
   readonly moveToml: string;

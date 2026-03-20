@@ -17,7 +17,7 @@ import {
   type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Check, ChevronLeft, ChevronRight, LayoutGrid, Trash2, X } from "lucide-react";
+import { Check, LayoutGrid, Trash2, X } from "lucide-react";
 
 import { createFlowNodeData, getNodeDefinition } from "../data/node-definitions";
 import { seededExampleContracts } from "../data/exampleContracts";
@@ -49,6 +49,7 @@ import { useAutoCompile } from "../hooks/useAutoCompile";
 
 import { restoreSavedFlow } from "./restoreSavedFlow";
 import { NodeFieldEditingContext } from "../nodes/NodeFieldEditingContext";
+import DrawerHandle from "./DrawerHandle";
 
 interface CanvasWorkspaceProps {
   readonly initialContractName?: string;
@@ -1065,18 +1066,17 @@ function FlowEditor({
             </div>
           </aside>
 
-          <button
-            aria-controls="saved-contract-controls"
-            aria-expanded={isContractPanelOpen}
-            aria-label={isContractPanelOpen ? "Close saved contract controls" : "Open saved contract controls"}
-            className="ff-canvas__drawer-handle ff-canvas__drawer-handle--left"
+          <DrawerHandle
+            closeLabel="Close saved contract controls"
+            controls="saved-contract-controls"
+            drawerLabel="Contracts"
+            expanded={isContractPanelOpen}
             onClick={() => {
               setIsContractPanelOpen((open) => !open);
             }}
-            type="button"
-          >
-            {isContractPanelOpen ? <ChevronLeft aria-hidden="true" className="h-5 w-5" /> : <ChevronRight aria-hidden="true" className="h-5 w-5" />}
-          </button>
+            openLabel="Open saved contract controls"
+            side="left"
+          />
         </div>
         </div>
       ) : null}

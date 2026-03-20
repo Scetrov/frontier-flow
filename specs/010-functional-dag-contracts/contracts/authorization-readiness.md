@@ -1,12 +1,12 @@
-# Contract: Authorization Readiness
+# Contract: Deployment Status
 
 ## Purpose
 
-Defines the handoff between a compile-ready generated contract artifact and the workflow that attaches that artifact to an existing turret through extension registration or authorization.
+Defines the handoff between a compile-ready generated contract artifact and the workflow that attaches that artifact to an existing turret through extension registration and deployment preparation.
 
 ## Scope
 
-- Includes readiness for existing-turret attachment.
+- Includes deployment status for existing-turret attachment.
 - Excludes full turret lifecycle automation such as anchor, online, offline, or unanchor operations.
 
 ## Required Fields
@@ -14,20 +14,20 @@ Defines the handoff between a compile-ready generated contract artifact and the 
 | Field               | Required | Meaning                                                 |
 | ------------------- | -------- | ------------------------------------------------------- |
 | `artifactId`        | yes      | Linked generated artifact                               |
-| `status`            | yes      | `ready`, `blocked`, or `unknown-external`               |
-| `targetTurretMode`  | yes      | Confirms readiness is for an existing turret            |
-| `requiredInputs`    | yes      | Inputs needed to continue authorization or registration |
+| `status`            | yes      | `ready`, `blocked`, or `deployed`                       |
+| `targetTurretMode`  | yes      | Confirms status is for an existing turret               |
+| `requiredInputs`    | yes      | Inputs needed to continue deployment or registration    |
 | `resolvedInputs`    | yes      | Inputs already satisfied by generation output           |
 | `blockedReasons`    | yes      | Reasons attachment cannot proceed                       |
-| `nextActionSummary` | yes      | User-facing statement of the next readiness action      |
+| `nextActionSummary` | yes      | User-facing statement of the next deployment action     |
 
 ## Invariants
 
-- `ready` means the generated artifact is suitable for the existing authorization workflow, not that world lifecycle operations are available.
-- `blocked` and `unknown-external` states must remain user-visible and traceable to specific missing prerequisites.
-- Authorization readiness must not depend on a different artifact than the one previewed and compiled for the active DAG.
+- `ready` means the generated artifact is suitable for the existing deployment workflow, not that world lifecycle operations are available.
+- `blocked` and `deployed` states must remain user-visible and traceable to specific workflow milestones.
+- Deployment status must not depend on a different artifact than the one previewed and compiled for the active DAG.
 
 ## Failure Contract
 
-- If extension discovery, package addressing, or registration details are unresolved, readiness must remain blocked or unknown-external.
+- If extension discovery, package addressing, or registration details are unresolved, deployment status must remain blocked.
 - The workflow must not imply that anchor or online lifecycle automation is part of this feature.

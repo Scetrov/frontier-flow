@@ -46,24 +46,32 @@ function NumericOptionEditor({
 
       {!loading && error === null ? (
         <div className="ff-node-field-editor__list">
-          {options.map((option) => (
-            <label key={option.value} className="ff-node-field-editor__choice">
+          {options.map((option) => {
+            const isSelected = selectedValues.has(option.value);
+
+            return (
+            <label
+              key={option.value}
+              className={`ff-node-field-editor__choice${isSelected ? " is-selected" : ""}`}
+            >
               <span className="ff-node-field-editor__choice-main">
                 <input
-                  checked={selectedValues.has(option.value)}
+                  checked={isSelected}
                   className="ff-node-field-editor__checkbox"
                   onChange={() => {
                     onToggle(option.value);
                   }}
                   type="checkbox"
                 />
+                <span aria-hidden="true" className="ff-node-field-editor__checkbox-indicator" />
                 <span>{option.label}</span>
               </span>
               {option.description !== undefined && option.description.length > 0 ? (
                 <span className="ff-node-field-editor__choice-meta">{option.description}</span>
               ) : null}
             </label>
-          ))}
+            );
+          })}
         </div>
       ) : null}
     </section>

@@ -43,4 +43,24 @@ describe("parseCompilerOutput", () => {
       }),
     );
   });
+
+  it("does not turn a warning location line into a second error diagnostic", () => {
+    const diagnostics = parseCompilerOutput(
+      [
+        "warning[Lint]: unused list binding",
+        "sources/starter_contract.move:116:13",
+      ].join("\n"),
+      [{ line: 116, astNodeId: "list_tribe_1", reactFlowNodeId: "list_tribe_1" }],
+    );
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toEqual(
+      expect.objectContaining({
+        severity: "warning",
+        line: 116,
+        reactFlowNodeId: "list_tribe_1",
+        userMessage: "unused list binding",
+      }),
+    );
+  });
 });

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import Footer from "../components/Footer";
+import { createGeneratedArtifactStub } from "./compiler/helpers";
 
 describe("Footer", () => {
   it("renders version information, repository link, and idle compilation status", () => {
@@ -36,15 +37,7 @@ describe("Footer", () => {
         status={{
           state: "error",
           diagnostics: [],
-          artifact: {
-            moduleName: "starter_contract",
-            sourceFilePath: "sources/starter_contract.move",
-            moveToml: "[package]",
-            moveSource: "module builder_extensions::starter_contract {}",
-            sourceMap: [],
-            dependencies: [],
-            bytecodeModules: [],
-          },
+          artifact: createGeneratedArtifactStub({ moveToml: "[package]" }),
         }}
       />,
     );

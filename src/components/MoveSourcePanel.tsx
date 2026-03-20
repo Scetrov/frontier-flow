@@ -10,6 +10,31 @@ interface MoveSourcePanelProps {
   readonly status: CompilationStatus;
 }
 
+function getDeploymentLabel(status: CompilationStatus): string | null {
+  const deploymentStatus = status.state === "compiled" || status.state === "error"
+    ? status.artifact?.deploymentStatus
+    : undefined;
+
+  if (deploymentStatus === undefined) {
+    return null;
+  }
+
+  switch (deploymentStatus.status) {
+    case "deployed":
+      return "Deployment Deployed";
+    case "ready":
+      return "Deployment Ready";
+    case "blocked":
+      return "Deployment Blocked";
+  }
+}
+
+function getDeploymentSummary(status: CompilationStatus): string | null {
+  return status.state === "compiled" || status.state === "error"
+    ? status.artifact?.deploymentStatus?.nextActionSummary ?? null
+    : null;
+}
+
 function getDisplayedFilename(status: CompilationStatus): string {
   const sourceFilePath = status.state === "compiled" || status.state === "error"
     ? status.artifact?.sourceFilePath
@@ -52,6 +77,8 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
   const highlightedSource = sourceCode === null
     ? ""
     : hljs.highlight(sourceCode, { language: "rust" }).value;
+  const deploymentLabel = getDeploymentLabel(status);
+  const deploymentSummary = getDeploymentSummary(status);
 
   return (
     <section aria-label="Move source view" className="ff-move-source">
@@ -65,6 +92,8 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
         <div className="ff-move-source__meta">
           <span className="ff-move-source__badge">{getStatusLabel(status)}</span>
           <span className="ff-move-source__filename">{getDisplayedFilename(status)}</span>
+          {deploymentLabel !== null ? <span className="ff-move-source__badge">{deploymentLabel}</span> : null}
+          {deploymentSummary !== null ? <span className="ff-move-source__filename">{deploymentSummary}</span> : null}
         </div>
       </header>
 

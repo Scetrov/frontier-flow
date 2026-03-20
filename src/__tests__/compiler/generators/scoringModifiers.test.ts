@@ -5,10 +5,10 @@ import { createIrNode } from "../helpers";
 
 describe("scoring modifier generators", () => {
   it.each([
-    ["behaviourBonus", "* 5"],
+    ["behaviourBonus", "BEHAVIOUR_STARTED_ATTACK"],
     ["aggressorBonus", "if ("],
     ["damageBonus", "100 -"],
-    ["sizeTierBonus", "% 5"],
+    ["sizeTierBonus", "tier_for_group("],
   ])("emits a scoring fragment for %s", (nodeType, expectedFragment) => {
     const generator = getGenerator(nodeType);
     const context = createGenerationContext("starter_contract");

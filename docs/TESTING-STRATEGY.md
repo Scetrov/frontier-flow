@@ -108,6 +108,8 @@ Graph-to-Move specific regression coverage additionally verifies that:
 - Sanitization blocks irrecoverable module or node identifiers while still allowing safe normalization for valid inputs.
 - `moveCompiler.ts` submits a generated package artifact, decodes bytecode modules, and preserves dependency metadata on success.
 - `errorParser.ts` keeps unmapped compiler lines and raw fallback failures visible as structured diagnostics.
+- Multiline compiler diagnostics that emit a severity header followed by a `sources/...:line:column` line resolve to a single mapped warning or error instead of duplicate diagnostics.
+- Footer and preview tests treat compile status and deployment status as separate UI channels with independent assertions.
 
 ### 4.2 Layout Engine
 

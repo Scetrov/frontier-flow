@@ -6,6 +6,7 @@ import expectedScoringArtifact from "../../__fixtures__/move/graph-to-move-scori
 import supportedGraphText from "../../__fixtures__/graphs/graph-to-move-supported.json?raw";
 import scoringGraphText from "../../__fixtures__/graphs/graph-to-move-scoring.json?raw";
 import { compileableSmartTurretExtensions, type GraphFixture } from "../../__fixtures__/graphs/smartTurretExtensionFixtures";
+import { createArtifactFingerprint } from "../../compiler/determinism";
 
 vi.mock("../../compiler/moveCompiler", () => ({
   compileMove: vi.fn().mockResolvedValue({
@@ -107,6 +108,25 @@ describe("compilePipeline", () => {
     expect(firstResult.code).toBe(secondResult.code);
     expect(firstResult.sourceMap).toEqual(secondResult.sourceMap);
     expect(firstResult.artifact).toEqual(secondResult.artifact);
+    expect(
+      createArtifactFingerprint({
+        artifactId: firstResult.artifact?.artifactId,
+        moduleName: firstResult.artifact?.moduleName ?? "starter_contract",
+        sourceFilePath: firstResult.artifact?.sourceFilePath ?? "sources/starter_contract.move",
+        moveToml: firstResult.artifact?.moveToml ?? "",
+        moveSource: firstResult.artifact?.moveSource ?? "",
+        dependencies: firstResult.artifact?.dependencies ?? [],
+      }),
+    ).toBe(
+      createArtifactFingerprint({
+        artifactId: secondResult.artifact?.artifactId,
+        moduleName: secondResult.artifact?.moduleName ?? "starter_contract",
+        sourceFilePath: secondResult.artifact?.sourceFilePath ?? "sources/starter_contract.move",
+        moveToml: secondResult.artifact?.moveToml ?? "",
+        moveSource: secondResult.artifact?.moveSource ?? "",
+        dependencies: secondResult.artifact?.dependencies ?? [],
+      }),
+    );
   });
 
   it("stops before emission and compile when sanitization fails", async () => {

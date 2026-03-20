@@ -7,6 +7,8 @@ import type {
   ValidationResult,
 } from "../types";
 
+import { createArtifactId, sortUniqueStrings } from "../determinism";
+
 export const GENERATED_ARTIFACT_SOURCE_DIR = "sources";
 
 export function createGeneratedSourceFilePath(moduleName: string): string {
@@ -15,13 +17,56 @@ export function createGeneratedSourceFilePath(moduleName: string): string {
 
 export function createGeneratedContractArtifact(
   moduleName: string,
+  requestedModuleName: string,
   moveToml: string,
   moveSource: string,
   sourceMap: readonly SourceMapEntry[],
 ): GeneratedContractArtifact {
+  const sourceFilePath = createGeneratedSourceFilePath(moduleName);
+  const artifactId = createArtifactId(moduleName, requestedModuleName, moveToml, moveSource);
+  const traceNodeIds = sortUniqueStrings(sourceMap.map((entry) => entry.reactFlowNodeId));
+  const firstTraceLine = sourceMap.length === 0 ? 1 : sourceMap[0].line;
+  const lastTraceLine = sourceMap.length === 0 ? 1 : sourceMap[sourceMap.length - 1].line;
+
   return {
+    artifactId,
+    sourceDagId: requestedModuleName,
+    contractIdentity: {
+      packageName: moduleName,
+      moduleName,
+      requestedModuleName,
+    },
+    sourceFiles: [{ path: sourceFilePath, content: moveSource }],
+    manifest: {
+      moveToml,
+      dependencies: [],
+    },
+    traceSections: sourceMap.length === 0
+      ? []
+      : [{
+          id: "execute",
+          label: "execute",
+          nodeIds: traceNodeIds,
+          lineStart: firstTraceLine,
+          lineEnd: lastTraceLine,
+        }],
+    diagnostics: [],
+    compileReadiness: {
+      ready: true,
+      blockedReasons: [],
+      nextActionSummary: "Build the generated package to verify bytecode and preserve the artifact for downstream workflows.",
+    },
+    deploymentStatus: {
+      artifactId,
+      status: "blocked",
+      targetMode: "existing-turret",
+      requiredInputs: ["target turret package id", "extension registration target"],
+      resolvedInputs: ["generated contract artifact"],
+      blockedReasons: ["Existing turret attachment details are not configured yet."],
+      nextActionSummary: "Provide the target turret package and extension registration details to continue deployment.",
+    },
     moduleName,
-    sourceFilePath: createGeneratedSourceFilePath(moduleName),
+    sourceFilePath,
     moveToml,
     moveSource,
     sourceMap,
@@ -37,8 +82,27 @@ export function attachCompiledArtifactResult(
 ): GeneratedContractArtifact {
   return {
     ...artifact,
+    manifest: {
+      moveToml: artifact.moveToml,
+      dependencies,
+    },
+    compileReadiness: {
+      ready: true,
+      blockedReasons: [],
+      nextActionSummary: "Compiled artifact is ready for preview, verification, and existing-turret deployment handoff.",
+    },
     bytecodeModules,
     dependencies,
+  };
+}
+
+export function attachArtifactDiagnostics(
+  artifact: GeneratedContractArtifact,
+  diagnostics: GeneratedContractArtifact["diagnostics"],
+): GeneratedContractArtifact {
+  return {
+    ...artifact,
+    diagnostics,
   };
 }
 
@@ -90,5 +154,6 @@ export function resolveInput(context: GenerationContext, node: IRNode, socketId:
     return fallback;
   }
 
-  return context.bindings.get(socketBindingKey(connection.sourceNodeId, connection.sourceSocketId)) ?? fallback;
+  const resolvedBinding = context.bindings.get(socketBindingKey(connection.sourceNodeId, connection.sourceSocketId));
+  return resolvedBinding === undefined ? fallback : resolvedBinding;
 }

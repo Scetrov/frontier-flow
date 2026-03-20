@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { authorableNodeDefinitions } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
 import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
+import DrawerHandle from "./DrawerHandle";
+import ToolboxNodePreview from "./ToolboxNodePreview";
 
 interface SidebarProps {
   readonly definitions?: readonly NodeDefinition[];
@@ -88,7 +90,7 @@ function Sidebar({ definitions = authorableNodeDefinitions }: SidebarProps) {
   }, [isOpen]);
 
   const handleDragStart = (
-    event: ReactDragEvent<HTMLButtonElement>,
+    event: ReactDragEvent<HTMLDivElement>,
     definition: NodeDefinition,
   ) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -123,18 +125,17 @@ function Sidebar({ definitions = authorableNodeDefinitions }: SidebarProps) {
           className="pointer-events-auto flex h-full items-center transition-transform duration-200 ease-out"
           style={{ transform: drawerTransform }}
         >
-          <button
-            aria-controls="node-toolbox"
-            aria-expanded={isOpen}
-            aria-label={isOpen ? "Close node toolbox" : "Open node toolbox"}
-            className="flex h-16 w-11 items-center justify-center border border-r-0 border-[var(--ui-border-dark)] bg-[rgba(16,21,31,0.5)] text-[var(--cream-white)] opacity-50 backdrop-blur-md transition hover:opacity-100 focus-visible:opacity-100"
+          <DrawerHandle
+            closeLabel="Close node toolbox"
+            controls="node-toolbox"
+            drawerLabel="Toolbox"
+            expanded={isOpen}
             onClick={() => {
               setIsOpen((open) => !open);
             }}
-            type="button"
-          >
-            {isOpen ? <ChevronRight className="h-5 w-5" aria-hidden="true" /> : <ChevronLeft className="h-5 w-5" aria-hidden="true" />}
-          </button>
+            openLabel="Open node toolbox"
+            side="right"
+          />
 
           <aside
             aria-hidden={!isOpen}
@@ -191,33 +192,10 @@ function Sidebar({ definitions = authorableNodeDefinitions }: SidebarProps) {
                         </button>
 
                         {!isCollapsed ? (
-                          <ul className="space-y-3">
+                          <ul className="space-y-4">
                             {group.definitions.map((definition) => (
                               <li key={definition.type}>
-                                <button
-                                  aria-label={definition.label}
-                                  className="group flex w-full cursor-grab flex-col items-start gap-2 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.82)] p-4 text-left transition-colors hover:border-[var(--brand-orange)] active:cursor-grabbing"
-                                  draggable="true"
-                                  onDragStart={(event) => {
-                                    handleDragStart(event, definition);
-                                  }}
-                                  type="button"
-                                >
-                                  <div className="flex w-full items-center gap-3">
-                                    <span
-                                      aria-hidden="true"
-                                      className="h-3 w-3 border border-[var(--cream-white)]"
-                                      style={{ backgroundColor: definition.color }}
-                                    />
-                                    <span className="font-heading text-sm uppercase tracking-[0.14em] text-[var(--cream-white)] group-hover:text-[var(--brand-orange)]">
-                                      {definition.label}
-                                    </span>
-                                  </div>
-                                  <span className="font-heading text-[0.62rem] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
-                                    {group.label} · {definition.sockets.length} sockets
-                                  </span>
-                                  <span className="text-sm text-[var(--text-secondary)]">{definition.description}</span>
-                                </button>
+                                <ToolboxNodePreview definition={definition} onDragStart={handleDragStart} />
                               </li>
                             ))}
                           </ul>

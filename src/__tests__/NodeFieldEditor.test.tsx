@@ -77,4 +77,33 @@ describe("NodeFieldEditor", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   });
+
+  it("renders selected options with the orange-tinted boxed checkbox state", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        data: [
+          { id: 98_000_418, name: "Pegasus Cartel", nameShort: "PEG" },
+        ],
+      }),
+      status: 200,
+    } as Response);
+
+    render(
+      <NodeFieldEditor
+        fields={{ selectedTribeIds: [98_000_418] }}
+        nodeLabel="List of Tribe"
+        nodeType="listTribe"
+        onClose={() => undefined}
+        onSave={() => undefined}
+      />,
+    );
+
+    const checkbox = await screen.findByRole("checkbox");
+    const selectedRow = checkbox.closest("label");
+
+    expect(checkbox).toBeChecked();
+    expect(selectedRow).toHaveClass("is-selected");
+    expect(selectedRow?.querySelector(".ff-node-field-editor__checkbox-indicator")).not.toBeNull();
+  });
 });

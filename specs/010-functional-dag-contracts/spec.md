@@ -68,14 +68,14 @@ A contract designer wants to inspect the generated contract, compile it, and car
 
 **Why this priority**: Functional generation is only valuable if the resulting artifact can move through the rest of the product workflow. This closes the gap between visual authoring and on-chain use.
 
-**Independent Test**: Generate a contract from a supported DAG, inspect the artifact, compile it, and verify it can proceed through the existing deployment and extension-authorization preparation flow for an existing turret without requiring handwritten fixes.
+**Independent Test**: Generate a contract from a supported DAG, inspect the artifact, compile it, and verify it can proceed through the existing deployment and extension-registration preparation flow for an existing turret without requiring handwritten fixes.
 
 **Acceptance Scenarios**:
 
 1. **Given** a supported DAG has been generated successfully, **When** the user opens the generated contract view, **Then** the user sees the exact source that will be compiled and deployed for that DAG.
 2. **Given** a generated contract compiles successfully, **When** the user enters the existing deploy or upgrade flow, **Then** the workflow uses that generated artifact rather than a placeholder or fallback contract.
-3. **Given** a generated contract compiles successfully and the user targets an existing turret, **When** the user enters the extension registration or authorization flow, **Then** the workflow uses the generated artifact and provides the required readiness information or actions for attaching that artifact to the turret.
-4. **Given** compilation, deployment-preparation, or authorization-preparation fails, **When** the failure is surfaced, **Then** the user sees a diagnostic that includes a human-readable message, severity, the relevant generated contract section, the related graph context where available, and a remediation hint.
+3. **Given** a generated contract compiles successfully and the user targets an existing turret, **When** the user enters the extension registration or deployment-status flow, **Then** the workflow uses the generated artifact and provides the required readiness information or actions for attaching that artifact to the turret.
+4. **Given** compilation, deployment-preparation, or deployment-status preparation fails, **When** the failure is surfaced, **Then** the user sees a diagnostic that includes a human-readable message, severity, the relevant generated contract section, the related graph context where available, and a remediation hint.
 
 ### Edge Cases
 
@@ -85,7 +85,7 @@ A contract designer wants to inspect the generated contract, compile it, and car
 - User-supplied names, labels, or field values would produce invalid or conflicting contract identifiers.
 - A DAG mixes supported node types with one retired or migrated node restored from saved data.
 - A generated contract is valid for preview but cannot be compiled because external platform dependencies or package metadata are unavailable.
-- A contract compiles successfully but cannot proceed to authorization-preparation because required extension registration details for an existing turret are missing or invalid.
+- A contract compiles successfully but cannot proceed to deployment-status preparation because required extension registration details for an existing turret are missing or invalid.
 - A user expects the feature to handle turret anchor, online, offline, or other full lifecycle steps that are explicitly outside this feature's scope.
 
 ## Requirements _(mandatory)_

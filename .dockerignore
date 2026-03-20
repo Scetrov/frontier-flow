@@ -19,3 +19,6 @@ coverage/
 Dockerfile*
 .dockerignore
 docker-compose*
+node-compile-cache/
+playwright-transform-cache*/
+.DS_Store
