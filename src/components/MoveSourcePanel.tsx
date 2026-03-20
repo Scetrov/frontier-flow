@@ -98,6 +98,12 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
       </header>
 
       <div className="ff-move-source__body">
+        <p className="ff-move-source__learn-banner">
+          Learn how to extend this code using{" "}
+          <a className="ff-move-source__learn-link" href="https://evefrontier.space/move/" rel="noreferrer" target="_blank">
+            Learn Move on Sui
+          </a>
+        </p>
         {sourceCode === null ? (
           <div className="ff-move-source__empty-state">
             <p className="ff-move-source__empty-title">No generated Move source yet</p>

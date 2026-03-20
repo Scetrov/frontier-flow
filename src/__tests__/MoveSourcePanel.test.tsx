@@ -23,6 +23,8 @@ describe("MoveSourcePanel", () => {
 
     expect(screen.getByLabelText("Move source view")).toBeInTheDocument();
     expect(screen.getByText("Generated source")).toBeVisible();
+    expect(screen.getByText(/Learn how to extend this code using/i)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Learn Move on Sui" })).toHaveAttribute("href", "https://evefrontier.space/move/");
     expect(screen.getByText(/module builder_extensions::starter_contract/)).toBeVisible();
     expect(screen.getByLabelText("Generated Move source code").textContent).toBe(sourceCode);
     expect(container.querySelector(".hljs-keyword")).not.toBeNull();
