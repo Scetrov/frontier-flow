@@ -20,6 +20,22 @@ export function normalizeModuleName(input: string): string {
 
 export function createStableNodeOrder(nodes: readonly FlowNode[], edges: readonly FlowEdge[]): StableOrderResult {
   const sortedIds = nodes.map((node) => node.id).sort();
+  const { adjacency, indegree } = createTopology(sortedIds, edges);
+  const order = drainStableQueue(sortedIds, adjacency, indegree);
+  const unresolvedNodeIds = sortedIds.filter((nodeId) => !order.includes(nodeId));
+
+  return unresolvedNodeIds.length === 0
+    ? {
+        order,
+        unresolvedNodeIds: [],
+      }
+    : {
+        order: order.concat(unresolvedNodeIds),
+        unresolvedNodeIds,
+      };
+}
+
+function createTopology(sortedIds: readonly string[], edges: readonly FlowEdge[]) {
   const adjacency = new Map<string, string[]>();
   const indegree = new Map<string, number>();
 
@@ -41,7 +57,11 @@ export function createStableNodeOrder(nodes: readonly FlowNode[], edges: readonl
     targets.sort();
   }
 
-  const queue = sortedIds.filter((nodeId) => (indegree.get(nodeId) ?? 0) === 0);
+  return { adjacency, indegree };
+}
+
+function drainStableQueue(adjacencySeed: readonly string[], adjacency: Map<string, string[]>, indegree: Map<string, number>): string[] {
+  const queue = adjacencySeed.filter((nodeId) => (indegree.get(nodeId) ?? 0) === 0);
   const order: string[] = [];
 
   while (queue.length > 0) {
@@ -62,18 +82,7 @@ export function createStableNodeOrder(nodes: readonly FlowNode[], edges: readonl
     }
   }
 
-  if (order.length === sortedIds.length) {
-    return {
-      order,
-      unresolvedNodeIds: [],
-    };
-  }
-
-  const remaining = sortedIds.filter((nodeId) => !order.includes(nodeId));
-  return {
-    order: order.concat(remaining),
-    unresolvedNodeIds: remaining,
-  };
+  return order;
 }
 
 function hashString(input: string): string {

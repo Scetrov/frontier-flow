@@ -9,6 +9,16 @@ const EMPTY_DIAGNOSTICS: readonly CompilerDiagnostic[] = [];
 
 type CompilePipelineModule = typeof import("../compiler/pipeline");
 
+interface CompilationRequestState {
+  readonly abortController: AbortController;
+  readonly requestGraphKey: string;
+  readonly requestId: number;
+}
+
+interface WritableRef<T> {
+  current: T;
+}
+
 let compilePipelineModulePromise: Promise<CompilePipelineModule> | null = null;
 
 function resetCompilePipelineLoader() {
@@ -40,6 +50,57 @@ function compareNullableStrings(left: string | null, right: string | null): numb
   }
 
   return left.localeCompare(right);
+}
+
+function isAbortedError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function createFallbackDiagnostics(error: unknown): readonly CompilerDiagnostic[] {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  return [
+    {
+      severity: "error",
+      rawMessage,
+      line: null,
+      reactFlowNodeId: null,
+      socketId: null,
+      userMessage: rawMessage,
+    } satisfies CompilerDiagnostic,
+  ];
+}
+
+function isStaleCompilation(
+  request: CompilationRequestState,
+  latestRequestId: number,
+  activeGraphKey: string,
+): boolean {
+  return request.abortController.signal.aborted || request.requestId !== latestRequestId || request.requestGraphKey !== activeGraphKey;
+}
+
+function clearCompileTimer(timerRef: React.RefObject<number | null>) {
+  if (timerRef.current !== null) {
+    window.clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }
+}
+
+function createCompilationRequest(
+  abortControllerRef: WritableRef<AbortController | null>,
+  compilationRequestIdRef: WritableRef<number>,
+  graphKeyRef: WritableRef<string>,
+): CompilationRequestState {
+  abortControllerRef.current?.abort();
+
+  const request = {
+    abortController: new AbortController(),
+    requestGraphKey: graphKeyRef.current,
+    requestId: compilationRequestIdRef.current + 1,
+  } satisfies CompilationRequestState;
+
+  compilationRequestIdRef.current = request.requestId;
+  abortControllerRef.current = request.abortController;
+  return request;
 }
 
 function createCompilationGraphKey(
@@ -124,13 +185,8 @@ export function useAutoCompile(
   }, [edges, graphKey, moduleName, nodes]);
 
   const runCompilation = useCallback(async () => {
-    abortControllerRef.current?.abort();
-    const requestId = compilationRequestIdRef.current + 1;
-    const requestGraphKey = graphKeyRef.current;
-    compilationRequestIdRef.current = requestId;
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-    setActiveGraphKey(requestGraphKey);
+    const request = createCompilationRequest(abortControllerRef, compilationRequestIdRef, graphKeyRef);
+    setActiveGraphKey(request.requestGraphKey);
     setDiagnostics(EMPTY_DIAGNOSTICS);
     setSourceCode(null);
     setArtifact(null);
@@ -142,45 +198,31 @@ export function useAutoCompile(
         nodes: nodesRef.current,
         edges: edgesRef.current,
         moduleName: moduleNameRef.current,
-        signal: abortController.signal,
+        signal: request.abortController.signal,
       });
 
-      if (
-        abortController.signal.aborted ||
-        requestId !== compilationRequestIdRef.current ||
-        requestGraphKey !== graphKeyRef.current
-      ) {
+      if (isStaleCompilation(request, compilationRequestIdRef.current, graphKeyRef.current)) {
         return;
       }
 
       setActiveGraphKey(null);
-      setSettledGraphKey(requestGraphKey);
+      setSettledGraphKey(request.requestGraphKey);
       setDiagnostics(result.diagnostics);
       setSourceCode(result.artifact?.moveSource ?? result.code);
       setArtifact(result.artifact ?? null);
       setStatus(result.status);
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
+      if (isAbortedError(error)) {
         return;
       }
 
-      if (requestId !== compilationRequestIdRef.current || requestGraphKey !== graphKeyRef.current) {
+      if (isStaleCompilation(request, compilationRequestIdRef.current, graphKeyRef.current)) {
         return;
       }
 
-      const rawMessage = error instanceof Error ? error.message : String(error);
-      const fallbackDiagnostics = [
-        {
-          severity: "error",
-          rawMessage,
-          line: null,
-          reactFlowNodeId: null,
-          socketId: null,
-          userMessage: rawMessage,
-        } satisfies CompilerDiagnostic,
-      ];
+      const fallbackDiagnostics = createFallbackDiagnostics(error);
       setActiveGraphKey(null);
-      setSettledGraphKey(requestGraphKey);
+      setSettledGraphKey(request.requestGraphKey);
       setSourceCode(null);
       setArtifact(null);
       setDiagnostics(fallbackDiagnostics);
@@ -191,42 +233,34 @@ export function useAutoCompile(
   useEffect(() => {
     abortControllerRef.current?.abort();
 
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-    }
+    clearCompileTimer(timerRef);
+    const activeAbortController = abortControllerRef.current;
 
     timerRef.current = window.setTimeout(() => {
       void runCompilation();
     }, idleMs);
 
     return () => {
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-      abortControllerRef.current?.abort();
+      clearCompileTimer(timerRef);
+      activeAbortController?.abort();
     };
   }, [graphKey, idleMs, runCompilation]);
 
   const triggerCompile = useCallback(() => {
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+    clearCompileTimer(timerRef);
 
     void runCompilation();
   }, [runCompilation]);
 
   const isCurrentGraphCompiling = activeGraphKey === graphKey && status.state === "compiling";
   const isCurrentGraphSettled = settledGraphKey === graphKey;
-  const visibleStatus = isCurrentGraphCompiling || isCurrentGraphSettled ? status : IDLE_STATUS;
-  const visibleDiagnostics = isCurrentGraphCompiling || isCurrentGraphSettled ? diagnostics : EMPTY_DIAGNOSTICS;
+  const shouldShowCurrentGraphState = isCurrentGraphCompiling || isCurrentGraphSettled;
 
   return {
-    status: visibleStatus,
-    diagnostics: visibleDiagnostics,
-    sourceCode: isCurrentGraphCompiling || isCurrentGraphSettled ? sourceCode : null,
-    artifact: isCurrentGraphCompiling || isCurrentGraphSettled ? artifact : null,
+    status: shouldShowCurrentGraphState ? status : IDLE_STATUS,
+    diagnostics: shouldShowCurrentGraphState ? diagnostics : EMPTY_DIAGNOSTICS,
+    sourceCode: shouldShowCurrentGraphState ? sourceCode : null,
+    artifact: shouldShowCurrentGraphState ? artifact : null,
     triggerCompile,
   };
 }

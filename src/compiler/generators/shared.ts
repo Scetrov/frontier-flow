@@ -11,17 +11,25 @@ import { createArtifactId, sortUniqueStrings } from "../determinism";
 
 export const GENERATED_ARTIFACT_SOURCE_DIR = "sources";
 
+interface GeneratedContractArtifactInput {
+  readonly moduleName: string;
+  readonly requestedModuleName: string;
+  readonly moveToml: string;
+  readonly moveSource: string;
+  readonly sourceMap: readonly SourceMapEntry[];
+}
+
 export function createGeneratedSourceFilePath(moduleName: string): string {
   return `${GENERATED_ARTIFACT_SOURCE_DIR}/${moduleName}.move`;
 }
 
-export function createGeneratedContractArtifact(
-  moduleName: string,
-  requestedModuleName: string,
-  moveToml: string,
-  moveSource: string,
-  sourceMap: readonly SourceMapEntry[],
-): GeneratedContractArtifact {
+export function createGeneratedContractArtifact({
+  moduleName,
+  requestedModuleName,
+  moveToml,
+  moveSource,
+  sourceMap,
+}: GeneratedContractArtifactInput): GeneratedContractArtifact {
   const sourceFilePath = createGeneratedSourceFilePath(moduleName);
   const artifactId = createArtifactId(moduleName, requestedModuleName, moveToml, moveSource);
   const traceNodeIds = sortUniqueStrings(sourceMap.map((entry) => entry.reactFlowNodeId));

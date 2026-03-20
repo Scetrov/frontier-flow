@@ -175,13 +175,13 @@ export function emitMove(graph: IRGraph): EmitterOutput {
       code: referenceTemplate.code,
       moveToml,
       sourceMap: referenceTemplate.sourceMap,
-      artifact: createGeneratedContractArtifact(
-        graph.moduleName,
-        graph.requestedModuleName,
+      artifact: createGeneratedContractArtifact({
+        moduleName: graph.moduleName,
+        requestedModuleName: graph.requestedModuleName,
         moveToml,
-        referenceTemplate.code,
-        referenceTemplate.sourceMap,
-      ),
+        moveSource: referenceTemplate.code,
+        sourceMap: referenceTemplate.sourceMap,
+      }),
     };
   }
 
@@ -211,6 +211,12 @@ export function emitMove(graph: IRGraph): EmitterOutput {
     code: synthesized.code,
     moveToml,
     sourceMap: synthesized.sourceMap,
-    artifact: createGeneratedContractArtifact(graph.moduleName, graph.requestedModuleName, moveToml, synthesized.code, synthesized.sourceMap),
+    artifact: createGeneratedContractArtifact({
+      moduleName: graph.moduleName,
+      requestedModuleName: graph.requestedModuleName,
+      moveToml,
+      moveSource: synthesized.code,
+      sourceMap: synthesized.sourceMap,
+    }),
   };
 }

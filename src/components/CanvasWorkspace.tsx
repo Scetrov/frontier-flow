@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from "react";
+import type { CSSProperties, Dispatch, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, RefObject, SetStateAction } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -94,6 +94,9 @@ interface SelectedEdgeDeleteState {
   readonly edgeId: string | null;
   readonly confirmationState: DeleteConfirmationState;
 }
+
+type SetFlowNodes = ReturnType<typeof useNodesState<FlowNode>>[1];
+type SetFlowEdges = ReturnType<typeof useEdgesState<FlowEdge>>[1];
 
 const desktopMediaQuery = "(min-width: 768px)";
 const deleteConfirmationTimeoutMs = 15_000;
@@ -194,53 +197,705 @@ function getSelectedTarget(nodes: readonly FlowNode[], edges: readonly FlowEdge[
   return { kind: "none", targetId: null, origin: "programmatic" };
 }
 
-/**
- * Restores saved nodes from the canonical catalogue and drops edges that no longer point to valid handles.
- */
-function FlowEditor({
+interface ContractDrawerProps {
+  readonly activeContract: NamedFlowContract;
+  readonly activeContractDescription: string;
+  readonly activeRemediationNotices: readonly RemediationNotice[];
+  readonly contractLibrary: ContractLibrary;
+  readonly draftContractName: string;
+  readonly isContractPanelOpen: boolean;
+  readonly onCreateContractCopy: () => void;
+  readonly onDeleteContract: () => void;
+  readonly onSaveAsContract: () => void;
+  readonly onSelectContract: (contractName: string) => void;
+  readonly onSetDraftContractName: (name: string) => void;
+  readonly onTogglePanel: () => void;
+}
+
+function ContractDrawerHeader() {
+  return (
+    <div className="ff-contract-panel__header">
+      <p className="ff-contract-panel__eyebrow">Contracts</p>
+      <h2 className="ff-contract-panel__title">Save / Load</h2>
+      <p className="ff-contract-panel__copy">Manage local flow snapshots without taking canvas space away from the editor.</p>
+    </div>
+  );
+}
+
+function ContractRemediationNoticeList({ notices }: { readonly notices: readonly RemediationNotice[] }) {
+  if (notices.length === 0) {
+    return null;
+  }
+
+  return (
+    <div aria-live="polite" className="ff-contract-bar" role="status">
+      <p className="ff-contract-bar__label">Legacy remediation required</p>
+      {notices.map((notice) => (
+        <p key={`${notice.nodeId}_${notice.legacyType}`} className="ff-contract-bar__meta">
+          {notice.message} {notice.suggestedAction}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function ContractDrawerControls({
+  activeContract,
+  activeContractDescription,
+  contractLibrary,
+  draftContractName,
+  onCreateContractCopy,
+  onDeleteContract,
+  onSaveAsContract,
+  onSelectContract,
+  onSetDraftContractName,
+}: Omit<ContractDrawerProps, "activeRemediationNotices" | "isContractPanelOpen" | "onTogglePanel">) {
+  return (
+    <div className="ff-contract-bar">
+      <label className="ff-contract-bar__field">
+        <span className="ff-contract-bar__label">Saved Contract</span>
+        <select
+          aria-label="Saved contract"
+          className="ff-contract-bar__input"
+          value={contractLibrary.activeContractName}
+          onChange={(event) => {
+            onSelectContract(event.target.value);
+          }}
+        >
+          {contractLibrary.contracts.map((contract) => (
+            <option key={contract.name} value={contract.name}>
+              {contract.isSeeded === true ? `Example · ${contract.name}` : contract.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <p className="ff-contract-bar__meta">
+        {activeContract.isSeeded === true ? "Seeded example" : "User contract"} · {activeContractDescription}
+      </p>
+
+      <label className="ff-contract-bar__field ff-contract-bar__field--name">
+        <span className="ff-contract-bar__label">Contract Name</span>
+        <input
+          aria-label="Contract name"
+          className="ff-contract-bar__input"
+          type="text"
+          value={draftContractName}
+          onChange={(event) => {
+            onSetDraftContractName(event.target.value);
+          }}
+        />
+      </label>
+
+      <div className="ff-contract-bar__actions">
+        <button className="ff-contract-bar__button" type="button" onClick={onSaveAsContract}>
+          Save
+        </button>
+        <button className="ff-contract-bar__button" type="button" onClick={onCreateContractCopy}>
+          Save Copy
+        </button>
+        <button
+          className="ff-contract-bar__button ff-contract-bar__button--danger"
+          type="button"
+          onClick={onDeleteContract}
+          disabled={contractLibrary.contracts.length <= 1}
+        >
+          Delete
+        </button>
+      </div>
+
+      <p className="ff-contract-bar__meta">Nodes, edges, and positions auto-save locally for the active contract.</p>
+    </div>
+  );
+}
+
+function ContractDrawer({
+  activeContract,
+  activeContractDescription,
+  activeRemediationNotices,
+  contractLibrary,
+  draftContractName,
+  isContractPanelOpen,
+  onCreateContractCopy,
+  onDeleteContract,
+  onSaveAsContract,
+  onSelectContract,
+  onSetDraftContractName,
+  onTogglePanel,
+}: ContractDrawerProps) {
+  return (
+    <div className="ff-canvas__drawer ff-canvas__drawer--left">
+      <div
+        className="ff-canvas__drawer-shell"
+        style={{
+          transform: isContractPanelOpen ? "translateX(0)" : "translateX(calc(-100% + 2.75rem))",
+        }}
+      >
+        <aside
+          aria-hidden={!isContractPanelOpen}
+          aria-label="Saved contract controls"
+          className="ff-contract-panel"
+          id="saved-contract-controls"
+          inert={!isContractPanelOpen}
+          role="region"
+        >
+          <ContractDrawerHeader />
+          <ContractRemediationNoticeList notices={activeRemediationNotices} />
+          <ContractDrawerControls
+            activeContract={activeContract}
+            activeContractDescription={activeContractDescription}
+            contractLibrary={contractLibrary}
+            draftContractName={draftContractName}
+            onCreateContractCopy={onCreateContractCopy}
+            onDeleteContract={onDeleteContract}
+            onSaveAsContract={onSaveAsContract}
+            onSelectContract={onSelectContract}
+            onSetDraftContractName={onSetDraftContractName}
+          />
+        </aside>
+
+        <DrawerHandle
+          closeLabel="Close saved contract controls"
+          controls="saved-contract-controls"
+          drawerLabel="Contracts"
+          expanded={isContractPanelOpen}
+          onClick={onTogglePanel}
+          openLabel="Open saved contract controls"
+          side="left"
+        />
+      </div>
+    </div>
+  );
+}
+
+function stopEdgeDeleteEvent(event: ReactMouseEvent<HTMLButtonElement> | React.PointerEvent<HTMLButtonElement>) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+interface SelectedEdgeDeleteControlsProps {
+  readonly activeSelectedEdgeDeleteAnchor: SelectedEdgeDeleteAnchor | null;
+  readonly clearSelectedEdgeDeleteState: () => void;
+  readonly deleteEdgeById: (edgeId: string) => void;
+  readonly handleSelectedEdgeDeleteRequest: (edgeId: string, options?: { readonly immediate?: boolean }) => void;
+  readonly selectedEdgeDeleteState: SelectedEdgeDeleteState;
+  readonly selectedTarget: CanvasSelectionTarget;
+}
+
+function SelectedEdgeDeleteControls({
+  activeSelectedEdgeDeleteAnchor,
+  clearSelectedEdgeDeleteState,
+  deleteEdgeById,
+  handleSelectedEdgeDeleteRequest,
+  selectedEdgeDeleteState,
+  selectedTarget,
+}: SelectedEdgeDeleteControlsProps) {
+  if (
+    selectedTarget.kind !== "edge"
+    || selectedTarget.targetId === null
+    || activeSelectedEdgeDeleteAnchor === null
+    || activeSelectedEdgeDeleteAnchor.edgeId !== selectedTarget.targetId
+  ) {
+    return null;
+  }
+
+  return (
+    <ViewportPortal>
+      <div
+        aria-label={selectedEdgeDeleteState.confirmationState.mode === "confirm" ? "Confirm delete selected edge" : undefined}
+        className="ff-edge__midpoint-delete-group nodrag nopan"
+        role={selectedEdgeDeleteState.confirmationState.mode === "confirm" ? "group" : undefined}
+        style={{
+          left: `${String(activeSelectedEdgeDeleteAnchor.x)}px`,
+          top: `${String(activeSelectedEdgeDeleteAnchor.y)}px`,
+          "--ff-edge-delete-accent": activeSelectedEdgeDeleteAnchor.color,
+        } as CSSProperties}
+      >
+        {selectedEdgeDeleteState.confirmationState.mode === "confirm" && selectedEdgeDeleteState.edgeId === activeSelectedEdgeDeleteAnchor.edgeId ? (
+          <>
+            <button
+              aria-label="Confirm delete selected edge"
+              className="ff-edge__midpoint-delete ff-edge__midpoint-delete--confirm"
+              onMouseDown={stopEdgeDeleteEvent}
+              onPointerDown={stopEdgeDeleteEvent}
+              onClick={(event) => {
+                stopEdgeDeleteEvent(event);
+                deleteEdgeById(activeSelectedEdgeDeleteAnchor.edgeId);
+              }}
+              type="button"
+            >
+              <Check aria-hidden="true" className="ff-edge__midpoint-delete-icon" />
+            </button>
+            <button
+              aria-label="Cancel delete selected edge"
+              className="ff-edge__midpoint-delete"
+              onMouseDown={stopEdgeDeleteEvent}
+              onPointerDown={stopEdgeDeleteEvent}
+              onClick={(event) => {
+                stopEdgeDeleteEvent(event);
+                clearSelectedEdgeDeleteState();
+              }}
+              type="button"
+            >
+              <X aria-hidden="true" className="ff-edge__midpoint-delete-icon" />
+            </button>
+          </>
+        ) : (
+          <button
+            aria-label="Delete selected edge"
+            className="ff-edge__midpoint-delete"
+            data-testid="selected-edge-delete"
+            onMouseDown={stopEdgeDeleteEvent}
+            onPointerDown={stopEdgeDeleteEvent}
+            onClick={(event) => {
+              stopEdgeDeleteEvent(event);
+              handleSelectedEdgeDeleteRequest(activeSelectedEdgeDeleteAnchor.edgeId, { immediate: event.shiftKey });
+            }}
+            type="button"
+          >
+            <Trash2 aria-hidden="true" className="ff-edge__midpoint-delete-icon" />
+          </button>
+        )}
+      </div>
+    </ViewportPortal>
+  );
+}
+
+interface CanvasContextMenuProps {
+  readonly contextMenu: ContextMenuState | null;
+  readonly contextMenuRef: React.RefObject<HTMLDivElement | null>;
+  readonly onAutoArrange: () => void;
+  readonly onDeleteFromContextMenu: () => void;
+}
+
+function CanvasContextMenu({ contextMenu, contextMenuRef, onAutoArrange, onDeleteFromContextMenu }: CanvasContextMenuProps) {
+  if (contextMenu === null) {
+    return null;
+  }
+
+  return (
+    <div
+      ref={contextMenuRef}
+      aria-label="Canvas context menu"
+      className="ff-canvas__context-menu"
+      role="menu"
+      style={{ left: `${String(contextMenu.x)}px`, top: `${String(contextMenu.y)}px` }}
+    >
+      {contextMenu.target.kind === "canvas" || contextMenu.target.kind === "node" ? (
+        <button className="ff-canvas__context-action" role="menuitem" type="button" onClick={onAutoArrange}>
+          <LayoutGrid aria-hidden="true" className="ff-canvas__context-action-icon" />
+          <span>Auto-arrange contract</span>
+        </button>
+      ) : null}
+      {contextMenu.target.kind === "node" ? (
+        <button
+          className="ff-canvas__context-action ff-canvas__context-action--danger"
+          role="menuitem"
+          type="button"
+          onClick={onDeleteFromContextMenu}
+        >
+          <Trash2 aria-hidden="true" className="ff-canvas__context-action-icon" />
+          <span>Delete node</span>
+        </button>
+      ) : null}
+      {contextMenu.target.kind === "edge" ? (
+        <button
+          className="ff-canvas__context-action ff-canvas__context-action--danger"
+          role="menuitem"
+          type="button"
+          onClick={onDeleteFromContextMenu}
+        >
+          <Trash2 aria-hidden="true" className="ff-canvas__context-action-icon" />
+          <span>Delete edge</span>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function getActiveContractDescription(activeContract: NamedFlowContract): string {
+  return activeContract.description ?? (activeContract.isSeeded ? "Curated example contract." : "Local contract snapshot.");
+}
+
+function useInitialLibrarySnapshot({
   initialContractName = "Starter Contract",
-  initialNodes = [],
   initialEdges = [],
+  initialNodes = [],
   mode = "persistent",
-  focusedDiagnosticNodeId,
-  focusedDiagnosticRequestKey = 0,
-  onCompilationStateChange,
-  onTriggerCompileChange,
-}: CanvasWorkspaceProps) {
-  const initialLibrarySnapshot = useMemo(
+}: CanvasWorkspaceProps): HydratedContractLibrarySnapshot {
+  return useMemo(
     () => createInitialLibrarySnapshot(initialContractName, initialNodes, initialEdges, mode),
     [initialContractName, initialEdges, initialNodes, mode],
   );
-  const [contractLibrary, setContractLibrary] = useState<ContractLibrary>(() => {
-    return initialLibrarySnapshot.library;
-  });
-  const [contractRemediationNotices, setContractRemediationNotices] = useState<Readonly<Record<string, readonly RemediationNotice[]>>>(
-    () => initialLibrarySnapshot.remediationNoticesByContractName,
-  );
-  const activeContract =
-    contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName) ?? contractLibrary.contracts[0];
-  const activeRemediationNotices = contractRemediationNotices[contractLibrary.activeContractName] ?? [];
-  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(activeContract.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(activeContract.edges);
-  const [draftContractName, setDraftContractName] = useState(activeContract.name);
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [nodeDeleteStates, setNodeDeleteStates] = useState<Readonly<Record<string, DeleteConfirmationState>>>({});
-  const [selectedEdgeDeleteAnchor, setSelectedEdgeDeleteAnchor] = useState<SelectedEdgeDeleteAnchor | null>(null);
-  const [selectedEdgeDeleteState, setSelectedEdgeDeleteState] = useState<SelectedEdgeDeleteState>({
-    edgeId: null,
-    confirmationState: idleDeleteConfirmationState,
-  });
+}
+
+function useCanvasViewportState(mode: NonNullable<CanvasWorkspaceProps["mode"]>) {
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
   const [isContractPanelOpen, setIsContractPanelOpen] = useState(
     () => (mode === "persistent" ? loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isContractPanelOpen : false),
   );
-  const nodeCounterRef = useRef(0);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(desktopMediaQuery);
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mode === "persistent") {
+      mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, { isContractPanelOpen });
+    }
+  }, [isContractPanelOpen, mode]);
+
+  return { isDesktop, isContractPanelOpen, setIsContractPanelOpen };
+}
+
+type UseContractManagerOptions = {
+  readonly initialLibrarySnapshot: HydratedContractLibrarySnapshot;
+  readonly mode: NonNullable<CanvasWorkspaceProps["mode"]>;
+  readonly nodes: readonly FlowNode[];
+  readonly edges: readonly FlowEdge[];
+  readonly reactFlow: ReturnType<typeof useReactFlow<FlowNode, FlowEdge>>;
+  readonly setEdges: SetFlowEdges;
+  readonly setNodes: SetFlowNodes;
+};
+
+function useContractManager({
+  initialLibrarySnapshot,
+  mode,
+  nodes,
+  edges,
+  reactFlow,
+  setEdges,
+  setNodes,
+}: UseContractManagerOptions) {
+  const [contractLibrary, setContractLibrary] = useState<ContractLibrary>(() => initialLibrarySnapshot.library);
+  const [contractRemediationNotices, setContractRemediationNotices] = useState<Readonly<Record<string, readonly RemediationNotice[]>>>(() => initialLibrarySnapshot.remediationNoticesByContractName);
+  const activeContract = contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName) ?? contractLibrary.contracts[0];
+  const activeRemediationNotices = contractRemediationNotices[contractLibrary.activeContractName] ?? [];
+  const activeContractDescription = getActiveContractDescription(activeContract);
+  const [draftContractName, setDraftContractName] = useState(activeContract.name);
+  const handleSelectContract = useCallback((contractName: string) => {
+    const currentContractSnapshot = contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName);
+    if (
+      contractName !== contractLibrary.activeContractName
+      && currentContractSnapshot !== undefined
+      && hasUnsavedCanvasChanges(currentContractSnapshot, nodes, edges)
+      && typeof window !== "undefined"
+      && !window.confirm("Replace the current unsaved canvas changes with the selected contract?")
+    ) {
+      return;
+    }
+
+    const nextContract = withActiveContractSnapshot(contractLibrary, nodes, edges).contracts.find((contract) => contract.name === contractName);
+    if (nextContract === undefined) {
+      return;
+    }
+
+    setContractLibrary((currentLibrary) => ({ ...withActiveContractSnapshot(currentLibrary, nodes, edges), activeContractName: contractName }));
+    setDraftContractName(contractName);
+    setNodes(nextContract.nodes);
+    setEdges(nextContract.edges);
+    requestAnimationFrame(() => {
+      void reactFlow.fitView({ duration: 200, padding: 0.24 });
+    });
+  }, [contractLibrary, edges, nodes, reactFlow, setEdges, setNodes]);
+  const handleSaveAsContract = useCallback(() => {
+    const normalizedName = sanitizeContractName(draftContractName);
+    setContractLibrary((currentLibrary) => {
+      const synchronizedLibrary = withActiveContractSnapshot(currentLibrary, nodes, edges);
+      const contractIndex = synchronizedLibrary.contracts.findIndex((contract) => contract.name === normalizedName);
+      const nextContract = contractIndex === -1
+        ? createNamedFlowContract(normalizedName, nodes, edges)
+        : updateNamedFlowContract(synchronizedLibrary.contracts[contractIndex], nodes, edges);
+
+      return contractIndex === -1
+        ? { ...synchronizedLibrary, activeContractName: normalizedName, contracts: synchronizedLibrary.contracts.concat(nextContract) }
+        : {
+            ...synchronizedLibrary,
+            activeContractName: normalizedName,
+            contracts: synchronizedLibrary.contracts.map((contract, index) => (index === contractIndex ? nextContract : contract)),
+          };
+    });
+    setDraftContractName(normalizedName);
+    setContractRemediationNotices((currentNotices) => ({ ...currentNotices, [normalizedName]: [] }));
+  }, [draftContractName, edges, nodes]);
+  const handleCreateContractCopy = useCallback(() => {
+    const uniqueName = createUniqueContractName(draftContractName, contractLibrary.contracts.map((contract) => contract.name));
+    const nextContract = createNamedFlowContract(uniqueName, nodes, edges);
+    setContractLibrary((currentLibrary) => {
+      const synchronizedLibrary = withActiveContractSnapshot(currentLibrary, nodes, edges);
+      return { ...synchronizedLibrary, activeContractName: uniqueName, contracts: synchronizedLibrary.contracts.concat(nextContract) };
+    });
+    setDraftContractName(uniqueName);
+    setContractRemediationNotices((currentNotices) => ({ ...currentNotices, [uniqueName]: [] }));
+  }, [contractLibrary.contracts, draftContractName, edges, nodes]);
+  const handleDeleteContract = useCallback(() => {
+    if (contractLibrary.contracts.length <= 1) {
+      return;
+    }
+
+    const synchronizedLibrary = withActiveContractSnapshot(contractLibrary, nodes, edges);
+    const nextContracts = synchronizedLibrary.contracts.filter((contract) => contract.name !== synchronizedLibrary.activeContractName);
+    const nextActiveContract = nextContracts[0];
+    setContractLibrary(() => ({ ...synchronizedLibrary, activeContractName: nextActiveContract.name, contracts: nextContracts }));
+    setContractRemediationNotices((currentNotices) => Object.fromEntries(
+      Object.entries(currentNotices).filter(([contractName]) => contractName !== synchronizedLibrary.activeContractName),
+    ));
+    setDraftContractName(nextActiveContract.name);
+    setNodes(nextActiveContract.nodes);
+    setEdges(nextActiveContract.edges);
+  }, [contractLibrary, edges, nodes, setEdges, setNodes]);
+  useEffect(() => {
+    if (mode === "persistent") {
+      saveContractLibrary(typeof window === "undefined" ? undefined : window.localStorage, withActiveContractSnapshot(contractLibrary, nodes, edges));
+    }
+  }, [contractLibrary, edges, mode, nodes]);
+  return { activeContract, activeContractDescription, activeRemediationNotices, contractLibrary, draftContractName, handleCreateContractCopy, handleDeleteContract, handleSaveAsContract, handleSelectContract, setContractRemediationNotices, setDraftContractName };
+}
+
+function useDeleteConfirmationEffects({
+  clearNodeDeleteState,
+  clearSelectedEdgeDeleteState,
+  deleteConfirmationTimersRef,
+  edgeDeleteConfirmationTimerRef,
+  nodeDeleteStates,
+  selectedEdgeDeleteState,
+}: {
+  readonly clearNodeDeleteState: (nodeId: string) => void;
+  readonly clearSelectedEdgeDeleteState: () => void;
+  readonly deleteConfirmationTimersRef: RefObject<Map<string, number>>;
+  readonly edgeDeleteConfirmationTimerRef: RefObject<number | null>;
+  readonly nodeDeleteStates: Readonly<Record<string, DeleteConfirmationState>>;
+  readonly selectedEdgeDeleteState: SelectedEdgeDeleteState;
+}) {
+  useEffect(() => {
+    const timerMap = deleteConfirmationTimersRef.current;
+    const activeConfirmations = new Set<string>();
+    for (const [nodeId, state] of Object.entries(nodeDeleteStates)) {
+      if (state.mode === "confirm") {
+        activeConfirmations.add(nodeId);
+        if (!timerMap.has(nodeId)) {
+          timerMap.set(nodeId, window.setTimeout(() => { clearNodeDeleteState(nodeId); timerMap.delete(nodeId); }, deleteConfirmationTimeoutMs));
+        }
+      }
+    }
+
+    for (const [nodeId, timeoutId] of timerMap.entries()) {
+      if (!activeConfirmations.has(nodeId)) {
+        window.clearTimeout(timeoutId);
+        timerMap.delete(nodeId);
+      }
+    }
+  }, [clearNodeDeleteState, deleteConfirmationTimersRef, nodeDeleteStates]);
+
+  useEffect(() => {
+    if (selectedEdgeDeleteState.confirmationState.mode !== "confirm" || selectedEdgeDeleteState.edgeId === null) {
+      if (edgeDeleteConfirmationTimerRef.current !== null) {
+        window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
+        edgeDeleteConfirmationTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (edgeDeleteConfirmationTimerRef.current !== null) {
+      window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
+    }
+
+    edgeDeleteConfirmationTimerRef.current = window.setTimeout(() => { clearSelectedEdgeDeleteState(); edgeDeleteConfirmationTimerRef.current = null; }, deleteConfirmationTimeoutMs);
+    return () => {
+      if (edgeDeleteConfirmationTimerRef.current !== null) {
+        window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
+        edgeDeleteConfirmationTimerRef.current = null;
+      }
+    };
+  }, [clearSelectedEdgeDeleteState, edgeDeleteConfirmationTimerRef, selectedEdgeDeleteState]);
+
+  useEffect(() => {
+    const timerMap = deleteConfirmationTimersRef.current;
+    return () => {
+      for (const timeoutId of timerMap.values()) {
+        window.clearTimeout(timeoutId);
+      }
+      timerMap.clear();
+      if (edgeDeleteConfirmationTimerRef.current !== null) {
+        window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
+        edgeDeleteConfirmationTimerRef.current = null;
+      }
+    };
+  }, [deleteConfirmationTimersRef, edgeDeleteConfirmationTimerRef]);
+}
+
+function useDeleteManager({ setEdges, setNodes }: { readonly setEdges: SetFlowEdges; readonly setNodes: SetFlowNodes }) {
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [nodeDeleteStates, setNodeDeleteStates] = useState<Readonly<Record<string, DeleteConfirmationState>>>({});
+  const [selectedEdgeDeleteAnchor, setSelectedEdgeDeleteAnchor] = useState<SelectedEdgeDeleteAnchor | null>(null);
+  const [selectedEdgeDeleteState, setSelectedEdgeDeleteState] = useState<SelectedEdgeDeleteState>({ edgeId: null, confirmationState: idleDeleteConfirmationState });
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const deleteConfirmationTimersRef = useRef(new Map<string, number>());
   const edgeDeleteConfirmationTimerRef = useRef<number | null>(null);
-  const reactFlow = useReactFlow<FlowNode, FlowEdge>();
+  const clearNodeDeleteState = useCallback((nodeId: string) => {
+    setNodeDeleteStates((currentStates) => nodeId in currentStates
+      ? Object.fromEntries(Object.entries(currentStates).filter(([candidateNodeId]) => candidateNodeId !== nodeId))
+      : currentStates);
+  }, []);
+  const deleteNodeById = useCallback((nodeId: string) => {
+    setNodes((currentNodes) => currentNodes.filter((node) => node.id !== nodeId));
+    setEdges((currentEdges) => currentEdges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+    clearNodeDeleteState(nodeId);
+    setContextMenu((currentMenu) => currentMenu?.target.kind === "node" && currentMenu.target.targetId === nodeId ? null : currentMenu);
+  }, [clearNodeDeleteState, setEdges, setNodes]);
+  const deleteEdgeById = useCallback((edgeId: string) => {
+    setSelectedEdgeDeleteAnchor((currentAnchor) => (currentAnchor?.edgeId === edgeId ? null : currentAnchor));
+    setSelectedEdgeDeleteState((currentState) => currentState.edgeId === edgeId ? { edgeId: null, confirmationState: idleDeleteConfirmationState } : currentState);
+    setEdges((currentEdges) => currentEdges.filter((edge) => edge.id !== edgeId));
+    setContextMenu((currentMenu) => currentMenu?.target.kind === "edge" && currentMenu.target.targetId === edgeId ? null : currentMenu);
+  }, [setEdges]);
+  const clearSelectedEdgeDeleteState = useCallback(() => {
+    setSelectedEdgeDeleteState((currentState) => currentState.confirmationState.mode === "idle" && currentState.edgeId === null
+      ? currentState
+      : { edgeId: null, confirmationState: idleDeleteConfirmationState });
+  }, []);
+  const handleSelectedEdgeDeleteRequest = useCallback((edgeId: string, options?: { readonly immediate?: boolean }) => {
+    if (options?.immediate === true) {
+      deleteEdgeById(edgeId);
+      return;
+    }
+
+    setSelectedEdgeDeleteState({ edgeId, confirmationState: { mode: "confirm", startedAt: Date.now() } });
+  }, [deleteEdgeById]);
+  const handleNodeDeleteRequest = useCallback((nodeId: string, options?: { readonly immediate?: boolean }) => {
+    if (options?.immediate === true) {
+      deleteNodeById(nodeId);
+      return;
+    }
+
+    const existingTimeoutId = deleteConfirmationTimersRef.current.get(nodeId);
+    if (existingTimeoutId !== undefined) {
+      window.clearTimeout(existingTimeoutId);
+      deleteConfirmationTimersRef.current.delete(nodeId);
+    }
+
+    setNodeDeleteStates((currentStates) => ({ ...currentStates, [nodeId]: { mode: "confirm", startedAt: Date.now() } }));
+  }, [deleteNodeById]);
+  useDeleteConfirmationEffects({
+    clearNodeDeleteState,
+    clearSelectedEdgeDeleteState,
+    deleteConfirmationTimersRef,
+    edgeDeleteConfirmationTimerRef,
+    nodeDeleteStates,
+    selectedEdgeDeleteState,
+  });
+
+  return {
+    clearNodeDeleteState,
+    clearSelectedEdgeDeleteState,
+    contextMenu,
+    contextMenuRef,
+    deleteEdgeById,
+    deleteNodeById,
+    handleNodeDeleteRequest,
+    handleSelectedEdgeDeleteRequest,
+    nodeDeleteStates,
+    selectedEdgeDeleteAnchor,
+    selectedEdgeDeleteState,
+    setContextMenu,
+    setSelectedEdgeDeleteAnchor,
+  };
+}
+
+function useCanvasCompilationState({
+  draftContractName,
+  edges,
+  handleNodeDeleteRequest,
+  nodes,
+  nodeDeleteStates,
+  onCompilationStateChange,
+  onTriggerCompileChange,
+  clearNodeDeleteState,
+  deleteNodeById,
+  setNodes,
+}: {
+  readonly draftContractName: string;
+  readonly edges: readonly FlowEdge[];
+  readonly handleNodeDeleteRequest: (nodeId: string, options?: { readonly immediate?: boolean }) => void;
+  readonly nodes: readonly FlowNode[];
+  readonly nodeDeleteStates: Readonly<Record<string, DeleteConfirmationState>>;
+  readonly onCompilationStateChange?: CanvasWorkspaceProps["onCompilationStateChange"];
+  readonly onTriggerCompileChange?: CanvasWorkspaceProps["onTriggerCompileChange"];
+  readonly clearNodeDeleteState: (nodeId: string) => void;
+  readonly deleteNodeById: (nodeId: string) => void;
+  readonly setNodes: SetFlowNodes;
+}) {
   const idleMsOverride = getIdleMsOverride();
   const compilation = useAutoCompile(nodes, edges, draftContractName, idleMsOverride);
+  const diagnosticsByNodeId = useMemo(() => {
+    const nextDiagnosticsByNodeId = new Map<string, readonly CompilerDiagnostic[]>();
+    for (const diagnostic of compilation.diagnostics) {
+      if (diagnostic.reactFlowNodeId !== null) {
+        const currentDiagnostics = nextDiagnosticsByNodeId.get(diagnostic.reactFlowNodeId) ?? [];
+        nextDiagnosticsByNodeId.set(diagnostic.reactFlowNodeId, currentDiagnostics.concat(diagnostic));
+      }
+    }
+    return nextDiagnosticsByNodeId;
+  }, [compilation.diagnostics]);
+  const handleNodeFieldsChange = useCallback((nodeId: string, fields: NodeFieldMap) => {
+    setNodes((currentNodes) => currentNodes.map((node) => node.id === nodeId ? { ...node, data: { ...node.data, fields } } : node));
+  }, [setNodes]);
+  const renderedNodes = useMemo(() => nodes.map((node) => {
+    const nodeDiagnostics = diagnosticsByNodeId.get(node.id) ?? [];
+    const validationState: FlowNode["data"]["validationState"] = nodeDiagnostics.some((diagnostic) => diagnostic.severity === "error")
+      ? "error"
+      : nodeDiagnostics.some((diagnostic) => diagnostic.severity === "warning") ? "warning" : undefined;
+
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        deleteConfirmationState: nodeDeleteStates[node.id] ?? idleDeleteConfirmationState,
+        diagnosticMessages: nodeDiagnostics.map((diagnostic) => diagnostic.userMessage),
+        onDeleteCancel: () => { clearNodeDeleteState(node.id); },
+        onDeleteConfirm: () => { deleteNodeById(node.id); },
+        onDeleteRequest: (options?: { readonly immediate?: boolean }) => { handleNodeDeleteRequest(node.id, options); },
+        validationState,
+      },
+    };
+  }), [clearNodeDeleteState, deleteNodeById, diagnosticsByNodeId, handleNodeDeleteRequest, nodeDeleteStates, nodes]);
+
+  useEffect(() => {
+    onCompilationStateChange?.(compilation.status, compilation.diagnostics, compilation.sourceCode, compilation.artifact?.moveSource ?? null);
+  }, [compilation.artifact, compilation.diagnostics, compilation.sourceCode, compilation.status, onCompilationStateChange]);
+
+  useEffect(() => {
+    onTriggerCompileChange?.(compilation.triggerCompile);
+  }, [compilation.triggerCompile, onTriggerCompileChange]);
+
+  return { compilation, handleNodeFieldsChange, renderedNodes };
+}
+
+function useCanvasSelectionState({
+  edges,
+  nodes,
+  selectedEdgeDeleteAnchor,
+  setEdges,
+  setNodes,
+}: {
+  readonly edges: readonly FlowEdge[];
+  readonly nodes: readonly FlowNode[];
+  readonly selectedEdgeDeleteAnchor: SelectedEdgeDeleteAnchor | null;
+  readonly setEdges: SetFlowEdges;
+  readonly setNodes: SetFlowNodes;
+}) {
   const selectedTarget = useMemo(() => getSelectedTarget(nodes, edges), [edges, nodes]);
   const fallbackSelectedEdgeDeleteAnchor = useMemo(() => {
     if (selectedTarget.kind !== "edge" || selectedTarget.targetId === null) {
@@ -258,16 +913,8 @@ function FlowEditor({
     }
 
     const sourceNode = nodes.find((candidate) => candidate.id === edge.source);
-    const fallbackColor = typeof edge.style?.stroke === "string"
-      ? edge.style.stroke
-      : getEdgeColor(sourceNode, edge.sourceHandle ?? null);
-
-    return {
-      edgeId: edge.id,
-      x: fallbackAnchor.x,
-      y: fallbackAnchor.y,
-      color: fallbackColor,
-    } satisfies SelectedEdgeDeleteAnchor;
+    const fallbackColor = typeof edge.style?.stroke === "string" ? edge.style.stroke : getEdgeColor(sourceNode, edge.sourceHandle ?? null);
+    return { edgeId: edge.id, x: fallbackAnchor.x, y: fallbackAnchor.y, color: fallbackColor } satisfies SelectedEdgeDeleteAnchor;
   }, [edges, nodes, selectedTarget]);
   const activeSelectedEdgeDeleteAnchor = useMemo(() => {
     if (selectedTarget.kind !== "edge" || selectedTarget.targetId === null) {
@@ -278,304 +925,105 @@ function FlowEditor({
       return selectedEdgeDeleteAnchor;
     }
 
-    if (fallbackSelectedEdgeDeleteAnchor?.edgeId === selectedTarget.targetId) {
-      return fallbackSelectedEdgeDeleteAnchor;
-    }
-
-    return null;
+    return fallbackSelectedEdgeDeleteAnchor?.edgeId === selectedTarget.targetId ? fallbackSelectedEdgeDeleteAnchor : null;
   }, [fallbackSelectedEdgeDeleteAnchor, selectedEdgeDeleteAnchor, selectedTarget]);
-  const diagnosticsByNodeId = useMemo(() => {
-    const nextDiagnosticsByNodeId = new Map<string, readonly CompilerDiagnostic[]>();
+  const selectTarget = useCallback((target: CanvasContextMenuTarget) => {
+    setNodes((currentNodes) => currentNodes.map((node) => {
+      const selected = target.kind === "node" && target.targetId === node.id;
+      return node.selected === selected ? node : { ...node, selected };
+    }));
+    setEdges((currentEdges) => currentEdges.map((edge) => {
+      const selected = target.kind === "edge" && target.targetId === edge.id;
+      return edge.selected === selected ? edge : { ...edge, selected };
+    }));
+  }, [setEdges, setNodes]);
 
-    for (const diagnostic of compilation.diagnostics) {
-      if (diagnostic.reactFlowNodeId === null) {
-        continue;
-      }
+  return { activeSelectedEdgeDeleteAnchor, selectedTarget, selectTarget };
+}
 
-      const currentDiagnostics = nextDiagnosticsByNodeId.get(diagnostic.reactFlowNodeId) ?? [];
-      nextDiagnosticsByNodeId.set(diagnostic.reactFlowNodeId, currentDiagnostics.concat(diagnostic));
-    }
+type UseCanvasInteractionsOptions = {
+  readonly deleteEdgeById: (edgeId: string) => void;
+  readonly deleteNodeById: (nodeId: string) => void;
+  readonly edges: readonly FlowEdge[];
+  readonly nodes: readonly FlowNode[];
+  readonly reactFlow: ReturnType<typeof useReactFlow<FlowNode, FlowEdge>>;
+  readonly selectTarget: (target: CanvasContextMenuTarget) => void;
+  readonly setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
+  readonly setEdges: SetFlowEdges;
+  readonly setNodes: SetFlowNodes;
+};
 
-    return nextDiagnosticsByNodeId;
-  }, [compilation.diagnostics]);
-
-  const handleNodeFieldsChange = useCallback(
-    (nodeId: string, fields: NodeFieldMap) => {
-      setNodes((currentNodes) =>
-        currentNodes.map((node) =>
-          node.id === nodeId
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  fields,
-                },
-              }
-            : node,
-        ),
-      );
-    },
-    [setNodes],
-  );
-
-  const clearNodeDeleteState = useCallback((nodeId: string) => {
-    setNodeDeleteStates((currentStates) => {
-      if (!(nodeId in currentStates)) {
-        return currentStates;
-      }
-
-      return Object.fromEntries(Object.entries(currentStates).filter(([candidateNodeId]) => candidateNodeId !== nodeId));
-    });
-  }, []);
-
-  const deleteNodeById = useCallback(
-    (nodeId: string) => {
-      setNodes((currentNodes) => currentNodes.filter((node) => node.id !== nodeId));
-      setEdges((currentEdges) => currentEdges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
-      clearNodeDeleteState(nodeId);
-      setContextMenu((currentMenu) => {
-        if (currentMenu?.target.kind === "node" && currentMenu.target.targetId === nodeId) {
-          return null;
-        }
-
-        return currentMenu;
-      });
-    },
-    [clearNodeDeleteState, setEdges, setNodes],
-  );
-
-  const deleteEdgeById = useCallback(
-    (edgeId: string) => {
-      setSelectedEdgeDeleteAnchor((currentAnchor) => (currentAnchor?.edgeId === edgeId ? null : currentAnchor));
-      setSelectedEdgeDeleteState((currentState) =>
-        currentState.edgeId === edgeId
-          ? {
-              edgeId: null,
-              confirmationState: idleDeleteConfirmationState,
-            }
-          : currentState,
-      );
-      setEdges((currentEdges) => currentEdges.filter((edge) => edge.id !== edgeId));
-      setContextMenu((currentMenu) => {
-        if (currentMenu?.target.kind === "edge" && currentMenu.target.targetId === edgeId) {
-          return null;
-        }
-
-        return currentMenu;
-      });
-    },
-    [setEdges],
-  );
-
-  const clearSelectedEdgeDeleteState = useCallback(() => {
-    setSelectedEdgeDeleteState((currentState) => {
-      if (currentState.confirmationState.mode === "idle" && currentState.edgeId === null) {
-        return currentState;
-      }
-
-      return {
-        edgeId: null,
-        confirmationState: idleDeleteConfirmationState,
-      };
-    });
-  }, []);
-
-  const handleSelectedEdgeDeleteRequest = useCallback(
-    (edgeId: string, options?: { readonly immediate?: boolean }) => {
-      if (options?.immediate === true) {
-        deleteEdgeById(edgeId);
-        return;
-      }
-
-      setSelectedEdgeDeleteState({
-        edgeId,
-        confirmationState: { mode: "confirm", startedAt: Date.now() },
-      });
-    },
-    [deleteEdgeById],
-  );
-
-  const selectTarget = useCallback(
-    (target: CanvasContextMenuTarget) => {
-      setNodes((currentNodes) =>
-        currentNodes.map((node) => {
-          const selected = target.kind === "node" && target.targetId === node.id;
-          return node.selected === selected ? node : { ...node, selected };
-        }),
-      );
-      setEdges((currentEdges) =>
-        currentEdges.map((edge) => {
-          const selected = target.kind === "edge" && target.targetId === edge.id;
-          return edge.selected === selected ? edge : { ...edge, selected };
-        }),
-      );
-    },
-    [setEdges, setNodes],
-  );
-
-  const handleNodeDeleteRequest = useCallback(
-    (nodeId: string, options?: { readonly immediate?: boolean }) => {
-      if (options?.immediate === true) {
-        deleteNodeById(nodeId);
-        return;
-      }
-
-      const existingTimeoutId = deleteConfirmationTimersRef.current.get(nodeId);
-      if (existingTimeoutId !== undefined) {
-        window.clearTimeout(existingTimeoutId);
-        deleteConfirmationTimersRef.current.delete(nodeId);
-      }
-
-      setNodeDeleteStates((currentStates) => ({
-        ...currentStates,
-        [nodeId]: { mode: "confirm", startedAt: Date.now() },
-      }));
-    },
-    [deleteNodeById],
-  );
-
-  const renderedNodes = useMemo(
-    () =>
-      nodes.map((node) => {
-        const nodeDiagnostics = diagnosticsByNodeId.get(node.id) ?? [];
-        const validationState: FlowNode["data"]["validationState"] = nodeDiagnostics.some((diagnostic) => diagnostic.severity === "error")
-          ? "error"
-          : nodeDiagnostics.some((diagnostic) => diagnostic.severity === "warning")
-            ? "warning"
-            : undefined;
-
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            deleteConfirmationState: nodeDeleteStates[node.id] ?? idleDeleteConfirmationState,
-            diagnosticMessages: nodeDiagnostics.map((diagnostic) => diagnostic.userMessage),
-            onDeleteCancel: () => {
-              clearNodeDeleteState(node.id);
-            },
-            onDeleteConfirm: () => {
-              deleteNodeById(node.id);
-            },
-            onDeleteRequest: (options?: { readonly immediate?: boolean }) => {
-              handleNodeDeleteRequest(node.id, options);
-            },
-            validationState,
-          },
-        };
-      }),
-    [clearNodeDeleteState, deleteNodeById, diagnosticsByNodeId, handleNodeDeleteRequest, nodeDeleteStates, nodes],
-  );
-
-  const activeContractDescription = activeContract.description ?? (activeContract.isSeeded ? "Curated example contract." : "Local contract snapshot.");
-
+function useCanvasInteractions({
+  deleteEdgeById,
+  deleteNodeById,
+  edges,
+  nodes,
+  reactFlow,
+  selectTarget,
+  setContextMenu,
+  setEdges,
+  setNodes,
+}: UseCanvasInteractionsOptions) {
+  const nodeCounterRef = useRef(0);
   const handleDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
   }, []);
+  const handleDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setContextMenu(null);
+    const type = event.dataTransfer.getData("application/reactflow");
+    const definition = getNodeDefinition(type);
+    if (definition === undefined) {
+      return;
+    }
 
-  const handleDrop = useCallback(
-    (event: ReactDragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      setContextMenu(null);
+    nodeCounterRef.current += 1;
+    const [rawX = "0", rawY = "0"] = event.dataTransfer.getData("application/x-offset").split(",");
+    const position = reactFlow.screenToFlowPosition({ x: event.clientX - Number(rawX || 0), y: event.clientY - Number(rawY || 0) });
+    setNodes((currentNodes) => currentNodes.concat({
+      id: ["dnd", String(nodeCounterRef.current), String(Date.now())].join("_"),
+      type: definition.type,
+      position,
+      data: createFlowNodeData(definition),
+    } satisfies FlowNode));
+  }, [reactFlow, setContextMenu, setNodes]);
+  const handleConnect = useCallback((connection: Connection) => {
+    if (!isValidFlowConnection(connection, nodes, edges)) {
+      return;
+    }
 
-      const type = event.dataTransfer.getData("application/reactflow");
-      const definition = getNodeDefinition(type);
-      if (definition === undefined) {
-        return;
-      }
-
-      nodeCounterRef.current += 1;
-
-      // Subtract the grab offset so the node appears where the user was pointing,
-      // not offset by however far into the drag source the pointer was.
-      const rawOffset = event.dataTransfer.getData("application/x-offset");
-      const parts = rawOffset.split(",");
-      const ox = isFinite(Number(parts[0])) ? Number(parts[0]) : 0;
-      const oy = isFinite(Number(parts[1])) ? Number(parts[1]) : 0;
-
-      const position = reactFlow.screenToFlowPosition({
-        x: event.clientX - ox,
-        y: event.clientY - oy,
-      });
-
-      const nextNode: FlowNode = {
-        id: ["dnd", String(nodeCounterRef.current), String(Date.now())].join("_"),
-        type: definition.type,
-        position,
-        data: createFlowNodeData(definition),
-      };
-
-      setNodes((currentNodes) => currentNodes.concat(nextNode));
-    },
-    [reactFlow, setNodes],
-  );
-
-  const handleConnect = useCallback(
-    (connection: Connection) => {
-      if (!isValidFlowConnection(connection, nodes, edges)) {
-        return;
-      }
-
-      const sourceNode = nodes.find((node) => node.id === connection.source);
-      const stroke = getEdgeColor(sourceNode, connection.sourceHandle);
-      const strokeWidth = getEdgeStrokeWidth(sourceNode, connection.sourceHandle);
-      setContextMenu(null);
-
-      setEdges((currentEdges) =>
-        addEdge(
-          {
-            ...connection,
-            animated: true,
-            style: { stroke, strokeWidth },
-          },
-          currentEdges,
-        ),
-      );
-    },
-    [edges, nodes, setEdges],
-  );
-
-  const handlePaneContextMenu = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      const target = { kind: "canvas", targetId: null } satisfies CanvasContextMenuTarget;
-      selectTarget(target);
-      setContextMenu({ x: event.clientX, y: event.clientY, target });
-    },
-    [selectTarget],
-  );
-
-  const handleNodeContextMenu = useCallback(
-    (event: ReactMouseEvent, node: FlowNode) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const target = { kind: "node", targetId: node.id } satisfies CanvasContextMenuTarget;
-      selectTarget(target);
-      setContextMenu({ x: event.clientX, y: event.clientY, target });
-    },
-    [selectTarget],
-  );
-
-  const handleEdgeContextMenu = useCallback(
-    (event: ReactMouseEvent, edge: FlowEdge) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const target = { kind: "edge", targetId: edge.id } satisfies CanvasContextMenuTarget;
-      selectTarget(target);
-      setContextMenu({ x: event.clientX, y: event.clientY, target });
-    },
-    [selectTarget],
-  );
-
+    const sourceNode = nodes.find((node) => node.id === connection.source);
+    const style = { stroke: getEdgeColor(sourceNode, connection.sourceHandle), strokeWidth: getEdgeStrokeWidth(sourceNode, connection.sourceHandle) };
+    setContextMenu(null);
+    setEdges((currentEdges) => addEdge({ ...connection, animated: true, style }, currentEdges));
+  }, [edges, nodes, setContextMenu, setEdges]);
+  const handlePaneContextMenu = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const target = { kind: "canvas", targetId: null } satisfies CanvasContextMenuTarget;
+    selectTarget(target);
+    setContextMenu({ x: event.clientX, y: event.clientY, target });
+  }, [selectTarget, setContextMenu]);
+  const handleNodeContextMenu = useCallback((event: ReactMouseEvent, node: FlowNode) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = { kind: "node", targetId: node.id } satisfies CanvasContextMenuTarget;
+    selectTarget(target);
+    setContextMenu({ x: event.clientX, y: event.clientY, target });
+  }, [selectTarget, setContextMenu]);
+  const handleEdgeContextMenu = useCallback((event: ReactMouseEvent, edge: FlowEdge) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = { kind: "edge", targetId: edge.id } satisfies CanvasContextMenuTarget;
+    selectTarget(target);
+    setContextMenu({ x: event.clientX, y: event.clientY, target });
+  }, [selectTarget, setContextMenu]);
   const handleAutoArrange = useCallback(() => {
     setNodes((currentNodes) => autoArrangeFlow(currentNodes, edges));
     setContextMenu(null);
-    requestAnimationFrame(() => {
-      void reactFlow.fitView({ duration: 240, padding: 0.24 });
-    });
-  }, [edges, reactFlow, setNodes]);
-
-  const handleDeleteFromContextMenu = useCallback(() => {
+    requestAnimationFrame(() => { void reactFlow.fitView({ duration: 240, padding: 0.24 }); });
+  }, [edges, reactFlow, setContextMenu, setNodes]);
+  const handleDeleteFromContextMenu = useCallback((contextMenu: ContextMenuState | null) => {
     if (contextMenu === null) {
       return;
     }
@@ -583,140 +1031,51 @@ function FlowEditor({
     if (contextMenu.target.kind === "node") {
       deleteNodeById(contextMenu.target.targetId);
     }
-
     if (contextMenu.target.kind === "edge") {
       deleteEdgeById(contextMenu.target.targetId);
     }
-
     setContextMenu(null);
-  }, [contextMenu, deleteEdgeById, deleteNodeById]);
+  }, [deleteEdgeById, deleteNodeById, setContextMenu]);
+  const validateConnection = useCallback((connection: Connection | Edge) => isValidFlowConnection({
+    source: connection.source,
+    target: connection.target,
+    sourceHandle: connection.sourceHandle ?? null,
+    targetHandle: connection.targetHandle ?? null,
+  }, nodes, edges), [edges, nodes]);
+  return { handleAutoArrange, handleConnect, handleDeleteFromContextMenu, handleDragOver, handleDrop, handleEdgeContextMenu, handleNodeContextMenu, handlePaneContextMenu, validateConnection };
+}
 
-  const handleSelectContract = useCallback(
-    (contractName: string) => {
-      const currentContractSnapshot = contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName);
-      if (
-        contractName !== contractLibrary.activeContractName &&
-        currentContractSnapshot !== undefined &&
-        hasUnsavedCanvasChanges(currentContractSnapshot, nodes, edges) &&
-        typeof window !== "undefined" &&
-        !window.confirm("Replace the current unsaved canvas changes with the selected contract?")
-      ) {
-        return;
-      }
+type UseFlowEditorEffectsOptions = {
+  readonly contextMenu: ContextMenuState | null;
+  readonly contextMenuRef: RefObject<HTMLDivElement | null>;
+  readonly deleteEdgeById: (edgeId: string) => void;
+  readonly deleteNodeById: (nodeId: string) => void;
+  readonly edges: readonly FlowEdge[];
+  readonly fallbackSelectedEdgeDeleteAnchor: SelectedEdgeDeleteAnchor | null;
+  readonly focusedDiagnosticNodeId?: string | null;
+  readonly focusedDiagnosticRequestKey?: number;
+  readonly nodes: readonly FlowNode[];
+  readonly reactFlow: ReturnType<typeof useReactFlow<FlowNode, FlowEdge>>;
+  readonly selectedTarget: CanvasSelectionTarget;
+  readonly setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
+  readonly setSelectedEdgeDeleteAnchor: Dispatch<SetStateAction<SelectedEdgeDeleteAnchor | null>>;
+};
 
-      const nextContract = withActiveContractSnapshot(contractLibrary, nodes, edges).contracts.find(
-        (contract) => contract.name === contractName,
-      );
-      if (nextContract === undefined) {
-        return;
-      }
-
-      setContractLibrary((currentLibrary) => ({
-        ...withActiveContractSnapshot(currentLibrary, nodes, edges),
-        activeContractName: contractName,
-      }));
-      setDraftContractName(contractName);
-      setNodes(nextContract.nodes);
-      setEdges(nextContract.edges);
-      setContextMenu(null);
-      requestAnimationFrame(() => {
-        void reactFlow.fitView({ duration: 200, padding: 0.24 });
-      });
-    },
-    [contractLibrary, edges, nodes, reactFlow, setEdges, setNodes],
-  );
-
-  const handleSaveAsContract = useCallback(() => {
-    const normalizedName = sanitizeContractName(draftContractName);
-
-    setContractLibrary((currentLibrary) => {
-      const synchronizedLibrary = withActiveContractSnapshot(currentLibrary, nodes, edges);
-      const contractIndex = synchronizedLibrary.contracts.findIndex((contract) => contract.name === normalizedName);
-      const nextContract =
-        contractIndex === -1
-          ? createNamedFlowContract(normalizedName, nodes, edges)
-          : updateNamedFlowContract(synchronizedLibrary.contracts[contractIndex], nodes, edges);
-
-      if (contractIndex === -1) {
-        return {
-          ...synchronizedLibrary,
-          activeContractName: normalizedName,
-          contracts: synchronizedLibrary.contracts.concat(nextContract),
-        };
-      }
-
-      return {
-        ...synchronizedLibrary,
-        activeContractName: normalizedName,
-        contracts: synchronizedLibrary.contracts.map((contract, index) => (index === contractIndex ? nextContract : contract)),
-      };
-    });
-    setDraftContractName(normalizedName);
-    setContractRemediationNotices((currentNotices) => ({
-      ...currentNotices,
-      [normalizedName]: [],
-    }));
-  }, [draftContractName, edges, nodes]);
-
-  const handleCreateContractCopy = useCallback(() => {
-    const uniqueName = createUniqueContractName(draftContractName, contractLibrary.contracts.map((contract) => contract.name));
-    const nextContract = createNamedFlowContract(uniqueName, nodes, edges);
-
-    setContractLibrary((currentLibrary) => {
-      const synchronizedLibrary = withActiveContractSnapshot(currentLibrary, nodes, edges);
-
-      return {
-        ...synchronizedLibrary,
-        activeContractName: uniqueName,
-        contracts: synchronizedLibrary.contracts.concat(nextContract),
-      };
-    });
-    setDraftContractName(uniqueName);
-    setContractRemediationNotices((currentNotices) => ({
-      ...currentNotices,
-      [uniqueName]: [],
-    }));
-  }, [contractLibrary.contracts, draftContractName, edges, nodes]);
-
-  const handleDeleteContract = useCallback(() => {
-    if (contractLibrary.contracts.length <= 1) {
-      return;
-    }
-
-    const synchronizedLibrary = withActiveContractSnapshot(contractLibrary, nodes, edges);
-    const nextContracts = synchronizedLibrary.contracts.filter((contract) => contract.name !== synchronizedLibrary.activeContractName);
-    const nextActiveContract = nextContracts[0];
-
-    setContractLibrary(() => ({
-      ...synchronizedLibrary,
-      activeContractName: nextActiveContract.name,
-      contracts: nextContracts,
-    }));
-    setContractRemediationNotices((currentNotices) => {
-      return Object.fromEntries(
-        Object.entries(currentNotices).filter(([contractName]) => contractName !== synchronizedLibrary.activeContractName),
-      );
-    });
-    setDraftContractName(nextActiveContract.name);
-    setNodes(nextActiveContract.nodes);
-    setEdges(nextActiveContract.edges);
-  }, [contractLibrary, edges, nodes, setEdges, setNodes]);
-
-  const validateConnection = useCallback(
-    (connection: Connection | Edge) =>
-      isValidFlowConnection(
-        {
-          source: connection.source,
-          target: connection.target,
-          sourceHandle: connection.sourceHandle ?? null,
-          targetHandle: connection.targetHandle ?? null,
-        },
-        nodes,
-        edges,
-      ),
-    [edges, nodes],
-  );
-
+function useFlowEditorEffects({
+  contextMenu,
+  contextMenuRef,
+  deleteEdgeById,
+  deleteNodeById,
+  edges,
+  fallbackSelectedEdgeDeleteAnchor,
+  focusedDiagnosticNodeId,
+  focusedDiagnosticRequestKey,
+  nodes,
+  reactFlow,
+  selectedTarget,
+  setContextMenu,
+  setSelectedEdgeDeleteAnchor,
+}: UseFlowEditorEffectsOptions) {
   useEffect(() => {
     if (selectedTarget.kind !== "edge" || selectedTarget.targetId === null) {
       return;
@@ -730,23 +1089,12 @@ function FlowEditor({
     const fallbackColor = fallbackSelectedEdgeDeleteAnchor?.edgeId === edge.id
       ? fallbackSelectedEdgeDeleteAnchor.color
       : getEdgeColor(nodes.find((candidate) => candidate.id === edge.source), edge.sourceHandle ?? null);
-
     const updateAnchor = () => {
       const edgePath = document.querySelector<SVGPathElement>(`.react-flow__edge[data-id="${edge.id}"] .react-flow__edge-path`);
-      if (
-        edgePath !== null
-        && typeof edgePath.getTotalLength === "function"
-        && typeof edgePath.getPointAtLength === "function"
-      ) {
+      if (edgePath !== null && typeof edgePath.getTotalLength === "function" && typeof edgePath.getPointAtLength === "function") {
         const midpoint = edgePath.getPointAtLength(edgePath.getTotalLength() / 2);
         const computedStroke = typeof window === "undefined" ? "" : window.getComputedStyle(edgePath).stroke;
-
-        setSelectedEdgeDeleteAnchor({
-          edgeId: edge.id,
-          x: midpoint.x,
-          y: midpoint.y,
-          color: computedStroke || fallbackColor,
-        });
+        setSelectedEdgeDeleteAnchor({ edgeId: edge.id, x: midpoint.x, y: midpoint.y, color: computedStroke || fallbackColor });
       }
     };
 
@@ -756,168 +1104,28 @@ function FlowEditor({
     }
 
     const frameId = window.requestAnimationFrame(updateAnchor);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [edges, fallbackSelectedEdgeDeleteAnchor, nodes, selectedTarget]);
-
-  useEffect(() => {
-    if (selectedEdgeDeleteState.confirmationState.mode !== "confirm" || selectedEdgeDeleteState.edgeId === null) {
-      if (edgeDeleteConfirmationTimerRef.current !== null) {
-        window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
-        edgeDeleteConfirmationTimerRef.current = null;
-      }
-
-      return;
-    }
-
-    if (edgeDeleteConfirmationTimerRef.current !== null) {
-      window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
-    }
-
-    edgeDeleteConfirmationTimerRef.current = window.setTimeout(() => {
-      clearSelectedEdgeDeleteState();
-      edgeDeleteConfirmationTimerRef.current = null;
-    }, deleteConfirmationTimeoutMs);
-
-    return () => {
-      if (edgeDeleteConfirmationTimerRef.current !== null) {
-        window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
-        edgeDeleteConfirmationTimerRef.current = null;
-      }
-    };
-  }, [clearSelectedEdgeDeleteState, selectedEdgeDeleteState]);
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") {
-      return;
-    }
-
-    const mediaQuery = window.matchMedia(desktopMediaQuery);
-
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsDesktop(event.matches);
-    };
-
-    mediaQuery.addEventListener("change", handleChange);
-    return () => {
-      mediaQuery.removeEventListener("change", handleChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    const timerMap = deleteConfirmationTimersRef.current;
-
-    const activeConfirmations = new Set<string>();
-
-    for (const [nodeId, state] of Object.entries(nodeDeleteStates)) {
-      if (state.mode !== "confirm") {
-        continue;
-      }
-
-      activeConfirmations.add(nodeId);
-      if (timerMap.has(nodeId)) {
-        continue;
-      }
-
-      const timeoutId = window.setTimeout(() => {
-        clearNodeDeleteState(nodeId);
-        timerMap.delete(nodeId);
-      }, deleteConfirmationTimeoutMs);
-
-      timerMap.set(nodeId, timeoutId);
-    }
-
-    for (const [nodeId, timeoutId] of timerMap.entries()) {
-      if (activeConfirmations.has(nodeId)) {
-        continue;
-      }
-
-      window.clearTimeout(timeoutId);
-      timerMap.delete(nodeId);
-    }
-  }, [clearNodeDeleteState, nodeDeleteStates]);
-
-  useEffect(() => {
-    const timerMap = deleteConfirmationTimersRef.current;
-
-    return () => {
-      for (const timeoutId of timerMap.values()) {
-        window.clearTimeout(timeoutId);
-      }
-
-      timerMap.clear();
-
-      if (edgeDeleteConfirmationTimerRef.current !== null) {
-        window.clearTimeout(edgeDeleteConfirmationTimerRef.current);
-        edgeDeleteConfirmationTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (mode !== "persistent") {
-      return;
-    }
-
-    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, {
-      isContractPanelOpen,
-    });
-  }, [isContractPanelOpen, mode]);
-
-  useEffect(() => {
-    if (mode !== "persistent") {
-      return;
-    }
-
-    saveContractLibrary(
-      typeof window === "undefined" ? undefined : window.localStorage,
-      withActiveContractSnapshot(contractLibrary, nodes, edges),
-    );
-  }, [contractLibrary, edges, mode, nodes]);
-
-  useEffect(() => {
-    onCompilationStateChange?.(
-      compilation.status,
-      compilation.diagnostics,
-      compilation.sourceCode,
-      compilation.artifact?.moveSource ?? null,
-    );
-  }, [compilation.artifact, compilation.diagnostics, compilation.sourceCode, compilation.status, onCompilationStateChange]);
-
-  useEffect(() => {
-    onTriggerCompileChange?.(compilation.triggerCompile);
-  }, [compilation.triggerCompile, onTriggerCompileChange]);
-
+    return () => { window.cancelAnimationFrame(frameId); };
+  }, [edges, fallbackSelectedEdgeDeleteAnchor, nodes, selectedTarget, setSelectedEdgeDeleteAnchor]);
   useEffect(() => {
     if (focusedDiagnosticNodeId === null || focusedDiagnosticNodeId === undefined) {
       return;
     }
 
     const targetNode = nodes.find((node) => node.id === focusedDiagnosticNodeId);
-    if (targetNode === undefined) {
-      return;
+    if (targetNode !== undefined) {
+      void reactFlow.setCenter(targetNode.position.x + 120, targetNode.position.y + 80, { duration: 180, zoom: 1 });
     }
-
-    void reactFlow.setCenter(targetNode.position.x + 120, targetNode.position.y + 80, {
-      duration: 180,
-      zoom: 1,
-    });
   }, [focusedDiagnosticNodeId, focusedDiagnosticRequestKey, nodes, reactFlow]);
-
   useEffect(() => {
     if (contextMenu === null) {
       return undefined;
     }
 
     const handleWindowPointerDown = (event: PointerEvent) => {
-      if (contextMenuRef.current?.contains(event.target as Node)) {
-        return;
+      if (!contextMenuRef.current?.contains(event.target as Node)) {
+        setContextMenu(null);
       }
-
-      setContextMenu(null);
     };
-
     const handleWindowKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setContextMenu(null);
@@ -926,20 +1134,14 @@ function FlowEditor({
 
     window.addEventListener("pointerdown", handleWindowPointerDown);
     window.addEventListener("keydown", handleWindowKeyDown);
-
     return () => {
       window.removeEventListener("pointerdown", handleWindowPointerDown);
       window.removeEventListener("keydown", handleWindowKeyDown);
     };
-  }, [contextMenu]);
-
+  }, [contextMenu, contextMenuRef, setContextMenu]);
   useEffect(() => {
     const handleWindowKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Delete" && event.key !== "Backspace") {
-        return;
-      }
-
-      if (isTextEntryElement(event.target)) {
+      if ((event.key !== "Delete" && event.key !== "Backspace") || isTextEntryElement(event.target)) {
         return;
       }
 
@@ -960,285 +1162,181 @@ function FlowEditor({
       window.removeEventListener("keydown", handleWindowKeyDown);
     };
   }, [deleteEdgeById, deleteNodeById, selectedTarget]);
+}
 
+interface FlowEditorViewProps {
+  readonly activeContract: NamedFlowContract;
+  readonly activeContractDescription: string;
+  readonly activeRemediationNotices: readonly RemediationNotice[];
+  readonly activeSelectedEdgeDeleteAnchor: SelectedEdgeDeleteAnchor | null;
+  readonly clearSelectedEdgeDeleteState: () => void;
+  readonly compilationHandleNodeFieldsChange: (nodeId: string, fields: NodeFieldMap) => void;
+  readonly contextMenu: ContextMenuState | null;
+  readonly contextMenuRef: RefObject<HTMLDivElement | null>;
+  readonly contractLibrary: ContractLibrary;
+  readonly deleteEdgeById: (edgeId: string) => void;
+  readonly draftContractName: string;
+  readonly edges: readonly FlowEdge[];
+  readonly handleAutoArrange: () => void;
+  readonly handleConnect: (connection: Connection) => void;
+  readonly handleCreateContractCopy: () => void;
+  readonly handleDeleteContract: () => void;
+  readonly handleDeleteFromContextMenu: () => void;
+  readonly handleDragOver: (event: ReactDragEvent<HTMLDivElement>) => void;
+  readonly handleDrop: (event: ReactDragEvent<HTMLDivElement>) => void;
+  readonly handleEdgeContextMenu: (event: ReactMouseEvent, edge: FlowEdge) => void;
+  readonly handleNodeContextMenu: (event: ReactMouseEvent, node: FlowNode) => void;
+  readonly handlePaneContextMenu: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  readonly handleSaveAsContract: () => void;
+  readonly handleSelectContract: (contractName: string) => void;
+  readonly handleSelectedEdgeDeleteRequest: (edgeId: string, options?: { readonly immediate?: boolean }) => void;
+  readonly initialMode: NonNullable<CanvasWorkspaceProps["mode"]>;
+  readonly isContractPanelOpen: boolean;
+  readonly isDesktop: boolean;
+  readonly nodes: readonly FlowNode[];
+  readonly onEdgesChange: ReturnType<typeof useEdgesState<FlowEdge>>[2];
+  readonly onNodesChange: ReturnType<typeof useNodesState<FlowNode>>[2];
+  readonly renderedNodes: readonly FlowNode[];
+  readonly selectedEdgeDeleteState: SelectedEdgeDeleteState;
+  readonly selectedTarget: CanvasSelectionTarget;
+  readonly setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
+  readonly setDraftContractName: (name: string) => void;
+  readonly setIsContractPanelOpen: Dispatch<SetStateAction<boolean>>;
+  readonly validateConnection: (connection: Connection | Edge) => boolean;
+}
+
+function FlowEditorView({
+  activeContract,
+  activeContractDescription,
+  activeRemediationNotices,
+  activeSelectedEdgeDeleteAnchor,
+  clearSelectedEdgeDeleteState,
+  compilationHandleNodeFieldsChange,
+  contextMenu,
+  contextMenuRef,
+  contractLibrary,
+  deleteEdgeById,
+  draftContractName,
+  edges,
+  handleAutoArrange,
+  handleConnect,
+  handleCreateContractCopy,
+  handleDeleteContract,
+  handleDeleteFromContextMenu,
+  handleDragOver,
+  handleDrop,
+  handleEdgeContextMenu,
+  handleNodeContextMenu,
+  handlePaneContextMenu,
+  handleSaveAsContract,
+  handleSelectContract,
+  handleSelectedEdgeDeleteRequest,
+  initialMode,
+  isContractPanelOpen,
+  isDesktop,
+  nodes,
+  onEdgesChange,
+  onNodesChange,
+  renderedNodes,
+  selectedEdgeDeleteState,
+  selectedTarget,
+  setContextMenu,
+  setDraftContractName,
+  setIsContractPanelOpen,
+  validateConnection,
+}: FlowEditorViewProps) {
   return (
-    <NodeFieldEditingContext.Provider value={handleNodeFieldsChange}>
+    <NodeFieldEditingContext.Provider value={compilationHandleNodeFieldsChange}>
       <div className="ff-canvas" data-testid="canvas-workspace" onContextMenu={handlePaneContextMenu}>
-      {mode === "persistent" && !isDesktop && isContractPanelOpen ? (
-        <button
-          aria-label="Close saved contract controls overlay"
-          className="ff-canvas__drawer-overlay"
-          onClick={() => {
-            setIsContractPanelOpen(false);
-          }}
-          style={{ left: "calc(min(24rem, 88vw) + 2.75rem)" }}
-          type="button"
-        />
-      ) : null}
+        {initialMode === "persistent" && !isDesktop && isContractPanelOpen ? (
+          <button aria-label="Close saved contract controls overlay" className="ff-canvas__drawer-overlay" onClick={() => { setIsContractPanelOpen(false); }} style={{ left: "calc(min(24rem, 88vw) + 2.75rem)" }} type="button" />
+        ) : null}
 
-      {mode === "persistent" ? (
-        <div className="ff-canvas__drawer ff-canvas__drawer--left">
-        <div
-          className="ff-canvas__drawer-shell"
-          style={{
-            transform: isContractPanelOpen ? "translateX(0)" : "translateX(calc(-100% + 2.75rem))",
-          }}
-        >
-          <aside
-            aria-hidden={!isContractPanelOpen}
-            aria-label="Saved contract controls"
-            className="ff-contract-panel"
-            id="saved-contract-controls"
-            inert={!isContractPanelOpen}
-            role="region"
-          >
-            <div className="ff-contract-panel__header">
-              <p className="ff-contract-panel__eyebrow">Contracts</p>
-              <h2 className="ff-contract-panel__title">Save / Load</h2>
-              <p className="ff-contract-panel__copy">Manage local flow snapshots without taking canvas space away from the editor.</p>
-            </div>
-
-            {activeRemediationNotices.length > 0 ? (
-              <div aria-live="polite" className="ff-contract-bar" role="status">
-                <p className="ff-contract-bar__label">Legacy remediation required</p>
-                {activeRemediationNotices.map((notice) => (
-                  <p key={`${notice.nodeId}_${notice.legacyType}`} className="ff-contract-bar__meta">
-                    {notice.message} {notice.suggestedAction}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-
-            <div className="ff-contract-bar">
-              <label className="ff-contract-bar__field">
-                <span className="ff-contract-bar__label">Saved Contract</span>
-                <select
-                  aria-label="Saved contract"
-                  className="ff-contract-bar__input"
-                  value={contractLibrary.activeContractName}
-                  onChange={(event) => {
-                    handleSelectContract(event.target.value);
-                  }}
-                >
-                  {contractLibrary.contracts.map((contract) => (
-                    <option key={contract.name} value={contract.name}>
-                      {contract.isSeeded === true ? `Example · ${contract.name}` : contract.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <p className="ff-contract-bar__meta">
-                {activeContract.isSeeded === true ? "Seeded example" : "User contract"} · {activeContractDescription}
-              </p>
-
-              <label className="ff-contract-bar__field ff-contract-bar__field--name">
-                <span className="ff-contract-bar__label">Contract Name</span>
-                <input
-                  aria-label="Contract name"
-                  className="ff-contract-bar__input"
-                  type="text"
-                  value={draftContractName}
-                  onChange={(event) => {
-                    setDraftContractName(event.target.value);
-                  }}
-                />
-              </label>
-
-              <div className="ff-contract-bar__actions">
-                <button className="ff-contract-bar__button" type="button" onClick={handleSaveAsContract}>
-                  Save
-                </button>
-                <button className="ff-contract-bar__button" type="button" onClick={handleCreateContractCopy}>
-                  Save Copy
-                </button>
-                <button
-                  className="ff-contract-bar__button ff-contract-bar__button--danger"
-                  type="button"
-                  onClick={handleDeleteContract}
-                  disabled={contractLibrary.contracts.length <= 1}
-                >
-                  Delete
-                </button>
-              </div>
-
-              <p className="ff-contract-bar__meta">Nodes, edges, and positions auto-save locally for the active contract.</p>
-            </div>
-          </aside>
-
-          <DrawerHandle
-            closeLabel="Close saved contract controls"
-            controls="saved-contract-controls"
-            drawerLabel="Contracts"
-            expanded={isContractPanelOpen}
-            onClick={() => {
-              setIsContractPanelOpen((open) => !open);
-            }}
-            openLabel="Open saved contract controls"
-            side="left"
+        {initialMode === "persistent" ? (
+          <ContractDrawer
+            activeContract={activeContract} activeContractDescription={activeContractDescription} activeRemediationNotices={activeRemediationNotices}
+            contractLibrary={contractLibrary} draftContractName={draftContractName} isContractPanelOpen={isContractPanelOpen}
+            onCreateContractCopy={handleCreateContractCopy} onDeleteContract={handleDeleteContract} onSaveAsContract={handleSaveAsContract}
+            onSelectContract={handleSelectContract} onSetDraftContractName={setDraftContractName} onTogglePanel={() => { setIsContractPanelOpen((open) => !open); }}
           />
-        </div>
-        </div>
-      ) : null}
-
-      <ReactFlow<FlowNode, FlowEdge>
-        aria-label="Node editor canvas"
-        className="ff-canvas__flow"
-        defaultEdgeOptions={{ animated: true }}
-        edges={edges}
-        fitView={true}
-        isValidConnection={validateConnection}
-        nodeTypes={flowNodeTypes}
-        nodes={renderedNodes}
-        onConnect={handleConnect}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        onEdgeContextMenu={handleEdgeContextMenu}
-        onEdgesChange={onEdgesChange}
-        onNodeContextMenu={handleNodeContextMenu}
-        onNodesChange={onNodesChange}
-        onPaneClick={() => {
-          setContextMenu(null);
-        }}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background className="ff-canvas__background" color="rgba(250, 250, 229, 0.1)" gap={32} variant={BackgroundVariant.Lines} />
-        <Controls className="ff-canvas__controls" showInteractive={false} />
-        {selectedTarget.kind === "edge"
-        && selectedTarget.targetId !== null
-        && activeSelectedEdgeDeleteAnchor !== null
-        && activeSelectedEdgeDeleteAnchor.edgeId === selectedTarget.targetId ? (
-          <ViewportPortal>
-            <div
-              aria-label={selectedEdgeDeleteState.confirmationState.mode === "confirm" ? "Confirm delete selected edge" : undefined}
-              className="ff-edge__midpoint-delete-group nodrag nopan"
-              role={selectedEdgeDeleteState.confirmationState.mode === "confirm" ? "group" : undefined}
-              style={{
-                left: `${String(activeSelectedEdgeDeleteAnchor.x)}px`,
-                top: `${String(activeSelectedEdgeDeleteAnchor.y)}px`,
-                "--ff-edge-delete-accent": activeSelectedEdgeDeleteAnchor.color,
-              } as CSSProperties}
-            >
-              {selectedEdgeDeleteState.confirmationState.mode === "confirm" && selectedEdgeDeleteState.edgeId === activeSelectedEdgeDeleteAnchor.edgeId ? (
-                <>
-                  <button
-                    aria-label="Confirm delete selected edge"
-                    className="ff-edge__midpoint-delete ff-edge__midpoint-delete--confirm"
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    onPointerDown={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      deleteEdgeById(activeSelectedEdgeDeleteAnchor.edgeId);
-                    }}
-                    type="button"
-                  >
-                    <Check aria-hidden="true" className="ff-edge__midpoint-delete-icon" />
-                  </button>
-                  <button
-                    aria-label="Cancel delete selected edge"
-                    className="ff-edge__midpoint-delete"
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    onPointerDown={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      clearSelectedEdgeDeleteState();
-                    }}
-                    type="button"
-                  >
-                    <X aria-hidden="true" className="ff-edge__midpoint-delete-icon" />
-                  </button>
-                </>
-              ) : (
-                <button
-                  aria-label="Delete selected edge"
-                  className="ff-edge__midpoint-delete"
-                  data-testid="selected-edge-delete"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  onPointerDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    handleSelectedEdgeDeleteRequest(activeSelectedEdgeDeleteAnchor.edgeId, { immediate: event.shiftKey });
-                  }}
-                  type="button"
-                >
-                  <Trash2 aria-hidden="true" className="ff-edge__midpoint-delete-icon" />
-                </button>
-              )}
-            </div>
-          </ViewportPortal>
         ) : null}
-        {nodes.length === 0 ? (
-          <div className="ff-canvas__empty-state">
-            <p className="ff-canvas__eyebrow">Contract Canvas</p>
-            <p className="ff-canvas__copy">
-              Start with Aggression or Proximity, then layer scoring, filters, and Add to Queue.
-            </p>
-          </div>
-        ) : null}
-      </ReactFlow>
-
-      {contextMenu !== null ? (
-        <div
-          ref={contextMenuRef}
-          aria-label="Canvas context menu"
-          className="ff-canvas__context-menu"
-          role="menu"
-          style={{ left: `${String(contextMenu.x)}px`, top: `${String(contextMenu.y)}px` }}
+        <ReactFlow<FlowNode, FlowEdge>
+          aria-label="Node editor canvas"
+          className="ff-canvas__flow"
+          defaultEdgeOptions={{ animated: true }}
+          edges={[...edges]}
+          fitView={true}
+          isValidConnection={validateConnection}
+          nodeTypes={flowNodeTypes}
+          nodes={[...renderedNodes]}
+          onConnect={handleConnect}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onEdgeContextMenu={handleEdgeContextMenu}
+          onEdgesChange={onEdgesChange}
+          onNodeContextMenu={handleNodeContextMenu}
+          onNodesChange={onNodesChange}
+          onPaneClick={() => { setContextMenu(null); }}
+          proOptions={{ hideAttribution: true }}
         >
-          {contextMenu.target.kind === "canvas" || contextMenu.target.kind === "node" ? (
-            <button className="ff-canvas__context-action" role="menuitem" type="button" onClick={handleAutoArrange}>
-              <LayoutGrid aria-hidden="true" className="ff-canvas__context-action-icon" />
-              <span>Auto-arrange contract</span>
-            </button>
+          <Background className="ff-canvas__background" color="rgba(250, 250, 229, 0.1)" gap={32} variant={BackgroundVariant.Lines} />
+          <Controls className="ff-canvas__controls" showInteractive={false} />
+          <SelectedEdgeDeleteControls activeSelectedEdgeDeleteAnchor={activeSelectedEdgeDeleteAnchor} clearSelectedEdgeDeleteState={clearSelectedEdgeDeleteState} deleteEdgeById={deleteEdgeById} handleSelectedEdgeDeleteRequest={handleSelectedEdgeDeleteRequest} selectedEdgeDeleteState={selectedEdgeDeleteState} selectedTarget={selectedTarget} />
+          {nodes.length === 0 ? (
+            <div className="ff-canvas__empty-state">
+              <p className="ff-canvas__eyebrow">Contract Canvas</p>
+              <p className="ff-canvas__copy">Start with Aggression or Proximity, then layer scoring, filters, and Add to Queue.</p>
+            </div>
           ) : null}
-          {contextMenu.target.kind === "node" ? (
-            <button
-              className="ff-canvas__context-action ff-canvas__context-action--danger"
-              role="menuitem"
-              type="button"
-              onClick={handleDeleteFromContextMenu}
-            >
-              <Trash2 aria-hidden="true" className="ff-canvas__context-action-icon" />
-              <span>Delete node</span>
-            </button>
-          ) : null}
-          {contextMenu.target.kind === "edge" ? (
-            <button
-              className="ff-canvas__context-action ff-canvas__context-action--danger"
-              role="menuitem"
-              type="button"
-              onClick={handleDeleteFromContextMenu}
-            >
-              <Trash2 aria-hidden="true" className="ff-canvas__context-action-icon" />
-              <span>Delete edge</span>
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
+        </ReactFlow>
+        <CanvasContextMenu contextMenu={contextMenu} contextMenuRef={contextMenuRef} onAutoArrange={handleAutoArrange} onDeleteFromContextMenu={handleDeleteFromContextMenu} />
       </div>
     </NodeFieldEditingContext.Provider>
+  );
+}
+
+/**
+ * Restores saved nodes from the canonical catalogue and drops edges that no longer point to valid handles.
+ */
+function FlowEditor({
+  initialContractName = "Starter Contract",
+  initialNodes = [],
+  initialEdges = [],
+  mode = "persistent",
+  focusedDiagnosticNodeId,
+  focusedDiagnosticRequestKey = 0,
+  onCompilationStateChange,
+  onTriggerCompileChange,
+}: CanvasWorkspaceProps) {
+  const initialLibrarySnapshot = useInitialLibrarySnapshot({ initialContractName, initialEdges, initialNodes, mode });
+  const activeInitialContract = initialLibrarySnapshot.library.contracts.find((contract) => contract.name === initialLibrarySnapshot.library.activeContractName) ?? initialLibrarySnapshot.library.contracts[0];
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(activeInitialContract.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(activeInitialContract.edges);
+  const { isDesktop, isContractPanelOpen, setIsContractPanelOpen } = useCanvasViewportState(mode);
+  const reactFlow = useReactFlow<FlowNode, FlowEdge>();
+  const contractManager = useContractManager({ initialLibrarySnapshot, mode, nodes, edges, reactFlow, setEdges, setNodes });
+  const deleteManager = useDeleteManager({ setEdges, setNodes });
+  const compilationState = useCanvasCompilationState({ clearNodeDeleteState: deleteManager.clearNodeDeleteState, deleteNodeById: deleteManager.deleteNodeById, draftContractName: contractManager.draftContractName, edges, handleNodeDeleteRequest: deleteManager.handleNodeDeleteRequest, nodeDeleteStates: deleteManager.nodeDeleteStates, nodes, onCompilationStateChange, onTriggerCompileChange, setNodes });
+  const selectionState = useCanvasSelectionState({ edges, nodes, selectedEdgeDeleteAnchor: deleteManager.selectedEdgeDeleteAnchor, setEdges, setNodes });
+  const interactionHandlers = useCanvasInteractions({ deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, nodes, reactFlow, selectTarget: selectionState.selectTarget, setContextMenu: deleteManager.setContextMenu, setEdges, setNodes });
+  useFlowEditorEffects({ contextMenu: deleteManager.contextMenu, contextMenuRef: deleteManager.contextMenuRef, deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, fallbackSelectedEdgeDeleteAnchor: selectionState.activeSelectedEdgeDeleteAnchor, focusedDiagnosticNodeId, focusedDiagnosticRequestKey, nodes, reactFlow, selectedTarget: selectionState.selectedTarget, setContextMenu: deleteManager.setContextMenu, setSelectedEdgeDeleteAnchor: deleteManager.setSelectedEdgeDeleteAnchor });
+  return (
+    <FlowEditorView
+      activeContract={contractManager.activeContract} activeContractDescription={contractManager.activeContractDescription}
+      activeRemediationNotices={contractManager.activeRemediationNotices} activeSelectedEdgeDeleteAnchor={selectionState.activeSelectedEdgeDeleteAnchor}
+      clearSelectedEdgeDeleteState={deleteManager.clearSelectedEdgeDeleteState} compilationHandleNodeFieldsChange={compilationState.handleNodeFieldsChange}
+      contextMenu={deleteManager.contextMenu} contextMenuRef={deleteManager.contextMenuRef} contractLibrary={contractManager.contractLibrary}
+      deleteEdgeById={deleteManager.deleteEdgeById} draftContractName={contractManager.draftContractName} edges={edges}
+      handleAutoArrange={interactionHandlers.handleAutoArrange} handleConnect={interactionHandlers.handleConnect} handleCreateContractCopy={contractManager.handleCreateContractCopy}
+      handleDeleteContract={contractManager.handleDeleteContract} handleDeleteFromContextMenu={() => { interactionHandlers.handleDeleteFromContextMenu(deleteManager.contextMenu); }}
+      handleDragOver={interactionHandlers.handleDragOver} handleDrop={interactionHandlers.handleDrop} handleEdgeContextMenu={interactionHandlers.handleEdgeContextMenu}
+      handleNodeContextMenu={interactionHandlers.handleNodeContextMenu} handlePaneContextMenu={interactionHandlers.handlePaneContextMenu}
+      handleSaveAsContract={contractManager.handleSaveAsContract} handleSelectContract={contractManager.handleSelectContract}
+      handleSelectedEdgeDeleteRequest={deleteManager.handleSelectedEdgeDeleteRequest} initialMode={mode} isContractPanelOpen={isContractPanelOpen}
+      isDesktop={isDesktop} nodes={nodes} onEdgesChange={onEdgesChange} onNodesChange={onNodesChange} renderedNodes={compilationState.renderedNodes}
+      selectedEdgeDeleteState={deleteManager.selectedEdgeDeleteState} selectedTarget={selectionState.selectedTarget} setContextMenu={deleteManager.setContextMenu}
+      setDraftContractName={contractManager.setDraftContractName} setIsContractPanelOpen={setIsContractPanelOpen} validateConnection={interactionHandlers.validateConnection}
+    />
   );
 }
 

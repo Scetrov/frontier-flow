@@ -79,13 +79,13 @@ export function createDeploymentStatus(
 
 export function createGeneratedArtifactStub(overrides: Partial<GeneratedContractArtifact> = {}): GeneratedContractArtifact {
   const moduleName = overrides.moduleName ?? "starter_contract";
-  const artifact = createGeneratedContractArtifact(
+  const artifact = createGeneratedContractArtifact({
     moduleName,
-    overrides.sourceDagId ?? moduleName,
-    overrides.moveToml ?? `[package]\nname = "${moduleName}"\n`,
-    overrides.moveSource ?? `module builder_extensions::${moduleName} {}`,
-    overrides.sourceMap ?? [],
-  );
+    requestedModuleName: overrides.sourceDagId ?? moduleName,
+    moveToml: overrides.moveToml ?? `[package]\nname = "${moduleName}"\n`,
+    moveSource: overrides.moveSource ?? `module builder_extensions::${moduleName} {}`,
+    sourceMap: overrides.sourceMap ?? [],
+  });
 
   return {
     ...artifact,
