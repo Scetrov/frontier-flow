@@ -1126,6 +1126,12 @@ button,
 
 .ff-toolbox__node-button {
   display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
   cursor: grab;
   outline: none;
 }

@@ -9,12 +9,11 @@ describe("ToolboxNodePreview", () => {
     const onDragStart = vi.fn();
     const { container } = render(<ToolboxNodePreview definition={definition} onDragStart={onDragStart} />);
 
-    const preview = container.querySelector(".ff-toolbox__node-button");
+    const preview = screen.getByRole("button", { name: definition.label });
 
     expect(preview).not.toBeNull();
     expect(preview).toHaveAttribute("draggable", "true");
-    expect(preview).not.toHaveAttribute("role");
-    expect(preview).not.toHaveAttribute("tabindex");
+    expect(preview).toHaveAttribute("type", "button");
     expect(screen.getByText(definition.label)).toBeInTheDocument();
     expect(screen.getByText(definition.description)).toBeInTheDocument();
     expect(container.querySelectorAll(".ff-node__handle-indicator")).toHaveLength(definition.sockets.length);
@@ -27,9 +26,9 @@ describe("ToolboxNodePreview", () => {
     const onDragStart = vi.fn();
     const definition = authorableNodeDefinitions[0];
 
-    const { container } = render(<ToolboxNodePreview definition={definition} onDragStart={onDragStart} />);
+    render(<ToolboxNodePreview definition={definition} onDragStart={onDragStart} />);
 
-    fireEvent.dragStart(container.querySelector(".ff-toolbox__node-button") as HTMLElement);
+    fireEvent.dragStart(screen.getByRole("button", { name: definition.label }));
 
     expect(onDragStart).toHaveBeenCalledTimes(1);
     expect(onDragStart.mock.calls[0]?.[1]).toEqual(definition);

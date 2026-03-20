@@ -9,7 +9,7 @@
   for = "/*"
 
   [headers.values]
-    Content-Security-Policy = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://world-api-stillness.live.tech.evefrontier.com https://*.sui.io https://*.mystenlabs.com https://*.sui-testnet.mystenlabs.com https://evefrontier.space wss: ws:; manifest-src 'self'; worker-src 'self' blob:; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; frame-src 'self' https://app.netlify.com; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://world-api-stillness.live.tech.evefrontier.com https://api.github.com https://*.sui.io https://*.mystenlabs.com https://*.sui-testnet.mystenlabs.com https://evefrontier.space wss: ws:; manifest-src 'self'; worker-src 'self' blob:; upgrade-insecure-requests"
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"

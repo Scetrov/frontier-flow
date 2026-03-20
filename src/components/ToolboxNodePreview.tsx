@@ -7,18 +7,19 @@ import NodeShell from "../nodes/NodeShell";
 
 interface ToolboxNodePreviewProps {
   readonly definition: NodeDefinition;
-  readonly onDragStart: (event: ReactDragEvent<HTMLDivElement>, definition: NodeDefinition) => void;
+  readonly onDragStart: (event: ReactDragEvent<HTMLButtonElement>, definition: NodeDefinition) => void;
 }
 
 function ToolboxNodePreview({ definition, onDragStart }: ToolboxNodePreviewProps) {
   return (
-    <div
+    <button
       aria-label={definition.label}
       className="ff-toolbox__node-button"
       draggable="true"
       onDragStart={(event) => {
         onDragStart(event, definition);
       }}
+      type="button"
     >
       <NodeShell
         icon={iconByNodeType[definition.type]}
@@ -26,7 +27,7 @@ function ToolboxNodePreview({ definition, onDragStart }: ToolboxNodePreviewProps
         nodeData={createFlowNodeData(definition)}
         nodeId={`toolbox-${definition.type}`}
       />
-    </div>
+    </button>
   );
 }
 

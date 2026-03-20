@@ -54,7 +54,7 @@ function createGroupedDefinitions(definitions: readonly NodeDefinition[]): reado
     .filter((group) => group.definitions.length > 0);
 }
 
-function createDragStartHandler(event: ReactDragEvent<HTMLDivElement>, definition: NodeDefinition) {
+function createDragStartHandler(event: ReactDragEvent<HTMLButtonElement>, definition: NodeDefinition) {
   const rect = event.currentTarget.getBoundingClientRect();
   const rawX = event.clientX - rect.left;
   const rawY = event.clientY - rect.top;
@@ -106,7 +106,7 @@ function SidebarCategorySection({
 }: {
   readonly group: DefinitionGroup;
   readonly isCollapsed: boolean;
-  readonly onDragStart: (event: ReactDragEvent<HTMLDivElement>, definition: NodeDefinition) => void;
+  readonly onDragStart: (event: ReactDragEvent<HTMLButtonElement>, definition: NodeDefinition) => void;
   readonly onToggle: () => void;
 }) {
   return (
@@ -157,7 +157,7 @@ function SidebarDrawer({
   readonly collapsedCategories: ReadonlySet<string>;
   readonly groupedDefinitions: readonly DefinitionGroup[];
   readonly isOpen: boolean;
-  readonly onDragStart: (event: ReactDragEvent<HTMLDivElement>, definition: NodeDefinition) => void;
+  readonly onDragStart: (event: ReactDragEvent<HTMLButtonElement>, definition: NodeDefinition) => void;
   readonly onToggleCategory: (category: string) => void;
   readonly onToggleOpen: () => void;
 }) {

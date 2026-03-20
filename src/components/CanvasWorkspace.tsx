@@ -257,6 +257,8 @@ function ContractDrawerControls({
         <select
           aria-label="Saved contract"
           className="ff-contract-bar__input"
+          id="saved-contract"
+          name="saved-contract"
           value={contractLibrary.activeContractName}
           onChange={(event) => {
             onSelectContract(event.target.value);
@@ -279,6 +281,8 @@ function ContractDrawerControls({
         <input
           aria-label="Contract name"
           className="ff-contract-bar__input"
+          id="contract-name"
+          name="contract-name"
           type="text"
           value={draftContractName}
           onChange={(event) => {
