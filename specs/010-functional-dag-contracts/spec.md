@@ -48,15 +48,15 @@ A contract designer uses a DAG with missing required inputs, unsupported node co
 
 ### User Story 3 - Verify that generated contracts are functionally correct against the `smart-turrets` DAG inventory (Priority: P2)
 
-A product reviewer or QA engineer needs a fixed library of reference DAGs derived from the contracts in `Scetrov/smart-turrets`, using [docs/CONTRACT_EXAMPLES.md](/home/scetrov/source/frontier-flow/docs/CONTRACT_EXAMPLES.md) as the concrete example catalog, so the generation pipeline can prove coverage of the intended trigger, filtering, scoring, and queueing patterns used by the app's visual contract model.
+A product reviewer or QA engineer needs a fixed library of reference DAGs derived from the contracts in `Scetrov/smart-turrets`, using [docs/CONTRACT_EXAMPLES.md](/docs/CONTRACT_EXAMPLES.md) as the concrete example catalog, so the generation pipeline can prove coverage of the intended trigger, filtering, scoring, and queueing patterns used by the app's visual contract model.
 
 **Why this priority**: Generating one contract correctly is insufficient. The system must prove broad coverage across the known strategy patterns represented by the `smart-turrets` contract inventory and exemplar turret logic.
 
-**Independent Test**: Execute the reference-DAG validation suite derived from `Scetrov/smart-turrets` and grounded in the example behaviors documented in [docs/CONTRACT_EXAMPLES.md](/home/scetrov/source/frontier-flow/docs/CONTRACT_EXAMPLES.md), and confirm that every supported DAG compiles into a contract that preserves that DAG's approved trigger, filtering, scoring, and queueing behavior, while every unsupported DAG fails for an explicitly documented reason.
+**Independent Test**: Execute the reference-DAG validation suite derived from `Scetrov/smart-turrets` and grounded in the example behaviors documented in [docs/CONTRACT_EXAMPLES.md](/docs/CONTRACT_EXAMPLES.md), and confirm that every supported DAG compiles into a contract that preserves that DAG's approved trigger, filtering, scoring, and queueing behavior, while every unsupported DAG fails for an explicitly documented reason.
 
 **Acceptance Scenarios**:
 
-1. **Given** the reference DAG library derived from `Scetrov/smart-turrets` and cataloged in [docs/CONTRACT_EXAMPLES.md](/home/scetrov/source/frontier-flow/docs/CONTRACT_EXAMPLES.md) is available, **When** validation runs, **Then** every DAG has an expected outcome recorded as successful generation and compilation or explicit unsupported status.
+1. **Given** the reference DAG library derived from `Scetrov/smart-turrets` and cataloged in [docs/CONTRACT_EXAMPLES.md](/docs/CONTRACT_EXAMPLES.md) is available, **When** validation runs, **Then** every DAG has an expected outcome recorded as successful generation and compilation or explicit unsupported status.
 2. **Given** a reference DAG is marked as supported, **When** contract generation and compilation are executed, **Then** the resulting artifact compiles successfully and preserves that DAG's approved trigger, filtering, scoring, and queueing behavior.
 3. **Given** a regression changes the generated behavior or compile output for a supported reference DAG, **When** validation runs, **Then** the regression is detected before release.
 

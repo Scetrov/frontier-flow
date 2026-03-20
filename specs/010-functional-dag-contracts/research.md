@@ -2,7 +2,7 @@
 
 ## Decision 1: Use an explicit supported-DAG matrix anchored to DAG fixtures derived from `Scetrov/smart-turrets`
 
-**Decision**: Define support through a curated reference DAG library derived from the contracts in `Scetrov/smart-turrets`, using [docs/CONTRACT_EXAMPLES.md](/home/scetrov/source/frontier-flow/docs/CONTRACT_EXAMPLES.md) as the concrete example catalog for the current seed strategies, where every case is marked `supported` or `unsupported`, with an expected functional outcome or expected blocking diagnostic.
+**Decision**: Define support through a curated reference DAG library derived from the contracts in `Scetrov/smart-turrets`, using [docs/CONTRACT_EXAMPLES.md](/docs/CONTRACT_EXAMPLES.md) as the concrete example catalog for the current seed strategies, where every case is marked `supported` or `unsupported`, with an expected functional outcome or expected blocking diagnostic.
 
 **Rationale**: The spec requires deterministic behavior and clear failure boundaries. The contract examples document the concrete smart-turrets seed behaviors, compile-time knobs, and validation expectations that the generated DAGs need to preserve. An explicit support matrix prevents silent broadening of scope, keeps planning and implementation aligned, and turns regression testing into a fixed contract rather than an informal expectation.
 

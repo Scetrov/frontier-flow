@@ -1,11 +1,11 @@
 # Implementation Plan: Functional DAG Contracts
 
-**Branch**: `010-functional-dag-contracts` | **Date**: 2026-03-20 | **Spec**: [/home/scetrov/source/frontier-flow/specs/010-functional-dag-contracts/spec.md](/home/scetrov/source/frontier-flow/specs/010-functional-dag-contracts/spec.md)
-**Input**: Feature specification from `/specs/010-functional-dag-contracts/spec.md`
+**Branch**: `010-functional-dag-contracts` | **Date**: 2026-03-20 | **Spec**: [spec.md](/specs/010-functional-dag-contracts/spec.md)
+**Input**: Feature specification from `specs/010-functional-dag-contracts/spec.md`
 
 ## Summary
 
-Deliver deterministic DAG-to-Move contract generation for the current contract-aligned node model so every supported reference DAG derived from the `Scetrov/smart-turrets` contract inventory produces a compile-ready contract artifact that successfully compiles into a contract representative of that DAG. Treat [docs/CONTRACT_EXAMPLES.md](/home/scetrov/source/frontier-flow/docs/CONTRACT_EXAMPLES.md) as the concrete example catalog for those seed strategies and their expected targeting semantics. The artifact becomes the single source of truth for preview/build/deploy flows, and the workflow can prepare extension authorization against an existing turret without expanding into full turret lifecycle automation. The technical approach is a canonical compiler pipeline in TypeScript, backed by Vitest-heavy semantic and snapshot regression coverage, an explicit support matrix derived from `smart-turrets`, structured diagnostics, and compile/package contracts that remain stable across future node and generator changes.
+Deliver deterministic DAG-to-Move contract generation for the current contract-aligned node model so every supported reference DAG derived from the `Scetrov/smart-turrets` contract inventory produces a compile-ready contract artifact that successfully compiles into a contract representative of that DAG. Treat [docs/CONTRACT_EXAMPLES.md](/docs/CONTRACT_EXAMPLES.md) as the concrete example catalog for those seed strategies and their expected targeting semantics. The artifact becomes the single source of truth for preview/build/deploy flows, and the workflow can prepare extension authorization against an existing turret without expanding into full turret lifecycle automation. The technical approach is a canonical compiler pipeline in TypeScript, backed by Vitest-heavy semantic and snapshot regression coverage, an explicit support matrix derived from `smart-turrets`, structured diagnostics, and compile/package contracts that remain stable across future node and generator changes.
 
 ## Technical Context
 
@@ -17,7 +17,7 @@ Deliver deterministic DAG-to-Move contract generation for the current contract-a
 **Project Type**: Web application with an embedded compiler pipeline  
 **Performance Goals**: Deterministic generation for supported reference DAGs, unit-test feedback in under 5 seconds, compile workflow remains responsive enough to preserve current auto-compile and preview UX targets  
 **Constraints**: Strict TypeScript with no `any`, deterministic output is mandatory, fake timers instead of timing assertions, critical path coverage must remain at or above 90%, graceful failure when external world-package dependency resolution is unavailable  
-**Scale/Scope**: Current contract-aligned node catalog, existing compiler pipeline under `src/compiler`, reference DAG inventory derived from the current `Scetrov/smart-turrets` contract set and concretized in [docs/CONTRACT_EXAMPLES.md](/home/scetrov/source/frontier-flow/docs/CONTRACT_EXAMPLES.md), extension authorization readiness for existing turrets only, and a long-term target of full support for the entire `smart-turrets` inventory
+**Scale/Scope**: Current contract-aligned node catalog, existing compiler pipeline under `src/compiler`, reference DAG inventory derived from the current `Scetrov/smart-turrets` contract set and concretized in [docs/CONTRACT_EXAMPLES.md](/docs/CONTRACT_EXAMPLES.md), extension authorization readiness for existing turrets only, and a long-term target of full support for the entire `smart-turrets` inventory
 
 ## Constitution Check
 
