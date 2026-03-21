@@ -88,6 +88,10 @@ describe("useDeployment blocker handling", () => {
 
     expect(result.current.latestAttempt?.outcome).toBe("blocked");
     expect(result.current.latestAttempt?.errorCode).toBe("stale-artifact");
+    expect(result.current.isProgressModalOpen).toBe(true);
+    expect(result.current.progress?.activeMessage).toBe(
+      "Rebuild the current graph before deployment. The active artifact is stale or unresolved.",
+    );
   });
 
   it("blocks testnet deployment when a wallet is not connected", async () => {

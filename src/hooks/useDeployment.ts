@@ -231,14 +231,9 @@ interface DeploymentStore {
   readonly timerIdsRef: TimerIdsRef;
 }
 
-function getIsProgressModalOpen(progress: DeploymentProgress | null, latestAttempt: DeploymentAttempt | null): boolean {
+function getIsProgressModalOpen(progress: DeploymentProgress | null): boolean {
   return progress !== null
-    && !progress.dismissedByUser
-    && !(
-      latestAttempt !== null
-      && latestAttempt.attemptId === progress.attemptId
-      && latestAttempt.outcome === "blocked"
-    );
+    && !progress.dismissedByUser;
 }
 
 function getDeploymentValidation(
@@ -295,7 +290,6 @@ function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore 
 }
 
 function useDeploymentDerivedState(input: {
-  readonly latestAttempt: DeploymentAttempt | null;
   readonly progress: DeploymentProgress | null;
   readonly selectedTarget: DeploymentTargetId;
   readonly status: CompilationStatus;
@@ -310,7 +304,7 @@ function useDeploymentDerivedState(input: {
   return {
     blockerReasons,
     canDeploy: blockerReasons.length === 0,
-    isProgressModalOpen: getIsProgressModalOpen(input.progress, input.latestAttempt),
+    isProgressModalOpen: getIsProgressModalOpen(input.progress),
     validation,
   };
 }
@@ -679,7 +673,6 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
     timerIdsRef,
   } = useDeploymentStore(initialTarget);
   const derivedState = useDeploymentDerivedState({
-    latestAttempt,
     progress,
     selectedTarget,
     status,
