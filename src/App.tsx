@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 
 import type { CompilationStatus, CompilerDiagnostic } from "./compiler/types";
+import AlphaBanner from "./components/AlphaBanner";
 import CanvasWorkspace from "./components/CanvasWorkspace";
 import DeploymentProgressModal from "./components/DeploymentProgressModal";
 import Footer from "./components/Footer";
@@ -163,6 +164,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
         onViewChange={isKitchenSinkRoute ? undefined : setActiveView}
         selectedDeploymentTarget={deployment.selectedTarget}
       />
+      <AlphaBanner />
       {isKitchenSinkRoute ? (
         <Suspense fallback={<main className="flex flex-1 min-h-0" aria-label="Application shell" />}>
           <KitchenSinkPage />
