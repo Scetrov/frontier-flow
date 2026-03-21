@@ -128,9 +128,10 @@ files have no dedicated test coverage. Items are grouped by risk level.
 
 ## CI/CD & Infrastructure
 
-- [ ] **Add Playwright E2E to CI** — `.github/workflows/ci.yml` does not run E2E
-      tests. Add a Playwright job that starts the preview server and runs the 16 E2E
-      specs before merging to `main`.
+- [ ] **Maintain Playwright E2E in CI** — `.github/workflows/ci.yml` contains an
+      `e2e` job that installs Playwright browsers and runs `bun run test:e2e`.
+      Keep this job aligned with the E2E suite (currently 16 specs) before merging
+      to `main`.
 - [ ] **Enforce test coverage gates** — Add Vitest coverage reporting to the CI
       pipeline with minimum thresholds (70% overall, 90% for `src/compiler/`).
       Currently defined in `docs/TESTING-STRATEGY.md §11` but not CI-enforced.

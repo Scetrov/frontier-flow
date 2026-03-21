@@ -72,8 +72,29 @@ describe("DeploymentTargetControl", () => {
 
     render(<DeploymentTargetControl canDeploy={false} onDeploy={handleDeploy} selectedTarget="local" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Deploy local" }));
+    const deployButton = screen.getByRole("button", { name: "Deploy local" });
+
+    expect(deployButton).toHaveAttribute("title", "Review blockers for local deployment");
+
+    fireEvent.click(deployButton);
 
     expect(handleDeploy).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses upgrade-specific copy for in-progress state and blocker guidance", () => {
+    render(
+      <DeploymentTargetControl
+        canDeploy={false}
+        isDeploying={true}
+        isUpgrade={true}
+        onDeploy={() => undefined}
+        selectedTarget="testnet:utopia"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Upgrading testnet:utopia" })).toHaveAttribute(
+      "title",
+      "Review blockers for testnet:utopia upgrade",
+    );
   });
 });

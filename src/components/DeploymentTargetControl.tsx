@@ -71,9 +71,12 @@ function DeploymentTargetControl({
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
   const isDeployDisabled = isDeploying || onDeploy === undefined;
   const actionVerb = isUpgrade ? "Upgrade" : "Deploy";
-  const deployLabel = isDeploying ? `Deploying ${selectedTarget}` : `${actionVerb} ${selectedTarget}`;
+  const inProgressVerb = isUpgrade ? "Upgrading" : "Deploying";
+  const deployLabel = isDeploying ? `${inProgressVerb} ${selectedTarget}` : `${actionVerb} ${selectedTarget}`;
   const containerClassName = `ff-deployment-target-control${isActive ? " ff-deployment-target-control--active" : ""}`;
-  const deployTitle = canDeploy ? undefined : `Review blockers for ${selectedTarget} deployment`;
+  const deployTitle = canDeploy
+    ? undefined
+    : `Review blockers for ${selectedTarget} ${isUpgrade ? "upgrade" : "deployment"}`;
 
   return (
     <div
