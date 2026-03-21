@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/Scetrov/frontier-flow/compare/v0.3.0...v0.4.0) (2026-03-21)
+
 ## [0.3.0](https://github.com/Scetrov/frontier-flow/compare/v0.2.0...v0.3.0) (2026-03-20)
 
 
@@ -52,4 +54,3 @@ All notable changes to this project will be documented in this file. See [standa
 ### Bug Fixes
 
 * base url ([706b7cd](https://github.com/Scetrov/frontier-flow/commit/706b7cd851a09592ccf05c4b3326c15cef6b3218))
-
