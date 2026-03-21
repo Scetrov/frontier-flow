@@ -39,6 +39,10 @@ test("preserves the earlier blocked attempt after a later successful deployment"
   await expect(compilationStatus).toContainText("Compiled");
 
   await page.getByRole("button", { name: "Deploy local" }).click();
+  const blockedModal = page.getByRole("dialog", { name: "Deployment blocked" });
+  await expect(blockedModal).toBeVisible();
+  await blockedModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
+
   const deploymentStatus = page.locator('.ff-compilation-status__button[aria-controls="deployment-status-details"]');
   await expect(deploymentStatus).toContainText("Deployment Blocked");
 

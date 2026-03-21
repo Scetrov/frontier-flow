@@ -14,6 +14,12 @@ test("blocks stillness deployment when no wallet is connected", async ({ page })
   await page.getByRole("menuitemradio", { name: "testnet:stillness" }).click();
   await page.getByRole("button", { name: "Deploy testnet:stillness" }).click();
 
+  const blockedModal = page.getByRole("dialog", { name: "Deployment blocked" });
+  await expect(blockedModal).toBeVisible();
+  await expect(blockedModal.getByText("Target: testnet:stillness")).toBeVisible();
+  await expect(blockedModal.getByText(/Connect a Sui-compatible wallet before deploying to testnet:stillness/i)).toBeVisible();
+  await blockedModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
+
   const deploymentStatus = page.locator('.ff-compilation-status__button[aria-controls="deployment-status-details"]');
   await expect(deploymentStatus).toContainText("Deployment Blocked");
   await deploymentStatus.click();
@@ -35,6 +41,12 @@ test("blocks local deployment when the local target is unavailable", async ({ pa
   await expect(compilationStatus).toContainText("Compiled");
 
   await page.getByRole("button", { name: "Deploy local" }).click();
+
+  const blockedModal = page.getByRole("dialog", { name: "Deployment blocked" });
+  await expect(blockedModal).toBeVisible();
+  await expect(blockedModal.getByText("Target: local")).toBeVisible();
+  await expect(blockedModal.getByText("Local deployment is unavailable.")).toBeVisible();
+  await blockedModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
 
   const deploymentStatus = page.locator('.ff-compilation-status__button[aria-controls="deployment-status-details"]');
   await expect(deploymentStatus).toContainText("Deployment Blocked");
