@@ -6,7 +6,7 @@ If you discover a security vulnerability in Frontier Flow, please report it resp
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, please email **[security@scetrov.com](mailto:security@scetrov.com)** with:
+Instead, use GitHub Private Reporting from the repository Security tab and include:
 
 - A description of the vulnerability
 - Steps to reproduce
@@ -17,8 +17,8 @@ We will acknowledge receipt within 48 hours and aim to provide an initial assess
 
 ## Supported Versions
 
-| Version | Supported |
-| ------- | --------- |
+| Version | Supported           |
+| ------- | ------------------- |
 | 0.x.x   | Yes (current alpha) |
 
 ## Scope

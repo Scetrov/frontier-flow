@@ -404,7 +404,7 @@ jobs:
 
 This project follows a responsible disclosure process:
 
-- Security vulnerabilities should be reported via **GitHub Security Advisories** (private)
+- Security vulnerabilities should be reported via **GitHub Private Reporting** from the repository Security tab
 - Do **not** open public issues for security vulnerabilities
 - Maintainers will acknowledge receipt within **48 hours** and provide an initial assessment within **5 business days**
 
