@@ -19,6 +19,7 @@ For contributors, the repository is set up for fast local iteration with Bun, st
 - [Built With](#built-with)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
+- [Workflow Screenshots](#workflow-screenshots)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
@@ -36,9 +37,9 @@ The editor is tuned for the EVE Frontier domain and backed by a TypeScript-first
 - inspect compile feedback directly in the UI
 - generate readable, predictable Move code ready for the next deployment step
 
-![Frontier Flow main screen](./docs/assets/frontier-flow-main-screen.png)
+![Frontier Flow visual editor hero](./docs/assets/screenshot-initial.png)
 
-_The main editor view with the starter contract loaded, typed nodes visible on the canvas, toolbox categories on the right, and compilation status in the footer._
+_The Visual view with a saved contract open, typed connections on the canvas, node categories in the toolbox, and build status in the footer._
 
 ## Features
 
@@ -119,11 +120,11 @@ bun run dev
 
 Open the local URL printed by Vite, then:
 
-1. Drag a trigger node such as `Aggression` or `Proximity` onto the canvas.
-2. Add filters, accessors, and queue actions.
-3. Wait for auto-compile or click `Build`.
-4. Review compile status and diagnostics in the footer.
-5. Iterate until the graph is valid and deployment-ready.
+1. Stay in the `Visual` view and drag a trigger node such as `Aggression` or `Proximity` onto the canvas.
+2. Add logic, data, and action nodes, then connect their typed sockets.
+3. Configure any node that needs structured values.
+4. Wait for auto-compile or click `Build`.
+5. Switch to the `Move` view to inspect the generated source and deployment readiness.
 
 ### Run tests
 
@@ -178,6 +179,40 @@ bun run lint
 bun run typecheck
 bun run test:run
 ```
+
+## Workflow Screenshots
+
+The current UI follows a five-stage workflow: compose the graph in `Visual`, configure node data, review generated output in `Move`, deploy to the selected target, and confirm the published package metadata.
+
+### 1. Compose the contract graph
+
+![Visual editor with node graph and contract sidebar](./docs/assets/screenshot-initial.png)
+
+Start in the `Visual` view by dragging Frontier nodes from the toolbox onto the canvas, wiring typed sockets, and saving the flow as a named contract snapshot. This is the main authoring stage, where triggers, logic, data extractors, and actions are combined into a deterministic graph.
+
+### 2. Configure node-specific data
+
+![Node editor modal for selecting ships](./docs/assets/screenshot-selecting-ships.png)
+
+Open the node editor when a graph element needs structured input. In this example, the `List of Ship` node lets you select one or more live-world ship entries that feed downstream target matching and priority logic.
+
+### 3. Inspect generated Move output
+
+![Generated Move source view with deployment target selector](./docs/assets/screenshot-viewing-code.png)
+
+Switch to the `Move` view to inspect the generated source before deployment. The top bar keeps `Build` and deploy-target controls available while the source panel shows the exact Move module produced from the graph, along with status badges for build output and deployment readiness.
+
+### 4. Track deployment progress
+
+![Deployment progress modal with staged checklist](./docs/assets/screenshot-deploying.png)
+
+When you deploy, Frontier Flow surfaces each stage of the pipeline in a modal: validation, preparation, signing, submission, and confirmation. Instead of a single opaque loading state, the UI shows which step is active and which steps have already completed.
+
+### 5. Confirm the deployed package
+
+![Deployment completed modal with package ID](./docs/assets/screenshot-deploying-contract.png)
+
+After the transaction finalizes, the modal switches to a completed state and shows the target environment plus the published package ID. This is the handoff point for follow-up testing, upgrades, or any workflow that needs confirmed deployment metadata.
 
 ## Roadmap
 
