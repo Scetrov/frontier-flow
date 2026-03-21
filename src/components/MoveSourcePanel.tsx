@@ -1,7 +1,7 @@
 import hljs from "highlight.js/lib/core";
 import rust from "highlight.js/lib/languages/rust";
 
-import type { CompilationStatus } from "../compiler/types";
+import type { CompilationStatus, DeploymentReviewEntry, DeploymentStatus } from "../compiler/types";
 
 hljs.registerLanguage("rust", rust);
 
@@ -10,18 +10,44 @@ interface MoveSourcePanelProps {
   readonly status: CompilationStatus;
 }
 
-function getDeploymentLabel(status: CompilationStatus): string | null {
-  const deploymentStatus = status.state === "compiled" || status.state === "error"
-    ? status.artifact?.deploymentStatus
-    : undefined;
+interface MoveSourceDeploymentDetails {
+  readonly blockedReasons: readonly string[];
+  readonly headline: string | null;
+  readonly label: string | null;
+  readonly packageId: string | null;
+  readonly reviewHistory: readonly DeploymentReviewEntry[];
+  readonly severity: string | null;
+  readonly stage: string | null;
+  readonly summary: string | null;
+  readonly target: string | null;
+}
 
-  if (deploymentStatus === undefined) {
+const EMPTY_DEPLOYMENT_DETAILS: MoveSourceDeploymentDetails = {
+  blockedReasons: [],
+  headline: null,
+  label: null,
+  packageId: null,
+  reviewHistory: [],
+  severity: null,
+  stage: null,
+  summary: null,
+  target: null,
+};
+
+function getDeploymentStatus(status: CompilationStatus): DeploymentStatus | null {
+  return status.state === "compiled" || status.state === "error"
+    ? status.artifact?.deploymentStatus ?? null
+    : null;
+}
+
+function getDeploymentLabel(deploymentStatus: DeploymentStatus | null): string | null {
+  if (deploymentStatus === null) {
     return null;
   }
 
   switch (deploymentStatus.status) {
     case "deployed":
-      return "Deployment Deployed";
+      return "Deployed";
     case "ready":
       return "Deployment Ready";
     case "blocked":
@@ -29,10 +55,24 @@ function getDeploymentLabel(status: CompilationStatus): string | null {
   }
 }
 
-function getDeploymentSummary(status: CompilationStatus): string | null {
-  return status.state === "compiled" || status.state === "error"
-    ? status.artifact?.deploymentStatus?.nextActionSummary ?? null
-    : null;
+function getDeploymentDetails(status: CompilationStatus): MoveSourceDeploymentDetails {
+  const deploymentStatus = getDeploymentStatus(status);
+
+  if (deploymentStatus === null) {
+    return EMPTY_DEPLOYMENT_DETAILS;
+  }
+
+  return {
+    blockedReasons: deploymentStatus.blockedReasons,
+    headline: deploymentStatus.headline ?? null,
+    label: getDeploymentLabel(deploymentStatus),
+    packageId: deploymentStatus.packageId ?? null,
+    reviewHistory: (deploymentStatus.reviewHistory ?? []).slice(1),
+    severity: deploymentStatus.severity ?? null,
+    stage: deploymentStatus.stage ?? null,
+    summary: deploymentStatus.nextActionSummary,
+    target: deploymentStatus.targetId ?? null,
+  };
 }
 
 function getDisplayedFilename(status: CompilationStatus): string {
@@ -74,11 +114,14 @@ function getEmptyMessage(status: CompilationStatus): string {
 
 function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
   const displayedLines = sourceCode?.split("\n") ?? [];
-  const highlightedSource = sourceCode === null
-    ? ""
-    : hljs.highlight(sourceCode, { language: "rust" }).value;
-  const deploymentLabel = getDeploymentLabel(status);
-  const deploymentSummary = getDeploymentSummary(status);
+  const highlightedSource = sourceCode === null ? "" : hljs.highlight(sourceCode, { language: "rust" }).value;
+  const deployment = getDeploymentDetails(status);
+  const deploymentBadges = Array.from(new Set(
+    [deployment.headline, deployment.label, deployment.target, deployment.stage, deployment.severity].filter(
+      (value): value is string => value !== null,
+    ),
+  ));
+  const deploymentLines = [deployment.packageId, deployment.summary].filter((value): value is string => value !== null);
 
   return (
     <section aria-label="Move source view" className="ff-move-source">
@@ -92,8 +135,15 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
         <div className="ff-move-source__meta">
           <span className="ff-move-source__badge">{getStatusLabel(status)}</span>
           <span className="ff-move-source__filename">{getDisplayedFilename(status)}</span>
-          {deploymentLabel !== null ? <span className="ff-move-source__badge">{deploymentLabel}</span> : null}
-          {deploymentSummary !== null ? <span className="ff-move-source__filename">{deploymentSummary}</span> : null}
+          {deploymentBadges.map((badge) => <span className="ff-move-source__badge" key={badge}>{badge}</span>)}
+          {deploymentLines.map((line) => <span className="ff-move-source__filename" key={line}>{line}</span>)}
+          {deployment.blockedReasons.map((reason) => <span className="ff-move-source__filename" key={reason}>{reason}</span>)}
+          {deployment.reviewHistory.map((entry) => (
+            <span className="ff-move-source__filename" key={entry.attemptId}>{`Earlier this session: ${entry.headline} - ${entry.targetId}${entry.stage === undefined ? "" : ` - ${entry.stage}`}`}</span>
+          ))}
+          {deployment.reviewHistory.map((entry) => (
+            <span className="ff-move-source__filename" key={`${entry.attemptId}-details`}>{entry.details}</span>
+          ))}
         </div>
       </header>
 

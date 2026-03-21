@@ -119,6 +119,13 @@ button,
   color: var(--cream-white);
 }
 
+.ff-canvas__controls button:hover,
+.ff-canvas__controls button:focus-visible,
+.ff-canvas__controls button:active {
+  background: rgba(255, 71, 0, 0.12);
+  color: var(--brand-orange);
+}
+
 .ff-canvas__drawer {
   position: absolute;
   inset-block: 0;
@@ -135,7 +142,7 @@ button,
   display: flex;
   height: 100%;
   align-items: center;
-  pointer-events: auto;
+  pointer-events: none;
   transition: transform 200ms ease-out;
 }
 
@@ -153,6 +160,7 @@ button,
   grid-template-rows: auto 1fr;
   align-items: center;
   justify-items: center;
+  pointer-events: auto;
   width: 2.75rem;
   min-height: 7.25rem;
   padding-block: 0.7rem;
@@ -218,6 +226,7 @@ button,
 
 .ff-contract-panel {
   display: flex;
+  pointer-events: auto;
   flex-direction: column;
   gap: 1rem;
   width: min(24rem, 88vw);
@@ -368,6 +377,10 @@ button,
 }
 
 .ff-header__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   min-height: 2.5rem;
   border: 1px solid var(--ui-border-dark);
   background: rgba(26, 10, 10, 0.9);
@@ -378,6 +391,20 @@ button,
   text-transform: uppercase;
   color: var(--cream-white);
   cursor: pointer;
+}
+
+.ff-header__button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.ff-header__button-label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .ff-header__button:hover,
@@ -391,6 +418,230 @@ button,
   cursor: not-allowed;
 }
 
+.ff-deployment-target-control {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+}
+
+.ff-deployment-target-control__primary,
+.ff-deployment-target-control__toggle {
+  min-height: 2.5rem;
+}
+
+.ff-deployment-target-control__primary {
+  border-right: 0;
+}
+
+.ff-deployment-target-control__toggle {
+  min-width: 2.5rem;
+  padding-inline: 0.8rem;
+  text-align: center;
+}
+
+.ff-deployment-target-control--active .ff-deployment-target-control__primary,
+.ff-deployment-target-control--active .ff-deployment-target-control__toggle {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.12);
+}
+
+.ff-header__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.ff-header__actions {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.ff-deployment-target-control__menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 14rem;
+  gap: 0.2rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.96);
+  padding: 0.35rem;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+}
+
+.ff-deployment-target-control__option {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0.65rem 0.75rem;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--cream-white);
+  cursor: pointer;
+}
+
+.ff-deployment-target-control__option:hover,
+.ff-deployment-target-control__option:focus-visible,
+.ff-deployment-target-control__option[aria-checked="true"] {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.12);
+}
+
+.ff-deployment-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.ff-deployment-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 7, 12, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.ff-deployment-modal__panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(44rem, 100%);
+  max-height: calc(100dvh - 3rem);
+  gap: 1rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.96);
+  padding: 1.25rem;
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.35);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.ff-deployment-modal__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ff-deployment-modal__eyebrow,
+.ff-deployment-modal__title,
+.ff-deployment-modal__copy,
+.ff-deployment-modal__message,
+.ff-deployment-modal__stage-label,
+.ff-deployment-modal__stage-state {
+  margin: 0;
+}
+
+.ff-deployment-modal__eyebrow {
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-deployment-modal__title {
+  margin-top: 0.5rem;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ff-deployment-modal__copy,
+.ff-deployment-modal__message,
+.ff-deployment-modal__stage-state {
+  color: var(--text-secondary);
+}
+
+.ff-deployment-modal__message {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ff-deployment-modal__progress {
+  overflow: hidden;
+  height: 0.8rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ff-deployment-modal__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand-orange), #ff935c);
+  transition: width 180ms ease-out;
+}
+
+.ff-deployment-modal__stages {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ff-deployment-modal__stage {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid var(--ui-border-dark);
+  padding: 0.65rem 0.8rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ff-deployment-modal__stage--active {
+  border-color: var(--brand-orange);
+}
+
+.ff-deployment-modal__stage--complete {
+  border-color: var(--status-compiled);
+}
+
+.ff-deployment-modal__stage-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.ff-deployment-modal__stage--active .ff-deployment-modal__stage-indicator {
+  color: var(--brand-orange);
+}
+
+.ff-deployment-modal__stage--complete .ff-deployment-modal__stage-indicator {
+  color: var(--status-compiled);
+}
+
+.ff-deployment-modal__stage-label {
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  min-width: 0;
+}
+
+.ff-deployment-modal__stage-state {
+  justify-self: end;
+}
+
 .ff-header__nav {
   display: inline-flex;
   align-items: center;
@@ -400,7 +651,16 @@ button,
   background: rgba(16, 21, 31, 0.64);
 }
 
+.ff-header__logo {
+  min-width: 2.5rem;
+  flex: 0 0 auto;
+}
+
 .ff-header__nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   min-height: 2.4rem;
   min-width: 6.5rem;
   border: 1px solid transparent;
@@ -412,6 +672,30 @@ button,
   text-transform: uppercase;
   color: var(--text-secondary);
   cursor: pointer;
+}
+
+.ff-header__nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+.ff-header__nav-label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ff-wallet-status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.ff-wallet-status__summary {
+  max-width: 100%;
 }
 
 .ff-header__nav-button:hover,
@@ -1577,7 +1861,79 @@ button,
   filter: drop-shadow(0 0 6px rgba(255, 71, 0, 0.35));
 }
 
+@media (max-width: 1100px) {
+  .ff-header__bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .ff-header__identity {
+    justify-self: start;
+  }
+
+  .ff-header__brand-copy {
+    display: none;
+  }
+
+  .ff-header__bar {
+    gap: 0.75rem;
+  }
+
+  .ff-header__nav {
+    flex: 0 0 auto;
+    width: auto;
+    justify-content: center;
+    justify-self: center;
+  }
+
+  .ff-header__nav-button {
+    width: 2.4rem;
+    min-width: 2.4rem;
+    max-width: 2.4rem;
+    flex: 0 0 2.4rem;
+    padding: 0;
+    aspect-ratio: 1 / 1;
+  }
+
+  .ff-header__nav-label {
+    display: none;
+  }
+
+  .ff-header__actions {
+    width: auto;
+    gap: 0.35rem;
+    justify-self: end;
+  }
+
+  .ff-header__button--compact {
+    width: 2.5rem;
+    min-width: 2.5rem;
+    max-width: 2.5rem;
+    flex: 0 0 2.5rem;
+    padding: 0;
+    aspect-ratio: 1 / 1;
+  }
+
+  .ff-header__button-label {
+    display: none;
+  }
+
+  .ff-wallet-status--connected {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .ff-wallet-status__summary {
+    display: none;
+  }
+}
+
 @media (max-width: 767px) {
+  .ff-header__bar {
+    gap: 0.5rem;
+  }
+
   .ff-canvas__empty-state {
     left: 1rem;
     right: 1rem;
@@ -1586,14 +1942,26 @@ button,
   }
 
   .ff-header__nav {
-    order: 3;
-    width: 100%;
-    justify-content: stretch;
+    gap: 0.25rem;
+    padding: 0.2rem;
   }
 
   .ff-header__nav-button {
-    flex: 1 1 0;
-    min-width: 0;
+    width: 2.25rem;
+    min-width: 2.25rem;
+    max-width: 2.25rem;
+    flex-basis: 2.25rem;
+  }
+
+  .ff-header__actions {
+    gap: 0.25rem;
+  }
+
+  .ff-header__button--compact {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    max-width: 2.25rem;
+    flex-basis: 2.25rem;
   }
 
   .ff-move-source__header {

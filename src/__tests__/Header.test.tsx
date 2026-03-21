@@ -7,6 +7,10 @@ vi.mock("../components/WalletStatus", () => ({
   default: () => <div>Wallet Status Slot</div>,
 }));
 
+vi.mock("../components/DeploymentTargetControl", () => ({
+  default: () => <div>Deployment Target Control Slot</div>,
+}));
+
 describe("Header", () => {
   it("renders the banner with logo, title, and wallet action area", () => {
     render(<Header activeView="visual" onViewChange={() => undefined} />);
@@ -17,6 +21,7 @@ describe("Header", () => {
     expect(screen.getByRole("button", { name: "Visual" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Move" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Build" })).toBeVisible();
+    expect(screen.getByText("Deployment Target Control Slot")).toBeVisible();
     expect(screen.getByText("Wallet Status Slot")).toBeVisible();
   });
 

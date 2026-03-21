@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { CompilationStatus as CompilationStatusValue, CompilerDiagnostic, DeploymentStatusType } from "../compiler/types";
+import type { CompilationStatus as CompilationStatusValue, CompilerDiagnostic, DeploymentStatus, DeploymentStatusType } from "../compiler/types";
 
 interface CompilationStatusProps {
   readonly status: CompilationStatusValue;
@@ -23,7 +23,7 @@ function getDeploymentLabel(status: CompilationStatusValue): string | null {
 
   switch (deploymentStatus.status) {
     case "deployed":
-      return "Deployment Deployed";
+      return "Deployed";
     case "ready":
       return "Deployment Ready";
     case "blocked":
@@ -33,6 +33,22 @@ function getDeploymentLabel(status: CompilationStatusValue): string | null {
 
 function getDeploymentSummary(status: CompilationStatusValue): string | null {
   return getArtifactFromStatus(status)?.deploymentStatus?.nextActionSummary ?? null;
+}
+
+function formatDeploymentStage(stage: string | undefined): string | null {
+  if (stage === undefined) {
+    return null;
+  }
+
+  return stage;
+}
+
+function formatDeploymentSeverity(severity: string | undefined): string | null {
+  if (severity === undefined) {
+    return null;
+  }
+
+  return severity;
 }
 
 function getDeploymentIndicatorClassName(status: DeploymentStatusType): string {
@@ -111,13 +127,76 @@ function DiagnosticsPanel({ diagnostics, onSelectDiagnostic }: Pick<CompilationS
   );
 }
 
-function DeploymentPanel({ summary }: { readonly summary: string }) {
+function DeploymentPanel({
+  status,
+  summary,
+}: {
+  readonly status: DeploymentStatus;
+  readonly summary: string;
+}) {
+  const stageLabel = formatDeploymentStage(status.stage);
+  const severityLabel = formatDeploymentSeverity(status.severity);
+  const requiredInputs = status.requiredInputs.join(", ");
+  const resolvedInputs = status.resolvedInputs.join(", ");
+  const previousEntries = (status.reviewHistory ?? []).slice(1);
+
   return (
     <div className="ff-compilation-status__panel" id="deployment-status-details">
       <ul className="ff-compilation-status__list">
+        {status.headline !== undefined ? (
+          <li>
+            <span className="ff-compilation-status__message">{status.headline}</span>
+          </li>
+        ) : null}
+        {status.targetId !== undefined ? (
+          <li>
+            <span className="ff-compilation-status__message">Target: {status.targetId}</span>
+          </li>
+        ) : null}
+        {stageLabel !== null ? (
+          <li>
+            <span className="ff-compilation-status__message">Stage: {stageLabel}</span>
+          </li>
+        ) : null}
+        {severityLabel !== null ? (
+          <li>
+            <span className="ff-compilation-status__message">Severity: {severityLabel}</span>
+          </li>
+        ) : null}
+        {status.packageId !== undefined ? (
+          <li>
+            <span className="ff-compilation-status__message">Package ID: {status.packageId}</span>
+          </li>
+        ) : null}
+        {status.blockedReasons.map((reason) => (
+          <li key={reason}>
+            <span className="ff-compilation-status__message">{reason}</span>
+          </li>
+        ))}
+        {requiredInputs.length > 0 ? (
+          <li>
+            <span className="ff-compilation-status__message">Required inputs: {requiredInputs}</span>
+          </li>
+        ) : null}
+        {resolvedInputs.length > 0 ? (
+          <li>
+            <span className="ff-compilation-status__message">Resolved inputs: {resolvedInputs}</span>
+          </li>
+        ) : null}
         <li>
           <span className="ff-compilation-status__message">{summary}</span>
         </li>
+        {previousEntries.length > 0 ? (
+          <li>
+            <span className="ff-compilation-status__message">Earlier this session</span>
+          </li>
+        ) : null}
+        {previousEntries.map((entry) => (
+          <li key={entry.attemptId}>
+            <span className="ff-compilation-status__message">{`${entry.headline} - ${entry.targetId}${entry.stage === undefined ? "" : ` - ${entry.stage}`}`}</span>
+            <span className="ff-compilation-status__message">{entry.details}</span>
+          </li>
+        ))}
       </ul>
     </div>
   );
@@ -163,7 +242,7 @@ function CompilationStatus({ status, diagnostics, onSelectDiagnostic }: Compilat
 
       {hasDiagnostics && expandedPanel === "diagnostics" ? <DiagnosticsPanel diagnostics={diagnostics} onSelectDiagnostic={onSelectDiagnostic} /> : null}
 
-      {deploymentStatus !== undefined && deploymentSummary !== null && expandedPanel === "deployment" ? <DeploymentPanel summary={deploymentSummary} /> : null}
+      {deploymentStatus !== undefined && deploymentSummary !== null && expandedPanel === "deployment" ? <DeploymentPanel status={deploymentStatus} summary={deploymentSummary} /> : null}
     </div>
   );
 }

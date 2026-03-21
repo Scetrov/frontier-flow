@@ -1,9 +1,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  useCurrentAccount as useCurrentAccountHook,
+  useCurrentWallet as useCurrentWalletHook,
+  useWallets as useWalletsHook,
+} from "@mysten/dapp-kit";
 
 import App from "../App";
 import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
+
+type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
+type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
+type Wallets = ReturnType<typeof useWalletsHook>;
 
 interface CanvasWorkspaceSpyProps {
   readonly initialNodes?: unknown;
@@ -16,6 +25,15 @@ interface CanvasWorkspaceSpyProps {
 const canvasWorkspaceSpy = vi.fn<(props: CanvasWorkspaceSpyProps) => void>();
 const footerSpy = vi.fn();
 const headerSpy = vi.fn();
+const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
+const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
+const mockUseWallets = vi.fn<() => Wallets>();
+
+vi.mock("@mysten/dapp-kit", () => ({
+  useCurrentAccount: () => mockUseCurrentAccount(),
+  useCurrentWallet: () => mockUseCurrentWallet(),
+  useWallets: () => mockUseWallets(),
+}));
 
 vi.mock("../components/Header", () => ({
   default: (props: { activeView?: string; onViewChange?: (view: "visual" | "move") => void }) => {
@@ -64,6 +82,10 @@ vi.mock("../components/KitchenSinkPage", () => ({
   default: () => <div>Kitchen Sink Slot</div>,
 }));
 
+vi.mock("../components/IconPreviewPage", () => ({
+  default: () => <div>Icon Preview Slot</div>,
+}));
+
 vi.mock("../components/MoveSourcePanel", () => ({
   default: () => <div>Move Source Slot</div>,
 }));
@@ -71,12 +93,21 @@ vi.mock("../components/MoveSourcePanel", () => ({
 describe("App", () => {
   const defaultContractFlow = createDefaultContractFlow();
 
+  beforeEach(() => {
+    mockUseCurrentAccount.mockReturnValue(null);
+    mockUseCurrentWallet.mockReturnValue({ isConnected: false } as CurrentWallet);
+    mockUseWallets.mockReturnValue([]);
+  });
+
   afterEach(() => {
     window.history.replaceState({}, "", "/");
     window.localStorage.clear();
     canvasWorkspaceSpy.mockClear();
     footerSpy.mockClear();
     headerSpy.mockClear();
+    mockUseCurrentAccount.mockReset();
+    mockUseCurrentWallet.mockReset();
+    mockUseWallets.mockReset();
   });
 
   it("renders the default editor shell on the root route", async () => {
@@ -135,6 +166,17 @@ describe("App", () => {
     expect(await screen.findByText("Kitchen Sink Slot")).toBeInTheDocument();
     expect(screen.queryByLabelText("Application shell")).not.toBeInTheDocument();
     expect(screen.queryByText("Sidebar Slot")).not.toBeInTheDocument();
+  });
+
+  it("renders the icon preview pages on the /icon-preview route family", async () => {
+    window.history.replaceState({}, "", "/icon-preview/product-fit");
+
+    render(<App />);
+
+    expect(await screen.findByText("Icon Preview Slot")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Application shell")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sidebar Slot")).not.toBeInTheDocument();
+    expect(headerSpy).not.toHaveBeenCalled();
   });
 
   it("reissues diagnostic focus requests when the same item is selected repeatedly", () => {

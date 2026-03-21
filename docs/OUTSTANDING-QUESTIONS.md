@@ -3,7 +3,7 @@ title: Frontier Flow — Outstanding Questions
 version: 1.0.0
 status: active
 created: 2026-02-27
-updated: 2026-02-27
+updated: 2026-03-21
 author: Scetrov
 description: Unresolved integration questions arising from the turrets.diff PR analysis that affect how FrontierFlow hooks into the on-chain contract.
 ---
@@ -181,6 +181,14 @@ public fun get_target_priority_list(
 ---
 
 ## 5. Code Generation Architecture
+
+### Q-12A — How are Stillness and Utopia deployment package references managed? **RESOLVED**
+
+**Context:** The bytecode deployment workflow now validates published-target prerequisites before any simulated submission path begins. That validation depends on stable, target-specific identifiers for Stillness and Utopia.
+
+**Resolution:** Frontier Flow keeps those package references in a maintained source module (`src/data/packageReferences.ts`) rather than fetching them at runtime. The values are verified against the EVE Frontier resources page, then validated structurally before deployment begins. If the maintained data is missing or malformed, deployment to the published target is blocked with user-actionable remediation.
+
+**Operational consequence:** Updating Stillness or Utopia package IDs is a source change plus test update, not a runtime fetch concern.
 
 ### Q-12 — Should FrontierFlow generate a `world` dependency import or use published package addresses?
 

@@ -68,10 +68,10 @@ export function createGeneratedContractArtifact({
       artifactId,
       status: "blocked",
       targetMode: "existing-turret",
-      requiredInputs: ["target turret package id", "extension registration target"],
+      requiredInputs: ["compiled bytecode artifact", "selected deployment target", "target prerequisites"],
       resolvedInputs: ["generated contract artifact"],
-      blockedReasons: ["Existing turret attachment details are not configured yet."],
-      nextActionSummary: "Provide the target turret package and extension registration details to continue deployment.",
+      blockedReasons: ["Compile the generated package to produce deployable bytecode for the selected target."],
+      nextActionSummary: "Build the generated package, choose a deployment target, and satisfy the target prerequisites before deploying.",
     },
     moduleName,
     sourceFilePath,
@@ -88,6 +88,15 @@ export function attachCompiledArtifactResult(
   bytecodeModules: readonly Uint8Array[],
   dependencies: readonly string[],
 ): GeneratedContractArtifact {
+  const existingDeploymentStatus = artifact.deploymentStatus;
+  const deploymentStatus = existingDeploymentStatus === undefined
+    ? undefined
+    : {
+        ...existingDeploymentStatus,
+        blockedReasons: ["Select a deployment target and validate the target prerequisites before deploying."],
+        nextActionSummary: "Select a deployment target and validate the wallet or local-environment prerequisites before deploying.",
+      };
+
   return {
     ...artifact,
     manifest: {
@@ -99,6 +108,7 @@ export function attachCompiledArtifactResult(
       blockedReasons: [],
       nextActionSummary: "Compiled artifact is ready for preview, verification, and existing-turret deployment handoff.",
     },
+    deploymentStatus,
     bytecodeModules,
     dependencies,
   };

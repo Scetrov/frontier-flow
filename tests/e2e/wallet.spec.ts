@@ -11,5 +11,5 @@ test("shows no-wallet guidance when connect is clicked without installed wallets
 
   await page.getByRole("button", { name: "Connect" }).click();
 
-  await expect(page.getByText(/Install a Sui-compatible wallet/i)).toBeVisible();
+  await expect(page.getByText(/No compatible Sui wallet was detected in this browser/i)).toBeVisible();
 });

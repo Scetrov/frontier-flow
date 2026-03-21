@@ -11,7 +11,7 @@ test("surfaces existing-turret deployment status without lifecycle actions", asy
   const deploymentButton = page.getByRole("button", { name: /Deployment Blocked/i });
   await expect(deploymentButton).toBeVisible();
   await deploymentButton.click();
-  await expect(page.getByText(/Provide the target turret package and extension registration details to continue deployment\./i)).toBeVisible();
+  await expect(page.getByText(/Select a deployment target and validate the wallet or local-environment prerequisites before deploying\./i)).toBeVisible();
 
   await expect(page.getByRole("button", { name: /Anchor/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Online/i })).toHaveCount(0);

@@ -5,7 +5,7 @@
 **Status**: Draft  
 **Input**: User description: "Compile the contract into WASM using @zktx.io/sui-move-builder. Auto-compile on idle, footer status indicator (Idle/Compiling/Compiled/Error with coloured dots), Header Build button, comprehensive code generation tests at node and contract level, and error/warning surfacing for issues like unconnected nodes."
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 — Node-to-code generation from the internal graph representation (Priority: P1)
 
@@ -128,7 +128,7 @@ When the WASM compiler returns errors, the raw Move compiler output is parsed in
 - What happens when the browser runs out of memory during compilation of a very large graph? The error is caught and surfaced as a compilation Error with an appropriate message.
 - What happens when the user's graph has only disconnected nodes with no edges? Validation warns about each disconnected node and errors about no valid entry point.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -191,7 +191,7 @@ When the WASM compiler returns errors, the raw Move compiler output is parsed in
 - **Compilation Status**: A state machine with four states (Idle, Compiling, Compiled, Error) that drives the footer indicator and Build button behaviour.
 - **Idle Timer**: A debounced timer that triggers auto-compilation after a period of no graph edits.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

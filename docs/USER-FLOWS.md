@@ -3,7 +3,7 @@ title: Frontier Flow - User Flows & Acceptance Scenarios
 version: 1.0.0
 status: draft
 created: 2026-02-22
-updated: 2026-02-22
+updated: 2026-03-21
 author: Scetrov
 description: Step-by-step user journeys and acceptance criteria for core Frontier Flow features.
 ---
@@ -15,7 +15,7 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 3. [Code Preview & Inspection](#3-code-preview--inspection)
 4. [Testing a Graph](#4-testing-a-graph)
 5. [Wallet Connection & Deployment](#5-wallet-connection--deployment)
-6. [Contract Upgrade](#6-contract-upgrade)
+6. [Deployment Review & Recovery](#6-deployment-review--recovery)
 7. [GitHub Integration](#7-github-integration)
 8. [Error Recovery](#8-error-recovery)
 
@@ -100,42 +100,40 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 
 ## 5. Wallet Connection & Deployment
 
-### Scenario: User connects wallet and deploys to localnet
+### Scenario: User selects a deployment target and launches deployment
 
-**Preconditions:** Graph built and previewed. Browser has a Sui wallet extension installed.
+**Preconditions:** A valid graph has been built; the header deploy control is visible; a Sui wallet is available for published targets.
 
-| Step | User Action                             | System Response                        | Acceptance Criteria                                 |
-| ---- | --------------------------------------- | -------------------------------------- | --------------------------------------------------- |
-| 1    | Click "Connect Wallet"                  | dapp-kit connection modal appears      | Lists available wallet options                      |
-| 2    | Select wallet and approve               | Wallet connects                        | Abbreviated address and SUI balance shown in header |
-| 3    | Select "localnet" from network dropdown | Network switches to localnet           | Network indicator updates; RPC endpoint changes     |
-| 4    | — (balance is 0)                        | "Get Tokens" button appears            | Button visible only on localnet with 0 balance      |
-| 5    | Click "Get Tokens"                      | Faucet request sent                    | Balance updates to >0 SUI after a few seconds       |
-| 6    | Click "Deploy"                          | Code preview shown for confirmation    | Full Move source visible; "Confirm Deploy" button   |
-| 7    | Confirm deployment                      | WASM compilation starts                | Toast: "Compiling..."                               |
-| 8    | —                                       | Compilation completes                  | Toast: "Compiled successfully"                      |
-| 9    | —                                       | Transaction signing prompt from wallet | Standard dapp-kit signing UI                        |
-| 10   | Approve transaction in wallet           | Transaction submitted to localnet      | Toast: "Deploying..."                               |
-| 11   | —                                       | Transaction confirmed                  | Toast: "Deployed! Package ID: 0x..."                |
-| 12   | —                                       | UpgradeCap stored in IndexedDB         | Deploy button text changes to "Upgrade"             |
+| Step | User Action | System Response | Acceptance Criteria |
+| ---- | ----------- | --------------- | ------------------- |
+| 1 | Click "Connect Wallet" | dapp-kit connection modal appears | Lists available wallet options for published-target deployment |
+| 2 | Select wallet and approve | Wallet connects | Header wallet state reflects the connected account |
+| 3 | Click "Select deployment target" | Target list opens next to Build | Exactly `local`, `testnet:stillness`, and `testnet:utopia` are shown |
+| 4 | Choose `testnet:stillness` or `testnet:utopia` | Selected target is reflected in the deploy button label | Primary action updates to `Deploy <target>` |
+| 5 | Click the deploy button | Deployment validation starts immediately | Deploy action stays single-flight; duplicate launches are prevented |
+| 6 | — | Deployment progress modal opens | Modal shows a progress bar and the active stage |
+| 7 | Approve the wallet request when required | Deployment advances through signing and submission | Stage labels progress in order from validation to confirmation |
+| 8 | Dismiss the modal while deployment is still running | Deployment continues | Closing the modal does not cancel the active attempt |
+| 9 | Open the footer deployment popup after completion | Latest deployment result is shown | Popup includes target, severity, stage, and resulting package ID |
+| 10 | Switch to the Move view | Deployment metadata is mirrored there | Move panel shows the same target-aware summary as the footer review surface |
 
 ---
 
-## 6. Contract Upgrade
+## 6. Deployment Review & Recovery
 
-### Scenario: User modifies graph and upgrades existing deployment
+### Scenario: User reviews blockers, cancellation, and session history from the status popup
 
-**Preconditions:** Previous deployment to localnet; UpgradeCap stored.
+**Preconditions:** The user has attempted at least one deployment during the current session.
 
-| Step | User Action                                        | System Response                                | Acceptance Criteria                      |
-| ---- | -------------------------------------------------- | ---------------------------------------------- | ---------------------------------------- |
-| 1    | Modify graph (add a new node or change connection) | Graph updated on canvas                        | Visual changes reflected immediately     |
-| 2    | Notice Deploy button shows "Upgrade"               | —                                              | Button text reflects existing deployment |
-| 3    | Click "Upgrade"                                    | Code preview with diff shown                   | Updated Move source visible              |
-| 4    | Confirm upgrade                                    | WASM compilation + `txb.upgrade()` transaction | Toast: "Compiling..." → "Upgrading..."   |
-| 5    | Approve transaction in wallet                      | Upgrade transaction submitted                  | Standard wallet signing prompt           |
-| 6    | —                                                  | Transaction confirmed                          | Toast: "Upgraded! Digest: 0x..."         |
-| 7    | —                                                  | UpgradeCap reference updated in IndexedDB      | Latest digest stored                     |
+| Step | User Action | System Response | Acceptance Criteria |
+| ---- | ----------- | --------------- | ------------------- |
+| 1 | Attempt deployment without a valid prerequisite | Deployment is blocked before submission | Footer indicator changes to `Deployment Blocked` |
+| 2 | Open the footer deployment popup | Blocker detail is expanded | Popup includes the affected target and remediation text |
+| 3 | Retry on a published target and reject wallet approval | Attempt ends as cancelled | Footer review identifies the `signing` stage and warning severity |
+| 4 | Retry again with valid prerequisites | Deployment completes successfully | Footer indicator updates to `Deployed` |
+| 5 | Re-open the footer deployment popup | Latest success is shown first | Popup includes the current package ID and summary |
+| 6 | Inspect the bottom of the popup | Earlier attempts remain reviewable | Prior blocked or cancelled attempts are listed as earlier session history |
+| 7 | Open the Move view after the retry sequence | Same review context is available outside the footer | Move panel mirrors the current deployment summary and earlier session entries |
 
 ---
 

@@ -38,7 +38,30 @@ export interface SourceMapEntry {
   readonly context?: string;
 }
 
+export type DeploymentTargetId = "local" | "testnet:stillness" | "testnet:utopia";
+
+export interface DeploymentTarget {
+  readonly id: DeploymentTargetId;
+  readonly label: string;
+  readonly networkFamily: "local" | "testnet";
+  readonly requiresPublishedPackageRefs: boolean;
+  readonly supportsWalletSigning: boolean;
+}
+
+export interface PackageReferenceBundle {
+  readonly targetId: Exclude<DeploymentTargetId, "local">;
+  readonly environmentLabel: string;
+  readonly worldPackageId: string;
+  readonly objectRegistryId: string;
+  readonly serverAddressRegistryId: string;
+  readonly source: string;
+  readonly lastVerifiedOn: string;
+}
+
 export type DeploymentStatusType = "blocked" | "ready" | "deployed";
+export type DeploymentAttemptOutcome = "blocked" | "cancelled" | "failed" | "succeeded";
+export type DeploymentStage = "validating" | "preparing" | "signing" | "submitting" | "confirming";
+export type DeploymentMessageSeverity = "info" | "warning" | "error" | "success";
 
 export interface ContractIdentity {
   readonly packageName: string;
@@ -73,11 +96,64 @@ export interface CompileReadiness {
 export interface DeploymentStatus {
   readonly artifactId: string;
   readonly status: DeploymentStatusType;
+  readonly targetId?: DeploymentTargetId;
+  readonly packageId?: string;
+  readonly stage?: DeploymentStage;
+  readonly severity?: DeploymentMessageSeverity;
+  readonly headline?: string;
   readonly targetMode: "existing-turret";
   readonly requiredInputs: readonly string[];
   readonly resolvedInputs: readonly string[];
   readonly blockedReasons: readonly string[];
   readonly nextActionSummary: string;
+  readonly reviewHistory?: readonly DeploymentReviewEntry[];
+}
+
+export interface DeploymentAttempt {
+  readonly attemptId: string;
+  readonly artifactId: string;
+  readonly targetId: DeploymentTargetId;
+  readonly startedAt: number;
+  readonly endedAt?: number;
+  readonly outcome: DeploymentAttemptOutcome;
+  readonly currentStage: DeploymentStage;
+  readonly packageId?: string;
+  readonly message: string;
+  readonly errorCode?: string;
+}
+
+export interface DeploymentProgress {
+  readonly attemptId: string;
+  readonly targetId: DeploymentTargetId;
+  readonly stage: DeploymentStage;
+  readonly stageIndex: number;
+  readonly stageCount: number;
+  readonly completedStages: readonly DeploymentStage[];
+  readonly activeMessage: string;
+  readonly dismissedByUser: boolean;
+}
+
+export interface DeploymentStatusMessage {
+  readonly attemptId: string;
+  readonly targetId: DeploymentTargetId;
+  readonly severity: DeploymentMessageSeverity;
+  readonly headline: string;
+  readonly details: string;
+  readonly stage?: DeploymentStage;
+  readonly packageId?: string;
+  readonly visibleInFooter: boolean;
+  readonly visibleInMovePanel: boolean;
+}
+
+export interface DeploymentReviewEntry {
+  readonly attemptId: string;
+  readonly headline: string;
+  readonly targetId: DeploymentTargetId;
+  readonly severity: DeploymentMessageSeverity;
+  readonly stage?: DeploymentStage;
+  readonly packageId?: string;
+  readonly details: string;
+  readonly blockedReasons: readonly string[];
 }
 
 export interface GeneratedContractArtifact {
@@ -197,6 +273,21 @@ export interface CompilationState {
   readonly sourceCode: string | null;
   readonly artifact: GeneratedContractArtifact | null;
   readonly triggerCompile: () => void;
+}
+
+export interface DeploymentState {
+  readonly selectedTarget: DeploymentTargetId;
+  readonly canDeploy: boolean;
+  readonly isDeploying: boolean;
+  readonly isProgressModalOpen: boolean;
+  readonly blockerReasons: readonly string[];
+  readonly deploymentStatus: DeploymentStatus | null;
+  readonly latestAttempt: DeploymentAttempt | null;
+  readonly progress: DeploymentProgress | null;
+  readonly statusMessage: DeploymentStatusMessage | null;
+  readonly setSelectedTarget: (target: DeploymentTargetId) => void;
+  readonly startDeployment: () => Promise<void>;
+  readonly dismissProgress: () => void;
 }
 
 export interface PipelineInput {

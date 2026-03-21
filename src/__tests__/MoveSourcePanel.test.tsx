@@ -63,10 +63,14 @@ describe("MoveSourcePanel", () => {
 
   it.each([
     ["ready", "Deployment Ready", "Ready to deploy the generated artifact to the selected turret."],
-    ["deployed", "Deployment Deployed", "Deployment completed for the selected turret."],
+    ["deployed", "Deployed", "Deployment completed for the selected turret."],
   ] as const)("renders %s deployment state", (status, label, summary) => {
     const artifact = createGeneratedArtifactStub({
-      deploymentStatus: createDeploymentStatus(status, { nextActionSummary: summary }),
+      deploymentStatus: createDeploymentStatus(status, {
+        nextActionSummary: summary,
+        packageId: status === "deployed" ? "0xabc123" : undefined,
+        targetId: "testnet:stillness",
+      }),
     });
 
     render(
@@ -77,6 +81,10 @@ describe("MoveSourcePanel", () => {
     );
 
     expect(screen.getByText(label)).toBeVisible();
+    expect(screen.getByText("testnet:stillness")).toBeVisible();
+    if (status === "deployed") {
+      expect(screen.getByText("0xabc123")).toBeVisible();
+    }
     expect(screen.getByText(summary)).toBeVisible();
   });
 });
