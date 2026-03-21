@@ -8,7 +8,7 @@ describe("CompilationStatus deployment popup review", () => {
   it("renders target-aware success details including stage, severity, and package id", () => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("deployed", {
-        headline: "Deployment deployed",
+        headline: "Deployed",
         targetId: "testnet:stillness",
         stage: "confirming",
         severity: "success",
@@ -19,9 +19,9 @@ describe("CompilationStatus deployment popup review", () => {
 
     render(<CompilationStatus diagnostics={[]} status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Deployment Deployed/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Deployed/i }));
 
-    expect(screen.getByText("Deployment deployed")).toBeVisible();
+    expect(screen.getAllByText("Deployed")).toHaveLength(2);
     expect(screen.getByText("Target: testnet:stillness")).toBeVisible();
     expect(screen.getByText("Stage: confirming")).toBeVisible();
     expect(screen.getByText("Severity: success")).toBeVisible();
@@ -32,7 +32,7 @@ describe("CompilationStatus deployment popup review", () => {
   it("preserves prior session review entries when a later deployment succeeds", () => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("deployed", {
-        headline: "Deployment deployed",
+        headline: "Deployed",
         targetId: "testnet:stillness",
         stage: "confirming",
         severity: "success",
@@ -41,7 +41,7 @@ describe("CompilationStatus deployment popup review", () => {
         reviewHistory: [
           createDeploymentReviewEntry({
             attemptId: "attempt-success",
-            headline: "Deployment deployed",
+            headline: "Deployed",
             targetId: "testnet:stillness",
             severity: "success",
             stage: "confirming",
@@ -64,7 +64,7 @@ describe("CompilationStatus deployment popup review", () => {
 
     render(<CompilationStatus diagnostics={[]} status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Deployment Deployed/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Deployed/i }));
 
     expect(screen.getByText("Earlier this session")).toBeVisible();
     expect(screen.getByText(/Deployment blocked - local - validating/)).toBeVisible();

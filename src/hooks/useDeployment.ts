@@ -486,7 +486,7 @@ function createSuccessOutcome(input: {
     attemptId: input.attemptId,
     targetId: input.targetId,
     severity: "success",
-    headline: "Deployment deployed",
+    headline: "Deployed",
     details: message,
     stage: "confirming",
     packageId: input.packageId,

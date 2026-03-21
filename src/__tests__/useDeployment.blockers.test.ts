@@ -109,6 +109,28 @@ describe("useDeployment blocker handling", () => {
     expect(result.current.latestAttempt?.errorCode).toBe("wallet-required");
   });
 
+  it("reports wallet detection failures without telling the user to install another wallet", async () => {
+    mockUseWallets.mockReturnValue([]);
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "testnet:stillness",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    expect(result.current.blockerReasons).toContain(
+      "No compatible Sui wallet was detected before deploying to testnet:stillness.",
+    );
+
+    await act(async () => {
+      await result.current.startDeployment();
+    });
+
+    expect(result.current.statusMessage?.details).toBe(
+      "Unlock or refresh a wallet that supports the Sui Wallet Standard, then connect it and retry deployment.",
+    );
+  });
+
   it("blocks published targets when package reference validation fails", () => {
     window.history.replaceState({}, "", "/?ff_mock_invalid_package_refs=1");
     mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);

@@ -16,6 +16,7 @@ import { loadUiState, mergeUiState } from "./utils/uiStateStorage";
 const defaultContractFlow = createDefaultContractFlow();
 const defaultContractName = "Starter Contract";
 const KitchenSinkPage = lazy(() => import("./components/KitchenSinkPage"));
+const IconPreviewPage = lazy(() => import("./components/IconPreviewPage"));
 
 interface FocusedDiagnosticSelection {
   readonly nodeId: string;
@@ -97,8 +98,7 @@ function AppMainContent({
   return <MoveSourceView displayStatus={displayStatus} moveSourceCode={moveSourceCode} />;
 }
 
-function App() {
-  const isKitchenSinkRoute = typeof window !== "undefined" && window.location.pathname === "/kitchen-sink";
+function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
   const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>({ state: "idle" });
   const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>([]);
   const [focusedDiagnosticSelection, setFocusedDiagnosticSelection] = useState<FocusedDiagnosticSelection | null>(null);
@@ -195,6 +195,21 @@ function App() {
       ) : null}
     </div>
   );
+}
+
+function App() {
+  const pathname = typeof window === "undefined" ? "/" : window.location.pathname;
+  const isIconPreviewRoute = pathname === "/icon-preview" || pathname.startsWith("/icon-preview/");
+
+  if (isIconPreviewRoute) {
+    return (
+      <Suspense fallback={<main className="flex min-h-[100dvh]" aria-label="Icon preview loading" />}>
+        <IconPreviewPage />
+      </Suspense>
+    );
+  }
+
+  return <StandardApp isKitchenSinkRoute={pathname === "/kitchen-sink"} />;
 }
 
 export default App;

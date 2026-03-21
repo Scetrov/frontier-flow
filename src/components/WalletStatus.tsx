@@ -9,6 +9,7 @@ import {
 } from "@mysten/dapp-kit";
 
 import { formatAddress } from "../utils/formatAddress";
+import { ConservativeConnectIcon } from "./HeaderActionIcons";
 
 const MIST_PER_SUI = 1_000_000_000;
 
@@ -108,20 +109,14 @@ function WalletHelpStatus({
     <div className="ff-wallet-status ff-wallet-status--help">
       <WalletActionButton
         className={buttonClassName}
-        icon={(
-          <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2.5 5.5H6.5L8 3.5H13.5V12.5H8L6.5 10.5H2.5V5.5Z" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M6.8 8H9.7" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M8.7 6L10.7 8L8.7 10" stroke="currentColor" strokeWidth="1.4" />
-          </svg>
-        )}
+        icon={<ConservativeConnectIcon />}
         label={showWalletHelp ? "Hide Help" : "Connect"}
         onClick={onToggleHelp}
       />
       {showWalletHelp ? (
         <div className="absolute right-4 top-full z-50 mt-2 max-w-[18rem] border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.95)] p-3 shadow-xl backdrop-blur-md">
           <p className="text-[0.7rem] leading-relaxed text-[var(--text-secondary)]">
-            Install a Sui-compatible wallet such as Sui Wallet, Suiet, or Ethos to connect.
+            No compatible Sui wallet was detected in this browser. If EVE Vault is already installed, unlock it and refresh the page. Frontier Flow only connects to wallets that register through the Sui Wallet Standard.
           </p>
         </div>
       ) : null}
@@ -201,13 +196,7 @@ function WalletStatus() {
       trigger={
         <WalletActionButton
           className={primaryButtonClassName}
-          icon={(
-            <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2.5 5.5H6.5L8 3.5H13.5V12.5H8L6.5 10.5H2.5V5.5Z" stroke="currentColor" strokeWidth="1.4" />
-              <path d="M6.8 8H9.7" stroke="currentColor" strokeWidth="1.4" />
-              <path d="M8.7 6L10.7 8L8.7 10" stroke="currentColor" strokeWidth="1.4" />
-            </svg>
-          )}
+          icon={<ConservativeConnectIcon />}
           label="Connect"
         />
       }

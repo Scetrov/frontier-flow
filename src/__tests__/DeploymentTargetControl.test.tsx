@@ -11,6 +11,24 @@ describe("DeploymentTargetControl", () => {
     expect(screen.getByRole("button", { name: "Select deployment target" })).toBeVisible();
   });
 
+  it("highlights both halves when either side is hovered", () => {
+    const { container } = render(
+      <DeploymentTargetControl canDeploy={true} onDeploy={() => undefined} selectedTarget="local" />,
+    );
+
+    const control = container.querySelector(".ff-deployment-target-control");
+
+    expect(control).not.toHaveClass("ff-deployment-target-control--active");
+
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Select deployment target" }));
+
+    expect(control).toHaveClass("ff-deployment-target-control--active");
+
+    fireEvent.mouseLeave(control as Element);
+
+    expect(control).not.toHaveClass("ff-deployment-target-control--active");
+  });
+
   it("opens the target list and notifies when a new target is chosen", () => {
     const handleTargetChange = vi.fn();
 

@@ -107,7 +107,8 @@ describe("WalletStatus", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-    expect(screen.getByText(/Install a Sui-compatible wallet/i)).toBeVisible();
+    expect(screen.getByText(/No compatible Sui wallet was detected in this browser/i)).toBeVisible();
+    expect(screen.getByText(/If EVE Vault is already installed, unlock it and refresh the page/i)).toBeVisible();
   });
 
   it("renders the connected wallet address and balance", () => {

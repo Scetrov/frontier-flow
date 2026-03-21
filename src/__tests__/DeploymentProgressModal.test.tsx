@@ -57,8 +57,10 @@ describe("DeploymentProgressModal", () => {
       />,
     );
 
-    expect(screen.getByRole("dialog", { name: "Deployment deployed" })).toBeVisible();
+    expect(screen.getByRole("dialog", { name: "Deployed" })).toBeVisible();
     expect(screen.getByText("Deployment completed for local. Package ID: 0xabc.")).toBeVisible();
+    expect(screen.getAllByText("Complete")).toHaveLength(5);
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
 

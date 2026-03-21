@@ -28,7 +28,7 @@ function getModalTitle(latestAttempt: DeploymentAttempt | null, progress: Deploy
 
   switch (latestAttempt.outcome) {
     case "succeeded":
-      return "Deployment deployed";
+      return "Deployed";
     case "cancelled":
       return "Deployment cancelled";
     case "failed":
@@ -42,7 +42,19 @@ function getProgressPercent(progress: DeploymentProgress): number {
   return Math.round(((progress.stageIndex + 1) / progress.stageCount) * 100);
 }
 
-function getStageState(stage: DeploymentStage, progress: DeploymentProgress): "complete" | "active" | "pending" {
+function getStageState(
+  stage: DeploymentStage,
+  progress: DeploymentProgress,
+  latestAttempt: DeploymentAttempt | null,
+): "complete" | "active" | "pending" {
+  if (
+    stage === progress.stage
+    && isTerminalAttempt(latestAttempt, progress)
+    && latestAttempt.outcome === "succeeded"
+  ) {
+    return "complete";
+  }
+
   if (progress.completedStages.includes(stage)) {
     return "complete";
   }
@@ -86,12 +98,16 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
 
         <ol className="ff-deployment-modal__stages">
           {(Object.keys(STAGE_LABELS) as DeploymentStage[]).map((stage) => {
-            const state = getStageState(stage, progress);
+            const state = getStageState(stage, progress, latestAttempt);
+            const stateLabel = state === "complete" ? "Complete" : state === "active" ? "Active" : "Pending";
 
             return (
               <li className={`ff-deployment-modal__stage ff-deployment-modal__stage--${state}`} key={stage}>
+                <span aria-hidden="true" className="ff-deployment-modal__stage-indicator">
+                  {state === "complete" ? "✓" : state === "active" ? "•" : ""}
+                </span>
                 <span className="ff-deployment-modal__stage-label">{STAGE_LABELS[stage]}</span>
-                <span className="ff-deployment-modal__stage-state">{state === "complete" ? "Complete" : state === "active" ? "Active" : "Pending"}</span>
+                <span className="ff-deployment-modal__stage-state">{stateLabel}</span>
               </li>
             );
           })}

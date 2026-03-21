@@ -155,10 +155,10 @@ function createWalletBlockers(input: {
     stage: "validating",
     message: input.hasAvailableWallets
       ? `Connect a Sui-compatible wallet before deploying to ${input.targetLabel}.`
-      : `Install a Sui-compatible wallet before deploying to ${input.targetLabel}.`,
+      : `No compatible Sui wallet was detected before deploying to ${input.targetLabel}.`,
     remediation: input.hasAvailableWallets
       ? "Connect and approve the target wallet, then retry deployment."
-      : "Install a Sui-compatible wallet, connect it, then retry deployment.",
+      : "Unlock or refresh a wallet that supports the Sui Wallet Standard, then connect it and retry deployment.",
   }];
 }
 

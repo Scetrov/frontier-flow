@@ -47,7 +47,7 @@ function getDeploymentLabel(deploymentStatus: DeploymentStatus | null): string |
 
   switch (deploymentStatus.status) {
     case "deployed":
-      return "Deployment Deployed";
+      return "Deployed";
     case "ready":
       return "Deployment Ready";
     case "blocked":
@@ -116,9 +116,11 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
   const displayedLines = sourceCode?.split("\n") ?? [];
   const highlightedSource = sourceCode === null ? "" : hljs.highlight(sourceCode, { language: "rust" }).value;
   const deployment = getDeploymentDetails(status);
-  const deploymentBadges = [deployment.headline, deployment.label, deployment.target, deployment.stage, deployment.severity].filter(
-    (value): value is string => value !== null,
-  );
+  const deploymentBadges = Array.from(new Set(
+    [deployment.headline, deployment.label, deployment.target, deployment.stage, deployment.severity].filter(
+      (value): value is string => value !== null,
+    ),
+  ));
   const deploymentLines = [deployment.packageId, deployment.summary].filter((value): value is string => value !== null);
 
   return (

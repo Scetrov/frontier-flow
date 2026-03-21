@@ -82,6 +82,10 @@ vi.mock("../components/KitchenSinkPage", () => ({
   default: () => <div>Kitchen Sink Slot</div>,
 }));
 
+vi.mock("../components/IconPreviewPage", () => ({
+  default: () => <div>Icon Preview Slot</div>,
+}));
+
 vi.mock("../components/MoveSourcePanel", () => ({
   default: () => <div>Move Source Slot</div>,
 }));
@@ -162,6 +166,17 @@ describe("App", () => {
     expect(await screen.findByText("Kitchen Sink Slot")).toBeInTheDocument();
     expect(screen.queryByLabelText("Application shell")).not.toBeInTheDocument();
     expect(screen.queryByText("Sidebar Slot")).not.toBeInTheDocument();
+  });
+
+  it("renders the icon preview pages on the /icon-preview route family", async () => {
+    window.history.replaceState({}, "", "/icon-preview/product-fit");
+
+    render(<App />);
+
+    expect(await screen.findByText("Icon Preview Slot")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Application shell")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sidebar Slot")).not.toBeInTheDocument();
+    expect(headerSpy).not.toHaveBeenCalled();
   });
 
   it("reissues diagnostic focus requests when the same item is selected repeatedly", () => {

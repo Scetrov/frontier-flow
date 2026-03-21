@@ -120,10 +120,13 @@ function HeaderActions({
       >
         <span aria-hidden="true" className="ff-header__button-icon">
           <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 12.5L7.2 8.3" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M8.2 7.3L10.3 5.2" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M9.8 2.5L13.5 6.2L11.8 7.9L8.1 4.2L9.8 2.5Z" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M2.5 13.5L5.1 12.9L3.1 10.9L2.5 13.5Z" fill="currentColor" />
+            <path d="M3 3H6.5V6.5H3V3Z" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M9.5 3H13V6.5H9.5V3Z" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M3 9.5H6.5V13H3V9.5Z" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M8.3 9.6H10.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+            <path d="M9.4 8.5V10.7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+            <path d="M12 9.6H12.8" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+            <path d="M12.4 9.2V10" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
           </svg>
         </span>
         <span className="ff-header__button-label">{isCompiling ? "Building" : "Build"}</span>

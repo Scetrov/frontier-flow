@@ -91,6 +91,6 @@ describe("useDeployment success path", () => {
     expect(result.current.latestAttempt?.packageId).toMatch(/^0x[a-f0-9]{64}$/);
     expect(result.current.deploymentStatus?.status).toBe("deployed");
     expect(result.current.deploymentStatus?.targetId).toBe("testnet:stillness");
-    expect(result.current.statusMessage?.headline).toBe("Deployment deployed");
+    expect(result.current.statusMessage?.headline).toBe("Deployed");
   });
 });

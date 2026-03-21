@@ -4,7 +4,7 @@ export function mergeDeploymentStatus(
   status: CompilationStatus,
   deploymentStatus: GeneratedContractArtifact["deploymentStatus"] | null,
 ): CompilationStatus {
-  if (deploymentStatus === null) {
+  if (deploymentStatus == null) {
     return status;
   }
 

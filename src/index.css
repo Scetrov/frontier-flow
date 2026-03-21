@@ -440,6 +440,12 @@ button,
   text-align: center;
 }
 
+.ff-deployment-target-control--active .ff-deployment-target-control__primary,
+.ff-deployment-target-control--active .ff-deployment-target-control__toggle {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.12);
+}
+
 .ff-header__bar {
   display: flex;
   align-items: center;
@@ -512,14 +518,15 @@ button,
   position: relative;
   z-index: 1;
   display: grid;
-  width: min(36rem, 100%);
+  width: min(44rem, 100%);
   max-height: calc(100dvh - 3rem);
   gap: 1rem;
   border: 1px solid var(--ui-border-dark);
   background: rgba(16, 21, 31, 0.96);
   padding: 1.25rem;
   box-shadow: 0 22px 44px rgba(0, 0, 0, 0.35);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .ff-deployment-modal__header {
@@ -560,6 +567,11 @@ button,
   color: var(--text-secondary);
 }
 
+.ff-deployment-modal__message {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .ff-deployment-modal__progress {
   overflow: hidden;
   height: 0.8rem;
@@ -582,22 +594,40 @@ button,
 }
 
 .ff-deployment-modal__stage {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
   border: 1px solid var(--ui-border-dark);
   padding: 0.65rem 0.8rem;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .ff-deployment-modal__stage--active {
   border-color: var(--brand-orange);
-  background: rgba(255, 71, 0, 0.1);
 }
 
 .ff-deployment-modal__stage--complete {
   border-color: var(--status-compiled);
-  background: rgba(34, 197, 94, 0.1);
+}
+
+.ff-deployment-modal__stage-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.ff-deployment-modal__stage--active .ff-deployment-modal__stage-indicator {
+  color: var(--brand-orange);
+}
+
+.ff-deployment-modal__stage--complete .ff-deployment-modal__stage-indicator {
+  color: var(--status-compiled);
 }
 
 .ff-deployment-modal__stage-label {
@@ -605,6 +635,11 @@ button,
   font-size: 0.72rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  min-width: 0;
+}
+
+.ff-deployment-modal__stage-state {
+  justify-self: end;
 }
 
 .ff-header__nav {

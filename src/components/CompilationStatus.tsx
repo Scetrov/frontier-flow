@@ -23,7 +23,7 @@ function getDeploymentLabel(status: CompilationStatusValue): string | null {
 
   switch (deploymentStatus.status) {
     case "deployed":
-      return "Deployment Deployed";
+      return "Deployed";
     case "ready":
       return "Deployment Ready";
     case "blocked":

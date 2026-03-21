@@ -8,7 +8,7 @@ describe("MoveSourcePanel deployment parity", () => {
   it("renders target, stage, severity, headline, and package metadata for the latest deployment", () => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("deployed", {
-        headline: "Deployment deployed",
+        headline: "Deployed",
         targetId: "testnet:utopia",
         stage: "confirming",
         severity: "success",
@@ -19,7 +19,7 @@ describe("MoveSourcePanel deployment parity", () => {
 
     render(<MoveSourcePanel sourceCode={artifact.moveSource} status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }} />);
 
-    expect(screen.getByText("Deployment deployed")).toBeVisible();
+    expect(screen.getAllByText("Deployed")).toHaveLength(1);
     expect(screen.getByText("testnet:utopia")).toBeVisible();
     expect(screen.getByText("confirming")).toBeVisible();
     expect(screen.getByText("success")).toBeVisible();
@@ -29,7 +29,7 @@ describe("MoveSourcePanel deployment parity", () => {
   it("shows prior session deployment review entries alongside the latest summary", () => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("deployed", {
-        headline: "Deployment deployed",
+        headline: "Deployed",
         targetId: "testnet:stillness",
         stage: "confirming",
         severity: "success",
@@ -38,7 +38,7 @@ describe("MoveSourcePanel deployment parity", () => {
         reviewHistory: [
           createDeploymentReviewEntry({
             attemptId: "attempt-success",
-            headline: "Deployment deployed",
+            headline: "Deployed",
             targetId: "testnet:stillness",
             severity: "success",
             stage: "confirming",

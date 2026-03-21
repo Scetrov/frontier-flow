@@ -63,7 +63,7 @@ describe("MoveSourcePanel", () => {
 
   it.each([
     ["ready", "Deployment Ready", "Ready to deploy the generated artifact to the selected turret."],
-    ["deployed", "Deployment Deployed", "Deployment completed for the selected turret."],
+    ["deployed", "Deployed", "Deployment completed for the selected turret."],
   ] as const)("renders %s deployment state", (status, label, summary) => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus(status, {

@@ -11,9 +11,13 @@ describe("Footer", () => {
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
     expect(screen.getByText(`v${__APP_VERSION__}`)).toBeVisible();
     expect(screen.getByText("Idle")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Source Repository" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "GitHub Repository" })).toHaveAttribute(
       "href",
       "https://github.com/Scetrov/frontier-flow",
+    );
+    expect(screen.getByRole("link", { name: "scetrov.live" })).toHaveAttribute(
+      "href",
+      "https://scetrov.live",
     );
   });
 

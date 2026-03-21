@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 
 import type { DeploymentTargetId } from "../compiler/types";
 import { DEPLOYMENT_TARGETS } from "../data/deploymentTargets";
+import { ConservativeDeployIcon } from "./HeaderActionIcons";
 
 interface DeploymentTargetControlProps {
   readonly canDeploy?: boolean;
@@ -21,17 +22,28 @@ function DeploymentTargetControl({
   onTargetChange,
   selectedTarget,
 }: DeploymentTargetControlProps) {
+  const [isActive, setIsActive] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
   const isDeployDisabled = isDeploying || onDeploy === undefined;
 
   return (
     <div
-      className="ff-deployment-target-control"
+      className={`ff-deployment-target-control${isActive ? " ff-deployment-target-control--active" : ""}`}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsActive(false);
           setMenuOpen(false);
         }
+      }}
+      onFocus={() => {
+        setIsActive(true);
+      }}
+      onMouseEnter={() => {
+        setIsActive(true);
+      }}
+      onMouseLeave={() => {
+        setIsActive(false);
       }}
     >
       <button
@@ -45,9 +57,7 @@ function DeploymentTargetControl({
         type="button"
       >
         <span aria-hidden="true" className="ff-header__button-icon">
-          <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
-            <path d="M8 2L13 8L8 7L7 14L3 8L7 7L8 2Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.2" />
-          </svg>
+          <ConservativeDeployIcon />
         </span>
         <span className="ff-header__button-label">{isDeploying ? `Deploying ${selectedTarget}` : `Deploy ${selectedTarget}`}</span>
       </button>
