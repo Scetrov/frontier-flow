@@ -8,11 +8,13 @@ export function mergeDeploymentStatus(
     return status;
   }
 
+  const nextDeploymentStatus = deploymentStatus;
+
   if ((status.state !== "compiled" && status.state !== "error") || status.artifact === undefined) {
     return status;
   }
 
-  if (status.artifact.artifactId === undefined || deploymentStatus.artifactId !== status.artifact.artifactId) {
+  if (status.artifact.artifactId === undefined || nextDeploymentStatus.artifactId !== status.artifact.artifactId) {
     return status;
   }
 
@@ -20,7 +22,7 @@ export function mergeDeploymentStatus(
     ...status,
     artifact: {
       ...status.artifact,
-      deploymentStatus,
+      deploymentStatus: nextDeploymentStatus,
     },
   };
 }

@@ -66,4 +66,61 @@ describe("DeploymentProgressModal", () => {
 
     expect(handleDismiss).toHaveBeenCalledTimes(1);
   });
+
+  it("moves focus into the modal, traps keyboard focus, and supports escape dismissal", () => {
+    const handleDismiss = vi.fn();
+    const progress = createDeploymentProgressFixture({
+      targetId: "testnet:stillness",
+      stage: "signing",
+      stageIndex: 2,
+      stageCount: 5,
+      completedStages: ["validating", "preparing"],
+      activeMessage: "Waiting for wallet approval.",
+    });
+
+    const { rerender } = render(
+      <>
+        <button type="button">Open deploy modal</button>
+      </>,
+    );
+
+    const opener = screen.getByRole("button", { name: "Open deploy modal" });
+    opener.focus();
+
+    rerender(
+      <>
+        <button type="button">Open deploy modal</button>
+        <DeploymentProgressModal latestAttempt={null} onDismiss={handleDismiss} progress={progress} />
+      </>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Deployment in progress" });
+    const dismissButton = screen.getByRole("button", { name: "Dismiss" });
+
+    expect(dismissButton).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: "Tab" });
+
+    expect(dismissButton).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    expect(handleDismiss).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <>
+        <button type="button">Open deploy modal</button>
+        <DeploymentProgressModal
+          latestAttempt={null}
+          onDismiss={handleDismiss}
+          progress={{
+            ...progress,
+            dismissedByUser: true,
+          }}
+        />
+      </>,
+    );
+
+    expect(screen.getByRole("button", { name: "Open deploy modal" })).toHaveFocus();
+  });
 });

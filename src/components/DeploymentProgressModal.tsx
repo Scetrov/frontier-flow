@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 import type { DeploymentAttempt, DeploymentProgress, DeploymentStage } from "../compiler/types";
 
 interface DeploymentProgressModalProps {
@@ -42,6 +44,18 @@ function getProgressPercent(progress: DeploymentProgress): number {
   return Math.round(((progress.stageIndex + 1) / progress.stageCount) * 100);
 }
 
+function getFocusableElements(panel: HTMLElement | null): HTMLElement[] {
+  if (panel === null) {
+    return [];
+  }
+
+  return Array.from(
+    panel.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  );
+}
+
 function getStageState(
   stage: DeploymentStage,
   progress: DeploymentProgress,
@@ -67,6 +81,70 @@ function getStageState(
 }
 
 function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: DeploymentProgressModalProps) {
+  const dismissButtonRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (progress === null || progress.dismissedByUser) {
+      return;
+    }
+
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dismissButtonRef.current?.focus();
+
+    return () => {
+      previousFocusRef.current?.focus();
+    };
+  }, [progress]);
+
+  useEffect(() => {
+    if (progress === null || progress.dismissedByUser) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onDismiss();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusableElements = getFocusableElements(panelRef.current);
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dismissButtonRef.current?.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+
+      if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onDismiss, progress]);
+
   if (progress === null || progress.dismissedByUser) {
     return null;
   }
@@ -78,14 +156,20 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
   return (
     <div className="ff-deployment-modal" role="presentation">
       <div aria-hidden="true" className="ff-deployment-modal__backdrop" />
-      <section aria-labelledby="deployment-progress-title" aria-modal="true" className="ff-deployment-modal__panel" role="dialog">
+      <section
+        aria-labelledby="deployment-progress-title"
+        aria-modal="true"
+        className="ff-deployment-modal__panel"
+        ref={panelRef}
+        role="dialog"
+      >
         <header className="ff-deployment-modal__header">
           <div>
             <p className="ff-deployment-modal__eyebrow">Deployment</p>
             <h2 className="ff-deployment-modal__title" id="deployment-progress-title">{title}</h2>
             <p className="ff-deployment-modal__copy">Target: {progress.targetId}</p>
           </div>
-          <button className="ff-header__button" onClick={onDismiss} type="button">
+          <button className="ff-header__button" onClick={onDismiss} ref={dismissButtonRef} type="button">
             Dismiss
           </button>
         </header>

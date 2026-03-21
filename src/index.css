@@ -493,7 +493,7 @@ button,
 
 .ff-deployment-target-control__option:hover,
 .ff-deployment-target-control__option:focus-visible,
-.ff-deployment-target-control__option[aria-selected="true"] {
+.ff-deployment-target-control__option[aria-checked="true"] {
   border-color: var(--brand-orange);
   background: rgba(255, 71, 0, 0.12);
 }
