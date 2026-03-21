@@ -1,0 +1,16 @@
+# Each line is a file pattern followed by one or more owners.
+# Order matters — later matches take priority.
+
+# Default owner for everything
+* @Scetrov
+
+# Core compiler pipeline
+src/compiler/ @Scetrov
+
+# Deployment and blockchain integration
+src/hooks/useDeployment.ts @Scetrov
+
+# Security-sensitive files
+SECURITY.md @Scetrov
+docs/SECURITY.md @Scetrov
+.github/workflows/ @Scetrov
