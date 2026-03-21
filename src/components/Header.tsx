@@ -7,6 +7,7 @@ export type PrimaryView = "visual" | "move";
 
 interface HeaderProps {
   readonly isCompiling?: boolean;
+  readonly isUpgrade?: boolean;
   readonly onBuild?: () => void;
   readonly activeView?: PrimaryView;
   readonly canDeploy?: boolean;
@@ -22,6 +23,7 @@ interface HeaderActionsProps {
   readonly isBuildDisabled: boolean;
   readonly isCompiling: boolean;
   readonly isDeploying: boolean;
+  readonly isUpgrade: boolean;
   readonly onBuild?: () => void;
   readonly onDeploy?: () => void;
   readonly onDeploymentTargetChange?: (target: DeploymentTargetId) => void;
@@ -95,6 +97,7 @@ function HeaderActions({
   isBuildDisabled,
   isCompiling,
   isDeploying,
+  isUpgrade,
   onBuild,
   onDeploy,
   onDeploymentTargetChange,
@@ -105,6 +108,7 @@ function HeaderActions({
       <DeploymentTargetControl
         canDeploy={canDeploy}
         isDeploying={isDeploying}
+        isUpgrade={isUpgrade}
         onDeploy={onDeploy}
         onTargetChange={onDeploymentTargetChange}
         selectedTarget={selectedDeploymentTarget}
@@ -138,6 +142,7 @@ function HeaderActions({
 
 function Header({
   isCompiling = false,
+  isUpgrade = false,
   onBuild,
   activeView = "visual",
   canDeploy = false,
@@ -179,6 +184,7 @@ function Header({
           isBuildDisabled={isBuildDisabled}
           isCompiling={isCompiling}
           isDeploying={isDeploying}
+          isUpgrade={isUpgrade}
           onBuild={onBuild}
           onDeploy={onDeploy}
           onDeploymentTargetChange={onDeploymentTargetChange}

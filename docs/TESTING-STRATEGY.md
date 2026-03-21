@@ -222,6 +222,33 @@ Dedicated Vitest suite (`security.test.ts`):
 | Oversized label (10K chars) | `"A".repeat(10000)`         | Truncated or rejected        |
 | Empty label                 | `""`                        | Default fallback label used  |
 
+### 7.1 Running Security Tests
+
+Security tests are co-located with the unit test suite and run as part of the standard `bun run test:run` command. They can be targeted individually:
+
+```bash
+bun run vitest run --reporter=verbose security
+```
+
+### 7.2 CI Integration
+
+- **Static analysis (CodeQL):** The `.github/workflows/codeql.yml` workflow runs weekly and on push to `main`, scanning TypeScript and GitHub Actions for known vulnerability patterns (CWE matching).
+- **Dependency auditing:** `bun run audit` (via `bunx npm-audit --audit-level=high`) runs on every PR in the CI pipeline (`.github/workflows/ci.yml`), blocking merges with high-severity advisories.
+- **Lint-time prevention:** `eslint-plugin-jsx-a11y` catches unsafe DOM patterns; TypeScript strict mode prevents `any`-typed bypass of sanitisation boundaries.
+
+### 7.3 OWASP Top 10 Mapping
+
+| OWASP Category                              | Relevance to Frontier Flow                     | Test Coverage                                      |
+| ------------------------------------------- | ---------------------------------------------- | -------------------------------------------------- |
+| A03:2021 — Injection                        | Move code injection via user-editable labels   | Sanitiser unit tests (table above); snapshot tests  |
+| A07:2021 — Cross-Site Scripting (XSS)       | Node labels rendered in React / canvas         | HTML injection test case; CSP headers in `netlify.toml` |
+| A05:2021 — Security Misconfiguration        | CSP, CORS, and security headers                | E2E branding spec validates headers; Netlify config |
+| A06:2021 — Vulnerable Components            | WASM compiler supply chain (`@zktx.io`)        | `bun run audit`; Dependabot; nightly WASM test      |
+| A08:2021 — Software & Data Integrity        | Generated Move code determinism                | Snapshot regression tests; determinism test suite    |
+| A04:2021 — Insecure Design                  | Client-side secret handling (OAuth)             | No secrets in client bundle; serverless OAuth proxy  |
+
+Categories not directly applicable to this client-side SPA (e.g., A01 Broken Access Control, A02 Cryptographic Failures, A09 Logging Failures, A10 SSRF) are excluded from the test matrix but addressed in [SECURITY.md](./SECURITY.md).
+
 ---
 
 ## 8. Snapshot & Regression Testing

@@ -1,6 +1,8 @@
 import type { CompilationStatus as CompilationStatusValue, CompilerDiagnostic } from "../compiler/types";
+import type { RemediationNotice } from "../types/nodes";
 
 import CompilationStatus from "./CompilationStatus";
+import { remediationNoticesToDiagnostics } from "./restoreSavedFlow";
 
 const repositoryUrl = "https://github.com/Scetrov/frontier-flow";
 const websiteUrl = "https://scetrov.live";
@@ -8,17 +10,22 @@ const websiteUrl = "https://scetrov.live";
 interface FooterProps {
   readonly status?: CompilationStatusValue;
   readonly diagnostics?: readonly CompilerDiagnostic[];
+  readonly remediationNotices?: readonly RemediationNotice[];
   readonly onSelectDiagnostic?: (nodeId: string) => void;
 }
 
-function Footer({ status = { state: "idle" }, diagnostics = [], onSelectDiagnostic }: FooterProps) {
+function Footer({ status = { state: "idle" }, diagnostics = [], remediationNotices = [], onSelectDiagnostic }: FooterProps) {
+  const remediationDiagnostics = remediationNoticesToDiagnostics(remediationNotices);
+  const mergedDiagnostics = remediationDiagnostics.length > 0
+    ? [...remediationDiagnostics, ...diagnostics]
+    : diagnostics;
   return (
     <footer className="border-t border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.94)] px-4 py-3 sm:px-6">
       <div className="flex flex-col gap-2 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="font-heading text-[0.7rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">v{__APP_VERSION__}</span>
           <span>Low-code Sui Move automation shell for EVE Frontier.</span>
-          <CompilationStatus diagnostics={diagnostics} onSelectDiagnostic={onSelectDiagnostic} status={status} />
+          <CompilationStatus diagnostics={mergedDiagnostics} onSelectDiagnostic={onSelectDiagnostic} status={status} />
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <a

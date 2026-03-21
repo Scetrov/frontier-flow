@@ -11,6 +11,7 @@ import MoveSourcePanel from "./components/MoveSourcePanel";
 import Sidebar from "./components/Sidebar";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
 import { useDeployment } from "./hooks/useDeployment";
+import type { RemediationNotice } from "./types/nodes";
 import { mergeDeploymentStatus } from "./utils/mergeDeploymentStatus";
 import { loadUiState, mergeUiState } from "./utils/uiStateStorage";
 
@@ -35,18 +36,21 @@ interface AppMainContentProps {
     nextSourceCode: string | null,
     artifactMoveSource?: string | null,
   ) => void;
+  readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
   readonly onTriggerCompileChange: (nextTriggerCompile: () => void) => void;
 }
 
 interface VisualWorkspaceViewProps {
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
+  readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
   readonly onTriggerCompileChange: AppMainContentProps["onTriggerCompileChange"];
 }
 
 function VisualWorkspaceView({
   focusedDiagnosticSelection,
   onCompilationStateChange,
+  onRemediationNoticesChange,
   onTriggerCompileChange,
 }: VisualWorkspaceViewProps) {
   return (
@@ -62,6 +66,7 @@ function VisualWorkspaceView({
           initialEdges={defaultContractFlow.edges}
           initialNodes={defaultContractFlow.nodes}
           onCompilationStateChange={onCompilationStateChange}
+          onRemediationNoticesChange={onRemediationNoticesChange}
           onTriggerCompileChange={onTriggerCompileChange}
         />
       </section>
@@ -84,6 +89,7 @@ function AppMainContent({
   focusedDiagnosticSelection,
   moveSourceCode,
   onCompilationStateChange,
+  onRemediationNoticesChange,
   onTriggerCompileChange,
 }: AppMainContentProps) {
   if (activeView === "visual") {
@@ -91,6 +97,7 @@ function AppMainContent({
       <VisualWorkspaceView
         focusedDiagnosticSelection={focusedDiagnosticSelection}
         onCompilationStateChange={onCompilationStateChange}
+        onRemediationNoticesChange={onRemediationNoticesChange}
         onTriggerCompileChange={onTriggerCompileChange}
       />
     );
@@ -102,6 +109,7 @@ function AppMainContent({
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
   const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>({ state: "idle" });
   const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>([]);
+  const [remediationNotices, setRemediationNotices] = useState<readonly RemediationNotice[]>([]);
   const [focusedDiagnosticSelection, setFocusedDiagnosticSelection] = useState<FocusedDiagnosticSelection | null>(null);
   const [activeView, setActiveView] = useState<PrimaryView>(
     () => loadUiState(typeof window === "undefined" ? undefined : window.localStorage).activeView,
@@ -114,6 +122,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
   });
   const displayStatus = useMemo(() => mergeDeploymentStatus(compilationStatus, deployment.deploymentStatus), [compilationStatus, deployment.deploymentStatus]);
   const isCompiling = compilationStatus.state === "compiling";
+  const isUpgrade = deployment.deploymentStatus?.status === "deployed";
 
   useEffect(() => {
     mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, { activeView });
@@ -158,6 +167,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
         canDeploy={deployment.canDeploy}
         isDeploying={deployment.isDeploying}
         isCompiling={isCompiling}
+        isUpgrade={isUpgrade}
         onBuild={handleBuild}
         onDeploy={handleDeploy}
         onDeploymentTargetChange={deployment.setSelectedTarget}
@@ -177,6 +187,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
             focusedDiagnosticSelection={focusedDiagnosticSelection}
             moveSourceCode={moveSourceCode}
             onCompilationStateChange={handleCompilationStateChange}
+            onRemediationNoticesChange={setRemediationNotices}
             onTriggerCompileChange={(nextTriggerCompile) => {
               setTriggerCompile(() => nextTriggerCompile);
             }}
@@ -186,6 +197,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       <Footer
         diagnostics={diagnostics}
         onSelectDiagnostic={handleSelectDiagnostic}
+        remediationNotices={remediationNotices}
         status={displayStatus}
       />
       {deployment.isProgressModalOpen ? (

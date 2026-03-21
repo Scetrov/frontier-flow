@@ -76,7 +76,7 @@
 - [X] T022 [US2] Implement blocking dependency-readiness states for compilation in `src/compiler/moveCompiler.ts` and `src/compiler/pipeline.ts`
 - [X] T023 [US2] Preserve artifact-to-graph diagnostic traces in `src/compiler/errorParser.ts` and `src/compiler/emitter.ts`
 - [X] T024 [US2] Surface invalid graph and compile-blocked states in `src/nodes/BaseNode.tsx` and `src/components/CompilationStatus.tsx`
-- [ ] T025 [US2] Restore and persist validation messaging for broken or migrated flows, supporting FR-013 and FR-018, in `src/components/restoreSavedFlow.ts` and `src/components/Footer.tsx`
+- [X] T025 [US2] Restore and persist validation messaging for broken or migrated flows, supporting FR-013 and FR-018, in `src/components/restoreSavedFlow.ts` and `src/components/Footer.tsx`
 
 **Checkpoint**: Unsupported and incomplete DAGs fail safely before compilation with actionable diagnostics.
 
@@ -125,7 +125,7 @@
 - [X] T039 [US4] Wire compile-ready artifact status through build and preview actions in `src/components/Header.tsx` and `src/components/Footer.tsx`
 - [X] T040 [US4] Implement existing-turret authorization readiness state in `src/compiler/types.ts` and `src/compiler/moveCompiler.ts`
 - [X] T041 [US4] Surface authorization next actions and blocked reasons in `src/components/CompilationStatus.tsx` and `src/components/MoveSourcePanel.tsx`
-- [ ] T042 [US4] Integrate deploy and upgrade preparation with the generated artifact contract in `src/components/Header.tsx` and `src/components/MoveSourcePanel.tsx`
+- [X] T042 [US4] Integrate deploy and upgrade preparation with the generated artifact contract in `src/components/Header.tsx` and `src/components/MoveSourcePanel.tsx`
 
 **Checkpoint**: Preview, build, deploy preparation, and authorization readiness all operate on the same generated artifact.
 
@@ -136,7 +136,7 @@
 **Purpose**: Finish cross-story hardening, documentation, and full verification.
 
 - [X] T043 [P] Update deterministic implementation guidance in `specs/010-functional-dag-contracts/quickstart.md` and `README.md`
-- [ ] T044 Harden sanitizer regression coverage for cross-story safety in `src/compiler/sanitizer.ts` and `src/__tests__/compiler/sanitizer.test.ts`
+- [X] T044 Harden sanitizer regression coverage for cross-story safety in `src/compiler/sanitizer.ts` and `src/__tests__/compiler/sanitizer.test.ts`
 - [X] T045 Run full quickstart validation and capture cross-cutting verification notes for FR-021, FR-031, and FR-032 in `specs/010-functional-dag-contracts/quickstart.md`
 
 ---

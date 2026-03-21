@@ -1161,43 +1161,107 @@ Package-upgrade support remains future work. The deploy control does not yet swi
 
 ### 6.1 `package.json`
 
+Key scripts and configuration (see root `package.json` for full listing):
+
 ```json
 {
-  "name": "frontierflow",
+  "name": "frontier-flow",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:real-wasm": "bun run ./scripts/real-wasm-integration.ts",
+    "typecheck": "tsc -b",
+    "verify": "bun run lint && bun run typecheck && bun run test:run",
+    "verify:full": "bun run verify && bun run build"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
   }
 }
 ```
 
+Production dependencies: `react`, `react-dom`, `@xyflow/react`, `dagre`, `@mysten/sui`, `@mysten/dapp-kit`, `@tanstack/react-query`, `@zktx.io/sui-move-builder`, `highlight.js`, `lucide-react`. See [HLD.md §2](./HLD.md#2-technology-stack) for version details.
+
 ### 6.2 `vite.config.ts`
 
 ```typescript
-import { defineConfig } from "vite";
+import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
+
+const appVersion = process.env.npm_package_version ?? "0.0.0";
+const basePath = process.env.VITE_BASE_PATH ?? "/";
 
 export default defineConfig({
+  base: basePath,
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("@xyflow/react") || id.includes("dagre")) return "flow-vendor";
+          if (id.includes("@mysten/dapp-kit") || id.includes("@mysten/sui") || id.includes("@tanstack/react-query")) return "wallet-vendor";
+          if (id.includes("highlight.js")) return "code-vendor";
+          if (id.includes("react") || id.includes("scheduler")) return "react-vendor";
+          return undefined;
+        },
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      "@zktx.io/sui-move-builder/lite": fileURLToPath(
+        new URL("./node_modules/@zktx.io/sui-move-builder/dist/lite/index.js", import.meta.url),
+      ),
+    },
+  },
+  optimizeDeps: {
+    exclude: ["@zktx.io/sui-move-builder", "@zktx.io/sui-move-builder/lite"],
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+  },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: "./src/test/setup.ts",
+    css: true,
+    exclude: ["tests/e2e/**", "**/node_modules/**", "**/bunx-*/**"],
+  },
 });
 ```
+
+Noteworthy details:
+
+- **Manual chunks** split vendor bundles for caching (`flow-vendor`, `wallet-vendor`, `code-vendor`, `react-vendor`)
+- **WASM alias** resolves `@zktx.io/sui-move-builder/lite` to the correct ESM entry
+- **`optimizeDeps.exclude`** prevents Vite from pre-bundling the WASM package
+- **`__APP_VERSION__`** injects `package.json` version at build time
+- **Vitest** is co-located in the same config with `jsdom` environment
 
 ### 6.3 `tailwind.config.js`
 
 ```javascript
+/** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {},
   },
   plugins: [],
 };
 ```
+
+Theme extensions are defined via CSS custom properties in `src/index.css` rather than `tailwind.config.js`, keeping the Tailwind config minimal.
 
 ### 6.4 `postcss.config.js`
 
@@ -1210,6 +1274,8 @@ export default {
 };
 ```
 
+Uses the Tailwind CSS v4 PostCSS plugin (`@tailwindcss/postcss`) instead of the legacy `tailwindcss` PostCSS plugin.
+
 ### 6.5 `index.html`
 
 ```html
@@ -1217,9 +1283,16 @@ export default {
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon@32px.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon@64px.png" />
+    <link rel="icon" type="image/png" sizes="128x128" href="/favicon@128px.png" />
+    <link rel="apple-touch-icon" href="/LogoSquare@2x.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontierflow</title>
+    <meta name="description"
+      content="Visual low-code programming interface for EVE Frontier game automation." />
+    <!-- Open Graph & Twitter meta tags omitted for brevity — see source -->
+    <title>Frontier Flow</title>
   </head>
   <body>
     <div id="root"></div>
@@ -1228,9 +1301,58 @@ export default {
 </html>
 ```
 
-### 6.6 `index.css` setup references
+Key features: multi-resolution PNG favicons, Apple touch icon, web app manifest, comprehensive OG/Twitter meta tags for social sharing, and a single module entry point.
 
-For CSS setup see `src/index.css` leveraging Tailwind. Core design variables are defined in the `:root` scope such as `--brand-orange: #ff4700;`. Font imports for "Disket Mono" and "Inter".
+### 6.6 `index.css`
+
+```css
+@import "tailwindcss";
+
+:root {
+  /* Brand */
+  --brand-orange: #ff4700;
+  --brand-dark: #e03f00;
+  --cream-white: #fafae5;
+
+  /* Backgrounds */
+  --bg-primary: #1a0a0a;
+  --bg-secondary: #2d1515;
+
+  /* Text */
+  --text-primary: #fafae5;
+  --text-secondary: #c7b8b3;
+
+  /* Borders */
+  --border-color: #6b6b5e;
+  --ui-border-dark: #3a3a3a;
+
+  /* Socket colours */
+  --socket-signal: #fafae5;
+  --socket-entity: #54a0ff;
+  --socket-value: #1abc9c;
+  --socket-vector: #9b59b6;
+  --socket-any: #6b6b5e;
+
+  /* Functional */
+  --error-glow: #ff3b30;
+  --status-idle: #3b82f6;
+  --status-compiled: #22c55e;
+  --status-error: #ef4444;
+
+  /* Typography */
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+
+* {
+  box-sizing: border-box;
+  border-radius: 0; /* No border-radius per design system */
+}
+```
+
+All design tokens live as CSS custom properties in `:root`, consumed by both Tailwind utility classes and component styles. See [DESIGN-SYSTEM.md](./DESIGN-SYSTEM.md) for the full colour palette, typography scale, and socket colour definitions.
 
 ---
 

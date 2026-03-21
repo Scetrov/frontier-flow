@@ -82,31 +82,41 @@ The application models game automation logic (e.g., EVE Frontier mechanics) wher
 | `react-syntax-highlighter`        | ^16.1.0  | Syntax highlighting for code           |
 | `@types/react-syntax-highlighter` | ^15.5.13 | Types for syntax highlighter           |
 
-### 2.2 Core Dependencies (Planned)
+### 2.2 Core Dependencies (Installed)
 
-[!NOTE]
-These packages are specified in the design but not yet added to `package.json`.
+| Package                      | Version | Purpose                                  |
+| ---------------------------- | ------- | ---------------------------------------- |
+| `@mysten/sui`                | 2.9.0   | Sui TS SDK for transactions              |
+| `@mysten/dapp-kit`           | 1.0.4   | UI components for Sui Wallet integration |
+| `@zktx.io/sui-move-builder`  | 0.2.8   | In-browser WASM Sui Move compiler        |
+| `@tanstack/react-query`      | ^5.90.21| Required peer for `@mysten/dapp-kit`     |
+| `highlight.js`               | ^11.11.1| Syntax highlighting for Move source view |
 
-| Package                     | Version | Purpose                                  |
-| --------------------------- | ------- | ---------------------------------------- |
-| `@mysten/sui`               | latest  | Sui TS SDK for transactions              |
-| `@mysten/dapp-kit`          | latest  | UI components for Sui Wallet integration |
-| `@zktx.io/sui-move-builder` | latest  | In-browser WASM Sui Move compiler        |
-| `idb-keyval`                | latest  | Promise-based IndexedDB for caching      |
-| `@netlify/functions`        | latest  | Serverless functions for OAuth callback  |
+### 2.2.1 Core Dependencies (Planned)
 
-### 2.3 Development Dependencies (Planned)
+> [!NOTE]
+> These packages are specified in the design but not yet added to `package.json`.
+
+| Package              | Version | Purpose                                 |
+| -------------------- | ------- | --------------------------------------- |
+| `idb-keyval`         | latest  | Promise-based IndexedDB for caching     |
+| `@netlify/functions` | latest  | Serverless functions for OAuth callback |
+
+### 2.3 Development Dependencies
 
 | Package                | Version             | Purpose                          |
 | ---------------------- | ------------------- | -------------------------------- |
-| `vite`                 | rolldown-vite@7.2.5 | Build tool (Rolldown fork)       |
+| `rolldown-vite`        | 7.3.1               | Build tool (Rolldown fork)       |
 | `typescript`           | ~5.9.3              | Type checking                    |
 | `tailwindcss`          | ^4.1.18             | Utility-first CSS framework      |
 | `@tailwindcss/postcss` | ^4.1.18             | PostCSS integration for Tailwind |
 | `postcss`              | ^8.5.6              | CSS processing                   |
 | `autoprefixer`         | ^10.4.24            | CSS vendor prefixing             |
 | `eslint`               | ^10.0.0             | Code linting                     |
-| `@vitejs/plugin-react` | ^5.1.1              | React plugin for Vite            |
+| `@vitejs/plugin-react` | ^6.0.1              | React plugin for Vite            |
+| `vitest`               | ^4.1.0              | Unit / component test framework  |
+| `@testing-library/react` | ^16.3.2           | React component test utilities   |
+| `@playwright/test`     | ^1.58.2             | End-to-end browser testing       |
 
 ### 2.4 Package Manager
 

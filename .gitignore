@@ -8,6 +8,7 @@ build/
 *.tsbuildinfo
 *.log
 .env*
+!.env.example
 node-compile-cache/
 playwright-transform-cache*/
 bunx-*/
