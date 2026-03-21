@@ -27,7 +27,8 @@ function DeploymentTargetControl({
   return (
     <div className="ff-deployment-target-control">
       <button
-        className="ff-header__button ff-deployment-target-control__primary"
+        aria-label={isDeploying ? `Deploying ${selectedTarget}` : `Deploy ${selectedTarget}`}
+        className="ff-header__button ff-header__button--compact ff-deployment-target-control__primary"
         disabled={isDeployDisabled}
         onClick={() => {
           onDeploy?.();
@@ -35,19 +36,26 @@ function DeploymentTargetControl({
         title={canDeploy ? undefined : `Review blockers for ${selectedTarget} deployment`}
         type="button"
       >
-        {isDeploying ? `Deploying ${selectedTarget}` : `Deploy ${selectedTarget}`}
+        <span aria-hidden="true" className="ff-header__button-icon">
+          <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 2L13 8L8 7L7 14L3 8L7 7L8 2Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.2" />
+          </svg>
+        </span>
+        <span className="ff-header__button-label">{isDeploying ? `Deploying ${selectedTarget}` : `Deploy ${selectedTarget}`}</span>
       </button>
       <button
         aria-controls="deployment-target-list"
         aria-expanded={menuOpen}
         aria-haspopup="listbox"
-        className="ff-header__button ff-deployment-target-control__toggle"
+        aria-label="Select deployment target"
+        className="ff-header__button ff-header__button--compact ff-deployment-target-control__toggle"
         onClick={() => {
           setMenuOpen((current) => !current);
         }}
+        title="Select deployment target"
         type="button"
       >
-        Select deployment target
+        <span aria-hidden="true">▼</span>
       </button>
 
       {menuOpen ? (

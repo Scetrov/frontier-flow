@@ -119,6 +119,13 @@ button,
   color: var(--cream-white);
 }
 
+.ff-canvas__controls button:hover,
+.ff-canvas__controls button:focus-visible,
+.ff-canvas__controls button:active {
+  background: rgba(255, 71, 0, 0.12);
+  color: var(--brand-orange);
+}
+
 .ff-canvas__drawer {
   position: absolute;
   inset-block: 0;
@@ -135,7 +142,7 @@ button,
   display: flex;
   height: 100%;
   align-items: center;
-  pointer-events: auto;
+  pointer-events: none;
   transition: transform 200ms ease-out;
 }
 
@@ -153,6 +160,7 @@ button,
   grid-template-rows: auto 1fr;
   align-items: center;
   justify-items: center;
+  pointer-events: auto;
   width: 2.75rem;
   min-height: 7.25rem;
   padding-block: 0.7rem;
@@ -218,6 +226,7 @@ button,
 
 .ff-contract-panel {
   display: flex;
+  pointer-events: auto;
   flex-direction: column;
   gap: 1rem;
   width: min(24rem, 88vw);
@@ -368,6 +377,10 @@ button,
 }
 
 .ff-header__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   min-height: 2.5rem;
   border: 1px solid var(--ui-border-dark);
   background: rgba(26, 10, 10, 0.9);
@@ -378,6 +391,20 @@ button,
   text-transform: uppercase;
   color: var(--cream-white);
   cursor: pointer;
+}
+
+.ff-header__button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.ff-header__button-label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .ff-header__button:hover,
@@ -395,6 +422,7 @@ button,
   position: relative;
   display: inline-flex;
   align-items: stretch;
+  flex: 0 0 auto;
 }
 
 .ff-deployment-target-control__primary,
@@ -408,7 +436,26 @@ button,
 
 .ff-deployment-target-control__toggle {
   min-width: 2.5rem;
-  padding-inline: 0.7rem;
+  padding-inline: 0.8rem;
+  text-align: center;
+}
+
+.ff-header__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.ff-header__actions {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .ff-deployment-target-control__menu {
@@ -569,7 +616,16 @@ button,
   background: rgba(16, 21, 31, 0.64);
 }
 
+.ff-header__logo {
+  min-width: 2.5rem;
+  flex: 0 0 auto;
+}
+
 .ff-header__nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   min-height: 2.4rem;
   min-width: 6.5rem;
   border: 1px solid transparent;
@@ -581,6 +637,30 @@ button,
   text-transform: uppercase;
   color: var(--text-secondary);
   cursor: pointer;
+}
+
+.ff-header__nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+.ff-header__nav-label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ff-wallet-status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.ff-wallet-status__summary {
+  max-width: 100%;
 }
 
 .ff-header__nav-button:hover,
@@ -1746,7 +1826,79 @@ button,
   filter: drop-shadow(0 0 6px rgba(255, 71, 0, 0.35));
 }
 
+@media (max-width: 1100px) {
+  .ff-header__bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .ff-header__identity {
+    justify-self: start;
+  }
+
+  .ff-header__brand-copy {
+    display: none;
+  }
+
+  .ff-header__bar {
+    gap: 0.75rem;
+  }
+
+  .ff-header__nav {
+    flex: 0 0 auto;
+    width: auto;
+    justify-content: center;
+    justify-self: center;
+  }
+
+  .ff-header__nav-button {
+    width: 2.4rem;
+    min-width: 2.4rem;
+    max-width: 2.4rem;
+    flex: 0 0 2.4rem;
+    padding: 0;
+    aspect-ratio: 1 / 1;
+  }
+
+  .ff-header__nav-label {
+    display: none;
+  }
+
+  .ff-header__actions {
+    width: auto;
+    gap: 0.35rem;
+    justify-self: end;
+  }
+
+  .ff-header__button--compact {
+    width: 2.5rem;
+    min-width: 2.5rem;
+    max-width: 2.5rem;
+    flex: 0 0 2.5rem;
+    padding: 0;
+    aspect-ratio: 1 / 1;
+  }
+
+  .ff-header__button-label {
+    display: none;
+  }
+
+  .ff-wallet-status--connected {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .ff-wallet-status__summary {
+    display: none;
+  }
+}
+
 @media (max-width: 767px) {
+  .ff-header__bar {
+    gap: 0.5rem;
+  }
+
   .ff-canvas__empty-state {
     left: 1rem;
     right: 1rem;
@@ -1755,14 +1907,26 @@ button,
   }
 
   .ff-header__nav {
-    order: 3;
-    width: 100%;
-    justify-content: stretch;
+    gap: 0.25rem;
+    padding: 0.2rem;
   }
 
   .ff-header__nav-button {
-    flex: 1 1 0;
-    min-width: 0;
+    width: 2.25rem;
+    min-width: 2.25rem;
+    max-width: 2.25rem;
+    flex-basis: 2.25rem;
+  }
+
+  .ff-header__actions {
+    gap: 0.25rem;
+  }
+
+  .ff-header__button--compact {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    max-width: 2.25rem;
+    flex-basis: 2.25rem;
   }
 
   .ff-move-source__header {
