@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 
-import type { CompilationStatus, CompilerDiagnostic, GeneratedContractArtifact } from "./compiler/types";
+import type { CompilationStatus, CompilerDiagnostic } from "./compiler/types";
 import CanvasWorkspace from "./components/CanvasWorkspace";
 import DeploymentProgressModal from "./components/DeploymentProgressModal";
 import Footer from "./components/Footer";
@@ -10,6 +10,7 @@ import MoveSourcePanel from "./components/MoveSourcePanel";
 import Sidebar from "./components/Sidebar";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
 import { useDeployment } from "./hooks/useDeployment";
+import { mergeDeploymentStatus } from "./utils/mergeDeploymentStatus";
 import { loadUiState, mergeUiState } from "./utils/uiStateStorage";
 
 const defaultContractFlow = createDefaultContractFlow();
@@ -194,27 +195,6 @@ function App() {
       ) : null}
     </div>
   );
-}
-
-function mergeDeploymentStatus(
-  status: CompilationStatus,
-  deploymentStatus: GeneratedContractArtifact["deploymentStatus"] | null,
-): CompilationStatus {
-  if (deploymentStatus === null) {
-    return status;
-  }
-
-  if ((status.state !== "compiled" && status.state !== "error") || status.artifact === undefined) {
-    return status;
-  }
-
-  return {
-    ...status,
-    artifact: {
-      ...status.artifact,
-      deploymentStatus,
-    },
-  };
 }
 
 export default App;

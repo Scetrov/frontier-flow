@@ -7,9 +7,10 @@ import type {
 } from "@mysten/dapp-kit";
 
 import App from "../App";
+import { mergeDeploymentStatus } from "../utils/mergeDeploymentStatus";
 
 import type { CompilationStatus, CompilerDiagnostic } from "../compiler/types";
-import { createGeneratedArtifactStub } from "./compiler/helpers";
+import { createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
@@ -133,5 +134,17 @@ describe("App compilation handoff", () => {
       expect(lastMoveSourcePanelProps?.sourceCode).toBe("module builder_extensions::artifact_contract {}");
       expect(lastMoveSourcePanelProps?.status.state).toBe("compiled");
     });
+  });
+
+  it("does not merge deployment metadata from a different artifact revision", () => {
+    const artifact = createGeneratedArtifactStub({ artifactId: "artifact-a" });
+    const mismatchedDeploymentStatus = createDeploymentStatus("deployed", { artifactId: "artifact-b" });
+    const status: CompilationStatus = {
+      state: "compiled",
+      bytecode: [new Uint8Array([1, 2, 3])],
+      artifact,
+    };
+
+    expect(mergeDeploymentStatus(status, mismatchedDeploymentStatus)).toBe(status);
   });
 });

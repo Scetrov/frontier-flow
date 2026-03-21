@@ -166,6 +166,7 @@ describe("useDeployment blocker handling", () => {
 
     expect(result.current.latestAttempt?.outcome).toBe("cancelled");
     expect(result.current.latestAttempt?.currentStage).toBe("signing");
+    expect(result.current.latestAttempt?.errorCode).toBe("wallet-approval-rejected");
     expect(result.current.statusMessage?.headline).toBe("Deployment cancelled");
     expect(result.current.statusMessage?.details).toMatch(/Approve the wallet signing request to continue deployment/i);
   });

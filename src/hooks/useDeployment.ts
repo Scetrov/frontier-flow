@@ -434,7 +434,7 @@ function createCancelledOutcome(input: {
     outcome: "cancelled",
     currentStage: "signing",
     message,
-    errorCode: "wallet-required",
+    errorCode: "wallet-approval-rejected",
   };
   const statusMessage: DeploymentStatusMessage = {
     attemptId: input.attemptId,

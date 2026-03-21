@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { DeploymentTargetId } from "../compiler/types";
 import { DEPLOYMENT_TARGETS } from "../data/deploymentTargets";
@@ -22,10 +22,18 @@ function DeploymentTargetControl({
   selectedTarget,
 }: DeploymentTargetControlProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
   const isDeployDisabled = isDeploying || onDeploy === undefined;
 
   return (
-    <div className="ff-deployment-target-control">
+    <div
+      className="ff-deployment-target-control"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setMenuOpen(false);
+        }
+      }}
+    >
       <button
         aria-label={isDeploying ? `Deploying ${selectedTarget}` : `Deploy ${selectedTarget}`}
         className="ff-header__button ff-header__button--compact ff-deployment-target-control__primary"
@@ -46,12 +54,18 @@ function DeploymentTargetControl({
       <button
         aria-controls="deployment-target-list"
         aria-expanded={menuOpen}
-        aria-haspopup="listbox"
+        aria-haspopup="menu"
         aria-label="Select deployment target"
         className="ff-header__button ff-header__button--compact ff-deployment-target-control__toggle"
         onClick={() => {
           setMenuOpen((current) => !current);
         }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setMenuOpen(false);
+          }
+        }}
+        ref={toggleButtonRef}
         title="Select deployment target"
         type="button"
       >
@@ -59,17 +73,30 @@ function DeploymentTargetControl({
       </button>
 
       {menuOpen ? (
-        <div aria-label="Deployment targets" className="ff-deployment-target-control__menu" id="deployment-target-list" role="listbox">
+        <div
+          aria-label="Deployment targets"
+          className="ff-deployment-target-control__menu"
+          id="deployment-target-list"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setMenuOpen(false);
+              toggleButtonRef.current?.focus();
+            }
+          }}
+          role="menu"
+          tabIndex={-1}
+        >
           {DEPLOYMENT_TARGETS.map((target) => (
             <button
-              aria-selected={target.id === selectedTarget}
+              aria-checked={target.id === selectedTarget}
               className="ff-deployment-target-control__option"
               key={target.id}
               onClick={() => {
                 onTargetChange?.(target.id);
                 setMenuOpen(false);
+                toggleButtonRef.current?.focus();
               }}
-              role="option"
+              role="menuitemradio"
               type="button"
             >
               {target.label}

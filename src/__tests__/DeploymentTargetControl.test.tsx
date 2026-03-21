@@ -24,10 +24,19 @@ describe("DeploymentTargetControl", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Select deployment target" }));
-    fireEvent.click(screen.getByRole("option", { name: "testnet:stillness" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "testnet:stillness" }));
 
     expect(handleTargetChange).toHaveBeenCalledWith("testnet:stillness");
-    expect(screen.queryByRole("option", { name: "testnet:utopia" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitemradio", { name: "testnet:utopia" })).not.toBeInTheDocument();
+  });
+
+  it("closes the target menu when escape is pressed", () => {
+    render(<DeploymentTargetControl canDeploy={true} onDeploy={() => undefined} selectedTarget="local" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Select deployment target" }));
+    fireEvent.keyDown(screen.getByRole("menu", { name: "Deployment targets" }), { key: "Escape" });
+
+    expect(screen.queryByRole("menu", { name: "Deployment targets" })).not.toBeInTheDocument();
   });
 
   it("launches deployment from the primary action", () => {
