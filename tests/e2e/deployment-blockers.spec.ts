@@ -11,7 +11,7 @@ test("blocks stillness deployment when no wallet is connected", async ({ page })
   await expect(compilationStatus).toContainText("Compiled");
 
   await page.getByRole("button", { name: "Select deployment target" }).click();
-  await page.getByRole("option", { name: "testnet:stillness" }).click();
+  await page.getByRole("menuitemradio", { name: "testnet:stillness" }).click();
   await page.getByRole("button", { name: "Deploy testnet:stillness" }).click();
 
   const deploymentStatus = page.locator('.ff-compilation-status__button[aria-controls="deployment-status-details"]');

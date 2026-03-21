@@ -11,15 +11,15 @@ test("selects a deployment target and surfaces deployment success metadata", asy
   await expect(compilationStatus).toContainText("Compiled");
 
   await page.getByRole("button", { name: "Select deployment target" }).click();
-  await page.getByRole("option", { name: "testnet:stillness" }).click();
+  await page.getByRole("menuitemradio", { name: "testnet:stillness" }).click();
   await page.getByRole("button", { name: "Deploy testnet:stillness" }).click();
 
-  const deploymentModal = page.getByRole("dialog", { name: "Deployment deployed" });
+  const deploymentModal = page.getByRole("dialog", { name: "Deployed" });
   await expect(deploymentModal).toBeVisible();
   await deploymentModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
 
   const deploymentStatus = page.locator('.ff-compilation-status__button[aria-controls="deployment-status-details"]');
-  await expect(deploymentStatus).toContainText("Deployment Deployed");
+  await expect(deploymentStatus).toContainText("Deployed");
   await deploymentStatus.click();
   const deploymentDetails = page.locator("#deployment-status-details");
   await expect(deploymentDetails.getByText(/Deployment completed for testnet:stillness/i)).toBeVisible();

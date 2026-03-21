@@ -11,7 +11,7 @@ test("shows signing-stage cancellation details in the status popup", async ({ pa
   await expect(compilationStatus).toContainText("Compiled");
 
   await page.getByRole("button", { name: "Select deployment target" }).click();
-  await page.getByRole("option", { name: "testnet:stillness" }).click();
+  await page.getByRole("menuitemradio", { name: "testnet:stillness" }).click();
   await page.getByRole("button", { name: "Deploy testnet:stillness" }).click();
 
   const cancellationModal = page.getByRole("dialog", { name: "Deployment cancelled" });
@@ -43,17 +43,17 @@ test("preserves the earlier blocked attempt after a later successful deployment"
   await expect(deploymentStatus).toContainText("Deployment Blocked");
 
   await page.getByRole("button", { name: "Select deployment target" }).click();
-  await page.getByRole("option", { name: "testnet:stillness" }).click();
+  await page.getByRole("menuitemradio", { name: "testnet:stillness" }).click();
   await page.getByRole("button", { name: "Deploy testnet:stillness" }).click();
 
-  const deploymentModal = page.getByRole("dialog", { name: "Deployment deployed" });
+  const deploymentModal = page.getByRole("dialog", { name: "Deployed" });
   await expect(deploymentModal).toBeVisible();
   await deploymentModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
 
-  await expect(deploymentStatus).toContainText("Deployment Deployed");
+  await expect(deploymentStatus).toContainText("Deployed");
   await deploymentStatus.click();
   const deploymentDetails = page.locator("#deployment-status-details");
-  await expect(deploymentDetails.getByText("Deployment deployed", { exact: true })).toBeVisible();
+  await expect(deploymentDetails.getByText("Deployed", { exact: true })).toBeVisible();
   await expect(deploymentDetails.locator(".ff-compilation-status__message").filter({ hasText: /^Package ID:/ })).toBeVisible();
   await expect(deploymentDetails.getByText("Earlier this session", { exact: true })).toBeVisible();
   await expect(deploymentDetails.getByText(/Deployment blocked - local - validating/)).toBeVisible();
