@@ -3,7 +3,7 @@ title: Frontier Flow - Solution Design
 version: 1.0.0
 status: draft
 created: 2026-02-22
-updated: 2026-02-22
+updated: 2026-03-21
 author: Scetrov
 description: Low-level technical implementation details and code references for Frontier Flow.
 ---
@@ -42,7 +42,7 @@ description: Low-level technical implementation details and code references for 
   - [5.5 Testing Strategy (Ensuring Predictability)](#55-testing-strategy-ensuring-predictability)
   - [5.6 Output Structure Example](#56-output-structure-example)
   - [5.7 Deployment \& Wallet Integration](#57-deployment--wallet-integration)
-  - [5.7.1 Package Upgrade Flow](#571-package-upgrade-flow)
+  - [5.7.1 Current Scope and Next Deployment Step](#571-current-scope-and-next-deployment-step)
 - [6. Configuration Files](#6-configuration-files)
   - [6.1 `package.json`](#61-packagejson)
   - [6.2 `vite.config.ts`](#62-viteconfigts)
@@ -1067,156 +1067,93 @@ public fun get_target_priority_list(
 
 ### 5.7 Deployment & Wallet Integration
 
-**Wallet & Network State:**
-Managed by `@mysten/dapp-kit` providers wrapping the main application (`SuiClientProvider` and `WalletProvider`). Networks configured: `localnet`, `devnet`, `testnet`, `mainnet`.
+Deployment is handled as a session-scoped lifecycle adjacent to compilation rather than as a network switch inside the wallet UI. The current implementation keeps compilation and deployment separate, then merges the latest deployment status back into the compiled artifact so the footer and Move preview can review it consistently.
 
-**Localnet Faucet:**
-When `localnet` is selected and the active account balance is exactly 0, the `Header` component displays a "Get Tokens" button. This invokes `requestSuiFromFaucetV0` using the localnet faucet URL.
+**Wallet State Ownership:**
+Wallet connectivity is still supplied by `@mysten/dapp-kit` at the application root, but deployment readiness is derived in `useDeployment()` from three inputs:
 
-**Move WASM Compilation Wrapper (`src/utils/moveCompiler.ts`):**
+- the current compiled artifact and its bytecode modules
+- the selected deployment target
+- wallet availability and connection status
 
-```typescript
-import {
-  initMoveCompiler,
-  buildMovePackage,
-} from "@zktx.io/sui-move-builder/lite";
+Published targets (`testnet:stillness` and `testnet:utopia`) require a connected wallet. `local` does not require wallet signing, but it still participates in the same validation and progress flow.
 
-export async function compileMoveTarget(generatedCode: string) {
-  await initMoveCompiler();
+**Target Selection Model:**
+The header exposes a deploy control next to Build with a target list limited to:
 
-  // Note: For Frontier dependency resolution, Move.toml needs specific definitions
-  // referencing the correct upstream repository or mock.
-  const files = {
-    "Move.toml": `[package]\nname = "builder_extensions"\nversion = "0.0.1"\n\n[dependencies]\nSui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }\nworld = { local = "../world" }\n\n[addresses]\nbuilder_extensions = "0x0"`,
-    "sources/turret_logic.move": generatedCode,
-  };
+- `local`
+- `testnet:stillness`
+- `testnet:utopia`
 
-  return await buildMovePackage({
-    files,
-    silenceWarnings: false,
-  });
-}
-```
+The selected target is persisted in shared UI state so the session restores the user's last deployment choice.
 
-**Transaction Generation:**
-Upon successful compilation, the bytecodes (`result.modules`) and dependencies (`result.dependencies`) are injected into a new Programmable Transaction Block (PTB) via `@mysten/sui/transactions`.
+**Maintained Package References:**
+Stillness and Utopia package identifiers are stored in source, not fetched at runtime. The deployment hook validates that those package references remain structurally valid before allowing published-target deployment.
 
 ```typescript
-import { Transaction } from "@mysten/sui/transactions";
-
-const txb = new Transaction();
-const upgradeCap = txb.publish({
-  modules: result.modules,
-  dependencies: result.dependencies,
-});
-txb.transferObjects([upgradeCap], txb.pure.address(account.address));
-
-// Transaction is then executed via signAndExecuteTransactionBlock from dapp-kit
+export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
+  {
+    targetId: "testnet:stillness",
+    environmentLabel: "Stillness",
+    worldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+    objectRegistryId: "0x454a9aa3d37e1d08d3c9181239c1b683781e4087fbbbd48c935d54b6736fd05c",
+    serverAddressRegistryId: "0xeb97b81668699672b1147c28dacb3d595534c48f4e177d3d80337dbde464f05f",
+  },
+  {
+    targetId: "testnet:utopia",
+    environmentLabel: "Utopia",
+    worldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
+    objectRegistryId: "0xc2b969a72046c47e24991d69472afb2216af9e91caf802684514f39706d7dc57",
+    serverAddressRegistryId: "0x9a9f2f7d1b8cf100feb532223aa6c38451edb05406323af5054f9d974555708b",
+  },
+];
 ```
 
-### 5.7.1 Package Upgrade Flow
+**Deployment Orchestration:**
+`useDeployment()` classifies deployment into typed stages and outcomes:
 
-Publishing a new package is the initial deployment vector, but EVE Frontier players will routinely iterate on their Smart Assembly logic. The system must support **upgrading an existing on-chain package** — replacing its bytecode while preserving shared object state — without requiring the user to understand Sui's upgrade mechanics.
+- stages: `validating`, `preparing`, `signing`, `submitting`, `confirming`
+- outcomes: `blocked`, `cancelled`, `failed`, `succeeded`
 
-**UpgradeCap Persistence:**
+The hook validates stale artifacts, missing bytecode, disconnected wallets, invalid package references, and unavailable local deployment before attempting any submit path. Rejected wallet approval is recorded as `cancelled`, not `failed` or `succeeded`.
 
-After the initial `txb.publish()`, the returned `UpgradeCap` object ID is persisted locally via `idb-keyval`, keyed by the package name and active network:
+**Progress Modal:**
+Deployment immediately opens a dedicated modal that tracks the active stage and can be dismissed without cancelling the underlying attempt. The modal remains the transient progress surface; terminal review moves to the footer popup and Move panel metadata.
 
-```typescript
-import { get, set } from "idb-keyval";
+**QA and Mock Controls:**
+The deployment validation and staged-progress flow can be exercised deterministically with query parameters:
 
-interface StoredUpgradeCap {
-  /** The on-chain UpgradeCap object ID. */
-  objectId: string;
-  /** The package ID this cap governs. */
-  packageId: string;
-  /** Network where this cap exists. */
-  network: "localnet" | "devnet" | "testnet" | "mainnet";
-  /** Module name for deduplication. */
-  moduleName: string;
-  /** Deployment timestamp (ISO 8601). */
-  deployedAt: string;
-  /** Digest of the latest deployed bytecode. */
-  latestDigest: string;
-}
+- `ff_mock_wallet=connected|disconnected|none`
+- `ff_mock_invalid_package_refs=1`
+- `ff_local_deploy_ready=0`
+- `ff_mock_deploy_reject=1`
+- `ff_mock_deploy_stage_delay_ms=<number>`
 
-const UPGRADE_CAP_KEY = (pkg: string, network: string) =>
-  `frontier_upgrade_cap_${pkg}_${network}`;
+These flags exist to validate blocker messaging, wallet cancellation handling, modal timing, and footer or Move-panel review parity without changing source code between test passes.
 
-export async function storeUpgradeCap(
-  packageName: string,
-  network: string,
-  cap: StoredUpgradeCap,
-): Promise<void{
-  await set(UPGRADE_CAP_KEY(packageName, network), cap);
-}
+**Status Review Surfaces:**
+The latest deployment attempt is converted into artifact-backed `deploymentStatus` metadata. That payload carries:
 
-export async function getUpgradeCap(
-  packageName: string,
-  network: string,
-): Promise<StoredUpgradeCap | undefined{
-  return get(UPGRADE_CAP_KEY(packageName, network));
-}
-```
+- target ID
+- stage
+- severity
+- package ID when available
+- current headline and summary
+- prior active-session review entries
 
-**Upgrade Transaction Construction:**
+This lets the footer popup remain the durable review surface even after the progress modal closes.
 
-When an existing `UpgradeCap` is detected, the Deploy button switches to "Upgrade" mode and constructs an upgrade transaction instead of a publish transaction:
+### 5.7.1 Current Scope and Next Deployment Step
 
-```typescript
-import { Transaction } from "@mysten/sui/transactions";
+The current deployment implementation simulates the publish lifecycle and validates the UI contract for target selection, blocker handling, modal progress, and persistent review. It does not yet construct real publish or upgrade Programmable Transaction Blocks.
 
-async function buildUpgradeTransaction(
-  result: CompilationResult,
-  storedCap: StoredUpgradeCap,
-): Promise<Transaction{
-  const txb = new Transaction();
+That boundary is intentional:
 
-  // 1. Authorise the upgrade using the existing UpgradeCap
-  const upgradeTicket = txb.moveCall({
-    target: "0x2::package::authorize_upgrade",
-    arguments: [
-      txb.object(storedCap.objectId), // UpgradeCap
-      txb.pure.u8(0), // UpgradePolicy::Compatible
-      txb.pure.vector("u8", result.digest), // Package digest
-    ],
-  });
+- compilation remains the source of bytecode truth
+- deployment state remains reviewable from artifact metadata
+- transaction construction can be added later without rewriting the UI contract
 
-  // 2. Commit the upgrade with new bytecode modules
-  const upgradeReceipt = txb.upgrade({
-    modules: result.modules,
-    dependencies: result.dependencies,
-    package: storedCap.packageId,
-    ticket: upgradeTicket,
-  });
-
-  // 3. Finalise — commit the upgrade receipt back to the UpgradeCap
-  txb.moveCall({
-    target: "0x2::package::commit_upgrade",
-    arguments: [txb.object(storedCap.objectId), upgradeReceipt],
-  });
-
-  return txb;
-}
-```
-
-**UI State Logic:**
-
-The `Header` component queries IndexedDB on mount and on network change to determine whether a prior deployment exists:
-
-```typescript
-const [deployMode, setDeployMode] = useState<"publish" | "upgrade">("publish");
-const [storedCap, setStoredCap] = useState<StoredUpgradeCap | undefined>();
-
-useEffect(() ={
-  getUpgradeCap("frontier_protocols", activeNetwork).then((cap) ={
-    setStoredCap(cap);
-    setDeployMode(cap ? "upgrade" : "publish");
-  });
-}, [activeNetwork]);
-```
-
-The Deploy button label, icon, and click handler adapt accordingly. A confirmation modal warns the user before executing an upgrade, displaying the previous package ID and the active `UpgradePolicy`.
+Package-upgrade support remains future work. The deploy control does not yet switch into upgrade mode, and no `UpgradeCap` persistence is currently performed.
 
 ---
 

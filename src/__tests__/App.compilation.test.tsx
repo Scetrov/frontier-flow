@@ -1,10 +1,19 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  useCurrentAccount as useCurrentAccountHook,
+  useCurrentWallet as useCurrentWalletHook,
+  useWallets as useWalletsHook,
+} from "@mysten/dapp-kit";
 
 import App from "../App";
 
 import type { CompilationStatus, CompilerDiagnostic } from "../compiler/types";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
+
+type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
+type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
+type Wallets = ReturnType<typeof useWalletsHook>;
 
 interface CanvasWorkspaceProps {
   readonly onCompilationStateChange?: (
@@ -23,6 +32,15 @@ interface MoveSourcePanelProps {
 const moveSourcePanelSpy = vi.fn<(props: MoveSourcePanelProps) => void>();
 let lastMoveSourcePanelProps: MoveSourcePanelProps | null = null;
 let hasReportedCompilation = false;
+const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
+const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
+const mockUseWallets = vi.fn<() => Wallets>();
+
+vi.mock("@mysten/dapp-kit", () => ({
+  useCurrentAccount: () => mockUseCurrentAccount(),
+  useCurrentWallet: () => mockUseCurrentWallet(),
+  useWallets: () => mockUseWallets(),
+}));
 
 vi.mock("../components/Header", () => ({
   default: (props: { onViewChange?: (view: "visual" | "move") => void }) => (
@@ -86,12 +104,21 @@ vi.mock("../components/MoveSourcePanel", () => ({
 }));
 
 describe("App compilation handoff", () => {
+  beforeEach(() => {
+    mockUseCurrentAccount.mockReturnValue(null);
+    mockUseCurrentWallet.mockReturnValue({ isConnected: false } as CurrentWallet);
+    mockUseWallets.mockReturnValue([]);
+  });
+
   afterEach(() => {
     moveSourcePanelSpy.mockClear();
     lastMoveSourcePanelProps = null;
     hasReportedCompilation = false;
     window.history.replaceState({}, "", "/");
     window.localStorage.clear();
+    mockUseCurrentAccount.mockReset();
+    mockUseCurrentWallet.mockReset();
+    mockUseWallets.mockReset();
   });
 
   it("prefers artifact-backed Move source when the workspace reports it", async () => {

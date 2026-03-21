@@ -29,6 +29,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "visual",
+      selectedDeploymentTarget: "local",
       isSidebarOpen: true,
       isContractPanelOpen: true,
     });
@@ -40,6 +41,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "visual",
+      selectedDeploymentTarget: "local",
       isSidebarOpen: true,
       isContractPanelOpen: true,
     });
@@ -51,6 +53,7 @@ describe("uiStateStorage", () => {
       JSON.stringify({
         version: 1,
         activeView: "move",
+        selectedDeploymentTarget: "testnet:stillness",
         isSidebarOpen: false,
         isContractPanelOpen: false,
       }),
@@ -59,6 +62,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "move",
+      selectedDeploymentTarget: "testnet:stillness",
       isSidebarOpen: false,
       isContractPanelOpen: false,
     });
@@ -70,6 +74,7 @@ describe("uiStateStorage", () => {
       JSON.stringify({
         version: 1,
         activeView: "visual",
+        selectedDeploymentTarget: "local",
         isSidebarOpen: true,
         isContractPanelOpen: false,
       }),
@@ -78,8 +83,32 @@ describe("uiStateStorage", () => {
     expect(mergeUiState(window.localStorage, { activeView: "move" })).toEqual({
       version: 1,
       activeView: "move",
+      selectedDeploymentTarget: "local",
       isSidebarOpen: true,
       isContractPanelOpen: false,
+    });
+  });
+
+  it("restores and merges the selected deployment target", () => {
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "visual",
+        selectedDeploymentTarget: "testnet:utopia",
+        isSidebarOpen: true,
+        isContractPanelOpen: true,
+      }),
+    );
+
+    expect(loadUiState(window.localStorage).selectedDeploymentTarget).toBe("testnet:utopia");
+
+    expect(mergeUiState(window.localStorage, { selectedDeploymentTarget: "testnet:stillness" })).toEqual({
+      version: 1,
+      activeView: "visual",
+      selectedDeploymentTarget: "testnet:stillness",
+      isSidebarOpen: true,
+      isContractPanelOpen: true,
     });
   });
 
@@ -100,6 +129,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "visual",
+      selectedDeploymentTarget: "local",
       isSidebarOpen: false,
       isContractPanelOpen: false,
     });

@@ -1,1 +1,1 @@
-- 010-functional-dag-contracts: Added TypeScript 5.9, React 19, ES Modules + `@xyflow/react`, `@zktx.io/sui-move-builder`, `@mysten/sui`, `@mysten/dapp-kit`, `dagre`, `lucide-react`
+- 011-bytecode-deployment: Added TypeScript 5.9 (strict), React 19, generated Sui Move artifacts + React 19, `@mysten/dapp-kit`, `@mysten/sui`, `@tanstack/react-query`, Tailwind CSS 4, `@xyflow/react`, `@zktx.io/sui-move-builder`

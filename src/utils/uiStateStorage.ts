@@ -1,10 +1,12 @@
 export const UI_STATE_STORAGE_KEY = "frontier-flow:ui-state";
 
 export type StoredPrimaryView = "visual" | "move";
+export type StoredDeploymentTarget = "local" | "testnet:stillness" | "testnet:utopia";
 
 export interface UiState {
   readonly version: 1;
   readonly activeView: StoredPrimaryView;
+  readonly selectedDeploymentTarget: StoredDeploymentTarget;
   readonly isSidebarOpen: boolean;
   readonly isContractPanelOpen: boolean;
 }
@@ -55,6 +57,7 @@ function createDefaultUiState(): UiState {
   return {
     version: 1,
     activeView: "visual",
+    selectedDeploymentTarget: "local",
     isSidebarOpen: isDesktop,
     isContractPanelOpen: isDesktop,
   };
@@ -70,6 +73,9 @@ function parseUiState(parsedValue: unknown): UiState {
   return {
     version: 1,
     activeView: parsedValue.activeView === "move" ? "move" : defaults.activeView,
+    selectedDeploymentTarget: isStoredDeploymentTarget(parsedValue.selectedDeploymentTarget)
+      ? parsedValue.selectedDeploymentTarget
+      : defaults.selectedDeploymentTarget,
     isSidebarOpen: typeof parsedValue.isSidebarOpen === "boolean" ? parsedValue.isSidebarOpen : defaults.isSidebarOpen,
     isContractPanelOpen:
       typeof parsedValue.isContractPanelOpen === "boolean"
@@ -92,4 +98,8 @@ function getIsDesktop() {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isStoredDeploymentTarget(value: unknown): value is StoredDeploymentTarget {
+  return value === "local" || value === "testnet:stillness" || value === "testnet:utopia";
 }

@@ -1,0 +1,52 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+import DeploymentTargetControl from "../components/DeploymentTargetControl";
+
+describe("DeploymentTargetControl", () => {
+  it("renders the selected target in the primary deploy action", () => {
+    render(<DeploymentTargetControl canDeploy={true} onDeploy={() => undefined} selectedTarget="local" />);
+
+    expect(screen.getByRole("button", { name: "Deploy local" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Select deployment target" })).toBeVisible();
+  });
+
+  it("opens the target list and notifies when a new target is chosen", () => {
+    const handleTargetChange = vi.fn();
+
+    render(
+      <DeploymentTargetControl
+        canDeploy={true}
+        onDeploy={() => undefined}
+        onTargetChange={handleTargetChange}
+        selectedTarget="local"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Select deployment target" }));
+    fireEvent.click(screen.getByRole("option", { name: "testnet:stillness" }));
+
+    expect(handleTargetChange).toHaveBeenCalledWith("testnet:stillness");
+    expect(screen.queryByRole("option", { name: "testnet:utopia" })).not.toBeInTheDocument();
+  });
+
+  it("launches deployment from the primary action", () => {
+    const handleDeploy = vi.fn();
+
+    render(<DeploymentTargetControl canDeploy={true} onDeploy={handleDeploy} selectedTarget="testnet:utopia" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Deploy testnet:utopia" }));
+
+    expect(handleDeploy).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps deployment clickable so blocker feedback can be surfaced", () => {
+    const handleDeploy = vi.fn();
+
+    render(<DeploymentTargetControl canDeploy={false} onDeploy={handleDeploy} selectedTarget="local" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Deploy local" }));
+
+    expect(handleDeploy).toHaveBeenCalledTimes(1);
+  });
+});
