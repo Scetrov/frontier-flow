@@ -130,7 +130,7 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 | 1 | Attempt deployment without a valid prerequisite | Deployment is blocked before submission | Footer indicator changes to `Deployment Blocked` |
 | 2 | Open the footer deployment popup | Blocker detail is expanded | Popup includes the affected target and remediation text |
 | 3 | Retry on a published target and reject wallet approval | Attempt ends as cancelled | Footer review identifies the `signing` stage and warning severity |
-| 4 | Retry again with valid prerequisites | Deployment completes successfully | Footer indicator updates to `Deployment Deployed` |
+| 4 | Retry again with valid prerequisites | Deployment completes successfully | Footer indicator updates to `Deployed` |
 | 5 | Re-open the footer deployment popup | Latest success is shown first | Popup includes the current package ID and summary |
 | 6 | Inspect the bottom of the popup | Earlier attempts remain reviewable | Prior blocked or cancelled attempts are listed as earlier session history |
 | 7 | Open the Move view after the retry sequence | Same review context is available outside the footer | Move panel mirrors the current deployment summary and earlier session entries |

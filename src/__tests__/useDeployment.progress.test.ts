@@ -130,4 +130,36 @@ describe("useDeployment progress flow", () => {
     expect(result.current.isProgressModalOpen).toBe(false);
     expect(result.current.isDeploying).toBe(false);
   });
+
+  it("reopens the modal for a new deployment attempt after a previous dismissal", async () => {
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "testnet:stillness",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    await act(async () => {
+      await result.current.startDeployment();
+    });
+
+    act(() => {
+      result.current.dismissProgress();
+      vi.advanceTimersByTime(100);
+    });
+
+    const firstAttemptId = result.current.latestAttempt?.attemptId;
+
+    expect(firstAttemptId).toBeDefined();
+    expect(result.current.progress?.dismissedByUser).toBe(true);
+    expect(result.current.isProgressModalOpen).toBe(false);
+
+    await act(async () => {
+      await result.current.startDeployment();
+    });
+
+    expect(result.current.progress?.attemptId).not.toBe(firstAttemptId);
+    expect(result.current.progress?.dismissedByUser).toBe(false);
+    expect(result.current.isProgressModalOpen).toBe(true);
+    expect(result.current.isDeploying).toBe(true);
+  });
 });

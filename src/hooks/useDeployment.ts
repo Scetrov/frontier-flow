@@ -149,6 +149,10 @@ function createProgressSnapshot(
     readonly targetId: DeploymentTargetId;
   },
 ): DeploymentProgress {
+  const dismissedByUser = current?.attemptId === input.attemptId
+    ? current.dismissedByUser
+    : false;
+
   return {
     attemptId: input.attemptId,
     targetId: input.targetId,
@@ -157,7 +161,7 @@ function createProgressSnapshot(
     stageCount: input.stageCount,
     completedStages: input.completedStages,
     activeMessage: input.activeMessage,
-    dismissedByUser: current?.dismissedByUser ?? false,
+    dismissedByUser,
   };
 }
 
