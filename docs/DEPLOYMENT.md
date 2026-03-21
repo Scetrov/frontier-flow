@@ -118,14 +118,25 @@ This function:
 
 ### 3.2 Local Development
 
-For local development with the OAuth flow, create a `.env` file (already in `.gitignore`):
+For local development, copy the `.env.example` template:
 
-```env
-VITE_GITHUB_CLIENT_ID=your_dev_client_id
+```bash
+cp .env.example .env
 ```
 
-[!CAUTION]
-Never commit `.env` files or secrets to the repository. See [SECURITY.md §8](./SECURITY.md#8-secret-management).
+Available environment variables:
+
+| Variable                | Default | Purpose                                         |
+| ----------------------- | ------- | ----------------------------------------------- |
+| `VITE_BASE_PATH`        | `/`     | Base URL path (overridden by GitHub Pages deploy) |
+| `VITE_GITHUB_CLIENT_ID` | —       | GitHub OAuth app client ID (future)              |
+
+The `VITE_BASE_PATH` variable is used in `vite.config.ts` to set the `base` option. It is only overridden in the `deploy-pages.yml` GitHub Actions workflow for GitHub Pages subpath deployments.
+
+No environment variables are required for basic local development — `bun run dev` works without a `.env` file.
+
+> [!CAUTION]
+> Never commit `.env` files or secrets to the repository. See [SECURITY.md §8](./SECURITY.md#8-secret-management).
 
 ---
 
@@ -214,12 +225,35 @@ git push origin main --tags
 
 ### 6.3 Release Automation
 
-Pushing a `v*` tag triggers the release workflow ([SECURITY.md §6.3](./SECURITY.md#63-release-attestation-workflow)):
+The project uses [`standard-version`](https://github.com/conventional-changelog/standard-version) for automated versioning and changelog generation:
 
-1. Build production bundle
-2. Generate SBOM (CycloneDX)
-3. Generate SLSA build provenance attestation
-4. Netlify deploys from `main` automatically
+```bash
+# Standard release (auto-determines semver bump from commits)
+bun run release
+
+# Explicit version bumps
+bun run release:major
+bun run release:minor
+bun run release:patch
+```
+
+This automatically:
+
+1. Bumps the version in `package.json`
+2. Updates `CHANGELOG.md` from Conventional Commit messages
+3. Creates a version commit and `v*` git tag
+
+Pushing the tag triggers CI workflows:
+
+- **`ci.yml`** — Runs lint, typecheck, unit tests, and audit on all pushes
+- **`deploy-pages.yml`** — Builds and deploys to GitHub Pages on push to `main`
+- **Netlify** — Auto-deploys from `main` via webhook
+
+Future release pipeline additions (see [SECURITY.md §6.3](./SECURITY.md#63-release-attestation-workflow)):
+
+1. Generate SBOM (CycloneDX)
+2. Generate SLSA build provenance attestation
+3. Publish release artifacts to GitHub Releases
 
 ---
 

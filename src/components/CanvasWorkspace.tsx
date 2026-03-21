@@ -64,6 +64,7 @@ interface CanvasWorkspaceProps {
     sourceCode: string | null,
     artifactMoveSource?: string | null,
   ) => void;
+  readonly onRemediationNoticesChange?: (notices: readonly RemediationNotice[]) => void;
   readonly onTriggerCompileChange?: (triggerCompile: () => void) => void;
 }
 
@@ -1310,6 +1311,7 @@ function FlowEditor({
   focusedDiagnosticNodeId,
   focusedDiagnosticRequestKey = 0,
   onCompilationStateChange,
+  onRemediationNoticesChange,
   onTriggerCompileChange,
 }: CanvasWorkspaceProps) {
   const initialLibrarySnapshot = useInitialLibrarySnapshot({ initialContractName, initialEdges, initialNodes, mode });
@@ -1324,6 +1326,7 @@ function FlowEditor({
   const selectionState = useCanvasSelectionState({ edges, nodes, selectedEdgeDeleteAnchor: deleteManager.selectedEdgeDeleteAnchor, setEdges, setNodes });
   const interactionHandlers = useCanvasInteractions({ deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, nodes, reactFlow, selectTarget: selectionState.selectTarget, setContextMenu: deleteManager.setContextMenu, setEdges, setNodes });
   useFlowEditorEffects({ contextMenu: deleteManager.contextMenu, contextMenuRef: deleteManager.contextMenuRef, deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, fallbackSelectedEdgeDeleteAnchor: selectionState.activeSelectedEdgeDeleteAnchor, focusedDiagnosticNodeId, focusedDiagnosticRequestKey, nodes, reactFlow, selectedTarget: selectionState.selectedTarget, setContextMenu: deleteManager.setContextMenu, setSelectedEdgeDeleteAnchor: deleteManager.setSelectedEdgeDeleteAnchor });
+  useEffect(() => { onRemediationNoticesChange?.(contractManager.activeRemediationNotices); }, [contractManager.activeRemediationNotices, onRemediationNoticesChange]);
   return (
     <FlowEditorView
       activeContract={contractManager.activeContract} activeContractDescription={contractManager.activeContractDescription}
@@ -1352,6 +1355,7 @@ function CanvasWorkspace({
   focusedDiagnosticNodeId,
   focusedDiagnosticRequestKey,
   onCompilationStateChange,
+  onRemediationNoticesChange,
   onTriggerCompileChange,
 }: CanvasWorkspaceProps) {
   return (
@@ -1364,6 +1368,7 @@ function CanvasWorkspace({
         initialNodes={initialNodes}
         mode={mode}
         onCompilationStateChange={onCompilationStateChange}
+        onRemediationNoticesChange={onRemediationNoticesChange}
         onTriggerCompileChange={onTriggerCompileChange}
       />
     </ReactFlowProvider>

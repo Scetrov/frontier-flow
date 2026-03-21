@@ -7,9 +7,52 @@ import { ConservativeDeployIcon } from "./HeaderActionIcons";
 interface DeploymentTargetControlProps {
   readonly canDeploy?: boolean;
   readonly isDeploying?: boolean;
+  readonly isUpgrade?: boolean;
   readonly onDeploy?: () => void;
   readonly onTargetChange?: (target: DeploymentTargetId) => void;
   readonly selectedTarget: DeploymentTargetId;
+}
+
+interface DeploymentTargetMenuProps {
+  readonly onTargetChange?: (target: DeploymentTargetId) => void;
+  readonly selectedTarget: DeploymentTargetId;
+  readonly setMenuOpen: (open: boolean) => void;
+  readonly toggleButtonRef: React.RefObject<HTMLButtonElement | null>;
+}
+
+function DeploymentTargetMenu({ onTargetChange, selectedTarget, setMenuOpen, toggleButtonRef }: DeploymentTargetMenuProps) {
+  return (
+    <div
+      aria-label="Deployment targets"
+      className="ff-deployment-target-control__menu"
+      id="deployment-target-list"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setMenuOpen(false);
+          toggleButtonRef.current?.focus();
+        }
+      }}
+      role="menu"
+      tabIndex={-1}
+    >
+      {DEPLOYMENT_TARGETS.map((target) => (
+        <button
+          aria-checked={target.id === selectedTarget}
+          className="ff-deployment-target-control__option"
+          key={target.id}
+          onClick={() => {
+            onTargetChange?.(target.id);
+            setMenuOpen(false);
+            toggleButtonRef.current?.focus();
+          }}
+          role="menuitemradio"
+          type="button"
+        >
+          {target.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /**
@@ -18,6 +61,7 @@ interface DeploymentTargetControlProps {
 function DeploymentTargetControl({
   canDeploy = false,
   isDeploying = false,
+  isUpgrade = false,
   onDeploy,
   onTargetChange,
   selectedTarget,
@@ -26,10 +70,14 @@ function DeploymentTargetControl({
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
   const isDeployDisabled = isDeploying || onDeploy === undefined;
+  const actionVerb = isUpgrade ? "Upgrade" : "Deploy";
+  const deployLabel = isDeploying ? `Deploying ${selectedTarget}` : `${actionVerb} ${selectedTarget}`;
+  const containerClassName = `ff-deployment-target-control${isActive ? " ff-deployment-target-control--active" : ""}`;
+  const deployTitle = canDeploy ? undefined : `Review blockers for ${selectedTarget} deployment`;
 
   return (
     <div
-      className={`ff-deployment-target-control${isActive ? " ff-deployment-target-control--active" : ""}`}
+      className={containerClassName}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {
           setIsActive(false);
@@ -47,19 +95,19 @@ function DeploymentTargetControl({
       }}
     >
       <button
-        aria-label={isDeploying ? `Deploying ${selectedTarget}` : `Deploy ${selectedTarget}`}
+        aria-label={deployLabel}
         className="ff-header__button ff-header__button--compact ff-deployment-target-control__primary"
         disabled={isDeployDisabled}
         onClick={() => {
           onDeploy?.();
         }}
-        title={canDeploy ? undefined : `Review blockers for ${selectedTarget} deployment`}
+        title={deployTitle}
         type="button"
       >
         <span aria-hidden="true" className="ff-header__button-icon">
           <ConservativeDeployIcon />
         </span>
-        <span className="ff-header__button-label">{isDeploying ? `Deploying ${selectedTarget}` : `Deploy ${selectedTarget}`}</span>
+        <span className="ff-header__button-label">{deployLabel}</span>
       </button>
       <button
         aria-controls="deployment-target-list"
@@ -83,36 +131,12 @@ function DeploymentTargetControl({
       </button>
 
       {menuOpen ? (
-        <div
-          aria-label="Deployment targets"
-          className="ff-deployment-target-control__menu"
-          id="deployment-target-list"
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              setMenuOpen(false);
-              toggleButtonRef.current?.focus();
-            }
-          }}
-          role="menu"
-          tabIndex={-1}
-        >
-          {DEPLOYMENT_TARGETS.map((target) => (
-            <button
-              aria-checked={target.id === selectedTarget}
-              className="ff-deployment-target-control__option"
-              key={target.id}
-              onClick={() => {
-                onTargetChange?.(target.id);
-                setMenuOpen(false);
-                toggleButtonRef.current?.focus();
-              }}
-              role="menuitemradio"
-              type="button"
-            >
-              {target.label}
-            </button>
-          ))}
-        </div>
+        <DeploymentTargetMenu
+          onTargetChange={onTargetChange}
+          selectedTarget={selectedTarget}
+          setMenuOpen={setMenuOpen}
+          toggleButtonRef={toggleButtonRef}
+        />
       ) : null}
     </div>
   );
