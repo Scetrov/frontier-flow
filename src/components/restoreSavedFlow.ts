@@ -1,6 +1,23 @@
 import { hydrateFlowNode } from "../data/node-definitions";
 import { getLegacyNodeMigrationRule, migrateLegacyNode } from "../data/nodeMigration";
+import type { CompilerDiagnostic } from "../compiler/types";
 import type { FlowEdge, FlowNode, RemediationNotice } from "../types/nodes";
+
+/**
+ * Convert remediation notices from flow restoration into compiler diagnostics
+ * so they surface in the footer's compilation status panel (FR-013, FR-018).
+ */
+export function remediationNoticesToDiagnostics(notices: readonly RemediationNotice[]): readonly CompilerDiagnostic[] {
+  return notices.map((notice) => ({
+    severity: notice.severity === "error" ? "error" as const : "warning" as const,
+    stage: "validation" as const,
+    rawMessage: notice.message,
+    line: null,
+    reactFlowNodeId: notice.nodeId,
+    socketId: null,
+    userMessage: `${notice.message} ${notice.suggestedAction}`,
+  }));
+}
 
 /**
  * Restores saved nodes from the canonical catalogue and drops edges that no longer point to valid handles.
