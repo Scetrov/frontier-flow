@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.5.0](https://github.com/Scetrov/frontier-flow/compare/v0.4.1...v0.5.0) (2026-03-22)
+
+
+### Bug Fixes
+
+* NODE 24 ([7dbab66](https://github.com/Scetrov/frontier-flow/commit/7dbab66b2ae24b05a207eb565df03af70ae6dcc9))
+* security e-mail ([2cd7b55](https://github.com/Scetrov/frontier-flow/commit/2cd7b5587c408601af4d562edd22709af6b5ee9d))
+
 ### [0.4.1](https://github.com/Scetrov/frontier-flow/compare/v0.3.0...v0.4.1) (2026-03-21)
 
 ## [0.4.0](https://github.com/Scetrov/frontier-flow/compare/v0.3.0...v0.4.0) (2026-03-21)
