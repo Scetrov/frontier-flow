@@ -10,9 +10,7 @@
         "chrome-devtools-mcp@latest",
         "--executablePath",
         "/usr/bin/chromium",
-        "--ignore-default-chrome-arg=--disable-extensions",
-        "--chrome-arg=--disable-extensions-except=/home/scetrov/source/eve-vault-chrome",
-        "--chrome-arg=--load-extension=/home/scetrov/source/eve-vault-chrome"
+        "--ignore-default-chrome-arg=--disable-extensions"
       ]
     }
   }

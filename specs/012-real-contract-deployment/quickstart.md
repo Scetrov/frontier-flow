@@ -186,7 +186,7 @@ Summary against success criteria:
 
 ## Recorded remote verification results
 
-Real remote deployment verification was completed against `testnet:stillness` in the MCP-controlled Chromium session after enabling the EVE Vault extension in [/.vscode/mcp.json](/home/scetrov/source/frontier-flow/.vscode/mcp.json) and connecting the wallet through the live app.
+Real remote deployment verification was completed against `testnet:stillness` in the MCP-controlled Chromium session after enabling the EVE Vault extension through a local, untracked MCP override based on the committed [/.vscode/mcp.json](/home/scetrov/source/frontier-flow/.vscode/mcp.json) template and connecting the wallet through the live app.
 
 Observed success result:
 

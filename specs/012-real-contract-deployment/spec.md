@@ -3,7 +3,7 @@
 **Feature Branch**: `012-real-contract-deployment`  
 **Created**: 2026-03-22  
 **Status**: Draft  
-**Input**: User description: "a solution that will close the loop, so that we can actively deploy contracts to a local chain, or the remote and remove the mocked deployments. I want to emphaseize correctness and testability."
+**Input**: User description: "a solution that will close the loop, so that we can actively deploy contracts to a local chain, or the remote and remove the mocked deployments. I want to emphasize correctness and testability."
 
 ## User Scenarios & Testing _(mandatory)_
 

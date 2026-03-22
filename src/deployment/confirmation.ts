@@ -71,14 +71,20 @@ async function sleep(delayMs: number, signal?: AbortSignal): Promise<void> {
   }
 
   await new Promise<void>((resolve, reject) => {
-    const timer = window.setTimeout(resolve, delayMs);
+    function handleAbort(): void {
+      window.clearTimeout(timer);
+      signal?.removeEventListener("abort", handleAbort);
+      reject(createAbortError());
+    }
+
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener("abort", handleAbort);
+      resolve();
+    }, delayMs);
 
     signal?.addEventListener(
       "abort",
-      () => {
-        window.clearTimeout(timer);
-        reject(createAbortError());
-      },
+      handleAbort,
       { once: true },
     );
   });
