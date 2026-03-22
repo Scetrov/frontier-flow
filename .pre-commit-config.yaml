@@ -1,3 +1,4 @@
+# Note to Agents: DO NOT disable pre-commit by editing this file, or passing --no-verify
 repos:
   - repo: local
     hooks:
