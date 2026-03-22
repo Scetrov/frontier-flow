@@ -8,7 +8,7 @@ describe("AlphaBanner", () => {
     render(<AlphaBanner />);
 
     expect(screen.getByText("Alpha Software")).toBeInTheDocument();
-    const link = screen.getByRole("link", { name: /github issues/i });
+    const link = screen.getByRole("link", { name: /github/i });
     expect(link).toHaveAttribute("href", "https://github.com/Scetrov/frontier-flow/issues");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");

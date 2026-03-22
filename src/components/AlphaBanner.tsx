@@ -23,7 +23,7 @@ function AlphaBanner() {
           rel="noopener noreferrer"
           target="_blank"
         >
-          GitHub Issues
+          GitHub
         </a>.
       </p>
       <button
