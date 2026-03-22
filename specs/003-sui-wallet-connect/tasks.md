@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/003-sui-wallet-connect/`
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, quickstart.md
 
-**Tests**: Test tasks are included because the implementation plan explicitly requires Vitest and Playwright coverage for wallet connection, wallet display, disconnect, and persistence flows.
+`__tests__`: Test tasks are included because the implementation plan explicitly requires Vitest and Playwright coverage for wallet connection, wallet display, disconnect, and persistence flows.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -43,13 +43,13 @@
 
 ### Tests for User Story 1
 
-- [x] T003 [P] [US1] Create wallet connection component tests in src/__tests__/WalletStatus.test.tsx covering disconnected CTA rendering, wallet selection trigger behaviour, rejected connection fallback, and no-wallet guidance
-- [x] T004 [P] [US1] Update src/__tests__/Header.test.tsx to verify the header banner renders the wallet action area alongside existing branding content
+- [x] T003 [P] [US1] Create wallet connection component tests in `src/__tests__/WalletStatus.test.tsx` covering disconnected CTA rendering, wallet selection trigger behaviour, rejected connection fallback, and no-wallet guidance
+- [x] T004 [P] [US1] Update `src/__tests__/Header.test.tsx` to verify the header banner renders the wallet action area alongside existing branding content
 
 ### Implementation for User Story 1
 
-- [x] T005 [US1] Create src/components/WalletStatus.tsx with the connect button, wallet selection trigger, and user-friendly no-wallet guidance using dapp-kit hooks
-- [x] T006 [US1] Update src/components/Header.tsx to place `WalletStatus` in the top-right header layout while preserving the current responsive branding behaviour
+- [x] T005 [US1] Create `src/components/WalletStatus.tsx` with the connect button, wallet selection trigger, and user-friendly no-wallet guidance using dapp-kit hooks
+- [x] T006 [US1] Update `src/components/Header.tsx` to place `WalletStatus` in the top-right header layout while preserving the current responsive branding behaviour
 
 **Checkpoint**: User Story 1 is fully functional and testable on its own.
 
@@ -63,12 +63,12 @@
 
 ### Tests for User Story 2
 
-- [x] T007 [P] [US2] Create address-formatting unit tests in src/__tests__/formatAddress.test.ts covering truncation, `0x`-prefixed addresses, and short-address guard cases
-- [x] T008 [P] [US2] Extend src/__tests__/WalletStatus.test.tsx to cover connected address rendering, non-zero and zero SUI balances, and the `— SUI` fallback state on balance errors
+- [x] T007 [P] [US2] Create address-formatting unit tests in `src/__tests__/formatAddress.test.ts` covering truncation, `0x`-prefixed addresses, and short-address guard cases
+- [x] T008 [P] [US2] Extend `src/__tests__/WalletStatus.test.tsx` to cover connected address rendering, non-zero and zero SUI balances, and the `— SUI` fallback state on balance errors
 
 ### Implementation for User Story 2
 
-- [x] T009 [P] [US2] Create src/utils/formatAddress.ts with deterministic Sui address truncation logic for header display
+- [x] T009 [P] [US2] Create `src/utils/formatAddress.ts` with deterministic Sui address truncation logic for header display
 - [x] T010 [US2] Update src/components/WalletStatus.tsx to render the truncated address, formatted SUI balance, and an `aria-live` status region for balance refresh and fallback messaging
 
 **Checkpoint**: User Story 2 is fully functional and testable on its own.
@@ -83,11 +83,11 @@
 
 ### Tests for User Story 3
 
-- [x] T011 [P] [US3] Extend src/__tests__/WalletStatus.test.tsx to cover disconnect behaviour, removal of wallet info, and readiness to start a fresh connection flow
+- [x] T011 [P] [US3] Extend `src/__tests__/WalletStatus.test.tsx` to cover disconnect behaviour, removal of wallet info, and readiness to start a fresh connection flow
 
 ### Implementation for User Story 3
 
-- [x] T012 [US3] Update src/components/WalletStatus.tsx to wire `useDisconnectWallet` and restore the disconnected header UI immediately after sign-out
+- [x] T012 [US3] Update `src/components/WalletStatus.tsx` to wire `useDisconnectWallet` and restore the disconnected header UI immediately after sign-out
 
 **Checkpoint**: User Story 3 is fully functional and testable on its own.
 
@@ -101,8 +101,8 @@
 
 ### Tests for User Story 4
 
-- [x] T013 [P] [US4] Extend src/__tests__/WalletStatus.test.tsx to cover restored-account rendering on initial mount and unavailable-wallet fallback after a reload-like restore
-- [x] T014 [P] [US4] Create wallet end-to-end coverage in tests/e2e/wallet.spec.ts for the default disconnected header state and the no-wallet guidance flow in a browser without wallet extensions
+- [x] T013 [P] [US4] Extend `src/__tests__/WalletStatus.test.tsx` to cover restored-account rendering on initial mount and unavailable-wallet fallback after a reload-like restore
+- [x] T014 [P] [US4] Create wallet end-to-end coverage in `tests/e2e/wallet.spec.ts` for the default disconnected header state and the no-wallet guidance flow in a browser without wallet extensions
 
 ### Implementation for User Story 4
 
@@ -118,7 +118,7 @@
 **Purpose**: Finish documentation and validate the complete feature across automated and manual checks.
 
 - [x] T017 [P] Update specs/003-sui-wallet-connect/quickstart.md with final commands and manual QA notes for connect, disconnect, fallback, and reload validation
-- [x] T018 [P] Run `bun run test:run` and `bun run test:e2e` to validate src/__tests__/WalletStatus.test.tsx, src/__tests__/Header.test.tsx, src/__tests__/formatAddress.test.ts, and tests/e2e/wallet.spec.ts
+- [x] T018 [P] Run `bun run test:run` and `bun run test:e2e` to validate `src/__tests__/WalletStatus.test.tsx`, `src/__tests__/Header.test.tsx`, `src/__tests__/formatAddress.test.ts`, and `tests/e2e/wallet.spec.ts`
 - [x] T019 [P] Run `bun run lint`, `bun run typecheck`, and `bun run build` to confirm the wallet feature is production-ready
 
 ---

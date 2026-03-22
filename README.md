@@ -1,6 +1,6 @@
 # Frontier Flow
 
-### From idea to deployment in under 10 minutes for EVE Frontier automation builders
+## From idea to deployment in under 10 minutes for EVE Frontier automation builders
 
 [![Contributors](https://img.shields.io/github/contributors/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/graphs/contributors)
 [![Forks](https://img.shields.io/github/forks/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/network/members)

@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/007-graph-to-move/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
-**Tests**: Tests are required for this feature because the specification and constitution explicitly require deterministic code-generation coverage, unsupported-graph failure coverage, and compiler workflow validation.
+`__tests__`: Tests are required for this feature because the specification and constitution explicitly require deterministic code-generation coverage, unsupported-graph failure coverage, and compiler workflow validation.
 
 **Organization**: Tasks are grouped by user story so each story can be implemented and verified independently once shared prerequisites are complete.
 
@@ -49,18 +49,18 @@
 
 **NOTE: Write these tests first and verify they fail before implementation.**
 
-- [x] T009 [P] [US1] Add supported event-trigger emission cases in src/**tests**/compiler/generators/eventTriggers.test.ts
-- [x] T010 [P] [US1] Add supported data-source and accessor emission cases in src/**tests**/compiler/generators/dataSources.test.ts and src/**tests**/compiler/generators/dataAccessors.test.ts
-- [x] T011 [P] [US1] Add supported logic, action, and golden-output contract cases in src/**tests**/compiler/generators/logicGates.test.ts, src/**tests**/compiler/generators/actions.test.ts, src/**tests**/compiler/generators/scoringModifiers.test.ts, and src/**tests**/compiler/emitter.test.ts
+- [x] T009 [P] [US1] Add supported event-trigger emission cases in `src/__tests__/compiler/generators/eventTriggers.test.ts`
+- [x] T010 [P] [US1] Add supported data-source and accessor emission cases in `src/__tests__/compiler/generators/dataSources.test.ts` and `src/__tests__/compiler/generators/dataAccessors.test.ts`
+- [x] T011 [P] [US1] Add supported logic, action, and golden-output contract cases in `src/__tests__/compiler/generators/logicGates.test.ts`, `src/__tests__/compiler/generators/actions.test.ts`, `src/__tests__/compiler/generators/scoringModifiers.test.ts`, and `src/__tests__/compiler/emitter.test.ts`
 
 ### Implementation for User Story 1
 
-- [x] T012 [P] [US1] Implement supported event-trigger Move emission in src/compiler/generators/eventTriggers.ts
-- [x] T013 [P] [US1] Implement supported data-source and accessor Move emission in src/compiler/generators/dataSources.ts and src/compiler/generators/dataAccessors.ts
-- [x] T014 [P] [US1] Implement supported logic-gate, action, and scoring Move emission in src/compiler/generators/logicGates.ts, src/compiler/generators/actions.ts, and src/compiler/generators/scoringModifiers.ts
-- [x] T015 [US1] Emit a complete Move package artifact with stable source-map sections in src/compiler/emitter.ts
-- [x] T016 [US1] Finalize supported-graph artifact generation flow in src/compiler/pipeline.ts
-- [x] T017 [US1] Add end-to-end supported graph pipeline coverage in src/**tests**/compiler/pipeline.test.ts
+- [x] T012 [P] [US1] Implement supported event-trigger Move emission in `src/compiler/generators/eventTriggers.ts`
+- [x] T013 [P] [US1] Implement supported data-source and accessor Move emission in `src/compiler/generators/dataSources.ts` and `src/compiler/generators/dataAccessors.ts`
+- [x] T014 [P] [US1] Implement supported logic-gate, action, and scoring Move emission in `src/compiler/generators/logicGates.ts`, `src/compiler/generators/actions.ts`, and `src/compiler/generators/scoringModifiers.ts`
+- [x] T015 [US1] Emit a complete Move package artifact with stable source-map sections in `src/compiler/emitter.ts`
+- [x] T016 [US1] Finalize supported-graph artifact generation flow in `src/compiler/pipeline.ts`
+- [x] T017 [US1] Add end-to-end supported graph pipeline coverage in `src/__tests__/compiler/pipeline.test.ts`
 
 **Checkpoint**: User Story 1 is complete when a supported graph deterministically emits a real Move package artifact and passes golden-output tests.
 
@@ -74,16 +74,16 @@
 
 ### Tests for User Story 2 ⚠️
 
-- [x] T018 [P] [US2] Add unsupported-node and missing-input validation cases in src/**tests**/compiler/validator.test.ts
-- [x] T019 [P] [US2] Add disconnected-entry-path and unresolved-order cases in src/**tests**/compiler/irBuilder.test.ts
-- [x] T020 [P] [US2] Add identifier sanitization and invalid-name rejection cases in src/**tests**/compiler/sanitizer.test.ts
+- [x] T018 [P] [US2] Add unsupported-node and missing-input validation cases in `src/__tests__/compiler/validator.test.ts`
+- [x] T019 [P] [US2] Add disconnected-entry-path and unresolved-order cases in `src/__tests__/compiler/irBuilder.test.ts`
+- [x] T020 [P] [US2] Add identifier sanitization and invalid-name rejection cases in `src/__tests__/compiler/sanitizer.test.ts`
 
 ### Implementation for User Story 2
 
-- [x] T021 [US2] Enforce supported-node subset diagnostics in src/compiler/validator.ts
-- [x] T022 [US2] Detect disconnected entry paths and unresolved graph ordering in src/compiler/irBuilder.ts and src/compiler/validator.ts
-- [x] T023 [US2] Harden graph-derived identifier sanitization in src/compiler/sanitizer.ts
-- [x] T024 [US2] Stop artifact emission and compilation on blocking generation diagnostics in src/compiler/pipeline.ts
+- [x] T021 [US2] Enforce supported-node subset diagnostics in `src/compiler/validator.ts`
+- [x] T022 [US2] Detect disconnected entry paths and unresolved graph ordering in `src/compiler/irBuilder.ts` and `src/compiler/validator.ts`
+- [x] T023 [US2] Harden graph-derived identifier sanitization in `src/compiler/sanitizer.ts`
+- [x] T024 [US2] Stop artifact emission and compilation on blocking generation diagnostics in `src/compiler/pipeline.ts`
 
 **Checkpoint**: User Story 2 is complete when unsupported or incomplete graphs fail clearly before successful compilation with diagnostics tied back to graph elements.
 
@@ -97,12 +97,12 @@
 
 ### Tests for User Story 3 ⚠️
 
-- [x] T025 [P] [US3] Add generated-source preview state coverage in src/**tests**/MoveSourcePanel.test.tsx
-- [x] T026 [P] [US3] Add app-level generated-source handoff coverage in src/**tests**/App.compilation.test.tsx
+- [x] T025 [P] [US3] Add generated-source preview state coverage in `src/__tests__/MoveSourcePanel.test.tsx`
+- [x] T026 [P] [US3] Add app-level generated-source handoff coverage in `src/__tests__/App.compilation.test.tsx`
 
 ### Implementation for User Story 3
 
-- [x] T027 [US3] Pass artifact-backed generated source through src/App.tsx and src/components/CanvasWorkspace.tsx
+- [x] T027 [US3] Pass artifact-backed generated source through `src/App.tsx` and `src/components/CanvasWorkspace.tsx`
 - [x] T028 [US3] Render readable generated Move and empty/error preview states in src/components/MoveSourcePanel.tsx
 - [x] T029 [US3] Stabilize emitted section ordering and readable formatting in src/compiler/emitter.ts and src/compiler/types.ts
 
@@ -118,9 +118,9 @@
 
 ### Tests for User Story 4 ⚠️
 
-- [x] T030 [P] [US4] Add artifact-package compile success and failure cases in src/**tests**/compiler/pipeline.test.ts and src/**tests**/compiler/moveCompiler.test.ts
-- [x] T031 [P] [US4] Add manual build and footer status coverage in src/**tests**/Header.test.tsx and src/**tests**/Footer.test.tsx
-- [x] T032 [P] [US4] Add real-artifact compilation workflow coverage in tests/e2e/compilation.spec.ts
+- [x] T030 [P] [US4] Add artifact-package compile success and failure cases in `src/__tests__/compiler/pipeline.test.ts` and `src/__tests__/compiler/moveCompiler.test.ts`
+- [x] T031 [P] [US4] Add manual build and footer status coverage in `src/__tests__/Header.test.tsx` and `src/__tests__/Footer.test.tsx`
+- [x] T032 [P] [US4] Add real-artifact compilation workflow coverage in `tests/e2e/compilation.spec.ts`
 
 ### Implementation for User Story 4
 
@@ -137,9 +137,9 @@
 
 **Purpose**: Final hardening, documentation, and feature-level validation across stories.
 
-- [x] T037 [P] Add compiler error-fallback and unmapped-line regression coverage in src/**fixtures**/compiler/graph-to-move-errors.ts and src/**tests**/compiler/errorParser.test.ts
-- [x] T038 [P] Document the graph-to-Move workflow and test expectations in docs/SOLUTION-DESIGN.md and docs/TESTING-STRATEGY.md
-- [x] T039 Validate the end-to-end feature scenarios against specs/007-graph-to-move/quickstart.md
+- [x] T037 [P] Add compiler error-fallback and unmapped-line regression coverage in `src/**fixtures**/compiler/graph-to-move-errors.ts` and `src/__tests__/compiler/errorParser.test.ts`
+- [x] T038 [P] Document the graph-to-Move workflow and test expectations in `docs/SOLUTION-DESIGN.md` and `docs/TESTING-STRATEGY.md`
+- [x] T039 Validate the end-to-end feature scenarios against `specs/007-graph-to-move/quickstart.md`
 
 ---
 

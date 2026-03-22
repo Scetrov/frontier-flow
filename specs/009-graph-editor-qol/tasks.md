@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/009-graph-editor-qol/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
-**Tests**: Tests are required for this feature because the constitution mandates TDD for new UX work and the plan explicitly calls for Vitest interaction coverage.
+`__tests__`: Tests are required for this feature because the constitution mandates TDD for new UX work and the plan explicitly calls for Vitest interaction coverage.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -46,15 +46,15 @@
 
 **NOTE: Write these tests first, ensure they fail before implementation.**
 
-- [X] T006 [P] [US1] Add node action tests for delete confirmation, cancel, and immediate delete in src/__tests__/BaseNode.test.tsx
-- [X] T007 [P] [US1] Add canvas interaction tests for node delete, edge delete, keyboard delete, and target-specific context-menu actions in src/__tests__/canvasFlow.test.tsx
+- [X] T006 [P] [US1] Add node action tests for delete confirmation, cancel, and immediate delete in `src/__tests__/BaseNode.test.tsx`
+- [X] T007 [P] [US1] Add canvas interaction tests for node delete, edge delete, keyboard delete, and target-specific context-menu actions in `src/__tests__/canvasFlow.test.tsx`
 
 ### Implementation for User Story 1
 
-- [X] T008 [US1] Implement inline node delete controls and confirmation rendering in src/nodes/BaseNode.tsx
-- [X] T009 [US1] Implement node and edge deletion handlers, midpoint edge delete affordance, and keyboard delete guards in src/components/CanvasWorkspace.tsx
-- [X] T010 [US1] Implement node and edge Delete actions in the target-sensitive context menu in src/components/CanvasWorkspace.tsx
-- [X] T011 [US1] Add inline delete, confirmation, midpoint action, and selected-target styles in src/index.css
+- [X] T008 [US1] Implement inline node delete controls and confirmation rendering in `src/nodes/BaseNode.tsx`
+- [X] T009 [US1] Implement node and edge deletion handlers, midpoint edge delete affordance, and keyboard delete guards in `src/components/CanvasWorkspace.tsx`
+- [X] T010 [US1] Implement node and edge Delete actions in the target-sensitive context menu in `src/components/CanvasWorkspace.tsx`
+- [X] T011 [US1] Add inline delete, confirmation, midpoint action, and selected-target styles in `src/index.css`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable.
 
@@ -68,12 +68,12 @@
 
 ### Tests for User Story 2 ⚠️
 
-- [X] T012 [P] [US2] Add node diagnostic presentation tests for warning-icon replacement and hover error content in src/__tests__/BaseNode.test.tsx
-- [X] T013 [P] [US2] Add canvas interaction tests for selected target glow behavior and keyboard-delete focus guards in src/__tests__/canvasFlow.test.tsx
+- [X] T012 [P] [US2] Add node diagnostic presentation tests for warning-icon replacement and hover error content in `src/__tests__/BaseNode.test.tsx`
+- [X] T013 [P] [US2] Add canvas interaction tests for selected target glow behavior and keyboard-delete focus guards in `src/__tests__/canvasFlow.test.tsx`
 
 ### Implementation for User Story 2
 
-- [X] T014 [US2] Implement error-state warning icon and accessible hover or focus diagnostic messaging in src/nodes/BaseNode.tsx
+- [X] T014 [US2] Implement error-state warning icon and accessible hover or focus diagnostic messaging in `src/nodes/BaseNode.tsx`
 - [X] T015 [US2] Wire diagnostic severity and presentation state into rendered node data in src/components/CanvasWorkspace.tsx
 - [X] T016 [US2] Implement persistent themed scrollbars, edit-button hover glow, and selected node and edge glow styles in src/index.css
 
@@ -89,8 +89,8 @@
 
 ### Tests for User Story 3 ⚠️
 
-- [X] T017 [P] [US3] Add sidebar accordion tests for top-level category order and labels in src/__tests__/Sidebar.test.tsx
-- [X] T018 [P] [US3] Add node taxonomy tests for `static-data` and `data-extractor` assignments in src/__tests__/nodeDefinitions.test.ts
+- [X] T017 [P] [US3] Add sidebar accordion tests for top-level category order and labels in `src/__tests__/Sidebar.test.tsx`
+- [X] T018 [P] [US3] Add node taxonomy tests for `static-data` and `data-extractor` assignments in `src/__tests__/nodeDefinitions.test.ts`
 
 ### Implementation for User Story 3
 

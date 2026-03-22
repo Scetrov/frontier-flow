@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/010-functional-dag-contracts/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
-**Tests**: Deterministic technical tests are required for this feature. Vitest regression, snapshot approval, semantic compiler tests, and targeted Playwright journeys are included by design.
+`__tests__`: Deterministic technical tests are required for this feature. Vitest regression, snapshot approval, semantic compiler tests, and targeted Playwright journeys are included by design.
 
 **Organization**: Tasks are grouped by user story so each story can be implemented and verified as an independent increment once foundational compiler contracts are in place.
 

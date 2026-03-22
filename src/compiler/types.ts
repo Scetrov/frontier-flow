@@ -46,6 +46,8 @@ export interface DeploymentTarget {
   readonly networkFamily: "local" | "testnet";
   readonly requiresPublishedPackageRefs: boolean;
   readonly supportsWalletSigning: boolean;
+  readonly rpcUrl: string;
+  readonly requiresLocalValidator: boolean;
 }
 
 export interface PackageReferenceBundle {
@@ -59,7 +61,7 @@ export interface PackageReferenceBundle {
 }
 
 export type DeploymentStatusType = "blocked" | "ready" | "deployed";
-export type DeploymentAttemptOutcome = "blocked" | "cancelled" | "failed" | "succeeded";
+export type DeploymentAttemptOutcome = "blocked" | "cancelled" | "failed" | "unresolved" | "succeeded";
 export type DeploymentStage = "validating" | "preparing" | "signing" | "submitting" | "confirming";
 export type DeploymentMessageSeverity = "info" | "warning" | "error" | "success";
 
@@ -96,8 +98,10 @@ export interface CompileReadiness {
 export interface DeploymentStatus {
   readonly artifactId: string;
   readonly status: DeploymentStatusType;
+  readonly outcome?: DeploymentAttemptOutcome;
   readonly targetId?: DeploymentTargetId;
   readonly packageId?: string;
+  readonly confirmationReference?: string;
   readonly stage?: DeploymentStage;
   readonly severity?: DeploymentMessageSeverity;
   readonly headline?: string;
@@ -118,6 +122,7 @@ export interface DeploymentAttempt {
   readonly outcome: DeploymentAttemptOutcome;
   readonly currentStage: DeploymentStage;
   readonly packageId?: string;
+  readonly confirmationReference?: string;
   readonly message: string;
   readonly errorCode?: string;
 }
@@ -141,19 +146,27 @@ export interface DeploymentStatusMessage {
   readonly details: string;
   readonly stage?: DeploymentStage;
   readonly packageId?: string;
+  readonly confirmationReference?: string;
   readonly visibleInFooter: boolean;
   readonly visibleInMovePanel: boolean;
 }
 
 export interface DeploymentReviewEntry {
   readonly attemptId: string;
+  readonly artifactId: string;
   readonly headline: string;
   readonly targetId: DeploymentTargetId;
+  readonly outcome: DeploymentAttemptOutcome;
   readonly severity: DeploymentMessageSeverity;
+  readonly startedAt: number;
+  readonly endedAt?: number;
   readonly stage?: DeploymentStage;
   readonly packageId?: string;
+  readonly confirmationReference?: string;
   readonly details: string;
   readonly blockedReasons: readonly string[];
+  readonly historicalOnly?: boolean;
+  readonly historicalReason?: string;
 }
 
 export interface GeneratedContractArtifact {

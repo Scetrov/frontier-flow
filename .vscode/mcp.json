@@ -9,7 +9,8 @@
         "-y",
         "chrome-devtools-mcp@latest",
         "--executablePath",
-        "/usr/bin/chromium"
+        "/usr/bin/chromium",
+        "--ignore-default-chrome-arg=--disable-extensions"
       ]
     }
   }

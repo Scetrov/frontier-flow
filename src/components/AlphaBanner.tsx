@@ -15,7 +15,7 @@ function AlphaBanner() {
   return (
     <div className="ff-alpha-banner" role="status">
       <p className="ff-alpha-banner__text">
-        <strong>Alpha Software</strong> — This project is under active development. Features may change or break.
+        <strong>Alpha Software</strong> — Frontier Flow is under active development. Features may change or break.
         Please report issues on{" "}
         <a
           className="ff-alpha-banner__link"
@@ -23,7 +23,7 @@ function AlphaBanner() {
           rel="noopener noreferrer"
           target="_blank"
         >
-          GitHub Issues
+          GitHub
         </a>.
       </p>
       <button

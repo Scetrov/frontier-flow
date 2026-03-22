@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/006-wasm-compile-pipeline/`
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/compilation-pipeline.md, quickstart.md
 
-**Tests**: Included — FR-028 through FR-033 explicitly require unit tests for generators, validation, error parsing, and idle timer behaviour. Test-first approach per Constitution principle VI.
+`__tests__`: Included — FR-028 through FR-033 explicitly require unit tests for generators, validation, error parsing, and idle timer behaviour. Test-first approach per Constitution principle VI.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -54,7 +54,8 @@
 
 ### Tests for User Story 1
 
-**NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> [!NOTE]
+> Write these tests FIRST, ensure they FAIL before implementation
 
 - [x] T007 [P] [US1] Write unit tests for event-trigger generators (aggression, proximity) covering function signature and entry-point boilerplate emission in `src/__tests__/compiler/generators/eventTriggers.test.ts`
 - [x] T008 [P] [US1] Write unit tests for data-accessor generators (getTribe, hpRatio, shieldRatio, armorRatio, getGroupId, getBehaviour, isAggressor, getPriorityWeight) covering per-accessor code fragment output in `src/__tests__/compiler/generators/dataAccessors.test.ts`
@@ -92,7 +93,8 @@
 
 ### Tests for User Story 2
 
-**NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> [!NOTE]
+> Write these tests FIRST, ensure they FAIL before implementation
 
 - [x] T027 [US2] Write unit tests for graph validator covering unconnected required inputs, disconnected nodes, missing event-trigger entry point, type mismatches across socket compatibility matrix, and cyclic dependency detection in `src/__tests__/compiler/validator.test.ts`
 
@@ -113,7 +115,8 @@
 
 ### Tests for User Story 3
 
-**NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> [!NOTE]
+> Write these tests FIRST, ensure they FAIL before implementation
 
 - [x] T030 [P] [US3] Write unit tests for useAutoCompile hook covering debounce timer reset on edit, cancellation of in-flight compilation, correct trigger after idle period, lazy WASM init on first compile, and skip-on-validation-error in `src/__tests__/hooks/useAutoCompile.test.ts`
 
@@ -136,7 +139,8 @@
 
 ### Tests for User Story 4
 
-**NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> [!NOTE]
+> Write these tests FIRST, ensure they FAIL before implementation
 
 - [x] T035 [US4] Write unit tests for CompilationStatus component covering all four states (idle/compiling/compiled/error), colour dot rendering, label text, ARIA live region announcements, and error detail expansion in `src/__tests__/CompilationStatus.test.ts`
 
@@ -158,7 +162,8 @@
 
 ### Tests for User Story 5
 
-**NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> [!NOTE]
+> Write these tests FIRST, ensure they FAIL before implementation
 
 - [x] T039 [US5] Write unit tests for Build button covering click triggers compilation, disabled state during compilation, empty graph validation error, and no duplicate compilation when auto-compile is in progress in `src/__tests__/Header.test.ts`
 
@@ -178,7 +183,8 @@
 
 ### Tests for User Story 6
 
-**NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> [!NOTE]
+> Write these tests FIRST, ensure they FAIL before implementation
 
 - [x] T041 [US6] Write unit tests for compiler error parser covering single error, multiple errors, warnings, unmappable lines (no source map entry), and malformed compiler output in `src/__tests__/compiler/errorParser.test.ts`
 

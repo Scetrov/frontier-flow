@@ -23,6 +23,7 @@ test("shows signing-stage cancellation details in the status popup", async ({ pa
   await deploymentStatus.click();
   const deploymentDetails = page.locator("#deployment-status-details");
   await expect(deploymentDetails.getByText("Deployment cancelled", { exact: true })).toBeVisible();
+  await expect(deploymentDetails.getByText(/^Artifact ID:/)).toBeVisible();
   await expect(deploymentDetails.getByText("Stage: signing", { exact: true })).toBeVisible();
   await expect(deploymentDetails.getByText("Severity: warning", { exact: true })).toBeVisible();
   await expect(deploymentDetails.getByText(/Approve the wallet signing request to continue deployment/i)).toBeVisible();
@@ -38,7 +39,7 @@ test("preserves the earlier blocked attempt after a later successful deployment"
   const compilationStatus = page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
   await expect(compilationStatus).toContainText("Compiled");
 
-  await page.getByRole("button", { name: "Deploy local" }).click();
+  await page.getByRole("button", { name: /(?:Deploy|Upgrade) local/ }).click();
   const blockedModal = page.getByRole("dialog", { name: "Deployment blocked" });
   await expect(blockedModal).toBeVisible();
   await blockedModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
@@ -58,7 +59,9 @@ test("preserves the earlier blocked attempt after a later successful deployment"
   await deploymentStatus.click();
   const deploymentDetails = page.locator("#deployment-status-details");
   await expect(deploymentDetails.getByText("Deployed", { exact: true })).toBeVisible();
+  await expect(deploymentDetails.getByText(/^Artifact ID:/)).toBeVisible();
   await expect(deploymentDetails.locator(".ff-compilation-status__message").filter({ hasText: /^Package ID:/ })).toBeVisible();
   await expect(deploymentDetails.getByText("Earlier this session", { exact: true })).toBeVisible();
   await expect(deploymentDetails.getByText(/Deployment blocked - local - validating/)).toBeVisible();
 });
+

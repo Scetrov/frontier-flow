@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { emitMove } from "../../compiler/emitter";
+import { emitMove, prepareArtifactManifestForTarget } from "../../compiler/emitter";
 import { buildIrGraph } from "../../compiler/irBuilder";
 import { sanitizeGraph } from "../../compiler/sanitizer";
 import { createDefaultContractFlow } from "../../data/kitchenSinkFlow";
@@ -31,5 +31,14 @@ describe("emitMove", () => {
 
     expect(emitted.code.trim()).toBe(expectedMinimalArtifact.trim());
     expect(emitted.moveToml).toContain('name = "graph_to_move_minimal"');
+  });
+
+  it("includes only published package dependencies for remote manifests", () => {
+    const manifest = prepareArtifactManifestForTarget("starter_contract", "testnet:stillness", ["0xexisting"]);
+
+    expect(manifest.dependencies).toEqual([
+      "0xexisting",
+      "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+    ]);
   });
 });

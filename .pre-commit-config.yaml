@@ -1,9 +1,33 @@
 repos:
   - repo: local
     hooks:
-      - id: frontier-flow-verify
-        name: frontier-flow verify
-        entry: bun run verify
+      - id: frontier-flow-build
+        name: frontier-flow build
+        entry: bun run build
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: frontier-flow-lint
+        name: frontier-flow lint
+        entry: bun run lint
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: frontier-flow-typecheck
+        name: frontier-flow typecheck
+        entry: bun run typecheck
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: frontier-flow-audit
+        name: frontier-flow audit
+        entry: bun run audit
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: frontier-flow-unit-tests
+        name: frontier-flow unit tests
+        entry: bun run test:run
         language: system
         pass_filenames: false
         stages: [pre-commit]

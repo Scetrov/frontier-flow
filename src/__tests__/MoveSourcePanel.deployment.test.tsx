@@ -13,6 +13,7 @@ describe("MoveSourcePanel deployment parity", () => {
         stage: "confirming",
         severity: "success",
         packageId: "0xdef456",
+        confirmationReference: "digest-utopia-01",
         nextActionSummary: "Deployment completed for testnet:utopia. Package ID: 0xdef456.",
       }),
     });
@@ -24,6 +25,8 @@ describe("MoveSourcePanel deployment parity", () => {
     expect(screen.getByText("confirming")).toBeVisible();
     expect(screen.getByText("success")).toBeVisible();
     expect(screen.getByText("0xdef456")).toBeVisible();
+    expect(screen.getByText(`Artifact ID: ${artifact.artifactId ?? ""}`)).toBeVisible();
+    expect(screen.getByText("Transaction Digest: digest-utopia-01")).toBeVisible();
   });
 
   it("shows prior session deployment review entries alongside the latest summary", () => {
@@ -54,6 +57,8 @@ describe("MoveSourcePanel deployment parity", () => {
             stage: "signing",
             details: "Approve the wallet signing request to continue deployment.",
             blockedReasons: ["Deployment was cancelled because wallet approval was rejected for testnet:stillness."],
+            historicalOnly: true,
+            historicalReason: "Local validator state changed after this attempt. Re-verify this evidence before relying on it.",
           }),
         ],
       }),
@@ -63,5 +68,7 @@ describe("MoveSourcePanel deployment parity", () => {
 
     expect(screen.getByText(/Earlier this session: Deployment cancelled - testnet:stillness - signing/)).toBeVisible();
     expect(screen.getByText("Approve the wallet signing request to continue deployment.")).toBeVisible();
+    expect(screen.getByText("Historical only")).toBeVisible();
+    expect(screen.getByText("Local validator state changed after this attempt. Re-verify this evidence before relying on it.")).toBeVisible();
   });
 });

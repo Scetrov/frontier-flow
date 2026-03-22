@@ -23,7 +23,7 @@ Add a first-class deployment workflow for compiled Move bytecode that lets users
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 ### Pre-Phase 0 Gate Review
 
@@ -90,4 +90,3 @@ tests/
 ## Complexity Tracking
 
 No constitution violations currently require justification.
-

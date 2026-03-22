@@ -15,6 +15,8 @@ export const DEPLOYMENT_TARGETS: readonly DeploymentTarget[] = [
     networkFamily: "local",
     requiresPublishedPackageRefs: false,
     supportsWalletSigning: false,
+    rpcUrl: "http://127.0.0.1:9000",
+    requiresLocalValidator: true,
   },
   {
     id: "testnet:stillness",
@@ -22,6 +24,8 @@ export const DEPLOYMENT_TARGETS: readonly DeploymentTarget[] = [
     networkFamily: "testnet",
     requiresPublishedPackageRefs: true,
     supportsWalletSigning: true,
+    rpcUrl: "https://fullnode.testnet.sui.io:443",
+    requiresLocalValidator: false,
   },
   {
     id: "testnet:utopia",
@@ -29,6 +33,8 @@ export const DEPLOYMENT_TARGETS: readonly DeploymentTarget[] = [
     networkFamily: "testnet",
     requiresPublishedPackageRefs: true,
     supportsWalletSigning: true,
+    rpcUrl: "https://fullnode.testnet.sui.io:443",
+    requiresLocalValidator: false,
   },
 ];
 
@@ -43,4 +49,11 @@ export function getDeploymentTarget(targetId: DeploymentTargetId): DeploymentTar
   }
 
   return target;
+}
+
+/**
+ * Return true when a target uses the remote wallet-backed deployment flow.
+ */
+export function isRemoteDeploymentTarget(targetId: DeploymentTargetId): boolean {
+  return getDeploymentTarget(targetId).networkFamily !== "local";
 }
