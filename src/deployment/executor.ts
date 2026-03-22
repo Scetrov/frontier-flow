@@ -51,7 +51,7 @@ export interface DeploymentExecutorDependencies {
 }
 
 const DEFAULT_EXECUTOR_DEPENDENCIES: DeploymentExecutorDependencies = {
-  confirm: async (request) => confirmPublishedPackage(request, async () => null),
+  confirm: (request) => confirmPublishedPackage(request, () => Promise.resolve(null)),
   publishLocal: publishToLocalValidator,
   publishRemote: publishToRemoteTarget,
 };
@@ -132,9 +132,7 @@ export function createDeploymentExecutor(
               },
               target: request.target,
               references: request.references as PackageReferenceBundle,
-              execute: async () => {
-                throw new Error("Remote publish execution dependency was not provided.");
-              },
+              execute: () => Promise.reject(new Error("Remote publish execution dependency was not provided.")),
               signal: request.signal,
             });
           }

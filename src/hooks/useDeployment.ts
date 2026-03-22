@@ -718,6 +718,7 @@ function scheduleFailedSubmissionDeployment(input: {
         message: `Deployment submission to ${input.targetLabel} failed before confirmation completed. Retry after reviewing the RPC response and wallet status.`,
         errorCode: "submission-failed",
       },
+      startedAt: Date.now(),
       targetId: input.selectedTarget,
     }), input.validation);
   });
@@ -765,6 +766,7 @@ function scheduleUnresolvedConfirmationDeployment(input: {
         message: `Deployment submission for ${input.targetLabel} could not be confirmed within the verification window. Retry confirmation or redeploy after checking target health.`,
         errorCode: "confirmation-timeout",
       },
+      startedAt: Date.now(),
       targetId: input.selectedTarget,
     }), input.validation);
   });

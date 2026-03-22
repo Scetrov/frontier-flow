@@ -7,11 +7,10 @@ import type {
   useSuiClient as useSuiClientHook,
   useWallets as useWalletsHook,
 } from "@mysten/dapp-kit";
+import type { signTransaction as signTransactionFunction } from "@mysten/wallet-standard";
 
 import { useDeployment } from "../hooks/useDeployment";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
-
-const mockSignTransaction = vi.fn();
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
@@ -19,11 +18,21 @@ type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionH
 type SuiClient = ReturnType<typeof useSuiClientHook>;
 type Wallets = ReturnType<typeof useWalletsHook>;
 
-const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
-const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
-const mockUseSignAndExecuteTransaction = vi.fn<() => SignAndExecuteTransaction>();
-const mockUseSuiClient = vi.fn<() => SuiClient>();
-const mockUseWallets = vi.fn<() => Wallets>();
+const {
+  mockSignTransaction,
+  mockUseCurrentAccount,
+  mockUseCurrentWallet,
+  mockUseSignAndExecuteTransaction,
+  mockUseSuiClient,
+  mockUseWallets,
+} = vi.hoisted(() => ({
+  mockSignTransaction: vi.fn<typeof signTransactionFunction>(),
+  mockUseCurrentAccount: vi.fn<() => CurrentAccount>(),
+  mockUseCurrentWallet: vi.fn<() => CurrentWallet>(),
+  mockUseSignAndExecuteTransaction: vi.fn<() => SignAndExecuteTransaction>(),
+  mockUseSuiClient: vi.fn<() => SuiClient>(),
+  mockUseWallets: vi.fn<() => Wallets>(),
+}));
 const availableWallet = { name: "Sui Wallet" } as unknown as Wallets[number];
 
 function createConnectedWalletState(): CurrentWallet {
@@ -38,15 +47,15 @@ function createConnectedWalletState(): CurrentWallet {
 }
 
 vi.mock("@mysten/dapp-kit", () => ({
-  useCurrentAccount: () => mockUseCurrentAccount(),
-  useCurrentWallet: () => mockUseCurrentWallet(),
-  useSignAndExecuteTransaction: () => mockUseSignAndExecuteTransaction(),
-  useSuiClient: () => mockUseSuiClient(),
-  useWallets: () => mockUseWallets(),
+  useCurrentAccount: mockUseCurrentAccount,
+  useCurrentWallet: mockUseCurrentWallet,
+  useSignAndExecuteTransaction: mockUseSignAndExecuteTransaction,
+  useSuiClient: mockUseSuiClient,
+  useWallets: mockUseWallets,
 }));
 
 vi.mock("@mysten/wallet-standard", () => ({
-  signTransaction: (...args: unknown[]) => mockSignTransaction(...args),
+  signTransaction: mockSignTransaction,
 }));
 
 describe("useDeployment progress flow", () => {

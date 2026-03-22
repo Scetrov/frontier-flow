@@ -7,7 +7,7 @@ import { createPackageReferenceBundleFixture } from "./deployment/testFactories"
 
 describe("publishToRemoteTarget", () => {
   it("transfers the publish upgrade capability to the connected wallet address", async () => {
-    const execute = vi.fn(async () => ({ digest: "0xdigest" }));
+    const execute = vi.fn(() => Promise.resolve({ digest: "0xdigest" }));
 
     await publishToRemoteTarget({
       artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
@@ -18,7 +18,7 @@ describe("publishToRemoteTarget", () => {
     });
 
     expect(execute).toHaveBeenCalledTimes(1);
-    const [transaction] = execute.mock.calls[0] ?? [];
+    const [transaction] = execute.mock.calls[0] as unknown as [{ getData: () => { commands: Array<{ $kind: string }> } }];
     const commands = transaction.getData().commands;
 
     expect(commands.map((command: { $kind: string }) => command.$kind)).toEqual(["Publish", "TransferObjects"]);
@@ -30,7 +30,7 @@ describe("publishToRemoteTarget", () => {
       ownerAddress: "",
       target: getDeploymentTarget("testnet:utopia"),
       references: createPackageReferenceBundleFixture("testnet:utopia"),
-      execute: async () => ({ digest: "0xdigest" }),
+      execute: () => Promise.resolve({ digest: "0xdigest" }),
     })).rejects.toThrow("A connected wallet address is required before deploying to testnet:utopia.");
   });
 });

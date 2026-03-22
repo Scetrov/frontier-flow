@@ -58,7 +58,7 @@ describe("MoveSourcePanel", () => {
     );
 
     expect(screen.getByText("Deployment Blocked")).toBeVisible();
-    expect(screen.getByText(/Provide the target turret package and extension registration details to continue deployment/i)).toBeVisible();
+    expect(screen.getAllByText(/Provide the target turret package and extension registration details to continue deployment/i)[0]).toBeVisible();
   });
 
   it.each([
@@ -85,6 +85,6 @@ describe("MoveSourcePanel", () => {
     if (status === "deployed") {
       expect(screen.getByText("0xabc123")).toBeVisible();
     }
-    expect(screen.getByText(summary)).toBeVisible();
+    expect(screen.getAllByText(summary)[0]).toBeVisible();
   });
 });
