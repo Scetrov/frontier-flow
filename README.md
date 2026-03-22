@@ -118,7 +118,7 @@ bun run verify
 bun run dev
 ```
 
-Open the local URL printed by Vite, then:
+Open http://localhost:5179 or the local URL printed by Vite, then:
 
 1. Stay in the `Visual` view and drag a trigger node such as `Aggression` or `Proximity` onto the canvas.
 2. Add logic, data, and action nodes, then connect their typed sockets.

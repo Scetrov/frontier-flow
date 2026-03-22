@@ -43,7 +43,7 @@ bun install
 
 # Start the development server
 bun dev
-# → Open http://localhost:5173
+# → Open http://localhost:5179
 ```
 
 ### 1.3 Available Scripts

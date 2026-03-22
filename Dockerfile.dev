@@ -7,6 +7,6 @@ RUN bun install --frozen-lockfile
 
 COPY . .
 
-EXPOSE 5173
+EXPOSE 5179
 
 CMD ["bun", "dev", "--host"]

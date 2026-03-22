@@ -5,10 +5,17 @@ import { defineConfig } from "vitest/config";
 
 const appVersion = process.env.npm_package_version ?? "0.0.0";
 const basePath = process.env.VITE_BASE_PATH ?? "/";
+const appPort = 5179;
 
 export default defineConfig({
   base: basePath,
   plugins: [react()],
+  server: {
+    port: appPort,
+  },
+  preview: {
+    port: appPort,
+  },
   build: {
     rollupOptions: {
       output: {

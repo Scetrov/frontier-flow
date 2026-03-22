@@ -730,7 +730,7 @@ bun install
 
 ```bash
 bun dev
-# Access at http://localhost:5173
+# Access at http://localhost:5179
 ```
 
 ### 11.3 Production Build
