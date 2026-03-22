@@ -65,4 +65,42 @@ describe("deployment executor error sanitization", () => {
     expect(result.message).toContain("mnemonic=[REDACTED]");
     expect(result.message).not.toContain("alpha beta gamma delta epsilon");
   });
+
+  it("keeps remote signing failures in the signing stage until submission actually starts", async () => {
+    const executor = createDeploymentExecutor({
+      publishRemote: async ({ onSubmitting }) => {
+        expect(onSubmitting).toBeTypeOf("function");
+        throw new Error("Transaction signing timed out");
+      },
+    });
+
+    const result = await executor({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      ownerAddress: "0x1234",
+      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      target: getDeploymentTarget("testnet:stillness"),
+    });
+
+    expect(result.outcome).toBe("failed");
+    expect(result.stage).toBe("signing");
+  });
+
+  it("switches remote failures to submitting after the signed transaction starts executing", async () => {
+    const executor = createDeploymentExecutor({
+      publishRemote: async ({ onSubmitting }) => {
+        onSubmitting?.();
+        throw new Error("RPC submission failed");
+      },
+    });
+
+    const result = await executor({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      ownerAddress: "0x1234",
+      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      target: getDeploymentTarget("testnet:stillness"),
+    });
+
+    expect(result.outcome).toBe("failed");
+    expect(result.stage).toBe("submitting");
+  });
 });

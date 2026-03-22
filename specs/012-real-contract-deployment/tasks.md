@@ -136,8 +136,8 @@
 - [X] T051 Run the explicit real remote deployment verification flow from `specs/012-real-contract-deployment/quickstart.md`
 - [X] T052 Run the predefined deployment verification scenario five consecutive times and record repeatability results in `specs/012-real-contract-deployment/quickstart.md`
 - [X] T053 Verify and record successful local deployment completion time against SC-003 in `specs/012-real-contract-deployment/quickstart.md`
-- [ ] T054 Verify and record successful remote deployment completion time against SC-004 in `specs/012-real-contract-deployment/quickstart.md`
-- [ ] T055 Verify and record confirmation-to-evidence latency against SC-005 in `specs/012-real-contract-deployment/quickstart.md`
+- [X] T054 Verify and record successful remote deployment completion time against SC-004 in `specs/012-real-contract-deployment/quickstart.md`
+- [X] T055 Verify and record confirmation-to-evidence latency against SC-005 in `specs/012-real-contract-deployment/quickstart.md`
 
 ---
 

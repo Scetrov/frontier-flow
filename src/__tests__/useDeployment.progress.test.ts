@@ -11,6 +11,8 @@ import type {
 import { useDeployment } from "../hooks/useDeployment";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
 
+const mockSignTransaction = vi.fn();
+
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
 type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionHook>;
@@ -43,6 +45,10 @@ vi.mock("@mysten/dapp-kit", () => ({
   useWallets: () => mockUseWallets(),
 }));
 
+vi.mock("@mysten/wallet-standard", () => ({
+  signTransaction: (...args: unknown[]) => mockSignTransaction(...args),
+}));
+
 describe("useDeployment progress flow", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -58,6 +64,7 @@ describe("useDeployment progress flow", () => {
     mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
     mockUseSuiClient.mockReturnValue({} as SuiClient);
     mockUseWallets.mockReturnValue([availableWallet]);
+    mockSignTransaction.mockResolvedValue({ bytes: "dGVzdA==", signature: "0xsig" });
     window.history.replaceState({}, "", "/?ff_mock_deploy_stage_delay_ms=25");
   });
 

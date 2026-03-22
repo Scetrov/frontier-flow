@@ -5,9 +5,15 @@ import type { DeploymentTarget, GeneratedContractArtifact, PackageReferenceBundl
 export interface RemotePublishRequest {
   readonly artifact: GeneratedContractArtifact;
   readonly ownerAddress: string;
+  readonly onSubmitting?: () => void;
   readonly target: DeploymentTarget;
   readonly references: PackageReferenceBundle;
-  readonly execute: (transaction: Transaction, signal?: AbortSignal) => Promise<{ digest: string }>;
+  readonly execute: (transaction: Transaction, request?: RemotePublishExecutionRequest) => Promise<{ digest: string }>;
+  readonly signal?: AbortSignal;
+}
+
+export interface RemotePublishExecutionRequest {
+  readonly onSubmitting?: () => void;
   readonly signal?: AbortSignal;
 }
 
@@ -36,7 +42,10 @@ export async function publishToRemoteTarget(request: RemotePublishRequest): Prom
   });
   transaction.transferObjects([upgradeCap], request.ownerAddress);
 
-  const result = await request.execute(transaction, request.signal);
+  const result = await request.execute(transaction, {
+    onSubmitting: request.onSubmitting,
+    signal: request.signal,
+  });
   return {
     transactionDigest: result.digest,
   };

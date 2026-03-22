@@ -11,6 +11,8 @@ import type {
 import { useDeployment } from "../hooks/useDeployment";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
 
+const mockSignTransaction = vi.fn();
+
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
 type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionHook>;
@@ -52,6 +54,10 @@ vi.mock("@mysten/dapp-kit", () => ({
   useSignAndExecuteTransaction: () => mockUseSignAndExecuteTransaction(),
   useSuiClient: () => mockUseSuiClient(),
   useWallets: () => mockUseWallets(),
+}));
+
+vi.mock("@mysten/wallet-standard", () => ({
+  signTransaction: (...args: unknown[]) => mockSignTransaction(...args),
 }));
 
 const connectedAccount = {

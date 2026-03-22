@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import { useCurrentAccount, useCurrentWallet, useSignAndExecuteTransaction, useSuiClient, useWallets } from "@mysten/dapp-kit";
+import { useCurrentAccount, useCurrentWallet, useSuiClient, useWallets } from "@mysten/dapp-kit";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { signTransaction } from "@mysten/wallet-standard";
 
 import type {
   CompilationStatus,
@@ -576,6 +577,7 @@ function createExecutionOutcome(input: {
   readonly artifactId: string;
   readonly attemptId: string;
   readonly result: DeploymentExecutionResult;
+  readonly startedAt: number;
   readonly targetId: DeploymentTargetId;
 }): DeploymentOutcome {
   const headline = input.result.outcome === "succeeded"
@@ -608,7 +610,7 @@ function createExecutionOutcome(input: {
       attemptId: input.attemptId,
       artifactId: input.artifactId,
       targetId: input.targetId,
-      startedAt: Date.now(),
+      startedAt: input.startedAt,
       endedAt: Date.now(),
       outcome: input.result.outcome,
       currentStage: input.result.stage,
@@ -916,8 +918,8 @@ function startDeploymentAttempt(input: {
  */
 export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, status }: UseDeploymentOptions): DeploymentState {
   const account = useCurrentAccount();
+  const currentWallet = useCurrentWallet();
   const suiClient = useSuiClient();
-  const signAndExecuteTransaction = useSignAndExecuteTransaction();
   const walletReadiness = useWalletReadiness();
   const {
     deploymentStatus,
@@ -995,6 +997,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
     }
 
     const target = getDeploymentTarget(selectedTarget);
+    const attemptStartedAt = Date.now();
     resetDeploymentState(stateSetters);
     setIsDeploying(true);
 
@@ -1005,16 +1008,41 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
           ? new SuiJsonRpcClient({ url: request.target.rpcUrl, network: "localnet" })
           : suiClient,
       ),
-      publishRemote: ({ artifact: remoteArtifact, ownerAddress, target: remoteTarget, references, signal }) => publishToRemoteTarget({
+      publishRemote: ({ artifact: remoteArtifact, ownerAddress, onSubmitting, target: remoteTarget, references, signal }) => publishToRemoteTarget({
         artifact: remoteArtifact,
         ownerAddress,
+        onSubmitting,
         target: remoteTarget,
         references,
         signal,
-        execute: async (transaction) => {
-          const result = await signAndExecuteTransaction.mutateAsync({
-            transaction,
-            chain: "sui:testnet",
+        execute: async (transaction, executeRequest) => {
+          if (currentWallet.currentWallet == null || account == null) {
+            throw new Error(`A connected wallet address is required before deploying to ${remoteTarget.label}.`);
+          }
+
+          transaction.setSenderIfNotSet(account.address);
+
+          const { bytes, signature } = await signTransaction(currentWallet.currentWallet, {
+            transaction: {
+              async toJSON() {
+                return transaction.toJSON({
+                  client: suiClient,
+                  supportedIntents: currentWallet.supportedIntents,
+                });
+              },
+            },
+            account,
+            chain: remoteTarget.networkFamily === "local" ? "sui:localnet" : "sui:testnet",
+          });
+
+          executeRequest?.onSubmitting?.();
+
+          const result = await suiClient.executeTransactionBlock({
+            transactionBlock: bytes,
+            signature,
+            options: {
+              showRawEffects: true,
+            },
           });
 
           return { digest: result.digest };
@@ -1042,6 +1070,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
           artifactId: artifact.artifactId ?? "unknown-artifact",
           attemptId,
           result,
+          startedAt: attemptStartedAt,
           targetId: selectedTarget,
         }),
         derivedState.validation,
@@ -1061,6 +1090,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
             message: details,
             errorCode: isUserCancelled ? "wallet-approval-rejected" : "deployment-executor-error",
           },
+          startedAt: attemptStartedAt,
           targetId: selectedTarget,
         }),
         derivedState.validation,
@@ -1068,7 +1098,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
     });
 
     return Promise.resolve();
-  }, [account?.address, clearStageTimers, derivedState.validation, isDeploying, localChainIdRef, selectedTarget, setIsDeploying, signAndExecuteTransaction, stateSetters, status, suiClient, timerIdsRef]);
+  }, [account, clearStageTimers, currentWallet, derivedState.validation, isDeploying, localChainIdRef, selectedTarget, setIsDeploying, stateSetters, status, suiClient, timerIdsRef]);
 
   const dismissProgress = useCallback(() => {
     setProgress((currentProgress) => currentProgress === null

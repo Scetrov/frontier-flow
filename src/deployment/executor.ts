@@ -7,7 +7,7 @@ import type {
 } from "../compiler/types";
 import { confirmPublishedPackage, type DeploymentConfirmationRequest, type DeploymentConfirmationResult } from "./confirmation";
 import { publishToLocalValidator, type LocalPublishResult } from "./publishLocal";
-import { publishToRemoteTarget, type RemotePublishResult } from "./publishRemote";
+import { publishToRemoteTarget, type RemotePublishExecutionRequest, type RemotePublishResult } from "./publishRemote";
 
 export interface DeploymentExecutionRequest {
   readonly artifact: GeneratedContractArtifact;
@@ -42,9 +42,10 @@ export interface DeploymentExecutorDependencies {
   readonly publishRemote: (request: {
     readonly artifact: GeneratedContractArtifact;
     readonly ownerAddress: string;
+    readonly onSubmitting?: () => void;
     readonly target: DeploymentTarget;
     readonly references: PackageReferenceBundle;
-    readonly execute: (transaction: import("@mysten/sui/transactions").Transaction, signal?: AbortSignal) => Promise<{ digest: string }>;
+    readonly execute: (transaction: import("@mysten/sui/transactions").Transaction, request?: RemotePublishExecutionRequest) => Promise<{ digest: string }>;
     readonly signal?: AbortSignal;
   }) => Promise<RemotePublishResult>;
 }
@@ -122,11 +123,13 @@ export function createDeploymentExecutor(
           if (request.target.supportsWalletSigning) {
             currentStage = "signing";
             onProgress?.({ message: "Waiting for wallet signing approval.", stage: "signing" });
-            currentStage = "submitting";
-            onProgress?.({ message: "Submitting deployment transaction.", stage: "submitting" });
             return await resolvedDependencies.publishRemote({
               artifact: request.artifact,
               ownerAddress: request.ownerAddress ?? "",
+              onSubmitting: () => {
+                currentStage = "submitting";
+                onProgress?.({ message: "Submitting deployment transaction.", stage: "submitting" });
+              },
               target: request.target,
               references: request.references as PackageReferenceBundle,
               execute: async () => {

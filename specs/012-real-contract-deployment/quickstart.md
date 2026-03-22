@@ -198,6 +198,18 @@ Observed success result:
 
 Current limitation for timing capture:
 
-- A subsequent timed retry in the same MCP-driven wallet session did not reproduce a second successful remote submission.
-- The retry failed during wallet signing with `Transaction signing timed out` after the `signing` stage, so SC-004 and SC-005 timings are not yet recorded here.
-- Use the verified remote success above for T051 evidence; rerun a clean remote submission with manual wallet approval timing available to finish T054 and T055.
+- One subsequent retry in the same MCP-driven wallet session failed with `Transaction signing timed out`; that failure path was traced to premature `submitting` stage advancement in the app and to executor-backed attempts stamping `startedAt` only at completion.
+- After fixing the remote stage transition boundary and preserving executor-backed attempt start times, a clean timed retry succeeded with the following evidence:
+   - Timed target: `testnet:stillness`
+   - Timed package ID: `0xa0cb6ee594b1c72d869fe8b09a192c3c432db9d8ce2338a3b3affb91a53008ba`
+   - Timed confirmation reference: `A3JYukkpMne7PwxzfSAyHfn4yEL4gvYi8hFY5NSNZ6L`
+   - `latestAttempt.startedAt`: `1774198329204`
+   - `latestAttempt.endedAt`: `1774198333572`
+   - Confirmed transaction timestamp from `sui_getTransactionBlock`: `1774198330850`
+
+Summary against success criteria:
+
+- SC-004 remote completion time target `<= 5 minutes`: pass
+- Measured remote completion time from deployment launch to surfaced evidence: `4368 ms`
+- SC-005 confirmation-to-evidence latency target `<= 10 seconds`: pass
+- Measured confirmation-to-evidence latency from target confirmation timestamp to surfaced evidence: `2722 ms`
