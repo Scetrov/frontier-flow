@@ -381,8 +381,8 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     category: "action",
     sockets: [
       { id: "priority_in", type: "priority", position: "left", direction: "input", label: "priority in" },
-      { id: "predicate", type: "boolean", position: "left", direction: "input", label: "predicate" },
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+      { id: "predicate", type: "boolean", position: "left", direction: "input", label: "predicate" },
       { id: "weight", type: "number", position: "left", direction: "input", label: "weight" },
       { id: "priority_out", type: "priority", position: "right", direction: "output", label: "priority out" },
     ],

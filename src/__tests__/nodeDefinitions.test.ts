@@ -99,8 +99,8 @@ describe("nodeDefinitions", () => {
     expect(booleanOr?.sockets.map((socket) => socket.id)).toEqual(["left", "right", "result"]);
     expect(addToQueue?.sockets.map((socket) => socket.id)).toEqual([
       "priority_in",
-      "predicate",
       "target",
+      "predicate",
       "weight",
       "priority_out",
     ]);
