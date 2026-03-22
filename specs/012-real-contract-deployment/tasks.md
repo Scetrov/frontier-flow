@@ -133,7 +133,7 @@
 - [X] T048 Review deployment logging and sanitize surfaced error details against the no-secrets constraint in `src/deployment/executor.ts`
 - [X] T049 Verify deployment-path coverage against constitution thresholds and record the result in `specs/012-real-contract-deployment/quickstart.md`
 - [X] T050 Run the explicit project-controlled local-validator verification flow from `specs/012-real-contract-deployment/quickstart.md`
-- [ ] T051 Run the explicit real remote deployment verification flow from `specs/012-real-contract-deployment/quickstart.md`
+- [X] T051 Run the explicit real remote deployment verification flow from `specs/012-real-contract-deployment/quickstart.md`
 - [X] T052 Run the predefined deployment verification scenario five consecutive times and record repeatability results in `specs/012-real-contract-deployment/quickstart.md`
 - [X] T053 Verify and record successful local deployment completion time against SC-003 in `specs/012-real-contract-deployment/quickstart.md`
 - [ ] T054 Verify and record successful remote deployment completion time against SC-004 in `specs/012-real-contract-deployment/quickstart.md`

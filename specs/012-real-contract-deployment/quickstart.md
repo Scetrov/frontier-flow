@@ -183,3 +183,21 @@ Summary against success criteria:
 - SC-003 local completion time target `<= 3 minutes`: pass
 - Measured average local completion time: `2894 ms`
 - SC-007 repeatability requirement for the recorded local scenario: pass (`5/5` succeeded)
+
+## Recorded remote verification results
+
+Real remote deployment verification was completed against `testnet:stillness` in the MCP-controlled Chromium session after enabling the EVE Vault extension in [/.vscode/mcp.json](/home/scetrov/source/frontier-flow/.vscode/mcp.json) and connecting the wallet through the live app.
+
+Observed success result:
+
+- Selected target: `testnet:stillness`
+- Final outcome: `succeeded`
+- Confirmed package ID: `0xff072624e0438aa750f352e4d13ca0fc253cb06ab45fcf05a5648220ca289a8e`
+- Confirmation reference: `Ahgx5Ry1oGykCkb6rn3ZvH2bfEZK8GkoJf88me4RXqNL`
+- Review surfaces reflected the same target, package ID, and transaction digest after completion.
+
+Current limitation for timing capture:
+
+- A subsequent timed retry in the same MCP-driven wallet session did not reproduce a second successful remote submission.
+- The retry failed during wallet signing with `Transaction signing timed out` after the `signing` stage, so SC-004 and SC-005 timings are not yet recorded here.
+- Use the verified remote success above for T051 evidence; rerun a clean remote submission with manual wallet approval timing available to finish T054 and T055.
