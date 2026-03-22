@@ -135,7 +135,7 @@ function HeaderActions({
         </span>
         <span className="ff-header__button-label">{isCompiling ? "Building" : "Build"}</span>
       </button>
-      <WalletStatus />
+      <WalletStatus selectedDeploymentTarget={selectedDeploymentTarget} />
     </div>
   );
 }

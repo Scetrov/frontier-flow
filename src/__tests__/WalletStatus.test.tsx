@@ -22,6 +22,7 @@ const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
 const mockUseDisconnectWallet = vi.fn<() => DisconnectWallet>();
 const mockUseSuiClientQuery = vi.fn<() => BalanceQuery>();
 const mockUseWallets = vi.fn<() => Wallets>();
+const mockFetch = vi.fn<typeof fetch>();
 
 const availableWallet = { name: "Sui Wallet" } as unknown as Wallets[number];
 
@@ -83,14 +84,26 @@ const connectedAccount = {
 
 describe("WalletStatus", () => {
   beforeEach(() => {
+    vi.stubGlobal("fetch", mockFetch);
     mockUseCurrentAccount.mockReturnValue(null);
     mockUseCurrentWallet.mockReturnValue(createDisconnectedWalletState());
     mockUseDisconnectWallet.mockReturnValue(createDisconnectMutation());
     mockUseSuiClientQuery.mockReturnValue(createBalanceQuery());
     mockUseWallets.mockReturnValue([availableWallet]);
+    mockFetch.mockReset();
+    mockFetch.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({
+      data: {
+        address: {
+          objects: {
+            nodes: [],
+          },
+        },
+      },
+    }), { status: 200, headers: { "content-type": "application/json" } })));
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
@@ -192,5 +205,57 @@ describe("WalletStatus", () => {
 
     expect(screen.getByRole("button", { name: "Connect" })).toBeVisible();
     expect(screen.queryByText("0x1234...cdef")).not.toBeInTheDocument();
+  });
+
+  it("renders the character name even when the selected target is local by falling back across published worlds", async () => {
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    mockUseSuiClientQuery.mockReturnValue(createBalanceQuery({
+      data: { totalBalance: "3000000000" },
+    }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: { character_id: "0xabc123" },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          object: {
+            asMoveObject: {
+              contents: {
+                json: {
+                  metadata: {
+                    name: "Capsuleer One",
+                  },
+                },
+              },
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    render(<WalletStatus selectedDeploymentTarget="local" />);
+
+    expect(await screen.findByText("Capsuleer One")).toBeVisible();
+    expect(screen.getByText("3 SUI")).toBeVisible();
+    expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 });

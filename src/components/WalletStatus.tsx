@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ConnectModal,
   useCurrentAccount,
@@ -8,7 +8,9 @@ import {
   useWallets,
 } from "@mysten/dapp-kit";
 
+import type { DeploymentTargetId } from "../compiler/types";
 import { formatAddress } from "../utils/formatAddress";
+import { fetchCharacterNameForWalletAcrossTargets } from "../utils/characterProfile";
 import { ConservativeConnectIcon } from "./HeaderActionIcons";
 
 const MIST_PER_SUI = 1_000_000_000;
@@ -49,49 +51,57 @@ function WalletActionButton({ className, disabled = false, icon, label, onClick 
 }
 
 function ConnectedWalletStatus({
-  address,
+  identityLabel,
   balanceLabel,
   buttonClassName,
   disconnectPending,
   onDisconnect,
+  showingCharacterName,
 }: {
-  readonly address: string;
+  readonly identityLabel: string;
   readonly balanceLabel: string;
   readonly buttonClassName: string;
   readonly disconnectPending: boolean;
   readonly onDisconnect: () => void;
+  readonly showingCharacterName: boolean;
 }) {
   return (
     <div className="ff-wallet-status ff-wallet-status--connected">
-      <div className="ff-wallet-status__summary flex min-w-0 items-center gap-3 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.85)] px-3 py-2">
-        <span className="hidden font-heading text-[0.65rem] uppercase tracking-[0.28em] text-[var(--brand-orange)] sm:block">
-          Wallet
-        </span>
-        <span className="truncate font-heading text-sm uppercase tracking-[0.12em] text-[var(--cream-white)]">
-          {formatAddress(address)}
-        </span>
-        <div className="h-4 w-px bg-[var(--ui-border-dark)]" />
-        <span
-          aria-live="polite"
-          className="whitespace-nowrap text-[0.7rem] uppercase tracking-[0.2em] text-[var(--text-secondary)]"
-        >
-          {balanceLabel}
-        </span>
-      </div>
+      <div className="ff-wallet-status__control">
+        <div className="ff-wallet-status__summary flex min-w-0 items-center gap-3 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.85)] px-3 py-2">
+          <span className="ff-wallet-status__label hidden font-heading text-[0.65rem] uppercase tracking-[0.28em] text-[var(--brand-orange)] sm:block">
+            Wallet
+          </span>
+          <span className={showingCharacterName
+            ? "truncate font-heading text-sm tracking-[0.06em] text-[var(--cream-white)]"
+            : "truncate font-heading text-sm uppercase tracking-[0.12em] text-[var(--cream-white)]"}
+            data-ff-wallet-identity="true"
+          >
+            {identityLabel}
+          </span>
+          <div className="ff-wallet-status__divider h-4 w-px bg-[var(--ui-border-dark)]" />
+          <span
+            aria-live="polite"
+            className="ff-wallet-status__balance whitespace-nowrap text-[0.7rem] uppercase tracking-[0.2em] text-[var(--text-secondary)]"
+          >
+            {balanceLabel}
+          </span>
+        </div>
 
-      <WalletActionButton
-        className={buttonClassName}
-        icon={(
-          <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 4.5H13.5V11.5H10" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M7 11.5H2.5V4.5H7" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M8 8H13" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M11.2 5.8L13.4 8L11.2 10.2" stroke="currentColor" strokeWidth="1.4" />
-          </svg>
-        )}
-        label={disconnectPending ? "Disconnecting" : "Disconnect"}
-        onClick={onDisconnect}
-      />
+        <WalletActionButton
+          className={buttonClassName}
+          icon={(
+            <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 4.5H13.5V11.5H10" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M7 11.5H2.5V4.5H7" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M8 8H13" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M11.2 5.8L13.4 8L11.2 10.2" stroke="currentColor" strokeWidth="1.4" />
+            </svg>
+          )}
+          label={disconnectPending ? "Disconnecting" : "Disconnect"}
+          onClick={onDisconnect}
+        />
+      </div>
     </div>
   );
 }
@@ -124,12 +134,17 @@ function WalletHelpStatus({
   );
 }
 
-function WalletStatus() {
+function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selectedDeploymentTarget?: DeploymentTargetId }) {
   const account = useCurrentAccount();
   const wallets = useWallets();
   const currentWallet = useCurrentWallet();
   const disconnectWallet = useDisconnectWallet();
   const [showWalletHelp, setShowWalletHelp] = useState(false);
+  const [characterNameState, setCharacterNameState] = useState<{
+    readonly targetId: DeploymentTargetId;
+    readonly value: string | null;
+    readonly walletAddress: string;
+  } | null>(null);
 
   const balanceQuery = useSuiClientQuery(
     "getBalance",
@@ -137,10 +152,48 @@ function WalletStatus() {
     { enabled: account !== null, staleTime: 15_000 },
   );
 
+  useEffect(() => {
+    if (account === null) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const walletAddress = account.address;
+    const targetId = selectedDeploymentTarget;
+
+    void fetchCharacterNameForWalletAcrossTargets({
+      walletAddress,
+      preferredTargetId: targetId,
+      signal: controller.signal,
+    }).then((resolvedCharacterName) => {
+      if (!controller.signal.aborted) {
+        setCharacterNameState({ targetId, value: resolvedCharacterName, walletAddress });
+      }
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      console.warn("Failed to resolve character name for connected wallet.", error);
+      setCharacterNameState({ targetId, value: null, walletAddress });
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [account, selectedDeploymentTarget]);
+
+  const characterName = account !== null
+    && characterNameState !== null
+    && characterNameState.walletAddress === account.address
+    && characterNameState.targetId === selectedDeploymentTarget
+    ? characterNameState.value
+    : null;
+
   const sharedButtonClassName =
     "ff-header__button ff-header__button--compact ff-wallet-status__action min-h-10 border px-3 py-2 font-heading text-xs uppercase tracking-[0.22em] transition-colors disabled:cursor-not-allowed disabled:opacity-60";
   const primaryButtonClassName = `${sharedButtonClassName} border-[var(--brand-orange)] bg-transparent text-[var(--brand-orange)] hover:bg-[rgba(255,71,0,0.1)]`;
-  const disconnectButtonClassName = `${sharedButtonClassName} border-[var(--brand-orange)] bg-[var(--brand-orange)] text-[var(--text-dark)] hover:bg-[var(--brand-dark)]`;
+  const disconnectButtonClassName = `${sharedButtonClassName} ff-wallet-status__action--disconnect border-[var(--brand-orange)] bg-[var(--brand-orange)] text-[var(--text-dark)] hover:bg-[var(--brand-dark)]`;
   const disabledButtonClassName = `${sharedButtonClassName} border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.85)] text-[var(--text-secondary)]`;
 
   if (account !== null) {
@@ -149,16 +202,18 @@ function WalletStatus() {
       : balanceQuery.isError
         ? "-- SUI"
         : formatBalance(balanceQuery.data.totalBalance);
+    const identityLabel = characterName ?? formatAddress(account.address);
 
     return (
       <ConnectedWalletStatus
-        address={account.address}
+        identityLabel={identityLabel}
         balanceLabel={balanceLabel}
         buttonClassName={disconnectButtonClassName}
         disconnectPending={disconnectWallet.isPending}
         onDisconnect={() => {
           disconnectWallet.mutate();
         }}
+        showingCharacterName={characterName !== null}
       />
     );
   }
