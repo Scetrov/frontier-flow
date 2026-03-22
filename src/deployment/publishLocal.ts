@@ -23,9 +23,10 @@ export interface LocalPublishResult {
 export async function publishToLocalValidator(request: LocalPublishRequest): Promise<LocalPublishResult> {
   const client = new SuiJsonRpcClient({ url: request.target.rpcUrl, network: "localnet" });
   const signer = new Ed25519Keypair();
+  const signerAddress = signer.getPublicKey().toSuiAddress();
   await requestSuiFromFaucetV2({
     host: getFaucetHost("localnet"),
-    recipient: signer.getPublicKey().toSuiAddress(),
+    recipient: signerAddress,
   });
 
   const manifest = prepareArtifactManifestForTarget(
@@ -34,10 +35,11 @@ export async function publishToLocalValidator(request: LocalPublishRequest): Pro
     request.artifact.dependencies,
   );
   const transaction = new Transaction();
-  transaction.publish({
+  const [upgradeCap] = transaction.publish({
     modules: request.artifact.bytecodeModules.map((module) => Array.from(module)),
     dependencies: Array.from(manifest.dependencies),
   });
+  transaction.transferObjects([upgradeCap], signerAddress);
 
   const result = await client.signAndExecuteTransaction({
     transaction,

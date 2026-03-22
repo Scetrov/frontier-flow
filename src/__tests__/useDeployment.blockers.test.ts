@@ -141,7 +141,7 @@ describe("useDeployment blocker handling", () => {
     });
 
     expect(result.current.statusMessage?.details).toBe(
-      "Unlock or refresh a wallet that supports the Sui Wallet Standard, then connect it and retry deployment.",
+      "Unlock or refresh a wallet that supports the Sui Wallet Standard, connect it for testnet:stillness, then retry deployment.",
     );
   });
 
@@ -170,7 +170,7 @@ describe("useDeployment blocker handling", () => {
       status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
     }));
 
-    expect(result.current.blockerReasons).toContain("Local deployment is unavailable.");
+    expect(result.current.blockerReasons).toContain("The local validator required for local deployment is unavailable.");
 
     await act(async () => {
       await result.current.startDeployment();

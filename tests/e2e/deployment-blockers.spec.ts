@@ -28,7 +28,7 @@ test("blocks stillness deployment when no wallet is connected", async ({ page })
   await expect(page.getByText(/Connect a Sui-compatible wallet before deploying to testnet:stillness/i)).toBeVisible();
 
   await page.getByRole("button", { name: "Move" }).click();
-  await expect(page.locator(".ff-move-source__filename", { hasText: /Connect and approve the target wallet, then retry deployment/i }).first()).toBeVisible();
+  await expect(page.locator(".ff-move-source__filename", { hasText: /Connect and approve a Sui-compatible wallet for testnet:stillness, then retry deployment/i }).first()).toBeVisible();
 });
 
 test("blocks local deployment when the local target is unavailable", async ({ page }) => {
@@ -46,7 +46,7 @@ test("blocks local deployment when the local target is unavailable", async ({ pa
   const blockedModal = page.getByRole("dialog", { name: "Deployment blocked" });
   await expect(blockedModal).toBeVisible();
   await expect(blockedModal.getByText("Target: local")).toBeVisible();
-  await expect(blockedModal.locator(".ff-deployment-modal__message")).toContainText("Local deployment is unavailable.");
+  await expect(blockedModal.locator(".ff-deployment-modal__message")).toContainText("The local validator required for local deployment is unavailable.");
   await expect(blockedModal.locator(".ff-deployment-modal__remediation")).toContainText("Resolve the reported blocker before retrying deployment.");
   await blockedModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
 
@@ -54,8 +54,8 @@ test("blocks local deployment when the local target is unavailable", async ({ pa
   await expect(deploymentStatus).toContainText("Deployment Blocked");
   await deploymentStatus.click();
   await expect(page.getByText("Target: local")).toBeVisible();
-  await expect(page.getByText("Local deployment is unavailable.")).toBeVisible();
-  await expect(page.getByText(/Start or configure the local deployment target before retrying/i)).toBeVisible();
+  await expect(page.getByText("The local validator required for local deployment is unavailable.")).toBeVisible();
+  await expect(page.getByText(/Start or configure the local validator, then retry deployment to local/i)).toBeVisible();
 });
 
 test("surfaces failed deployments as non-successful and keeps retry guidance visible", async ({ page }) => {

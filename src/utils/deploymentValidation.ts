@@ -34,6 +34,22 @@ export interface DeploymentEnvironmentFlags {
   readonly deployStageDelayMs: number;
 }
 
+function getCurrentArtifactInputLabel(): string {
+  return "current compiled bytecode artifact";
+}
+
+function getConnectedWalletInputLabel(targetLabel: string): string {
+  return `connected Sui wallet for ${targetLabel}`;
+}
+
+function getPublishedReferencesInputLabel(targetLabel: string): string {
+  return `published package references for ${targetLabel}`;
+}
+
+function getLocalValidatorInputLabel(): string {
+  return "available local validator";
+}
+
 function getSearchParams(search?: string): URLSearchParams | null {
   if (search !== undefined) {
     return new URLSearchParams(search);
@@ -78,6 +94,10 @@ export function isPublishedPackageReferenceId(value: string): boolean {
   return /^0x[a-f0-9]+$/i.test(value);
 }
 
+function isSuiObjectId(value: string): boolean {
+  return /^0x[a-f0-9]+$/i.test(value);
+}
+
 export function validatePackageReferenceBundle(
   targetId: Exclude<DeploymentTargetId, "local">,
   bundle: PackageReferenceBundle | null,
@@ -91,21 +111,21 @@ export function validatePackageReferenceBundle(
       code: "invalid-package-references",
       stage: "validating",
       message: `Published package references for ${target.label} are invalid or unavailable.`,
-      remediation: "Refresh the maintained Stillness/Utopia resource data before retrying deployment.",
+      remediation: `Refresh the maintained package reference data for ${target.label} before retrying deployment.`,
     };
   }
 
   if (
     bundle === null
     || !isPublishedPackageReferenceId(bundle.worldPackageId)
-    || !isPublishedPackageReferenceId(bundle.objectRegistryId)
-    || !isPublishedPackageReferenceId(bundle.serverAddressRegistryId)
+    || !isSuiObjectId(bundle.objectRegistryId)
+    || !isSuiObjectId(bundle.serverAddressRegistryId)
   ) {
     return {
       code: "invalid-package-references",
       stage: "validating",
       message: `Published package references for ${target.label} are invalid or unavailable.`,
-      remediation: "Refresh the maintained Stillness/Utopia resource data before retrying deployment.",
+      remediation: `Refresh the maintained package reference data for ${target.label} before retrying deployment.`,
     };
   }
 
@@ -174,8 +194,8 @@ function createWalletBlockers(input: {
       ? `Connect a Sui-compatible wallet before deploying to ${input.targetLabel}.`
       : `No compatible Sui wallet was detected before deploying to ${input.targetLabel}.`,
     remediation: input.hasAvailableWallets
-      ? "Connect and approve the target wallet, then retry deployment."
-      : "Unlock or refresh a wallet that supports the Sui Wallet Standard, then connect it and retry deployment.",
+      ? `Connect and approve a Sui-compatible wallet for ${input.targetLabel}, then retry deployment.`
+      : `Unlock or refresh a wallet that supports the Sui Wallet Standard, connect it for ${input.targetLabel}, then retry deployment.`,
   }];
 }
 
@@ -206,24 +226,24 @@ function createLocalTargetBlockers(input: {
   return [{
     code: "local-target-unavailable",
     stage: "validating",
-    message: "Local deployment is unavailable.",
-    remediation: "Start or configure the local deployment target before retrying.",
+    message: "The local validator required for local deployment is unavailable.",
+    remediation: "Start or configure the local validator, then retry deployment to local.",
   }];
 }
 
-function getRequiredInputs(targetId: DeploymentTargetId, targetSupportsWalletSigning: boolean, targetRequiresPublishedPackageRefs: boolean): string[] {
-  const requiredInputs = ["compiled bytecode artifact"];
+function getRequiredInputs(targetId: DeploymentTargetId, targetLabel: string, targetSupportsWalletSigning: boolean, targetRequiresPublishedPackageRefs: boolean): string[] {
+  const requiredInputs = [getCurrentArtifactInputLabel()];
 
   if (targetSupportsWalletSigning) {
-    requiredInputs.push("connected wallet");
+    requiredInputs.push(getConnectedWalletInputLabel(targetLabel));
   }
 
   if (targetRequiresPublishedPackageRefs) {
-    requiredInputs.push("published package references");
+    requiredInputs.push(getPublishedReferencesInputLabel(targetLabel));
   }
 
   if (targetId === "local") {
-    requiredInputs.push("local deployment target");
+    requiredInputs.push(getLocalValidatorInputLabel());
   }
 
   return requiredInputs;
@@ -231,28 +251,34 @@ function getRequiredInputs(targetId: DeploymentTargetId, targetSupportsWalletSig
 
 function getResolvedInputs(input: {
   readonly artifactReady: boolean;
+  readonly artifactGraphMatchesCurrentRevision: boolean;
   readonly hasConnectedWallet: boolean;
   readonly localTargetReady: boolean;
   readonly targetId: DeploymentTargetId;
+  readonly targetLabel: string;
   readonly targetRequiresPublishedPackageRefs: boolean;
   readonly targetSupportsWalletSigning: boolean;
 }, blockers: readonly DeploymentBlocker[]): string[] {
   const blockerCodes = new Set(blockers.map((blocker) => blocker.code));
   const resolvedInputs: Array<{ readonly input: string; readonly resolved: boolean }> = [
     {
-      input: "compiled bytecode artifact",
-      resolved: input.artifactReady && !blockerCodes.has("missing-bytecode"),
+      input: getCurrentArtifactInputLabel(),
+      resolved: input.artifactReady
+        && input.artifactGraphMatchesCurrentRevision
+        && !blockerCodes.has("stale-artifact")
+        && !blockerCodes.has("missing-bytecode")
+        && !blockerCodes.has("artifact-graph-mismatch"),
     },
     {
-      input: "connected wallet",
+      input: getConnectedWalletInputLabel(input.targetLabel),
       resolved: input.targetSupportsWalletSigning && input.hasConnectedWallet && !blockerCodes.has("wallet-required"),
     },
     {
-      input: "published package references",
+      input: getPublishedReferencesInputLabel(input.targetLabel),
       resolved: input.targetRequiresPublishedPackageRefs && !blockerCodes.has("invalid-package-references"),
     },
     {
-      input: "local deployment target",
+      input: getLocalValidatorInputLabel(),
       resolved: input.targetId === "local" && input.localTargetReady && !blockerCodes.has("local-target-unavailable"),
     },
   ];
@@ -317,12 +343,19 @@ export function createDeploymentValidationResult(input: {
     targetRequiresPublishedPackageRefs: target.requiresPublishedPackageRefs,
     targetSupportsWalletSigning: target.supportsWalletSigning,
   });
-  const requiredInputs = getRequiredInputs(input.targetId, target.supportsWalletSigning, target.requiresPublishedPackageRefs);
+  const requiredInputs = getRequiredInputs(
+    input.targetId,
+    target.label,
+    target.supportsWalletSigning,
+    target.requiresPublishedPackageRefs,
+  );
   const resolvedInputs = getResolvedInputs({
     artifactReady: input.artifactReady,
+    artifactGraphMatchesCurrentRevision: input.artifactGraphMatchesCurrentRevision ?? true,
     hasConnectedWallet: input.hasConnectedWallet,
     localTargetReady: flags.localTargetReady,
     targetId: input.targetId,
+    targetLabel: target.label,
     targetRequiresPublishedPackageRefs: target.requiresPublishedPackageRefs,
     targetSupportsWalletSigning: target.supportsWalletSigning,
   }, blockers);

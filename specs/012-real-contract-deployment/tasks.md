@@ -88,7 +88,7 @@
 - [X] T030 [US2] Implement modal focus management, keyboard dismissal, and live announcements in `src/components/DeploymentProgressModal.tsx`
 - [X] T031 [US2] Render terminal-stage remediation and non-success summaries in `src/components/DeploymentProgressModal.tsx`
 - [X] T032 [US2] Surface blocker, failure, and unresolved guidance in `src/components/CompilationStatus.tsx`
-- [ ] T033 [US2] Refine target-specific blocker messaging and retry gating in `src/utils/deploymentValidation.ts`
+- [X] T033 [US2] Refine target-specific blocker messaging and retry gating in `src/utils/deploymentValidation.ts`
 
 **Checkpoint**: User Story 2 should block incorrect deployments early and preserve accurate non-success classifications after execution begins.
 
@@ -127,15 +127,15 @@
 
 **Purpose**: Finalize verification guidance and stabilize shared fixtures across stories.
 
-- [ ] T045 [P] Update local-validator and remote-target verification instructions in `specs/012-real-contract-deployment/quickstart.md`
-- [ ] T046 [P] Sync post-implementation Sui execution and confirmation findings in `specs/012-real-contract-deployment/research.md`
-- [ ] T047 Validate and stabilize shared deployment fixtures in `src/__tests__/deployment/testFactories.ts`
-- [ ] T048 Review deployment logging and sanitize surfaced error details against the no-secrets constraint in `src/deployment/executor.ts`
-- [ ] T049 Verify deployment-path coverage against constitution thresholds and record the result in `specs/012-real-contract-deployment/quickstart.md`
-- [ ] T050 Run the explicit project-controlled local-validator verification flow from `specs/012-real-contract-deployment/quickstart.md`
+- [X] T045 [P] Update local-validator and remote-target verification instructions in `specs/012-real-contract-deployment/quickstart.md`
+- [X] T046 [P] Sync post-implementation Sui execution and confirmation findings in `specs/012-real-contract-deployment/research.md`
+- [X] T047 Validate and stabilize shared deployment fixtures in `src/__tests__/deployment/testFactories.ts`
+- [X] T048 Review deployment logging and sanitize surfaced error details against the no-secrets constraint in `src/deployment/executor.ts`
+- [X] T049 Verify deployment-path coverage against constitution thresholds and record the result in `specs/012-real-contract-deployment/quickstart.md`
+- [X] T050 Run the explicit project-controlled local-validator verification flow from `specs/012-real-contract-deployment/quickstart.md`
 - [ ] T051 Run the explicit real remote deployment verification flow from `specs/012-real-contract-deployment/quickstart.md`
-- [ ] T052 Run the predefined deployment verification scenario five consecutive times and record repeatability results in `specs/012-real-contract-deployment/quickstart.md`
-- [ ] T053 Verify and record successful local deployment completion time against SC-003 in `specs/012-real-contract-deployment/quickstart.md`
+- [X] T052 Run the predefined deployment verification scenario five consecutive times and record repeatability results in `specs/012-real-contract-deployment/quickstart.md`
+- [X] T053 Verify and record successful local deployment completion time against SC-003 in `specs/012-real-contract-deployment/quickstart.md`
 - [ ] T054 Verify and record successful remote deployment completion time against SC-004 in `specs/012-real-contract-deployment/quickstart.md`
 - [ ] T055 Verify and record confirmation-to-evidence latency against SC-005 in `specs/012-real-contract-deployment/quickstart.md`
 

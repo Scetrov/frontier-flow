@@ -29,7 +29,7 @@ export function prepareArtifactManifestForTarget(
   const dependencies = target.requiresPublishedPackageRefs
     ? (() => {
         const bundle = getPackageReferenceBundle(targetId as Exclude<DeploymentTargetId, "local">);
-        return [...existingDependencies, bundle.worldPackageId, bundle.objectRegistryId, bundle.serverAddressRegistryId];
+        return [...existingDependencies, bundle.worldPackageId];
       })()
     : [...existingDependencies];
 

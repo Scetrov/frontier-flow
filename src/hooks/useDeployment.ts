@@ -915,6 +915,7 @@ function startDeploymentAttempt(input: {
  * Manage deployment target selection and session-scoped deployment state.
  */
 export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, status }: UseDeploymentOptions): DeploymentState {
+  const account = useCurrentAccount();
   const suiClient = useSuiClient();
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
   const walletReadiness = useWalletReadiness();
@@ -1004,8 +1005,9 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
           ? new SuiJsonRpcClient({ url: request.target.rpcUrl, network: "localnet" })
           : suiClient,
       ),
-      publishRemote: ({ artifact: remoteArtifact, target: remoteTarget, references, signal }) => publishToRemoteTarget({
+      publishRemote: ({ artifact: remoteArtifact, ownerAddress, target: remoteTarget, references, signal }) => publishToRemoteTarget({
         artifact: remoteArtifact,
+        ownerAddress,
         target: remoteTarget,
         references,
         signal,
@@ -1022,6 +1024,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
 
     void executor({
       artifact,
+      ownerAddress: account?.address,
       references: selectedTarget === "local" ? null : resolvePackageReferenceBundle(selectedTarget),
       target,
     }, (progressUpdate) => {
@@ -1065,7 +1068,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
     });
 
     return Promise.resolve();
-  }, [clearStageTimers, derivedState.validation, isDeploying, localChainIdRef, selectedTarget, setIsDeploying, signAndExecuteTransaction, stateSetters, status, suiClient, timerIdsRef]);
+  }, [account?.address, clearStageTimers, derivedState.validation, isDeploying, localChainIdRef, selectedTarget, setIsDeploying, signAndExecuteTransaction, stateSetters, status, suiClient, timerIdsRef]);
 
   const dismissProgress = useCallback(() => {
     setProgress((currentProgress) => currentProgress === null

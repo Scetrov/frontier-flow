@@ -4,6 +4,7 @@ import type { DeploymentTarget, GeneratedContractArtifact, PackageReferenceBundl
 
 export interface RemotePublishRequest {
   readonly artifact: GeneratedContractArtifact;
+  readonly ownerAddress: string;
   readonly target: DeploymentTarget;
   readonly references: PackageReferenceBundle;
   readonly execute: (transaction: Transaction, signal?: AbortSignal) => Promise<{ digest: string }>;
@@ -19,16 +20,21 @@ export interface RemotePublishResult {
  * Publish a compiled artifact to a supported remote Sui target.
  */
 export async function publishToRemoteTarget(request: RemotePublishRequest): Promise<RemotePublishResult> {
+  if (request.ownerAddress.length === 0) {
+    throw new Error(`A connected wallet address is required before deploying to ${request.target.label}.`);
+  }
+
   const manifest = prepareArtifactManifestForTarget(
     request.artifact.moduleName,
     request.target.id,
     request.artifact.dependencies,
   );
   const transaction = new Transaction();
-  transaction.publish({
+  const [upgradeCap] = transaction.publish({
     modules: request.artifact.bytecodeModules.map((module) => Array.from(module)),
     dependencies: Array.from(manifest.dependencies),
   });
+  transaction.transferObjects([upgradeCap], request.ownerAddress);
 
   const result = await request.execute(transaction, request.signal);
   return {

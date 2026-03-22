@@ -60,8 +60,8 @@ describe("CompilationStatus deployment popup review", () => {
             targetId: "local",
             severity: "error",
             stage: "validating",
-            details: "Start or configure the local deployment target before retrying.",
-            blockedReasons: ["Local deployment is unavailable."],
+            details: "Start or configure the local validator, then retry deployment to local.",
+            blockedReasons: ["The local validator required for local deployment is unavailable."],
             historicalOnly: true,
             historicalReason: "Local validator state changed after this attempt. Re-verify this evidence before relying on it.",
           }),
@@ -76,7 +76,7 @@ describe("CompilationStatus deployment popup review", () => {
     expect(screen.getByText("Earlier this session")).toBeVisible();
     expect(screen.getByText(/Deployment blocked - local - validating/)).toBeVisible();
     expect(screen.getByText("Transaction Digest: 7R4J3digest")).toBeVisible();
-    expect(screen.getByText("Start or configure the local deployment target before retrying.")).toBeVisible();
+    expect(screen.getByText("Start or configure the local validator, then retry deployment to local.")).toBeVisible();
     expect(screen.getByText("Historical only")).toBeVisible();
     expect(screen.getByText("Local validator state changed after this attempt. Re-verify this evidence before relying on it.")).toBeVisible();
   });

@@ -65,3 +65,49 @@
 
 - Local-only verification. Rejected because it would not prove the remote wallet and confirmation path.
 - Remote-only verification. Rejected because it would be more fragile, slower, and less suitable for repeated deterministic validation.
+
+## Post-Implementation Findings
+
+### Finding 1: Local deployment now uses an ephemeral keypair plus localnet faucet funding before publish
+
+**Finding**: The implemented local path creates an ephemeral Ed25519 keypair, funds it from the localnet faucet, then publishes directly through the local validator RPC endpoint.
+
+**Evidence**:
+
+- `src/deployment/publishLocal.ts` constructs a `SuiJsonRpcClient` against `http://127.0.0.1:9000`.
+- The same module requests localnet faucet funds before calling `signAndExecuteTransaction`.
+
+**Implication**: Local verification remains project-controlled and avoids dependence on a browser wallet, but it also assumes the local faucet and local validator are both available when the test run begins.
+
+### Finding 2: Remote publish evidence is digest-first and package ID is finalized during confirmation
+
+**Finding**: The remote publish path returns the submitted transaction digest immediately, while the final package identifier is resolved during confirmation rather than at submit time.
+
+**Evidence**:
+
+- `src/deployment/publishRemote.ts` returns only the wallet-submitted transaction digest.
+- `src/deployment/confirmation.ts` resolves the published package ID from transaction object changes once the transaction settles.
+
+**Implication**: Success evidence remains target-confirmed and audit-friendly, but any UI or verification step that expects a package ID before confirmation is complete is incorrect.
+
+### Finding 3: Both supported remote targets currently share the Sui testnet execution path and differ by maintained reference data
+
+**Finding**: `testnet:stillness` and `testnet:utopia` both execute through the same Sui testnet wallet and RPC path, but they remain distinct deployment targets because they bind to different maintained package-reference bundles and user-facing labels.
+
+**Evidence**:
+
+- `src/data/deploymentTargets.ts` maps both supported remote targets to the Sui testnet network family.
+- `src/data/packageReferences.ts` maintains distinct reference bundles for Stillness and Utopia.
+
+**Implication**: Verification guidance must keep target-specific wording even though the wallet chain and base RPC path are shared.
+
+### Finding 4: Real confirmation uses transaction-settlement waiting, while unresolved outcomes remain bounded and explicit
+
+**Finding**: The real deployment path confirms transactions by waiting for transaction settlement on the selected RPC client, and unresolved confirmation remains a first-class terminal outcome when confirmation cannot be proven.
+
+**Evidence**:
+
+- `src/deployment/confirmation.ts` uses `waitForTransaction` with effects and object-change options enabled.
+- `src/deployment/executor.ts` maps missing confirmation to `unresolved` and preserves the transaction digest as the confirmation reference candidate.
+
+**Implication**: The implementation satisfies the spec requirement not to surface unconfirmed deployments as success, while keeping enough evidence for manual verification or retry.

@@ -9,6 +9,13 @@ import type {
   PackageReferenceBundle,
 } from "../../compiler/types";
 
+const DEFAULT_DEPLOYMENT_ATTEMPT_ID = "attempt-0001";
+const DEFAULT_ARTIFACT_ID = "starter_contract-00000000";
+const DEFAULT_TARGET_ID: DeploymentTargetId = "local";
+const DEFAULT_BLOCKED_REASON = "The local validator required for local deployment is unavailable.";
+const DEFAULT_NEXT_ACTION = "Start or configure the local validator, then retry deployment to local.";
+const DEFAULT_REQUIRED_INPUTS = ["current compiled bytecode artifact", "available local validator"] as const;
+
 /**
  * Create a deployment attempt fixture for deployment workflow tests.
  */
@@ -16,9 +23,9 @@ export function createDeploymentAttemptFixture(
   overrides: Partial<DeploymentAttempt> = {},
 ): DeploymentAttempt {
   return {
-    attemptId: overrides.attemptId ?? "attempt-0001",
-    artifactId: overrides.artifactId ?? "starter_contract-00000000",
-    targetId: overrides.targetId ?? "local",
+    attemptId: overrides.attemptId ?? DEFAULT_DEPLOYMENT_ATTEMPT_ID,
+    artifactId: overrides.artifactId ?? DEFAULT_ARTIFACT_ID,
+    targetId: overrides.targetId ?? DEFAULT_TARGET_ID,
     startedAt: overrides.startedAt ?? 1,
     endedAt: overrides.endedAt,
     outcome: overrides.outcome ?? "blocked",
@@ -36,13 +43,16 @@ export function createDeploymentAttemptFixture(
 export function createDeploymentProgressFixture(
   overrides: Partial<DeploymentProgress> = {},
 ): DeploymentProgress {
+  const stageIndex = overrides.stageIndex ?? 0;
+  const stageCount = overrides.stageCount ?? DEPLOYMENT_STAGE_SEQUENCE.length;
+
   return {
-    attemptId: overrides.attemptId ?? "attempt-0001",
-    targetId: overrides.targetId ?? "local",
+    attemptId: overrides.attemptId ?? DEFAULT_DEPLOYMENT_ATTEMPT_ID,
+    targetId: overrides.targetId ?? DEFAULT_TARGET_ID,
     stage: overrides.stage ?? "validating",
-    stageIndex: overrides.stageIndex ?? 0,
-    stageCount: overrides.stageCount ?? 5,
-    completedStages: overrides.completedStages ?? [],
+    stageIndex,
+    stageCount,
+    completedStages: overrides.completedStages ?? DEPLOYMENT_STAGE_SEQUENCE.slice(0, stageIndex),
     activeMessage: overrides.activeMessage ?? "Validating deployment prerequisites.",
     dismissedByUser: overrides.dismissedByUser ?? false,
   };
@@ -55,13 +65,14 @@ export function createDeploymentStatusMessageFixture(
   overrides: Partial<DeploymentStatusMessage> = {},
 ): DeploymentStatusMessage {
   return {
-    attemptId: overrides.attemptId ?? "attempt-0001",
-    targetId: overrides.targetId ?? "local",
+    attemptId: overrides.attemptId ?? DEFAULT_DEPLOYMENT_ATTEMPT_ID,
+    targetId: overrides.targetId ?? DEFAULT_TARGET_ID,
     severity: overrides.severity ?? "warning",
     headline: overrides.headline ?? "Deployment blocked",
-    details: overrides.details ?? "Resolve the required inputs before deploying.",
+    details: overrides.details ?? DEFAULT_NEXT_ACTION,
     stage: overrides.stage,
     packageId: overrides.packageId,
+    confirmationReference: overrides.confirmationReference,
     visibleInFooter: overrides.visibleInFooter ?? true,
     visibleInMovePanel: overrides.visibleInMovePanel ?? true,
   };
@@ -74,9 +85,9 @@ export function createDeploymentStatusFixture(
   overrides: Partial<DeploymentStatus> = {},
 ): DeploymentStatus {
   return {
-    artifactId: overrides.artifactId ?? "starter_contract-00000000",
+    artifactId: overrides.artifactId ?? DEFAULT_ARTIFACT_ID,
     status: overrides.status ?? "blocked",
-    targetId: overrides.targetId ?? "local",
+    targetId: overrides.targetId ?? DEFAULT_TARGET_ID,
     packageId: overrides.packageId,
     confirmationReference: overrides.confirmationReference,
     outcome: overrides.outcome,
@@ -84,10 +95,10 @@ export function createDeploymentStatusFixture(
     severity: overrides.severity,
     headline: overrides.headline ?? "Deployment blocked",
     targetMode: overrides.targetMode ?? "existing-turret",
-    requiredInputs: overrides.requiredInputs ?? ["generated contract artifact"],
+    requiredInputs: overrides.requiredInputs ?? DEFAULT_REQUIRED_INPUTS,
     resolvedInputs: overrides.resolvedInputs ?? [],
-    blockedReasons: overrides.blockedReasons ?? ["Missing deployment prerequisites."],
-    nextActionSummary: overrides.nextActionSummary ?? "Resolve the required inputs before deploying.",
+    blockedReasons: overrides.blockedReasons ?? [DEFAULT_BLOCKED_REASON],
+    nextActionSummary: overrides.nextActionSummary ?? DEFAULT_NEXT_ACTION,
     reviewHistory: overrides.reviewHistory ?? [],
   };
 }
@@ -99,10 +110,10 @@ export function createDeploymentReviewEntryFixture(
   overrides: Partial<DeploymentReviewEntry> = {},
 ): DeploymentReviewEntry {
   return {
-    attemptId: overrides.attemptId ?? "attempt-0001",
-    artifactId: overrides.artifactId ?? "starter_contract-00000000",
+    attemptId: overrides.attemptId ?? DEFAULT_DEPLOYMENT_ATTEMPT_ID,
+    artifactId: overrides.artifactId ?? DEFAULT_ARTIFACT_ID,
     headline: overrides.headline ?? "Deployment blocked",
-    targetId: overrides.targetId ?? "local",
+    targetId: overrides.targetId ?? DEFAULT_TARGET_ID,
     outcome: overrides.outcome ?? "blocked",
     severity: overrides.severity ?? "warning",
     startedAt: overrides.startedAt ?? 1,
@@ -110,8 +121,8 @@ export function createDeploymentReviewEntryFixture(
     stage: overrides.stage,
     packageId: overrides.packageId,
     confirmationReference: overrides.confirmationReference,
-    details: overrides.details ?? "Resolve the required inputs before deploying.",
-    blockedReasons: overrides.blockedReasons ?? ["Missing deployment prerequisites."],
+    details: overrides.details ?? DEFAULT_NEXT_ACTION,
+    blockedReasons: overrides.blockedReasons ?? [DEFAULT_BLOCKED_REASON],
     historicalOnly: overrides.historicalOnly,
     historicalReason: overrides.historicalReason,
   };

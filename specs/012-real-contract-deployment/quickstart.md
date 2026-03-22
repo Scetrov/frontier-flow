@@ -19,29 +19,40 @@ Validate that Frontier Flow can publish a compiled Sui package to a local valida
 bun dev
 ```
 
+Optional workspace verification before manual deployment checks:
+
+```bash
+bun run typecheck
+bun run lint
+bun run test:run
+```
+
 ## Local validator verification
 
-1. Start the local Sui validator using your standard local Sui workflow.
-2. Open Frontier Flow and build a valid graph until compilation succeeds.
+1. Start the local Sui validator using your standard local Sui workflow and confirm the JSON-RPC endpoint is reachable at `http://127.0.0.1:9000`.
+2. Open Frontier Flow and build a valid graph until compilation succeeds and the footer shows `Compiled`.
 3. Select `local` in the deployment control.
-4. Start deployment and confirm the progress surface enters `validating`, `preparing`, `submitting`, and `confirming` in order.
-5. Verify the final success state includes:
+4. Start deployment and confirm the progress surface enters `validating`, `preparing`, `submitting`, and `confirming` in order. The local path does not include `signing`.
+5. Wait for the deployment to finish and verify the final success state includes:
    - the selected target `local`
    - a real package identifier
    - a real confirmation reference
-6. Repeat the same verification scenario five times and confirm the final outcome classification remains `succeeded` on all five runs.
+6. Open the persistent review surfaces and confirm they show the same target, artifact identity, package identifier, and transaction digest.
+7. Repeat the same verification scenario five times and confirm the final outcome classification remains `succeeded` on all five runs.
 
 ## Remote target verification
 
 1. Ensure a supported remote target is selected, either `testnet:stillness` or `testnet:utopia`.
-2. Confirm wallet connectivity and target readiness before launch.
-3. Start deployment and complete the signing flow in the wallet.
-4. Verify the progress surface includes `signing`, `submitting`, and `confirming`.
-5. Confirm the terminal success state includes:
+2. Confirm a Sui-compatible wallet is connected before launch.
+3. Confirm the selected target is not blocked by package-reference validation.
+4. Start deployment and complete the signing flow in the wallet.
+5. Verify the progress surface includes `validating`, `preparing`, `signing`, `submitting`, and `confirming` in order.
+6. Confirm the terminal success state includes:
    - the selected target
    - the published package identifier
    - the Sui transaction digest used as confirmation reference
-6. Open the persistent review surfaces and verify the same evidence appears there.
+7. Open the persistent review surfaces and verify the same evidence appears there.
+8. Repeat the same scenario for the second supported remote target when available so both maintained reference bundles are covered.
 
 ## Non-success outcome verification
 
@@ -51,6 +62,12 @@ Validate each outcome class at least once:
 2. `cancelled`: reject wallet approval and confirm the attempt ends as `cancelled`.
 3. `failed`: trigger a known target-side or execution failure and confirm the failure stage and remediation are shown.
 4. `unresolved`: simulate or induce a case where submission occurs but confirmation cannot be proven within the verification window, and confirm the attempt is not shown as successful.
+
+Expected blocker guidance after implementation:
+
+- `local`: local readiness failures should mention the unavailable local validator explicitly.
+- `testnet:stillness` or `testnet:utopia`: wallet blockers should mention the selected remote target explicitly.
+- Published-target reference failures should mention the selected remote target explicitly and instruct the user to refresh maintained package-reference data for that target.
 
 ## Isolated deterministic test harness checks
 
@@ -63,9 +80,19 @@ http://localhost:5173/?ff_mock_wallet=connected
 http://localhost:5173/?ff_mock_wallet=connected&ff_mock_deploy_reject=1
 http://localhost:5173/?ff_local_deploy_ready=0
 http://localhost:5173/?ff_mock_invalid_package_refs=1&ff_mock_wallet=connected
+http://localhost:5173/?ff_mock_wallet=connected&ff_mock_deploy_fail=1
+http://localhost:5173/?ff_mock_wallet=connected&ff_mock_deploy_unresolved=1
 ```
 
 Use these flags to validate blocker, cancellation, and progress-surface behavior without treating the results as real deployments.
+
+Harness notes:
+
+- `ff_local_deploy_ready=0` forces the local-validator blocker path.
+- `ff_mock_invalid_package_refs=1` forces the remote reference-data blocker path.
+- `ff_mock_deploy_reject=1` forces the wallet-cancelled path.
+- `ff_mock_deploy_fail=1` forces a failed submission path.
+- `ff_mock_deploy_unresolved=1` forces an unresolved confirmation path.
 
 ## Suggested verification commands
 
@@ -74,4 +101,85 @@ bun run test:run
 bun run lint
 bun run typecheck
 bun run test:e2e
-``
+```
+
+Targeted deployment-path commands:
+
+```bash
+bun run test:run src/__tests__/useDeployment.success.test.ts src/__tests__/useDeployment.blockers.test.ts src/__tests__/useDeployment.progress.test.ts
+bun run playwright test tests/e2e/deployment-progress.spec.ts tests/e2e/deployment-blockers.spec.ts tests/e2e/deployment-status-popup.spec.ts
+```
+
+## Coverage verification
+
+Deployment-path coverage was verified with the following targeted command:
+
+```bash
+bunx vitest run \
+   src/__tests__/useDeployment.success.test.ts \
+   src/__tests__/useDeployment.blockers.test.ts \
+   src/__tests__/useDeployment.progress.test.ts \
+   src/__tests__/DeploymentTargetControl.test.tsx \
+   src/__tests__/DeploymentProgressModal.test.tsx \
+   src/__tests__/CompilationStatus.deployment-popup.test.tsx \
+   src/__tests__/CompilationStatus.deployment-blockers.test.tsx \
+   src/__tests__/MoveSourcePanel.deployment.test.tsx \
+   src/__tests__/deploymentValidation.test.ts \
+   src/__tests__/deploymentExecutor.test.ts \
+   src/__tests__/deployment/testFactories.test.ts \
+   --coverage \
+   --coverage.reporter=text-summary \
+   --coverage.reporter=json-summary \
+   --coverage.include='src/deployment/**' \
+   --coverage.include='src/hooks/useDeployment.ts' \
+   --coverage.include='src/utils/deploymentValidation.ts' \
+   --coverage.include='src/components/DeploymentProgressModal.tsx' \
+   --coverage.include='src/components/DeploymentTargetControl.tsx' \
+   --coverage.include='src/components/CompilationStatus.tsx' \
+   --coverage.include='src/components/MoveSourcePanel.tsx'
+```
+
+Recorded deployment-path totals from `coverage/coverage-summary.json`:
+
+- Statements: `77.39 %`
+- Branches: `67.68 %`
+- Functions: `83.13 %`
+- Lines: `77.40 %`
+
+Threshold comparison:
+
+- Constitution minimum statements threshold `70 %`: pass
+- Constitution minimum branches threshold `65 %`: pass
+- Constitution minimum functions threshold `75 %`: pass
+- Constitution minimum lines threshold `70 %`: pass
+
+Notes:
+
+- This targeted deployment-path run satisfies the constitution minimums.
+- It does not meet the `>= 90 %` critical-path target described in the testing strategy for every included deployment file.
+- A full-repository coverage run is currently blocked by unrelated failures in `src/__tests__/MoveSourcePanel.test.tsx`; use the targeted command above for deployment-path verification until that regression is resolved.
+
+## Recorded local verification results
+
+Real local-validator verification was executed against the running dev server at `http://127.0.0.1:5173/` with the seeded `Example · Turret Aggressor First` contract after fixing the publish transaction to transfer the returned upgrade capability.
+
+Observed result:
+
+- Selected target: `local`
+- Final outcome: `succeeded`
+- Example confirmed package ID: `0x623d05b685fbc0596a7e90649ecefb0c23f02c793f8525f08c6b96d8d74f8066`
+- Example confirmation reference: `BBAjRJndGbBUmHHSMB2HE24LzDtfujLRhnTb3Kk1w4N`
+
+Five-run repeatability check for the same local scenario:
+
+1. Attempt 1: `succeeded` in `2894 ms` with package `0xe2829a3c228972dfbf08f9335b9c4f69d4d1849badc01fc47f5969afa266e3c7`
+2. Attempt 2: `succeeded` in `2897 ms` with package `0xc89264902be4c53ff2583523fd84fe38245b104c3346ae452553f37dd6e3cabd`
+3. Attempt 3: `succeeded` in `2879 ms` with package `0x0c7b9da8d75cd1e60ee98d919471109b24e2648514d9192f8faded795229debb`
+4. Attempt 4: `succeeded` in `2906 ms` with package `0x9f2d7b57cfe2674e3719fbbabac0b14c39be46dbf1d854bbcb5adc71c0fac899`
+5. Attempt 5: `succeeded` in `2893 ms` with package `0x8bd2ef10edc303573903402a7482233586bde7fadaf28f48ff6b9346cc8c5003`
+
+Summary against success criteria:
+
+- SC-003 local completion time target `<= 3 minutes`: pass
+- Measured average local completion time: `2894 ms`
+- SC-007 repeatability requirement for the recorded local scenario: pass (`5/5` succeeded)
