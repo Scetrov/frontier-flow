@@ -105,11 +105,15 @@ export function createDeploymentReviewEntryFixture(
     targetId: overrides.targetId ?? "local",
     outcome: overrides.outcome ?? "blocked",
     severity: overrides.severity ?? "warning",
+    startedAt: overrides.startedAt ?? 1,
+    endedAt: overrides.endedAt ?? 2,
     stage: overrides.stage,
     packageId: overrides.packageId,
     confirmationReference: overrides.confirmationReference,
     details: overrides.details ?? "Resolve the required inputs before deploying.",
     blockedReasons: overrides.blockedReasons ?? ["Missing deployment prerequisites."],
+    historicalOnly: overrides.historicalOnly,
+    historicalReason: overrides.historicalReason,
   };
 }
 

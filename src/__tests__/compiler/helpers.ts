@@ -106,11 +106,15 @@ export function createDeploymentReviewEntry(
     targetId: overrides.targetId ?? "local",
     outcome: overrides.outcome ?? "blocked",
     severity: overrides.severity ?? "warning",
+    startedAt: overrides.startedAt ?? 1,
+    endedAt: overrides.endedAt ?? 2,
     stage: overrides.stage,
     packageId: overrides.packageId,
     confirmationReference: overrides.confirmationReference,
     details: overrides.details ?? "Resolve the required inputs before deploying.",
     blockedReasons: overrides.blockedReasons ?? ["Existing turret attachment details are not configured yet."],
+    historicalOnly: overrides.historicalOnly,
+    historicalReason: overrides.historicalReason,
   };
 }
 
@@ -158,6 +162,7 @@ export function createDeploymentStatusMessage(
     details: overrides.details ?? "Resolve the required inputs before deploying.",
     stage: overrides.stage,
     packageId: overrides.packageId,
+    confirmationReference: overrides.confirmationReference,
     visibleInFooter: overrides.visibleInFooter ?? true,
     visibleInMovePanel: overrides.visibleInMovePanel ?? true,
   };
@@ -189,12 +194,19 @@ export function createGeneratedArtifactStub(overrides: Partial<GeneratedContract
     moveSource: overrides.moveSource ?? `module builder_extensions::${moduleName} {}`,
     sourceMap: overrides.sourceMap ?? [],
   });
+  const artifactId = artifact.artifactId ?? `${moduleName}-00000000`;
+  const deploymentStatus = overrides.deploymentStatus === undefined
+    ? createDeploymentStatus("blocked", { artifactId })
+    : {
+        ...overrides.deploymentStatus,
+        artifactId: overrides.deploymentStatus.artifactId === "starter_contract-00000000"
+          ? artifactId
+          : overrides.deploymentStatus.artifactId,
+      };
 
   return {
     ...artifact,
     ...overrides,
-    deploymentStatus: overrides.deploymentStatus ?? createDeploymentStatus("blocked", {
-      artifactId: artifact.artifactId ?? `${moduleName}-00000000`,
-    }),
+    deploymentStatus,
   };
 }

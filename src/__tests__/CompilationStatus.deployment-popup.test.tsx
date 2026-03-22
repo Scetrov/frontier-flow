@@ -23,6 +23,7 @@ describe("CompilationStatus deployment popup review", () => {
     fireEvent.click(screen.getByRole("button", { name: /Deployed/i }));
 
     expect(screen.getAllByText("Deployed")).toHaveLength(2);
+  expect(screen.getByText(`Artifact ID: ${artifact.artifactId ?? ""}`)).toBeVisible();
     expect(screen.getByText("Target: testnet:stillness")).toBeVisible();
     expect(screen.getByText("Stage: confirming")).toBeVisible();
     expect(screen.getByText("Severity: success")).toBeVisible();
@@ -61,6 +62,8 @@ describe("CompilationStatus deployment popup review", () => {
             stage: "validating",
             details: "Start or configure the local deployment target before retrying.",
             blockedReasons: ["Local deployment is unavailable."],
+            historicalOnly: true,
+            historicalReason: "Local validator state changed after this attempt. Re-verify this evidence before relying on it.",
           }),
         ],
       }),
@@ -74,5 +77,28 @@ describe("CompilationStatus deployment popup review", () => {
     expect(screen.getByText(/Deployment blocked - local - validating/)).toBeVisible();
     expect(screen.getByText("Transaction Digest: 7R4J3digest")).toBeVisible();
     expect(screen.getByText("Start or configure the local deployment target before retrying.")).toBeVisible();
+    expect(screen.getByText("Historical only")).toBeVisible();
+    expect(screen.getByText("Local validator state changed after this attempt. Re-verify this evidence before relying on it.")).toBeVisible();
+  });
+
+  it("renders an explicit deployment review surface even when the current artifact is no longer active", () => {
+    const deploymentStatus = createDeploymentStatus("deployed", {
+      artifactId: "artifact-review-only",
+      headline: "Deployed",
+      targetId: "testnet:utopia",
+      stage: "confirming",
+      severity: "success",
+      packageId: "0xfeedbeef",
+      confirmationReference: "digest-explicit-02",
+      nextActionSummary: "Deployment completed for testnet:utopia. Package ID: 0xfeedbeef.",
+    });
+
+    render(<CompilationStatus deploymentStatus={deploymentStatus} diagnostics={[]} status={{ state: "idle" }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Deployed/i }));
+
+    expect(screen.getByText("Artifact ID: artifact-review-only")).toBeVisible();
+    expect(screen.getByText("Target: testnet:utopia")).toBeVisible();
+    expect(screen.getByText("Transaction Digest: digest-explicit-02")).toBeVisible();
   });
 });

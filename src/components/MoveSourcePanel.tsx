@@ -6,12 +6,15 @@ import type { CompilationStatus, DeploymentReviewEntry, DeploymentStatus } from 
 hljs.registerLanguage("rust", rust);
 
 interface MoveSourcePanelProps {
+  readonly deploymentStatus?: DeploymentStatus | null;
   readonly sourceCode: string | null;
   readonly status: CompilationStatus;
 }
 
 interface MoveSourceDeploymentDetails {
+  readonly artifactId: string | null;
   readonly blockedReasons: readonly string[];
+  readonly confirmationReference: string | null;
   readonly headline: string | null;
   readonly label: string | null;
   readonly packageId: string | null;
@@ -23,7 +26,9 @@ interface MoveSourceDeploymentDetails {
 }
 
 const EMPTY_DEPLOYMENT_DETAILS: MoveSourceDeploymentDetails = {
+  artifactId: null,
   blockedReasons: [],
+  confirmationReference: null,
   headline: null,
   label: null,
   packageId: null,
@@ -34,10 +39,10 @@ const EMPTY_DEPLOYMENT_DETAILS: MoveSourceDeploymentDetails = {
   target: null,
 };
 
-function getDeploymentStatus(status: CompilationStatus): DeploymentStatus | null {
-  return status.state === "compiled" || status.state === "error"
+function getDeploymentStatus(status: CompilationStatus, explicitDeploymentStatus?: DeploymentStatus | null): DeploymentStatus | null {
+  return explicitDeploymentStatus ?? (status.state === "compiled" || status.state === "error"
     ? status.artifact?.deploymentStatus ?? null
-    : null;
+    : null);
 }
 
 function getDeploymentLabel(deploymentStatus: DeploymentStatus | null): string | null {
@@ -55,15 +60,17 @@ function getDeploymentLabel(deploymentStatus: DeploymentStatus | null): string |
   }
 }
 
-function getDeploymentDetails(status: CompilationStatus): MoveSourceDeploymentDetails {
-  const deploymentStatus = getDeploymentStatus(status);
+function getDeploymentDetails(status: CompilationStatus, explicitDeploymentStatus?: DeploymentStatus | null): MoveSourceDeploymentDetails {
+  const deploymentStatus = getDeploymentStatus(status, explicitDeploymentStatus);
 
   if (deploymentStatus === null) {
     return EMPTY_DEPLOYMENT_DETAILS;
   }
 
   return {
+    artifactId: deploymentStatus.artifactId,
     blockedReasons: deploymentStatus.blockedReasons,
+    confirmationReference: deploymentStatus.confirmationReference ?? null,
     headline: deploymentStatus.headline ?? null,
     label: getDeploymentLabel(deploymentStatus),
     packageId: deploymentStatus.packageId ?? null,
@@ -112,10 +119,10 @@ function getEmptyMessage(status: CompilationStatus): string {
   }
 }
 
-function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
+function MoveSourcePanel({ deploymentStatus = null, sourceCode, status }: MoveSourcePanelProps) {
   const displayedLines = sourceCode?.split("\n") ?? [];
   const highlightedSource = sourceCode === null ? "" : hljs.highlight(sourceCode, { language: "rust" }).value;
-  const deployment = getDeploymentDetails(status);
+  const deployment = getDeploymentDetails(status, deploymentStatus);
   const deploymentBadges = Array.from(new Set(
     [deployment.headline, deployment.label, deployment.target, deployment.stage, deployment.severity].filter(
       (value): value is string => value !== null,
@@ -138,12 +145,6 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
           {deploymentBadges.map((badge) => <span className="ff-move-source__badge" key={badge}>{badge}</span>)}
           {deploymentLines.map((line) => <span className="ff-move-source__filename" key={line}>{line}</span>)}
           {deployment.blockedReasons.map((reason) => <span className="ff-move-source__filename" key={reason}>{reason}</span>)}
-          {deployment.reviewHistory.map((entry) => (
-            <span className="ff-move-source__filename" key={entry.attemptId}>{`Earlier this session: ${entry.headline} - ${entry.targetId}${entry.stage === undefined ? "" : ` - ${entry.stage}`}`}</span>
-          ))}
-          {deployment.reviewHistory.map((entry) => (
-            <span className="ff-move-source__filename" key={`${entry.attemptId}-details`}>{entry.details}</span>
-          ))}
         </div>
       </header>
 
@@ -154,6 +155,25 @@ function MoveSourcePanel({ sourceCode, status }: MoveSourcePanelProps) {
             Learn Move on Sui
           </a>
         </p>
+        {deployment.label !== null ? (
+          <section aria-label="Deployment review" className="ff-move-source__empty-state">
+            {deployment.artifactId !== null ? <p className="ff-move-source__empty-copy">Artifact ID: {deployment.artifactId}</p> : null}
+            {deployment.target !== null ? <p className="ff-move-source__empty-copy">Target: {deployment.target}</p> : null}
+            {deployment.stage !== null ? <p className="ff-move-source__empty-copy">Stage: {deployment.stage}</p> : null}
+            {deployment.severity !== null ? <p className="ff-move-source__empty-copy">Severity: {deployment.severity}</p> : null}
+            {deployment.packageId !== null ? <p className="ff-move-source__empty-copy">Package ID: {deployment.packageId}</p> : null}
+            {deployment.confirmationReference !== null ? <p className="ff-move-source__empty-copy">Transaction Digest: {deployment.confirmationReference}</p> : null}
+            {deployment.summary !== null ? <p className="ff-move-source__empty-copy">{deployment.summary}</p> : null}
+            {deployment.reviewHistory.map((entry) => (
+              <div key={entry.attemptId}>
+                <p className="ff-move-source__empty-copy">{`Earlier this session: ${entry.headline} - ${entry.targetId}${entry.stage === undefined ? "" : ` - ${entry.stage}`}`}</p>
+                <p className="ff-move-source__empty-copy">{entry.details}</p>
+                {entry.historicalOnly ? <p className="ff-move-source__empty-copy">Historical only</p> : null}
+                {entry.historicalReason !== undefined ? <p className="ff-move-source__empty-copy">{entry.historicalReason}</p> : null}
+              </div>
+            ))}
+          </section>
+        ) : null}
         {sourceCode === null ? (
           <div className="ff-move-source__empty-state">
             <p className="ff-move-source__empty-title">No generated Move source yet</p>

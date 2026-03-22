@@ -151,6 +151,8 @@ function createReviewEntry(
     targetId: attempt.targetId,
     outcome: attempt.outcome,
     severity: statusMessage.severity,
+    startedAt: attempt.startedAt,
+    endedAt: attempt.endedAt,
     stage: attempt.currentStage,
     packageId: attempt.packageId,
     confirmationReference: attempt.confirmationReference,
@@ -208,6 +210,9 @@ function getStageMessage(stage: DeploymentStage, targetLabel: string): string {
 
 type ReviewHistorySetter = Dispatch<SetStateAction<readonly DeploymentReviewEntry[]>>;
 type TimerIdsRef = RefObject<number[]>;
+type LocalChainIdRef = RefObject<string | null>;
+
+const LOCAL_HISTORY_RESET_REASON = "Local validator state changed after this attempt. Re-verify this evidence before relying on it.";
 
 interface DeploymentStateSetters {
   readonly setDeploymentStatus: Dispatch<SetStateAction<DeploymentStatus | null>>;
@@ -216,6 +221,10 @@ interface DeploymentStateSetters {
   readonly setProgress: Dispatch<SetStateAction<DeploymentProgress | null>>;
   readonly setReviewHistory: ReviewHistorySetter;
   readonly setStatusMessage: Dispatch<SetStateAction<DeploymentStatusMessage | null>>;
+}
+
+interface DeploymentOutcomeSetters extends DeploymentStateSetters {
+  readonly localChainIdRef: LocalChainIdRef;
 }
 
 interface DeploymentOutcome {
@@ -242,6 +251,7 @@ interface DeploymentDerivedState {
 interface DeploymentStore {
   readonly deploymentStatus: DeploymentStatus | null;
   readonly isDeploying: boolean;
+  readonly localChainIdRef: LocalChainIdRef;
   readonly latestAttempt: DeploymentAttempt | null;
   readonly progress: DeploymentProgress | null;
   readonly selectedTarget: DeploymentTargetId;
@@ -288,6 +298,7 @@ function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore 
   const [deploymentStatus, setDeploymentStatus] = useState<DeploymentStatus | null>(null);
   const [isDeploying, setIsDeploying] = useState(false);
   const timerIdsRef = useRef<number[]>([]);
+  const localChainIdRef = useRef<string | null>(null);
   const stateSetters = useMemo<DeploymentStateSetters>(() => ({
     setDeploymentStatus,
     setIsDeploying,
@@ -300,6 +311,7 @@ function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore 
   return {
     deploymentStatus,
     isDeploying,
+    localChainIdRef,
     latestAttempt,
     progress,
     selectedTarget,
@@ -339,6 +351,7 @@ function useDeploymentDerivedState(input: {
 function updateReviewHistory(
   input: {
     readonly attempt: DeploymentAttempt;
+    readonly localChainIdRef: LocalChainIdRef;
     readonly setDeploymentStatus: Dispatch<SetStateAction<DeploymentStatus | null>>;
     readonly setReviewHistory: ReviewHistorySetter;
     readonly statusMessage: DeploymentStatusMessage;
@@ -346,14 +359,34 @@ function updateReviewHistory(
   },
 ): void {
   input.setReviewHistory((current) => {
-    const nextHistory = [createReviewEntry(input.attempt, input.statusMessage, input.validation), ...current].slice(0, 5);
+    const flags = getDeploymentEnvironmentFlags();
+    const currentLocalChainId = input.attempt.targetId === "local"
+      ? flags.localChainId
+      : input.localChainIdRef.current;
+    const localResetDetected = input.attempt.targetId === "local"
+      && input.localChainIdRef.current !== null
+      && input.localChainIdRef.current !== currentLocalChainId;
+    const nextBaseHistory = localResetDetected
+      ? current.map((entry) => entry.targetId === "local" && !entry.historicalOnly
+        ? {
+            ...entry,
+            historicalOnly: true,
+            historicalReason: LOCAL_HISTORY_RESET_REASON,
+          }
+        : entry)
+      : current;
+    const nextHistory = [createReviewEntry(input.attempt, input.statusMessage, input.validation), ...nextBaseHistory].slice(0, 5);
+
+    if (input.attempt.targetId === "local") {
+      input.localChainIdRef.current = currentLocalChainId;
+    }
+
     input.setDeploymentStatus(toDeploymentStatus(input.attempt, input.statusMessage, input.validation, nextHistory));
     return nextHistory;
   });
 }
-
 function applyDeploymentOutcome(
-  setters: DeploymentStateSetters,
+  setters: DeploymentOutcomeSetters,
   outcome: DeploymentOutcome,
   validation: DeploymentValidationResult,
 ): void {
@@ -365,6 +398,7 @@ function applyDeploymentOutcome(
   setters.setStatusMessage(outcome.statusMessage);
   updateReviewHistory({
     attempt: outcome.attempt,
+    localChainIdRef: setters.localChainIdRef,
     setDeploymentStatus: setters.setDeploymentStatus,
     setReviewHistory: setters.setReviewHistory,
     statusMessage: outcome.statusMessage,
@@ -619,7 +653,7 @@ function scheduleRejectedSigningDeployment(input: {
   readonly attemptId: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stageDelayMs: number;
-  readonly stateSetters: DeploymentStateSetters;
+  readonly stateSetters: DeploymentOutcomeSetters;
   readonly targetLabel: string;
   readonly timerIdsRef: TimerIdsRef;
   readonly validation: DeploymentValidationResult;
@@ -649,7 +683,7 @@ function scheduleFailedSubmissionDeployment(input: {
   readonly attemptId: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stageDelayMs: number;
-  readonly stateSetters: DeploymentStateSetters;
+  readonly stateSetters: DeploymentOutcomeSetters;
   readonly targetLabel: string;
   readonly timerIdsRef: TimerIdsRef;
   readonly validation: DeploymentValidationResult;
@@ -694,7 +728,7 @@ function scheduleUnresolvedConfirmationDeployment(input: {
   readonly packageId: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stageDelayMs: number;
-  readonly stateSetters: DeploymentStateSetters;
+  readonly stateSetters: DeploymentOutcomeSetters;
   readonly targetLabel: string;
   readonly timerIdsRef: TimerIdsRef;
   readonly validation: DeploymentValidationResult;
@@ -741,7 +775,7 @@ function scheduleSuccessfulDeployment(input: {
   readonly packageId: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stageDelayMs: number;
-  readonly stateSetters: DeploymentStateSetters;
+  readonly stateSetters: DeploymentOutcomeSetters;
   readonly targetLabel: string;
   readonly timerIdsRef: TimerIdsRef;
   readonly validation: DeploymentValidationResult;
@@ -780,7 +814,7 @@ function startDeploymentAttempt(input: {
   readonly artifact: GeneratedContractArtifact | null;
   readonly selectedTarget: DeploymentTargetId;
   readonly setIsDeploying: Dispatch<SetStateAction<boolean>>;
-  readonly stateSetters: DeploymentStateSetters;
+  readonly stateSetters: DeploymentOutcomeSetters;
   readonly timerIdsRef: TimerIdsRef;
   readonly validation: DeploymentValidationResult;
 }): void {
@@ -887,6 +921,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
   const {
     deploymentStatus,
     isDeploying,
+    localChainIdRef,
     latestAttempt,
     progress,
     selectedTarget,
@@ -927,7 +962,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
         artifact: getArtifactFromStatus(status),
         selectedTarget,
         setIsDeploying,
-        stateSetters,
+        stateSetters: { ...stateSetters, localChainIdRef },
         timerIdsRef,
         validation: derivedState.validation,
       });
@@ -946,7 +981,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
         remediation: "Run Build again after the current graph settles, then retry deployment.",
       };
 
-      applyDeploymentOutcome(stateSetters, createBlockedOutcome({
+      applyDeploymentOutcome({ ...stateSetters, localChainIdRef }, createBlockedOutcome({
         artifactId: artifact?.artifactId ?? "unknown-artifact",
         attemptId,
         blockerCode: primaryBlocker.code,
@@ -999,7 +1034,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
       });
     }).then((result) => {
       applyDeploymentOutcome(
-        stateSetters,
+        { ...stateSetters, localChainIdRef },
         createExecutionOutcome({
           artifactId: artifact.artifactId ?? "unknown-artifact",
           attemptId,
@@ -1013,7 +1048,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
       const normalizedDetails = details.toLowerCase();
       const isUserCancelled = normalizedDetails.includes("rejected") || normalizedDetails.includes("denied") || normalizedDetails.includes("cancelled");
       applyDeploymentOutcome(
-        stateSetters,
+        { ...stateSetters, localChainIdRef },
         createExecutionOutcome({
           artifactId: artifact.artifactId ?? "unknown-artifact",
           attemptId,
@@ -1030,7 +1065,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
     });
 
     return Promise.resolve();
-  }, [clearStageTimers, derivedState.validation, isDeploying, selectedTarget, setIsDeploying, signAndExecuteTransaction, stateSetters, status, suiClient, timerIdsRef]);
+  }, [clearStageTimers, derivedState.validation, isDeploying, localChainIdRef, selectedTarget, setIsDeploying, signAndExecuteTransaction, stateSetters, status, suiClient, timerIdsRef]);
 
   const dismissProgress = useCallback(() => {
     setProgress((currentProgress) => currentProgress === null

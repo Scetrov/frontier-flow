@@ -179,6 +179,7 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
     <div className="ff-deployment-modal" role="presentation">
       <div aria-hidden="true" className="ff-deployment-modal__backdrop" />
       <section
+        aria-describedby="deployment-progress-review-note"
         aria-labelledby="deployment-progress-title"
         aria-modal="true"
         className="ff-deployment-modal__panel"
@@ -201,16 +202,19 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
         </div>
 
         <p className="ff-deployment-modal__message">{terminalAttempt?.message ?? progress.activeMessage}</p>
+        <p className="ff-deployment-modal__status-live-region" id="deployment-progress-review-note">
+          Dismissing this panel keeps deployment running. Review surfaces retain the final outcome for this attempt.
+        </p>
         <p aria-atomic="true" aria-live={terminalAttempt === null ? "polite" : "assertive"} className="ff-deployment-modal__status-live-region">
           {terminalAttempt === null ? progress.activeMessage : `${title}. ${terminalAttempt.message}`}
         </p>
 
-        {terminalAttempt?.packageId !== undefined || terminalAttempt?.confirmationReference !== undefined ? (
+        {terminalAttempt !== null && (terminalAttempt.packageId !== undefined || terminalAttempt.confirmationReference !== undefined) ? (
           <ul className="ff-deployment-modal__details" aria-label="Deployment evidence">
-            {terminalAttempt?.packageId !== undefined ? (
+            {terminalAttempt.packageId !== undefined ? (
               <li className="ff-deployment-modal__detail">Package ID: {terminalAttempt.packageId}</li>
             ) : null}
-            {terminalAttempt?.confirmationReference !== undefined ? (
+            {terminalAttempt.confirmationReference !== undefined ? (
               <li className="ff-deployment-modal__detail">Transaction Digest: {terminalAttempt.confirmationReference}</li>
             ) : null}
           </ul>

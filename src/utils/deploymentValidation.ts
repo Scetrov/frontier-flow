@@ -27,6 +27,7 @@ export interface DeploymentEnvironmentFlags {
   readonly mockWallet: "connected" | "disconnected" | "none" | null;
   readonly invalidatePackageReferences: boolean;
   readonly localTargetReady: boolean;
+  readonly localChainId: string;
   readonly failSubmission: boolean;
   readonly rejectApproval: boolean;
   readonly unresolvedConfirmation: boolean;
@@ -65,6 +66,7 @@ export function getDeploymentEnvironmentFlags(search?: string): DeploymentEnviro
     mockWallet: parseMockWallet(params),
     invalidatePackageReferences: params?.get("ff_mock_invalid_package_refs") === "1",
     localTargetReady: params?.get("ff_local_deploy_ready") !== "0",
+    localChainId: params?.get("ff_local_chain_id") ?? "default-local",
     failSubmission: params?.get("ff_mock_deploy_fail") === "1",
     rejectApproval: params?.get("ff_mock_deploy_reject") === "1",
     unresolvedConfirmation: params?.get("ff_mock_deploy_unresolved") === "1",

@@ -1,4 +1,4 @@
-import type { CompilationStatus as CompilationStatusValue, CompilerDiagnostic } from "../compiler/types";
+import type { CompilationStatus as CompilationStatusValue, CompilerDiagnostic, DeploymentStatus } from "../compiler/types";
 import type { RemediationNotice } from "../types/nodes";
 
 import CompilationStatus from "./CompilationStatus";
@@ -8,13 +8,14 @@ const repositoryUrl = "https://github.com/Scetrov/frontier-flow";
 const websiteUrl = "https://scetrov.live";
 
 interface FooterProps {
+  readonly deploymentStatus?: DeploymentStatus | null;
   readonly status?: CompilationStatusValue;
   readonly diagnostics?: readonly CompilerDiagnostic[];
   readonly remediationNotices?: readonly RemediationNotice[];
   readonly onSelectDiagnostic?: (nodeId: string) => void;
 }
 
-function Footer({ status = { state: "idle" }, diagnostics = [], remediationNotices = [], onSelectDiagnostic }: FooterProps) {
+function Footer({ deploymentStatus = null, status = { state: "idle" }, diagnostics = [], remediationNotices = [], onSelectDiagnostic }: FooterProps) {
   const remediationDiagnostics = remediationNoticesToDiagnostics(remediationNotices);
   const mergedDiagnostics = remediationDiagnostics.length > 0
     ? [...remediationDiagnostics, ...diagnostics]
@@ -24,7 +25,7 @@ function Footer({ status = { state: "idle" }, diagnostics = [], remediationNotic
       <div className="flex flex-col gap-2 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="font-heading text-[0.7rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">v{__APP_VERSION__}</span>
-          <CompilationStatus diagnostics={mergedDiagnostics} onSelectDiagnostic={onSelectDiagnostic} status={status} />
+          <CompilationStatus deploymentStatus={deploymentStatus} diagnostics={mergedDiagnostics} onSelectDiagnostic={onSelectDiagnostic} status={status} />
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <a

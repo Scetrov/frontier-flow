@@ -158,11 +158,15 @@ export interface DeploymentReviewEntry {
   readonly targetId: DeploymentTargetId;
   readonly outcome: DeploymentAttemptOutcome;
   readonly severity: DeploymentMessageSeverity;
+  readonly startedAt: number;
+  readonly endedAt?: number;
   readonly stage?: DeploymentStage;
   readonly packageId?: string;
   readonly confirmationReference?: string;
   readonly details: string;
   readonly blockedReasons: readonly string[];
+  readonly historicalOnly?: boolean;
+  readonly historicalReason?: string;
 }
 
 export interface GeneratedContractArtifact {

@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { CompilationStatus as CompilationStatusValue, CompilerDiagnostic, DeploymentStatus, DeploymentStatusType } from "../compiler/types";
 
 interface CompilationStatusProps {
+  readonly deploymentStatus?: DeploymentStatus | null;
   readonly status: CompilationStatusValue;
   readonly diagnostics: readonly CompilerDiagnostic[];
   readonly onSelectDiagnostic?: (nodeId: string) => void;
@@ -14,25 +15,15 @@ function getArtifactFromStatus(status: CompilationStatusValue) {
     : undefined;
 }
 
-function getDeploymentLabel(status: CompilationStatusValue): string | null {
-  const deploymentStatus = getArtifactFromStatus(status)?.deploymentStatus;
-
-  if (deploymentStatus === undefined) {
-    return null;
-  }
-
-  switch (deploymentStatus.status) {
-    case "deployed":
-      return "Deployed";
-    case "ready":
-      return "Deployment Ready";
-    case "blocked":
-      return "Deployment Blocked";
-  }
-}
-
 function getDeploymentSummary(status: CompilationStatusValue): string | null {
   return getArtifactFromStatus(status)?.deploymentStatus?.nextActionSummary ?? null;
+}
+
+function getResolvedDeploymentStatus(
+  status: CompilationStatusValue,
+  explicitDeploymentStatus: DeploymentStatus | null,
+): DeploymentStatus | null {
+  return explicitDeploymentStatus ?? getArtifactFromStatus(status)?.deploymentStatus ?? null;
 }
 
 function formatDeploymentStage(stage: string | undefined): string | null {
@@ -141,8 +132,11 @@ function DeploymentPanel({
   const previousEntries = (status.reviewHistory ?? []).slice(1);
 
   return (
-    <div className="ff-compilation-status__panel" id="deployment-status-details">
+    <div aria-label="Deployment status details" className="ff-compilation-status__panel" id="deployment-status-details" role="region">
       <ul className="ff-compilation-status__list">
+        <li>
+          <span className="ff-compilation-status__message">Artifact ID: {status.artifactId}</span>
+        </li>
         {status.headline !== undefined ? (
           <li>
             <span className="ff-compilation-status__message">{status.headline}</span>
@@ -203,6 +197,12 @@ function DeploymentPanel({
             {entry.confirmationReference !== undefined ? (
               <span className="ff-compilation-status__message">Transaction Digest: {entry.confirmationReference}</span>
             ) : null}
+            {entry.historicalOnly ? (
+              <span className="ff-compilation-status__message">Historical only</span>
+            ) : null}
+            {entry.historicalReason !== undefined ? (
+              <span className="ff-compilation-status__message">{entry.historicalReason}</span>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -213,12 +213,18 @@ function DeploymentPanel({
 /**
  * Persistent footer status indicator for the graph compilation pipeline.
  */
-function CompilationStatus({ status, diagnostics, onSelectDiagnostic }: CompilationStatusProps) {
+function CompilationStatus({ deploymentStatus: explicitDeploymentStatus = null, status, diagnostics, onSelectDiagnostic }: CompilationStatusProps) {
   const [expandedPanel, setExpandedPanel] = useState<"diagnostics" | "deployment" | null>(null);
   const hasDiagnostics = diagnostics.length > 0;
-  const deploymentLabel = getDeploymentLabel(status);
-  const deploymentSummary = getDeploymentSummary(status);
-  const deploymentStatus = getArtifactFromStatus(status)?.deploymentStatus;
+  const deploymentStatus = getResolvedDeploymentStatus(status, explicitDeploymentStatus);
+  const deploymentLabel = deploymentStatus === null
+    ? null
+    : deploymentStatus.status === "deployed"
+      ? "Deployed"
+      : deploymentStatus.status === "ready"
+        ? "Deployment Ready"
+        : "Deployment Blocked";
+  const deploymentSummary = deploymentStatus?.nextActionSummary ?? getDeploymentSummary(status);
 
   return (
     <div className={getStatusClassName(status)}>
@@ -235,7 +241,7 @@ function CompilationStatus({ status, diagnostics, onSelectDiagnostic }: Compilat
             }
           }}
         />
-        {deploymentStatus !== undefined && deploymentLabel !== null ? (
+        {deploymentStatus !== null && deploymentLabel !== null ? (
           <StatusButton
             ariaControls="deployment-status-details"
             ariaExpanded={expandedPanel === "deployment"}
@@ -250,7 +256,7 @@ function CompilationStatus({ status, diagnostics, onSelectDiagnostic }: Compilat
 
       {hasDiagnostics && expandedPanel === "diagnostics" ? <DiagnosticsPanel diagnostics={diagnostics} onSelectDiagnostic={onSelectDiagnostic} /> : null}
 
-      {deploymentStatus !== undefined && deploymentSummary !== null && expandedPanel === "deployment" ? <DeploymentPanel status={deploymentStatus} summary={deploymentSummary} /> : null}
+      {deploymentStatus !== null && deploymentSummary !== null && expandedPanel === "deployment" ? <DeploymentPanel status={deploymentStatus} summary={deploymentSummary} /> : null}
     </div>
   );
 }

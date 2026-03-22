@@ -104,20 +104,20 @@
 
 **NOTE**: Write these tests first and confirm they fail before implementing the story.
 
-- [ ] T034 [P] [US3] Extend retry-sequence and history-preservation hook tests in `src/__tests__/useDeployment.progress.test.ts`
-- [ ] T035 [P] [US3] Extend deployment evidence and history rendering tests in `src/__tests__/MoveSourcePanel.deployment.test.tsx`
-- [ ] T036 [P] [US3] Add accessible status-popup and review-surface coverage in `src/__tests__/CompilationStatus.deployment-popup.test.tsx` and `src/__tests__/MoveSourcePanel.deployment.test.tsx`
-- [ ] T037 [P] [US3] Add retry-and-review deployment journeys in `tests/e2e/deployment-status-popup.spec.ts`
-- [ ] T038 [P] [US3] Add local-validator reset and historical-evidence coverage in `src/__tests__/useDeployment.progress.test.ts`
+- [X] T034 [P] [US3] Extend retry-sequence and history-preservation hook tests in `src/__tests__/useDeployment.progress.test.ts`
+- [X] T035 [P] [US3] Extend deployment evidence and history rendering tests in `src/__tests__/MoveSourcePanel.deployment.test.tsx`
+- [X] T036 [P] [US3] Add accessible status-popup and review-surface coverage in `src/__tests__/CompilationStatus.deployment-popup.test.tsx` and `src/__tests__/MoveSourcePanel.deployment.test.tsx`
+- [X] T037 [P] [US3] Add retry-and-review deployment journeys in `tests/e2e/deployment-status-popup.spec.ts`
+- [X] T038 [P] [US3] Add local-validator reset and historical-evidence coverage in `src/__tests__/useDeployment.progress.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T039 [US3] Persist recent deployment evidence and review entries in `src/hooks/useDeployment.ts`
-- [ ] T040 [US3] Detect local-validator resets and preserve prior local evidence as historical-only in `src/hooks/useDeployment.ts`
-- [ ] T041 [US3] Implement accessible status-popup semantics, summaries, and history rendering in `src/components/CompilationStatus.tsx`
-- [ ] T042 [US3] Mirror deployment evidence and accessible review context in `src/components/MoveSourcePanel.tsx`
-- [ ] T043 [US3] Keep modal dismissal and reopening review-safe in `src/components/DeploymentProgressModal.tsx`
-- [ ] T044 [US3] Coordinate retry and review state across deployment surfaces in `src/App.tsx`
+- [X] T039 [US3] Persist recent deployment evidence and review entries in `src/hooks/useDeployment.ts`
+- [X] T040 [US3] Detect local-validator resets and preserve prior local evidence as historical-only in `src/hooks/useDeployment.ts`
+- [X] T041 [US3] Implement accessible status-popup semantics, summaries, and history rendering in `src/components/CompilationStatus.tsx`
+- [X] T042 [US3] Mirror deployment evidence and accessible review context in `src/components/MoveSourcePanel.tsx`
+- [X] T043 [US3] Keep modal dismissal and reopening review-safe in `src/components/DeploymentProgressModal.tsx`
+- [X] T044 [US3] Coordinate retry and review state across deployment surfaces in `src/App.tsx`
 
 **Checkpoint**: User Story 3 should let users review deployment evidence and compare retries without losing outcome context.
 

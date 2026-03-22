@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 
-import type { CompilationStatus, CompilerDiagnostic } from "./compiler/types";
+import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus } from "./compiler/types";
 import AlphaBanner from "./components/AlphaBanner";
 import CanvasWorkspace from "./components/CanvasWorkspace";
 import DeploymentProgressModal from "./components/DeploymentProgressModal";
@@ -27,6 +27,7 @@ interface FocusedDiagnosticSelection {
 
 interface AppMainContentProps {
   readonly activeView: PrimaryView;
+  readonly deploymentStatus: DeploymentStatus | null;
   readonly displayStatus: CompilationStatus;
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
   readonly moveSourceCode: string | null;
@@ -75,16 +76,17 @@ function VisualWorkspaceView({
   );
 }
 
-function MoveSourceView({ displayStatus, moveSourceCode }: Pick<AppMainContentProps, "displayStatus" | "moveSourceCode">) {
+function MoveSourceView({ deploymentStatus, displayStatus, moveSourceCode }: Pick<AppMainContentProps, "deploymentStatus" | "displayStatus" | "moveSourceCode">) {
   return (
     <section aria-label="Move source view" className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
-      <MoveSourcePanel sourceCode={moveSourceCode} status={displayStatus} />
+      <MoveSourcePanel deploymentStatus={deploymentStatus} sourceCode={moveSourceCode} status={displayStatus} />
     </section>
   );
 }
 
 function AppMainContent({
   activeView,
+  deploymentStatus,
   displayStatus,
   focusedDiagnosticSelection,
   moveSourceCode,
@@ -103,7 +105,7 @@ function AppMainContent({
     );
   }
 
-  return <MoveSourceView displayStatus={displayStatus} moveSourceCode={moveSourceCode} />;
+  return <MoveSourceView deploymentStatus={deploymentStatus} displayStatus={displayStatus} moveSourceCode={moveSourceCode} />;
 }
 
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
@@ -183,6 +185,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
         <main className="relative flex flex-1 min-h-0 overflow-hidden" aria-label="Application shell">
           <AppMainContent
             activeView={activeView}
+            deploymentStatus={deployment.deploymentStatus}
             displayStatus={displayStatus}
             focusedDiagnosticSelection={focusedDiagnosticSelection}
             moveSourceCode={moveSourceCode}
@@ -195,6 +198,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
         </main>
       )}
       <Footer
+        deploymentStatus={deployment.deploymentStatus}
         diagnostics={diagnostics}
         onSelectDiagnostic={handleSelectDiagnostic}
         remediationNotices={remediationNotices}
