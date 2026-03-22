@@ -1,1 +1,1 @@
-- 011-bytecode-deployment: Added TypeScript 5.9 (strict), React 19, generated Sui Move artifacts + React 19, `@mysten/dapp-kit`, `@mysten/sui`, `@tanstack/react-query`, Tailwind CSS 4, `@xyflow/react`, `@zktx.io/sui-move-builder`
+- 012-real-contract-deployment: Added TypeScript 5.9 (strict), React 19, generated Sui Move artifacts + `@mysten/sui`, `@mysten/dapp-kit`, `@zktx.io/sui-move-builder`, React 19, `@tanstack/react-query`, `@xyflow/react`
