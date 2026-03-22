@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/011-bytecode-deployment/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/, quickstart.md
 
-**Tests**: Tests are required for this feature. The project constitution and plan call for test-first delivery across UI, hook orchestration, and E2E deployment workflows.
+**tests**: Tests are required for this feature. The project constitution and plan call for test-first delivery across UI, hook orchestration, and E2E deployment workflows.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -47,17 +47,17 @@
 
 ### Tests for User Story 1
 
-- [X] T009 [P] [US1] Add deploy control interaction tests in src/**tests**/DeploymentTargetControl.test.tsx
-- [X] T010 [P] [US1] Add deployment success-path orchestration tests in src/**tests**/useDeployment.success.test.ts
-- [X] T011 [P] [US1] Add target-selection deployment E2E coverage in tests/e2e/deployment-target-selection.spec.ts
+- [x] T009 [P] [US1] Add deploy control interaction tests in src/**tests**/DeploymentTargetControl.test.tsx
+- [x] T010 [P] [US1] Add deployment success-path orchestration tests in src/**tests**/useDeployment.success.test.ts
+- [x] T011 [P] [US1] Add target-selection deployment E2E coverage in tests/e2e/deployment-target-selection.spec.ts
 
 ### Implementation for User Story 1
 
-- [X] T012 [P] [US1] Implement the target-aware deploy control component in src/components/DeploymentTargetControl.tsx
-- [X] T013 [US1] Extend header build and deploy actions in src/components/Header.tsx
-- [X] T014 [US1] Implement target-aware deployment submission and package result handling in src/hooks/useDeployment.ts
-- [X] T015 [US1] Thread selected target and deploy actions through the app shell in src/App.tsx
-- [X] T016 [US1] Surface target and package result metadata in the Move source view in src/components/MoveSourcePanel.tsx
+- [x] T012 [P] [US1] Implement the target-aware deploy control component in src/components/DeploymentTargetControl.tsx
+- [x] T013 [US1] Extend header build and deploy actions in src/components/Header.tsx
+- [x] T014 [US1] Implement target-aware deployment submission and package result handling in src/hooks/useDeployment.ts
+- [x] T015 [US1] Thread selected target and deploy actions through the app shell in src/App.tsx
+- [x] T016 [US1] Surface target and package result metadata in the Move source view in src/components/MoveSourcePanel.tsx
 
 **Checkpoint**: User Story 1 is independently functional when a compiled artifact can be deployed from the header control to any supported target and success metadata is visible to the user.
 
@@ -71,17 +71,17 @@
 
 ### Tests for User Story 2
 
-- [X] T017 [P] [US2] Add deployment blocker classification tests in src/**tests**/useDeployment.blockers.test.ts
-- [X] T018 [P] [US2] Add blocker summary rendering tests in src/**tests**/CompilationStatus.deployment-blockers.test.tsx
-- [X] T019 [P] [US2] Add deployment blocker E2E coverage in tests/e2e/deployment-blockers.spec.ts
+- [x] T017 [P] [US2] Add deployment blocker classification tests in src/**tests**/useDeployment.blockers.test.ts
+- [x] T018 [P] [US2] Add blocker summary rendering tests in src/**tests**/CompilationStatus.deployment-blockers.test.tsx
+- [x] T019 [P] [US2] Add deployment blocker E2E coverage in tests/e2e/deployment-blockers.spec.ts
 
 ### Implementation for User Story 2
 
-- [X] T020 [P] [US2] Implement package reference validation helpers in src/utils/deploymentValidation.ts
-- [X] T021 [US2] Implement stale artifact, wallet readiness, target availability, and approval blocker handling in src/hooks/useDeployment.ts
-- [X] T022 [US2] Attach blocker summaries to generated artifacts in src/compiler/generators/shared.ts
-- [X] T023 [US2] Render deployment blocker remediation details in the footer popup in src/components/CompilationStatus.tsx
-- [X] T024 [US2] Surface blocker-specific follow-up messaging in src/components/MoveSourcePanel.tsx
+- [x] T020 [P] [US2] Implement package reference validation helpers in src/utils/deploymentValidation.ts
+- [x] T021 [US2] Implement stale artifact, wallet readiness, target availability, and approval blocker handling in src/hooks/useDeployment.ts
+- [x] T022 [US2] Attach blocker summaries to generated artifacts in src/compiler/generators/shared.ts
+- [x] T023 [US2] Render deployment blocker remediation details in the footer popup in src/components/CompilationStatus.tsx
+- [x] T024 [US2] Surface blocker-specific follow-up messaging in src/components/MoveSourcePanel.tsx
 
 **Checkpoint**: User Story 2 is independently functional when blocked or cancelled deployments never submit unsafe requests and the user can resolve the issue from the surfaced guidance.
 
@@ -95,15 +95,15 @@
 
 ### Tests for User Story 3
 
-- [X] T025 [P] [US3] Add deployment progress modal component tests in src/**tests**/DeploymentProgressModal.test.tsx
-- [X] T026 [P] [US3] Add deployment stage progression tests in src/**tests**/useDeployment.progress.test.ts
-- [X] T027 [P] [US3] Add deployment progress modal E2E coverage in tests/e2e/deployment-progress.spec.ts
+- [x] T025 [P] [US3] Add deployment progress modal component tests in src/**tests**/DeploymentProgressModal.test.tsx
+- [x] T026 [P] [US3] Add deployment stage progression tests in src/**tests**/useDeployment.progress.test.ts
+- [x] T027 [P] [US3] Add deployment progress modal E2E coverage in tests/e2e/deployment-progress.spec.ts
 
 ### Implementation for User Story 3
 
-- [X] T028 [P] [US3] Implement the deployment progress modal in src/components/DeploymentProgressModal.tsx
-- [X] T029 [US3] Extend deployment orchestration with progress stages and dismissible modal state in src/hooks/useDeployment.ts
-- [X] T030 [US3] Mount the deployment progress modal from the app shell in src/App.tsx
+- [x] T028 [P] [US3] Implement the deployment progress modal in src/components/DeploymentProgressModal.tsx
+- [x] T029 [US3] Extend deployment orchestration with progress stages and dismissible modal state in src/hooks/useDeployment.ts
+- [x] T030 [US3] Mount the deployment progress modal from the app shell in src/App.tsx
 
 **Checkpoint**: User Story 3 is independently functional when users can track active deployment progress in a modal without relying on the footer alone.
 
@@ -117,16 +117,16 @@
 
 ### Tests for User Story 4
 
-- [X] T031 [P] [US4] Add deployment status popup detail tests in src/**tests**/CompilationStatus.deployment-popup.test.tsx
-- [X] T032 [P] [US4] Add deployment metadata parity tests for the Move source panel in src/**tests**/MoveSourcePanel.deployment.test.tsx
-- [X] T033 [P] [US4] Add deployment status popup E2E coverage in tests/e2e/deployment-status-popup.spec.ts
+- [x] T031 [P] [US4] Add deployment status popup detail tests in src/**tests**/CompilationStatus.deployment-popup.test.tsx
+- [x] T032 [P] [US4] Add deployment metadata parity tests for the Move source panel in src/**tests**/MoveSourcePanel.deployment.test.tsx
+- [x] T033 [P] [US4] Add deployment status popup E2E coverage in tests/e2e/deployment-status-popup.spec.ts
 
 ### Implementation for User Story 4
 
-- [X] T034 [US4] Extend deployment status payloads with target, stage, severity, and package identifier fields in src/compiler/types.ts
-- [X] T035 [US4] Render target-aware success and failure detail panels in src/components/CompilationStatus.tsx
-- [X] T036 [US4] Align Move source deployment summaries with footer deployment messaging in src/components/MoveSourcePanel.tsx
-- [X] T037 [US4] Preserve latest session deployment attempt context for status review in src/hooks/useDeployment.ts
+- [x] T034 [US4] Extend deployment status payloads with target, stage, severity, and package identifier fields in src/compiler/types.ts
+- [x] T035 [US4] Render target-aware success and failure detail panels in src/components/CompilationStatus.tsx
+- [x] T036 [US4] Align Move source deployment summaries with footer deployment messaging in src/components/MoveSourcePanel.tsx
+- [x] T037 [US4] Preserve latest session deployment attempt context for status review in src/hooks/useDeployment.ts
 
 **Checkpoint**: User Story 4 is independently functional when the footer/status popup serves as the durable source of deployment failure and result review.
 
@@ -136,10 +136,10 @@
 
 **Purpose**: Final consistency, documentation, and validation across all stories.
 
-- [X] T038 [P] Update deployment workflow architecture notes in docs/SOLUTION-DESIGN.md
-- [X] T039 [P] Update deployment and review journeys in docs/USER-FLOWS.md
-- [X] T040 [P] Document maintained Stillness/Utopia package reference handling in docs/OUTSTANDING-QUESTIONS.md
-- [X] T041 Run quickstart validation scenarios from specs/011-bytecode-deployment/quickstart.md
+- [x] T038 [P] Update deployment workflow architecture notes in docs/SOLUTION-DESIGN.md
+- [x] T039 [P] Update deployment and review journeys in docs/USER-FLOWS.md
+- [x] T040 [P] Document maintained Stillness/Utopia package reference handling in docs/OUTSTANDING-QUESTIONS.md
+- [x] T041 Run quickstart validation scenarios from specs/011-bytecode-deployment/quickstart.md
 
 ---
 

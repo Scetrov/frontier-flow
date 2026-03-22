@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/005-contract-aligned-nodes/`  
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, quickstart.md
 
-**Tests**: Test tasks are included because the feature specification explicitly requires unit coverage for every node definition, compatibility validation for drag-and-drop graph assembly, and regression coverage for updated browser flows.
+`__tests__`: Test tasks are included because the feature specification explicitly requires unit coverage for every node definition, compatibility validation for drag-and-drop graph assembly, and regression coverage for updated browser flows.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -46,12 +46,12 @@
 
 ### Tests for User Story 1
 
-- [X] T006 [US1] Expand sidebar rendering and drag-metadata coverage for the contract-aligned palette in src/**tests**/Sidebar.test.tsx
+- [X] T006 [US1] Expand sidebar rendering and drag-metadata coverage for the contract-aligned palette in `src/__tests__/Sidebar.test.tsx`
 
 ### Implementation for User Story 1
 
-- [X] T007 [US1] Implement the full 29-node contract catalogue, stable type identifiers, descriptions, colours, and socket metadata in src/data/node-definitions.ts
-- [X] T008 [US1] Adjust sidebar presentation for the expanded contract-aligned palette in src/components/Sidebar.tsx
+- [X] T007 [US1] Implement the full 29-node contract catalogue, stable type identifiers, descriptions, colours, and socket metadata in `src/data/node-definitions.ts`
+- [X] T008 [US1] Adjust sidebar presentation for the expanded contract-aligned palette in `src/components/Sidebar.tsx`  
 
 **Checkpoint**: User Story 1 is fully functional and independently testable from the sidebar alone.
 
@@ -65,14 +65,14 @@
 
 ### Tests for User Story 2
 
-- [X] T009 [P] [US2] Expand canvas drag-and-drop rendering coverage for representative contract nodes and repeated drops in src/**tests**/canvasFlow.test.tsx
-- [X] T010 [P] [US2] Add socket compatibility regression coverage for valid `target` links, invalid `number` to `tribe` links, and `any` passthrough rules in src/**tests**/socketTypes.test.ts
-- [X] T011 [P] [US2] Add Playwright coverage for dragging contract nodes from the toolbox onto the canvas in tests/e2e/canvas.spec.ts
+- [X] T009 [P] [US2] Expand canvas drag-and-drop rendering coverage for representative contract nodes and repeated drops in `src/__tests__/canvasFlow.test.tsx`
+- [X] T010 [P] [US2] Add socket compatibility regression coverage for valid `target` links, invalid `number` to `tribe` links, and `any` passthrough rules in `src/__tests__/socketTypes.test.ts`
+- [X] T011 [P] [US2] Add Playwright coverage for dragging contract nodes from the toolbox onto the canvas in `tests/e2e/canvas.spec.ts`
 
 ### Implementation for User Story 2
 
-- [X] T012 [US2] Render every contract-aligned node through BaseNode via the factory and registry in src/nodes/createNode.tsx, src/nodes/index.ts, and src/components/CanvasWorkspace.tsx
-- [X] T013 [US2] Preserve typed connection validation and source-coloured edge styling for the expanded node set in src/utils/socketTypes.ts and src/components/CanvasWorkspace.tsx
+- [X] T012 [US2] Render every contract-aligned node through BaseNode via the factory and registry in `src/nodes/createNode.tsx`, `src/nodes/index.ts`, and `src/components/CanvasWorkspace.tsx`
+- [X] T013 [US2] Preserve typed connection validation and source-coloured edge styling for the expanded node set in `src/utils/socketTypes.ts` and `src/components/CanvasWorkspace.tsx`
 
 **Checkpoint**: User Story 2 is fully functional and independently testable on the canvas.
 
@@ -86,7 +86,7 @@
 
 ### Tests for User Story 3
 
-- [X] T014 [US3] Add regression coverage for removed placeholder types and unknown serialized node types in src/**tests**/canvasFlow.test.tsx
+- [X] T014 [US3] Add regression coverage for removed placeholder types and unknown serialized node types in `src/__tests__/canvasFlow.test.tsx`
 
 ### Implementation for User Story 3
 
@@ -105,12 +105,12 @@
 
 ### Tests for User Story 4
 
-- [X] T017 [US4] Rewrite src/**tests**/nodeDefinitions.test.ts to assert all 29 node definitions, their presentation metadata, and their full socket lists
-- [X] T018 [US4] Add the canonical expected node type list guard in src/**tests**/nodeDefinitions.test.ts
+- [X] T017 [US4] Rewrite `src/__tests__/nodeDefinitions.test.ts` to assert all 29 node definitions, their presentation metadata, and their full socket lists
+- [X] T018 [US4] Add the canonical expected node type list guard in `src/__tests__/nodeDefinitions.test.ts`
 
 ### Implementation for User Story 4
 
-- [X] T019 [US4] Parameterize the node definition fixtures and shared expectations in src/**tests**/nodeDefinitions.test.ts
+- [X] T019 [US4] Parameterize the node definition fixtures and shared expectations in `src/__tests__/nodeDefinitions.test.ts`
 
 **Checkpoint**: User Story 4 is fully functional and independently testable through the unit suite.
 
@@ -220,4 +220,4 @@ Task T018: "Add the canonical expected node type list guard in src/__tests__/nod
 
 - [P] tasks touch different files or can be executed independently after prerequisites are satisfied
 - No separate contracts/ directory exists under specs/005-contract-aligned-nodes/, so contract-derived behaviour is sourced from spec.md, research.md, data-model.md, quickstart.md, and docs/CONTRACTS.md
-- The task list stays within the planned surface area from plan.md: src/data/node-definitions.ts, src/nodes/, src/components/CanvasWorkspace.tsx, src/components/Sidebar.tsx, src/types/nodes.ts, src/utils/socketTypes.ts, src/**tests**/, tests/e2e/, and specs/005-contract-aligned-nodes/quickstart.md
+- The task list stays within the planned surface area from plan.md: `src/data/node-definitions.ts`, `src/nodes/`, `src/components/CanvasWorkspace.tsx`, `src/components/Sidebar.tsx`, `src/types/nodes.ts`, `src/utils/socketTypes.ts`, `src/__tests__/`, `tests/e2e/`, and `specs/005-contract-aligned-nodes/quickstart.md`

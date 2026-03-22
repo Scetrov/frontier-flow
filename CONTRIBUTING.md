@@ -48,24 +48,24 @@ bun dev
 
 ### 1.3 Available Scripts
 
-| Script      | Command                | Purpose                         |
-| ----------- | ---------------------- | ------------------------------- |
-| `dev`       | `bun dev`              | Start Vite dev server           |
-| `build`     | `bun run build`        | Type-check and production build |
-| `lint`      | `bun run lint`         | Run ESLint                      |
-| `preview`   | `bun run preview`      | Preview production build        |
-| `release`   | `bun run release`      | Bump version + update changelog from Conventional Commits |
-| `release:first` | `bun run release:first` | Create the first tagged release without prior tags |
-| `release:patch` | `bun run release:patch` | Force a patch release |
-| `release:minor` | `bun run release:minor` | Force a minor release |
-| `release:major` | `bun run release:major` | Force a major release |
-| `test`      | `bunx vitest`          | Run unit/component tests        |
-| `test:run`  | `bunx vitest run`      | Run tests once (CI mode)        |
-| `test:e2e`  | `bunx playwright test` | Run E2E tests                   |
-| `typecheck` | `bunx tsc -b`          | TypeScript type checking        |
-| `audit`     | `bunx npm-audit --audit-level=high` | Dependency vulnerability audit |
-| `verify`    | `bun run lint && bun run typecheck && bun run test:run` | Local pre-commit quality gate |
-| `verify:full` | `bun run verify && bun run build` | Full local CI-style verification |
+| Script          | Command                                                 | Purpose                                                   |
+| --------------- | ------------------------------------------------------- | --------------------------------------------------------- |
+| `dev`           | `bun dev`                                               | Start Vite dev server                                     |
+| `build`         | `bun run build`                                         | Type-check and production build                           |
+| `lint`          | `bun run lint`                                          | Run ESLint                                                |
+| `preview`       | `bun run preview`                                       | Preview production build                                  |
+| `release`       | `bun run release`                                       | Bump version + update changelog from Conventional Commits |
+| `release:first` | `bun run release:first`                                 | Create the first tagged release without prior tags        |
+| `release:patch` | `bun run release:patch`                                 | Force a patch release                                     |
+| `release:minor` | `bun run release:minor`                                 | Force a minor release                                     |
+| `release:major` | `bun run release:major`                                 | Force a major release                                     |
+| `test`          | `bunx vitest`                                           | Run unit/component tests                                  |
+| `test:run`      | `bunx vitest run`                                       | Run tests once (CI mode)                                  |
+| `test:e2e`      | `bunx playwright test`                                  | Run E2E tests                                             |
+| `typecheck`     | `bunx tsc -b`                                           | TypeScript type checking                                  |
+| `audit`         | `bunx npm-audit --audit-level=high`                     | Dependency vulnerability audit                            |
+| `verify`        | `bun run lint && bun run typecheck && bun run test:run` | Local pre-commit quality gate                             |
+| `verify:full`   | `bun run verify && bun run build`                       | Full local CI-style verification                          |
 
 ### 1.4 Project Structure
 

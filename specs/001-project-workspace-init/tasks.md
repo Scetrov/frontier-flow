@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/001-project-workspace-init/`
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, quickstart.md
 
-**Tests**: Not requested in the feature specification. Test tooling installation is deferred to a subsequent feature.
+`__tests__`: Not requested in the feature specification. Test tooling installation is deferred to a subsequent feature.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 

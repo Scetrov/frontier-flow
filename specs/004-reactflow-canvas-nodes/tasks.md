@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/004-reactflow-canvas-nodes/`
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, quickstart.md
 
-**Tests**: Test tasks are included because the feature spec and implementation plan explicitly require Vitest and Playwright coverage for node rendering, drag-and-drop, typed connections, cycle prevention, canonical flow assembly, and deletion behaviour.
+`__tests__`: Test tasks are included because the feature spec and implementation plan explicitly require Vitest and Playwright coverage for node rendering, drag-and-drop, typed connections, cycle prevention, canonical flow assembly, and deletion behaviour.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -48,9 +48,9 @@
 
 ### Tests for User Story 1
 
-- [X] T008 [P] [US1] Create node definition integrity tests in src/__tests__/nodeDefinitions.test.ts covering the 9 verified nodes, socket counts, and contract-backed metadata
-- [X] T009 [P] [US1] Create drag-and-drop canvas interaction tests in src/__tests__/canvasFlow.test.tsx covering node placement, unique IDs, and rendered socket labels after sidebar drops
-- [ ] T010 [P] [US1] Create Playwright node placement coverage in tests/e2e/canvas.spec.ts for dragging verified nodes onto the canvas and asserting headers, icons, and socket rendering
+- [X] T008 [P] [US1] Create node definition integrity tests in `src/__tests__/nodeDefinitions.test.ts` covering the 9 verified nodes, socket counts, and contract-backed metadata
+- [X] T009 [P] [US1] Create drag-and-drop canvas interaction tests in `src/__tests__/canvasFlow.test.tsx` covering node placement, unique IDs, and rendered socket labels after sidebar drops
+- [ ] T010 [P] [US1] Create Playwright node placement coverage in `tests/e2e/canvas.spec.ts` for dragging verified nodes onto the canvas and asserting headers, icons, and socket rendering
 
 ### Implementation for User Story 1
 
@@ -70,14 +70,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] Create socket compatibility unit tests in src/__tests__/socketTypes.test.ts covering same-type, cross-entity, `any`-type, and incompatible socket pairs
-- [ ] T015 [P] [US2] Create connection validation tests in src/__tests__/connectionValidation.test.ts covering output-to-input rules, fan-out, invalid direction pairs, and cycle rejection
-- [ ] T016 [P] [US2] Create Playwright typed-edge coverage in tests/e2e/connections.spec.ts for valid entity edges, `any`-input acceptance, invalid entity-to-vector rejection, and source-coloured edge styling
+- [ ] T014 [P] [US2] Create socket compatibility unit tests in `src/__tests__/socketTypes.test.ts` covering same-type, cross-entity, `any`-type, and incompatible socket pairs
+- [ ] T015 [P] [US2] Create connection validation tests in `src/__tests__/connectionValidation.test.ts` covering output-to-input rules, fan-out, invalid direction pairs, and cycle rejection
+- [ ] T016 [P] [US2] Create Playwright typed-edge coverage in `tests/e2e/connections.spec.ts` for valid entity edges, `any`-input acceptance, invalid entity-to-vector rejection, and source-coloured edge styling
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Implement connection validation, cycle detection, and source-socket edge styling in src/utils/socketTypes.ts and src/App.tsx
-- [ ] T018 [US2] Update src/index.css to visually highlight valid targets, dim invalid handles, and animate colour-coded edges during connection drags in the ReactFlow canvas
+- [ ] T017 [US2] Implement connection validation, cycle detection, and source-socket edge styling in `src/utils/socketTypes.ts` and `src/App.tsx`
+- [ ] T018 [US2] Update `src/index.css` to visually highlight valid targets, dim invalid handles, and animate colour-coded edges during connection drags in the ReactFlow canvas
 
 **Checkpoint**: User Story 2 is fully functional and testable on its own.
 
@@ -91,12 +91,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T019 [P] [US3] Create canonical flow assembly tests in src/__tests__/canonicalFlow.test.tsx covering Proximity -> Get Tribe -> List of Tribe -> Is In List -> Add to Queue plus HP, Shield, and Armor accessor attachments
-- [ ] T020 [P] [US3] Extend tests/e2e/canvas.spec.ts to assemble the canonical friend-or-foe graph and verify the ratio accessor nodes connect cleanly from the Proximity target output
+- [ ] T019 [P] [US3] Create canonical flow assembly tests in `src/__tests__/canonicalFlow.test.tsx` covering Proximity -> Get Tribe -> List of Tribe -> Is In List -> Add to Queue plus HP, Shield, and Armor accessor attachments
+- [ ] T020 [P] [US3] Extend `tests/e2e/canvas.spec.ts` to assemble the canonical friend-or-foe graph and verify the ratio accessor nodes connect cleanly from the Proximity target output
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Finalize socket definitions, default node data, and canvas connection behaviour in src/data/node-definitions.ts and src/App.tsx so the canonical targeting flow assembles without orphaned critical-path sockets
+- [ ] T021 [US3] Finalize socket definitions, default node data, and canvas connection behaviour in `src/data/node-definitions.ts` and `src/App.tsx` so the canonical targeting flow assembles without orphaned critical-path sockets
 
 **Checkpoint**: User Story 3 is fully functional and testable on its own.
 
@@ -110,8 +110,8 @@
 
 ### Tests for User Story 4
 
-- [ ] T022 [P] [US4] Create deletion interaction tests in src/__tests__/deleteInteractions.test.tsx covering keyboard node deletion, connected-edge cleanup, and selected-edge removal
-- [ ] T023 [P] [US4] Extend tests/e2e/canvas.spec.ts with node and edge deletion journeys for Delete or Backspace and header delete button flows
+- [ ] T022 [P] [US4] Create deletion interaction tests in `src/__tests__/deleteInteractions.test.tsx` covering keyboard node deletion, connected-edge cleanup, and selected-edge removal
+- [ ] T023 [P] [US4] Extend `tests/e2e/canvas.spec.ts` with node and edge deletion journeys for Delete or Backspace and header delete button flows
 
 ### Implementation for User Story 4
 
@@ -222,4 +222,4 @@ Task T023: "Extend tests/e2e/canvas.spec.ts with node and edge deletion journeys
 
 - [P] tasks touch separate files or can be executed independently after prerequisites are satisfied
 - No contracts phase is included because this feature defines no new API or backend interface under a contracts/ directory
-- The task list stays within the planned surface area: src/App.tsx, src/index.css, src/components/Sidebar.tsx, src/types/nodes.ts, src/data/node-definitions.ts, src/utils/socketTypes.ts, src/nodes/, src/__tests__/, tests/e2e/, and specs/004-reactflow-canvas-nodes/quickstart.md
+- The task list stays within the planned surface area: src/App.tsx, src/index.css, src/components/Sidebar.tsx, src/types/nodes.ts, src/data/node-definitions.ts, src/utils/socketTypes.ts, src/nodes/, `src/__tests__/`, `tests/e2e/`, and `specs/004-reactflow-canvas-nodes/quickstart.md`

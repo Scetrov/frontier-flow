@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/008-extension-node-primitives/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests are included because the project constitution requires test-first delivery for new features and UX changes.
+`__tests__`: Tests are included because the project constitution requires test-first delivery for new features and UX changes.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 

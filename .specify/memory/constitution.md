@@ -167,4 +167,8 @@
   governance changes, MINOR for new principles or material
   expansions, PATCH for clarifications and typo fixes.
 
+## Formatting Standards
+
+- Use prettier to format markdown files and ensure there are no warnings.
+
 **Version**: 1.0.0 | **Ratified**: 2026-02-22 | **Last Amended**: 2026-03-12
