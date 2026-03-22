@@ -101,9 +101,42 @@ function getStageState(
   return "pending";
 }
 
-function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: DeploymentProgressModalProps) {
-  const dismissButtonRef = useRef<HTMLButtonElement | null>(null);
-  const panelRef = useRef<HTMLElement | null>(null);
+function trapFocusWithinPanel(
+  event: KeyboardEvent,
+  panel: HTMLElement | null,
+  fallbackElement: HTMLButtonElement | null,
+): void {
+  const focusableElements = getFocusableElements(panel);
+
+  if (focusableElements.length === 0) {
+    event.preventDefault();
+    fallbackElement?.focus();
+    return;
+  }
+
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+  const activeElement = document.activeElement;
+
+  if (event.shiftKey && activeElement === firstElement) {
+    event.preventDefault();
+    lastElement.focus();
+    return;
+  }
+
+  if (!event.shiftKey && activeElement === lastElement) {
+    event.preventDefault();
+    firstElement.focus();
+  }
+}
+
+function useModalFocusManagement(input: {
+  readonly dismissButtonRef: React.RefObject<HTMLButtonElement | null>;
+  readonly onDismiss: () => void;
+  readonly panelRef: React.RefObject<HTMLElement | null>;
+  readonly progress: DeploymentProgress | null;
+}) {
+  const { dismissButtonRef, onDismiss, panelRef, progress } = input;
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -117,7 +150,7 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
     return () => {
       previousFocusRef.current?.focus();
     };
-  }, [progress]);
+  }, [dismissButtonRef, progress]);
 
   useEffect(() => {
     if (progress === null || progress.dismissedByUser) {
@@ -131,31 +164,8 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
         return;
       }
 
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      const focusableElements = getFocusableElements(panelRef.current);
-
-      if (focusableElements.length === 0) {
-        event.preventDefault();
-        dismissButtonRef.current?.focus();
-        return;
-      }
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-      const activeElement = document.activeElement;
-
-      if (event.shiftKey && activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-        return;
-      }
-
-      if (!event.shiftKey && activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
+      if (event.key === "Tab") {
+        trapFocusWithinPanel(event, panelRef.current, dismissButtonRef.current);
       }
     };
 
@@ -164,7 +174,57 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onDismiss, progress]);
+  }, [dismissButtonRef, onDismiss, panelRef, progress]);
+}
+
+function DeploymentEvidenceDetails({ attempt }: { readonly attempt: DeploymentAttempt }) {
+  if (attempt.packageId === undefined && attempt.confirmationReference === undefined) {
+    return null;
+  }
+
+  return (
+    <ul aria-label="Deployment evidence" className="ff-deployment-modal__details">
+      {attempt.packageId !== undefined ? (
+        <li className="ff-deployment-modal__detail">Package ID: {attempt.packageId}</li>
+      ) : null}
+      {attempt.confirmationReference !== undefined ? (
+        <li className="ff-deployment-modal__detail">Transaction Digest: {attempt.confirmationReference}</li>
+      ) : null}
+    </ul>
+  );
+}
+
+function DeploymentStageList({
+  latestAttempt,
+  progress,
+}: {
+  readonly latestAttempt: DeploymentAttempt | null;
+  readonly progress: DeploymentProgress;
+}) {
+  return (
+    <ol className="ff-deployment-modal__stages">
+      {(Object.keys(STAGE_LABELS) as DeploymentStage[]).map((stage) => {
+        const state = getStageState(stage, progress, latestAttempt);
+        const stateLabel = state === "complete" ? "Complete" : state === "active" ? "Active" : "Pending";
+
+        return (
+          <li className={`ff-deployment-modal__stage ff-deployment-modal__stage--${state}`} key={stage}>
+            <span aria-hidden="true" className="ff-deployment-modal__stage-indicator">
+              {state === "complete" ? "✓" : state === "active" ? "•" : ""}
+            </span>
+            <span className="ff-deployment-modal__stage-label">{STAGE_LABELS[stage]}</span>
+            <span className="ff-deployment-modal__stage-state">{stateLabel}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: DeploymentProgressModalProps) {
+  const dismissButtonRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  useModalFocusManagement({ dismissButtonRef, onDismiss, panelRef, progress });
 
   if (progress === null || progress.dismissedByUser) {
     return null;
@@ -209,37 +269,13 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
           {terminalAttempt === null ? progress.activeMessage : `${title}. ${terminalAttempt.message}`}
         </p>
 
-        {terminalAttempt !== null && (terminalAttempt.packageId !== undefined || terminalAttempt.confirmationReference !== undefined) ? (
-          <ul className="ff-deployment-modal__details" aria-label="Deployment evidence">
-            {terminalAttempt.packageId !== undefined ? (
-              <li className="ff-deployment-modal__detail">Package ID: {terminalAttempt.packageId}</li>
-            ) : null}
-            {terminalAttempt.confirmationReference !== undefined ? (
-              <li className="ff-deployment-modal__detail">Transaction Digest: {terminalAttempt.confirmationReference}</li>
-            ) : null}
-          </ul>
-        ) : null}
+        {terminalAttempt !== null ? <DeploymentEvidenceDetails attempt={terminalAttempt} /> : null}
 
         {terminalRemediation !== null ? (
           <p className="ff-deployment-modal__remediation">{terminalRemediation}</p>
         ) : null}
 
-        <ol className="ff-deployment-modal__stages">
-          {(Object.keys(STAGE_LABELS) as DeploymentStage[]).map((stage) => {
-            const state = getStageState(stage, progress, latestAttempt);
-            const stateLabel = state === "complete" ? "Complete" : state === "active" ? "Active" : "Pending";
-
-            return (
-              <li className={`ff-deployment-modal__stage ff-deployment-modal__stage--${state}`} key={stage}>
-                <span aria-hidden="true" className="ff-deployment-modal__stage-indicator">
-                  {state === "complete" ? "✓" : state === "active" ? "•" : ""}
-                </span>
-                <span className="ff-deployment-modal__stage-label">{STAGE_LABELS[stage]}</span>
-                <span className="ff-deployment-modal__stage-state">{stateLabel}</span>
-              </li>
-            );
-          })}
-        </ol>
+        <DeploymentStageList latestAttempt={latestAttempt} progress={progress} />
       </section>
     </div>
   );

@@ -119,16 +119,107 @@ function getEmptyMessage(status: CompilationStatus): string {
   }
 }
 
-function MoveSourcePanel({ deploymentStatus = null, sourceCode, status }: MoveSourcePanelProps) {
-  const displayedLines = sourceCode?.split("\n") ?? [];
-  const highlightedSource = sourceCode === null ? "" : hljs.highlight(sourceCode, { language: "rust" }).value;
-  const deployment = getDeploymentDetails(status, deploymentStatus);
-  const deploymentBadges = Array.from(new Set(
+function getDeploymentBadges(deployment: MoveSourceDeploymentDetails): string[] {
+  return Array.from(new Set(
     [deployment.headline, deployment.label, deployment.target, deployment.stage, deployment.severity].filter(
       (value): value is string => value !== null,
     ),
   ));
-  const deploymentLines = [deployment.packageId, deployment.summary].filter((value): value is string => value !== null);
+}
+
+function getDeploymentMetaLines(deployment: MoveSourceDeploymentDetails): string[] {
+  return [deployment.packageId, deployment.summary, ...deployment.blockedReasons].filter((value): value is string => value !== null);
+}
+
+function MoveSourceMeta({
+  deployment,
+  filename,
+  status,
+}: {
+  readonly deployment: MoveSourceDeploymentDetails;
+  readonly filename: string;
+  readonly status: CompilationStatus;
+}) {
+  return (
+    <div className="ff-move-source__meta">
+      <span className="ff-move-source__badge">{getStatusLabel(status)}</span>
+      <span className="ff-move-source__filename">{filename}</span>
+      {getDeploymentBadges(deployment).map((badge) => <span className="ff-move-source__badge" key={badge}>{badge}</span>)}
+      {getDeploymentMetaLines(deployment).map((line) => <span className="ff-move-source__filename" key={line}>{line}</span>)}
+    </div>
+  );
+}
+
+function DeploymentReview({ deployment }: { readonly deployment: MoveSourceDeploymentDetails }) {
+  if (deployment.label === null) {
+    return null;
+  }
+
+  return (
+    <section aria-label="Deployment review" className="ff-move-source__empty-state">
+      {deployment.artifactId !== null ? <p className="ff-move-source__empty-copy">Artifact ID: {deployment.artifactId}</p> : null}
+      {deployment.target !== null ? <p className="ff-move-source__empty-copy">Target: {deployment.target}</p> : null}
+      {deployment.stage !== null ? <p className="ff-move-source__empty-copy">Stage: {deployment.stage}</p> : null}
+      {deployment.severity !== null ? <p className="ff-move-source__empty-copy">Severity: {deployment.severity}</p> : null}
+      {deployment.packageId !== null ? <p className="ff-move-source__empty-copy">Package ID: {deployment.packageId}</p> : null}
+      {deployment.confirmationReference !== null ? <p className="ff-move-source__empty-copy">Transaction Digest: {deployment.confirmationReference}</p> : null}
+      {deployment.summary !== null ? <p className="ff-move-source__empty-copy">{deployment.summary}</p> : null}
+      {deployment.reviewHistory.map((entry) => (
+        <div key={entry.attemptId}>
+          <p className="ff-move-source__empty-copy">{`Earlier this session: ${entry.headline} - ${entry.targetId}${entry.stage === undefined ? "" : ` - ${entry.stage}`}`}</p>
+          <p className="ff-move-source__empty-copy">{entry.details}</p>
+          {entry.historicalOnly ? <p className="ff-move-source__empty-copy">Historical only</p> : null}
+          {entry.historicalReason !== undefined ? <p className="ff-move-source__empty-copy">{entry.historicalReason}</p> : null}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function MoveSourceContent({
+  displayedLines,
+  highlightedSource,
+  sourceCode,
+  status,
+}: {
+  readonly displayedLines: readonly string[];
+  readonly highlightedSource: string;
+  readonly sourceCode: string | null;
+  readonly status: CompilationStatus;
+}) {
+  if (sourceCode === null) {
+    return (
+      <div className="ff-move-source__empty-state">
+        <p className="ff-move-source__empty-title">No generated Move source yet</p>
+        <p className="ff-move-source__empty-copy">{getEmptyMessage(status)}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ff-move-source__syntax" role="presentation">
+      <ol aria-hidden="true" className="ff-move-source__gutter">
+        {displayedLines.map((_, index) => (
+          <li className="ff-move-source__line-number" key={index}>
+            {index + 1}
+          </li>
+        ))}
+      </ol>
+      <pre aria-label="Generated Move source code" className="ff-move-source__pre">
+        <code
+          className="ff-move-source__code hljs language-rust"
+          dangerouslySetInnerHTML={{ __html: highlightedSource }}
+        />
+      </pre>
+    </div>
+  );
+}
+
+function MoveSourcePanel({ deploymentStatus = null, sourceCode, status }: MoveSourcePanelProps) {
+  const displayedLines = sourceCode?.split("\n") ?? [];
+  const highlightedSource = sourceCode === null ? "" : hljs.highlight(sourceCode, { language: "rust" }).value;
+  const deployment = getDeploymentDetails(status, deploymentStatus);
+  const displayedFilename = getDisplayedFilename(status);
 
   return (
     <section aria-label="Move source view" className="ff-move-source">
@@ -139,13 +230,7 @@ function MoveSourcePanel({ deploymentStatus = null, sourceCode, status }: MoveSo
           <p className="ff-move-source__copy">Read-only generated Move output with syntax highlighting for review, debugging, and contributor inspection.</p>
         </div>
 
-        <div className="ff-move-source__meta">
-          <span className="ff-move-source__badge">{getStatusLabel(status)}</span>
-          <span className="ff-move-source__filename">{getDisplayedFilename(status)}</span>
-          {deploymentBadges.map((badge) => <span className="ff-move-source__badge" key={badge}>{badge}</span>)}
-          {deploymentLines.map((line) => <span className="ff-move-source__filename" key={line}>{line}</span>)}
-          {deployment.blockedReasons.map((reason) => <span className="ff-move-source__filename" key={reason}>{reason}</span>)}
-        </div>
+        <MoveSourceMeta deployment={deployment} filename={displayedFilename} status={status} />
       </header>
 
       <div className="ff-move-source__body">
@@ -155,47 +240,8 @@ function MoveSourcePanel({ deploymentStatus = null, sourceCode, status }: MoveSo
             Learn Move on Sui
           </a>
         </p>
-        {deployment.label !== null ? (
-          <section aria-label="Deployment review" className="ff-move-source__empty-state">
-            {deployment.artifactId !== null ? <p className="ff-move-source__empty-copy">Artifact ID: {deployment.artifactId}</p> : null}
-            {deployment.target !== null ? <p className="ff-move-source__empty-copy">Target: {deployment.target}</p> : null}
-            {deployment.stage !== null ? <p className="ff-move-source__empty-copy">Stage: {deployment.stage}</p> : null}
-            {deployment.severity !== null ? <p className="ff-move-source__empty-copy">Severity: {deployment.severity}</p> : null}
-            {deployment.packageId !== null ? <p className="ff-move-source__empty-copy">Package ID: {deployment.packageId}</p> : null}
-            {deployment.confirmationReference !== null ? <p className="ff-move-source__empty-copy">Transaction Digest: {deployment.confirmationReference}</p> : null}
-            {deployment.summary !== null ? <p className="ff-move-source__empty-copy">{deployment.summary}</p> : null}
-            {deployment.reviewHistory.map((entry) => (
-              <div key={entry.attemptId}>
-                <p className="ff-move-source__empty-copy">{`Earlier this session: ${entry.headline} - ${entry.targetId}${entry.stage === undefined ? "" : ` - ${entry.stage}`}`}</p>
-                <p className="ff-move-source__empty-copy">{entry.details}</p>
-                {entry.historicalOnly ? <p className="ff-move-source__empty-copy">Historical only</p> : null}
-                {entry.historicalReason !== undefined ? <p className="ff-move-source__empty-copy">{entry.historicalReason}</p> : null}
-              </div>
-            ))}
-          </section>
-        ) : null}
-        {sourceCode === null ? (
-          <div className="ff-move-source__empty-state">
-            <p className="ff-move-source__empty-title">No generated Move source yet</p>
-            <p className="ff-move-source__empty-copy">{getEmptyMessage(status)}</p>
-          </div>
-        ) : (
-          <div className="ff-move-source__syntax" role="presentation">
-            <ol aria-hidden="true" className="ff-move-source__gutter">
-              {displayedLines.map((_, index) => (
-                <li className="ff-move-source__line-number" key={index}>
-                  {index + 1}
-                </li>
-              ))}
-            </ol>
-            <pre aria-label="Generated Move source code" className="ff-move-source__pre">
-              <code
-                className="ff-move-source__code hljs language-rust"
-                dangerouslySetInnerHTML={{ __html: highlightedSource }}
-              />
-            </pre>
-          </div>
-        )}
+        <DeploymentReview deployment={deployment} />
+        <MoveSourceContent displayedLines={displayedLines} highlightedSource={highlightedSource} sourceCode={sourceCode} status={status} />
       </div>
     </section>
   );

@@ -573,6 +573,52 @@ function createSuccessOutcome(input: {
   };
 }
 
+function getExecutionOutcomeHeadline(outcome: DeploymentExecutionResult["outcome"]): string {
+  switch (outcome) {
+    case "succeeded":
+      return "Deployed";
+    case "cancelled":
+      return "Deployment cancelled";
+    case "unresolved":
+      return "Deployment unresolved";
+    case "failed":
+      return "Deployment failed";
+    case "blocked":
+      return "Deployment blocked";
+  }
+}
+
+function getExecutionOutcomeSeverity(outcome: DeploymentExecutionResult["outcome"]): DeploymentStatusMessage["severity"] {
+  switch (outcome) {
+    case "succeeded":
+      return "success";
+    case "cancelled":
+      return "warning";
+    default:
+      return "error";
+  }
+}
+
+function getExecutionOutcomeNextAction(result: DeploymentExecutionResult): string {
+  switch (result.outcome) {
+    case "cancelled":
+      return "Approve the wallet signing request to continue deployment.";
+    case "failed":
+      return "Review the wallet and RPC error details, then retry deployment once the target is healthy.";
+    case "unresolved":
+      return "Retry confirmation or redeploy after checking the target network and transaction digest.";
+    case "blocked":
+      return "Resolve the reported blocker before retrying deployment.";
+    case "succeeded":
+      return result.message;
+  }
+}
+
+function getStageIndex(stage: DeploymentStage): number {
+  const stageIndex = DEPLOYMENT_STAGE_SEQUENCE.indexOf(stage);
+  return stageIndex === -1 ? DEPLOYMENT_STAGE_SEQUENCE.length - 1 : stageIndex;
+}
+
 function createExecutionOutcome(input: {
   readonly artifactId: string;
   readonly attemptId: string;
@@ -580,30 +626,10 @@ function createExecutionOutcome(input: {
   readonly startedAt: number;
   readonly targetId: DeploymentTargetId;
 }): DeploymentOutcome {
-  const headline = input.result.outcome === "succeeded"
-    ? "Deployed"
-    : input.result.outcome === "cancelled"
-      ? "Deployment cancelled"
-      : input.result.outcome === "unresolved"
-        ? "Deployment unresolved"
-        : input.result.outcome === "failed"
-          ? "Deployment failed"
-          : "Deployment blocked";
-  const severity = input.result.outcome === "succeeded"
-    ? "success"
-    : input.result.outcome === "cancelled"
-      ? "warning"
-      : "error";
-  const nextActionMessage = input.result.outcome === "cancelled"
-    ? "Approve the wallet signing request to continue deployment."
-    : input.result.outcome === "failed"
-      ? "Review the wallet and RPC error details, then retry deployment once the target is healthy."
-      : input.result.outcome === "unresolved"
-        ? "Retry confirmation or redeploy after checking the target network and transaction digest."
-        : input.result.outcome === "blocked"
-          ? "Resolve the reported blocker before retrying deployment."
-          : input.result.message;
-  const stageIndex = DEPLOYMENT_STAGE_SEQUENCE.indexOf(input.result.stage);
+  const headline = getExecutionOutcomeHeadline(input.result.outcome);
+  const severity = getExecutionOutcomeSeverity(input.result.outcome);
+  const nextActionMessage = getExecutionOutcomeNextAction(input.result);
+  const stageIndex = getStageIndex(input.result.stage);
 
   return {
     attempt: {
@@ -623,7 +649,7 @@ function createExecutionOutcome(input: {
       attemptId: input.attemptId,
       targetId: input.targetId,
       stage: input.result.stage,
-      stageIndex: stageIndex === -1 ? DEPLOYMENT_STAGE_SEQUENCE.length - 1 : stageIndex,
+      stageIndex,
       stageCount: DEPLOYMENT_STAGE_SEQUENCE.length,
       completedStages: stageIndex <= 0 ? [] : DEPLOYMENT_STAGE_SEQUENCE.slice(0, stageIndex),
       activeMessage: input.result.message,
@@ -648,6 +674,105 @@ function resetDeploymentState(setters: Pick<DeploymentStateSetters, "setDeployme
   setters.setLatestAttempt(null);
   setters.setDeploymentStatus(null);
   setters.setStatusMessage(null);
+}
+
+function getPrimaryBlocker(validation: DeploymentValidationResult) {
+  return validation.blockers[0] ?? {
+    code: "stale-artifact",
+    stage: "validating",
+    message: "Rebuild the current graph before deployment. The active artifact is stale or unresolved.",
+    remediation: "Run Build again after the current graph settles, then retry deployment.",
+  };
+}
+
+function applyBlockedDeploymentOutcome(input: {
+  readonly artifactId: string;
+  readonly attemptId: string;
+  readonly selectedTarget: DeploymentTargetId;
+  readonly stateSetters: DeploymentOutcomeSetters;
+  readonly validation: DeploymentValidationResult;
+}): void {
+  const primaryBlocker = getPrimaryBlocker(input.validation);
+
+  applyDeploymentOutcome(input.stateSetters, createBlockedOutcome({
+    artifactId: input.artifactId,
+    attemptId: input.attemptId,
+    blockerCode: primaryBlocker.code,
+    blockerMessage: primaryBlocker.message,
+    blockerRemediation: primaryBlocker.remediation,
+    targetId: input.selectedTarget,
+  }), input.validation);
+}
+
+function scheduleMockDeploymentScenario(input: {
+  readonly artifactId: string;
+  readonly attemptId: string;
+  readonly flags: ReturnType<typeof getDeploymentEnvironmentFlags>;
+  readonly selectedTarget: DeploymentTargetId;
+  readonly stateSetters: DeploymentOutcomeSetters;
+  readonly targetLabel: string;
+  readonly timerIdsRef: TimerIdsRef;
+  readonly validation: DeploymentValidationResult;
+}): void {
+  if (getDeploymentTarget(input.selectedTarget).supportsWalletSigning && input.flags.rejectApproval) {
+    scheduleRejectedSigningDeployment({
+      artifactId: input.artifactId,
+      attemptId: input.attemptId,
+      selectedTarget: input.selectedTarget,
+      stageDelayMs: input.flags.deployStageDelayMs,
+      stateSetters: input.stateSetters,
+      targetLabel: input.targetLabel,
+      timerIdsRef: input.timerIdsRef,
+      validation: input.validation,
+    });
+    return;
+  }
+
+  if (input.flags.failSubmission) {
+    scheduleFailedSubmissionDeployment({
+      artifactId: input.artifactId,
+      attemptId: input.attemptId,
+      selectedTarget: input.selectedTarget,
+      stageDelayMs: input.flags.deployStageDelayMs,
+      stateSetters: input.stateSetters,
+      targetLabel: input.targetLabel,
+      timerIdsRef: input.timerIdsRef,
+      validation: input.validation,
+    });
+    return;
+  }
+
+  const confirmationReference = createConfirmationReference(input.artifactId, input.selectedTarget);
+  const packageId = createPackageId(input.artifactId, input.selectedTarget);
+
+  if (input.flags.unresolvedConfirmation) {
+    scheduleUnresolvedConfirmationDeployment({
+      artifactId: input.artifactId,
+      attemptId: input.attemptId,
+      confirmationReference,
+      packageId,
+      selectedTarget: input.selectedTarget,
+      stageDelayMs: input.flags.deployStageDelayMs,
+      stateSetters: input.stateSetters,
+      targetLabel: input.targetLabel,
+      timerIdsRef: input.timerIdsRef,
+      validation: input.validation,
+    });
+    return;
+  }
+
+  scheduleSuccessfulDeployment({
+    artifactId: input.artifactId,
+    attemptId: input.attemptId,
+    confirmationReference,
+    packageId,
+    selectedTarget: input.selectedTarget,
+    stageDelayMs: input.flags.deployStageDelayMs,
+    stateSetters: input.stateSetters,
+    targetLabel: input.targetLabel,
+    timerIdsRef: input.timerIdsRef,
+    validation: input.validation,
+  });
 }
 
 function scheduleRejectedSigningDeployment(input: {
@@ -825,21 +950,13 @@ function startDeploymentAttempt(input: {
   const attemptId = createAttemptId();
 
   if (input.artifact?.artifactId === undefined || input.validation.blockers.length > 0) {
-    const primaryBlocker = input.validation.blockers[0] ?? {
-      code: "stale-artifact",
-      stage: "validating",
-      message: "Rebuild the current graph before deployment. The active artifact is stale or unresolved.",
-      remediation: "Run Build again after the current graph settles, then retry deployment.",
-    };
-
-    applyDeploymentOutcome(input.stateSetters, createBlockedOutcome({
+    applyBlockedDeploymentOutcome({
       artifactId: input.artifact?.artifactId ?? "unknown-artifact",
       attemptId,
-      blockerCode: primaryBlocker.code,
-      blockerMessage: primaryBlocker.message,
-      blockerRemediation: primaryBlocker.remediation,
-      targetId: input.selectedTarget,
-    }), input.validation);
+      selectedTarget: input.selectedTarget,
+      stateSetters: input.stateSetters,
+      validation: input.validation,
+    });
     return;
   }
 
@@ -857,61 +974,154 @@ function startDeploymentAttempt(input: {
     targetLabel: target.label,
   });
 
-  if (target.supportsWalletSigning && flags.rejectApproval) {
-    scheduleRejectedSigningDeployment({
-      artifactId,
-      attemptId,
-      selectedTarget: input.selectedTarget,
-      stageDelayMs: flags.deployStageDelayMs,
-      stateSetters: input.stateSetters,
-      targetLabel: target.label,
-      timerIdsRef: input.timerIdsRef,
-      validation: input.validation,
-    });
-    return;
-  }
-
-  if (flags.failSubmission) {
-    scheduleFailedSubmissionDeployment({
-      artifactId,
-      attemptId,
-      selectedTarget: input.selectedTarget,
-      stageDelayMs: flags.deployStageDelayMs,
-      stateSetters: input.stateSetters,
-      targetLabel: target.label,
-      timerIdsRef: input.timerIdsRef,
-      validation: input.validation,
-    });
-    return;
-  }
-
-  if (flags.unresolvedConfirmation) {
-    scheduleUnresolvedConfirmationDeployment({
-      artifactId,
-      attemptId,
-      confirmationReference: createConfirmationReference(input.artifact.artifactId, input.selectedTarget),
-      packageId: createPackageId(input.artifact.artifactId, input.selectedTarget),
-      selectedTarget: input.selectedTarget,
-      stageDelayMs: flags.deployStageDelayMs,
-      stateSetters: input.stateSetters,
-      targetLabel: target.label,
-      timerIdsRef: input.timerIdsRef,
-      validation: input.validation,
-    });
-    return;
-  }
-
-  scheduleSuccessfulDeployment({
+  scheduleMockDeploymentScenario({
     artifactId,
     attemptId,
-    confirmationReference: createConfirmationReference(input.artifact.artifactId, input.selectedTarget),
-    packageId: createPackageId(input.artifact.artifactId, input.selectedTarget),
+    flags,
     selectedTarget: input.selectedTarget,
-    stageDelayMs: flags.deployStageDelayMs,
     stateSetters: input.stateSetters,
     targetLabel: target.label,
     timerIdsRef: input.timerIdsRef,
     validation: input.validation,
+  });
+}
+
+function createRemotePublishHandler(input: {
+  readonly account: ReturnType<typeof useCurrentAccount>;
+  readonly currentWallet: ReturnType<typeof useCurrentWallet>;
+  readonly suiClient: ReturnType<typeof useSuiClient>;
+}) {
+  return ({ artifact, ownerAddress, onSubmitting, target, references, signal }: Parameters<typeof publishToRemoteTarget>[0]) => publishToRemoteTarget({
+    artifact,
+    ownerAddress,
+    onSubmitting,
+    target,
+    references,
+    signal,
+    execute: async (transaction, executeRequest) => {
+      if (input.currentWallet.currentWallet == null || input.account == null) {
+        throw new Error(`A connected wallet address is required before deploying to ${target.label}.`);
+      }
+
+      transaction.setSenderIfNotSet(input.account.address);
+
+      const { bytes, signature } = await signTransaction(input.currentWallet.currentWallet, {
+        transaction: {
+          async toJSON() {
+            return transaction.toJSON({
+              client: input.suiClient,
+              supportedIntents: [...input.currentWallet.supportedIntents],
+            });
+          },
+        },
+        account: input.account,
+        chain: target.networkFamily === "local" ? "sui:localnet" : "sui:testnet",
+      });
+
+      executeRequest?.onSubmitting?.();
+
+      const result = await input.suiClient.executeTransactionBlock({
+        transactionBlock: bytes,
+        signature,
+        options: {
+          showRawEffects: true,
+        },
+      });
+
+      return { digest: result.digest };
+    },
+  });
+}
+
+function startRealDeployment(input: {
+  readonly account: ReturnType<typeof useCurrentAccount>;
+  readonly currentWallet: ReturnType<typeof useCurrentWallet>;
+  readonly derivedValidation: DeploymentValidationResult;
+  readonly localChainIdRef: LocalChainIdRef;
+  readonly selectedTarget: DeploymentTargetId;
+  readonly setIsDeploying: Dispatch<SetStateAction<boolean>>;
+  readonly stateSetters: DeploymentStateSetters;
+  readonly status: CompilationStatus;
+  readonly suiClient: ReturnType<typeof useSuiClient>;
+}): void {
+  const artifact = getArtifactFromStatus(input.status);
+  const attemptId = createAttemptId();
+
+  if (artifact?.artifactId === undefined || input.derivedValidation.blockers.length > 0) {
+    applyBlockedDeploymentOutcome({
+      artifactId: artifact?.artifactId ?? "unknown-artifact",
+      attemptId,
+      selectedTarget: input.selectedTarget,
+      stateSetters: { ...input.stateSetters, localChainIdRef: input.localChainIdRef },
+      validation: input.derivedValidation,
+    });
+    return;
+  }
+
+  const target = getDeploymentTarget(input.selectedTarget);
+  const attemptStartedAt = Date.now();
+  resetDeploymentState(input.stateSetters);
+  input.setIsDeploying(true);
+
+  const executor = createDeploymentExecutor({
+    confirm: (request) => confirmPublishedPackageWithClient(
+      request,
+      request.target.id === "local"
+        ? new SuiJsonRpcClient({ url: request.target.rpcUrl, network: "localnet" })
+        : input.suiClient,
+    ),
+    publishRemote: createRemotePublishHandler({
+      account: input.account,
+      currentWallet: input.currentWallet,
+      suiClient: input.suiClient,
+    }),
+  });
+
+  void executor({
+    artifact,
+    ownerAddress: input.account?.address,
+    references: input.selectedTarget === "local" ? null : resolvePackageReferenceBundle(input.selectedTarget),
+    target,
+  }, (progressUpdate) => {
+    updateDeploymentProgress(input.stateSetters.setProgress, {
+      attemptId,
+      targetId: input.selectedTarget,
+      stage: progressUpdate.stage,
+      stageIndex: getStageIndex(progressUpdate.stage),
+      targetLabel: target.label,
+    });
+  }).then((result) => {
+    applyDeploymentOutcome(
+      { ...input.stateSetters, localChainIdRef: input.localChainIdRef },
+      createExecutionOutcome({
+        artifactId: artifact.artifactId ?? "unknown-artifact",
+        attemptId,
+        result,
+        startedAt: attemptStartedAt,
+        targetId: input.selectedTarget,
+      }),
+      input.derivedValidation,
+    );
+  }).catch((error: unknown) => {
+    const details = error instanceof Error ? error.message : "Deployment failed unexpectedly.";
+    const normalizedDetails = details.toLowerCase();
+    const isUserCancelled = normalizedDetails.includes("rejected") || normalizedDetails.includes("denied") || normalizedDetails.includes("cancelled");
+    applyDeploymentOutcome(
+      { ...input.stateSetters, localChainIdRef: input.localChainIdRef },
+      createExecutionOutcome({
+        artifactId: artifact.artifactId ?? "unknown-artifact",
+        attemptId,
+        result: {
+          outcome: isUserCancelled ? "cancelled" : "failed",
+          stage: isUserCancelled ? "signing" : "submitting",
+          message: details,
+          errorCode: isUserCancelled ? "wallet-approval-rejected" : "deployment-executor-error",
+        },
+        startedAt: attemptStartedAt,
+        targetId: input.selectedTarget,
+      }),
+      input.derivedValidation,
+    );
   });
 }
 
@@ -975,128 +1185,16 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
       return Promise.resolve();
     }
 
-    const artifact = getArtifactFromStatus(status);
-    const attemptId = createAttemptId();
-
-    if (artifact?.artifactId === undefined || derivedState.validation.blockers.length > 0) {
-      const primaryBlocker = derivedState.validation.blockers[0] ?? {
-        code: "stale-artifact",
-        stage: "validating",
-        message: "Rebuild the current graph before deployment. The active artifact is stale or unresolved.",
-        remediation: "Run Build again after the current graph settles, then retry deployment.",
-      };
-
-      applyDeploymentOutcome({ ...stateSetters, localChainIdRef }, createBlockedOutcome({
-        artifactId: artifact?.artifactId ?? "unknown-artifact",
-        attemptId,
-        blockerCode: primaryBlocker.code,
-        blockerMessage: primaryBlocker.message,
-        blockerRemediation: primaryBlocker.remediation,
-        targetId: selectedTarget,
-      }), derivedState.validation);
-
-      return Promise.resolve();
-    }
-
-    const target = getDeploymentTarget(selectedTarget);
-    const attemptStartedAt = Date.now();
-    resetDeploymentState(stateSetters);
-    setIsDeploying(true);
-
-    const executor = createDeploymentExecutor({
-      confirm: (request) => confirmPublishedPackageWithClient(
-        request,
-        request.target.id === "local"
-          ? new SuiJsonRpcClient({ url: request.target.rpcUrl, network: "localnet" })
-          : suiClient,
-      ),
-      publishRemote: ({ artifact: remoteArtifact, ownerAddress, onSubmitting, target: remoteTarget, references, signal }) => publishToRemoteTarget({
-        artifact: remoteArtifact,
-        ownerAddress,
-        onSubmitting,
-        target: remoteTarget,
-        references,
-        signal,
-        execute: async (transaction, executeRequest) => {
-          if (currentWallet.currentWallet == null || account == null) {
-            throw new Error(`A connected wallet address is required before deploying to ${remoteTarget.label}.`);
-          }
-
-          transaction.setSenderIfNotSet(account.address);
-
-          const { bytes, signature } = await signTransaction(currentWallet.currentWallet, {
-            transaction: {
-              async toJSON() {
-                return transaction.toJSON({
-                  client: suiClient,
-                  supportedIntents: currentWallet.supportedIntents,
-                });
-              },
-            },
-            account,
-            chain: remoteTarget.networkFamily === "local" ? "sui:localnet" : "sui:testnet",
-          });
-
-          executeRequest?.onSubmitting?.();
-
-          const result = await suiClient.executeTransactionBlock({
-            transactionBlock: bytes,
-            signature,
-            options: {
-              showRawEffects: true,
-            },
-          });
-
-          return { digest: result.digest };
-        },
-      }),
-    });
-
-    void executor({
-      artifact,
-      ownerAddress: account?.address,
-      references: selectedTarget === "local" ? null : resolvePackageReferenceBundle(selectedTarget),
-      target,
-    }, (progressUpdate) => {
-      updateDeploymentProgress(stateSetters.setProgress, {
-        attemptId,
-        targetId: selectedTarget,
-        stage: progressUpdate.stage,
-        stageIndex: DEPLOYMENT_STAGE_SEQUENCE.indexOf(progressUpdate.stage),
-        targetLabel: target.label,
-      });
-    }).then((result) => {
-      applyDeploymentOutcome(
-        { ...stateSetters, localChainIdRef },
-        createExecutionOutcome({
-          artifactId: artifact.artifactId ?? "unknown-artifact",
-          attemptId,
-          result,
-          startedAt: attemptStartedAt,
-          targetId: selectedTarget,
-        }),
-        derivedState.validation,
-      );
-    }).catch((error: unknown) => {
-      const details = error instanceof Error ? error.message : "Deployment failed unexpectedly.";
-      const normalizedDetails = details.toLowerCase();
-      const isUserCancelled = normalizedDetails.includes("rejected") || normalizedDetails.includes("denied") || normalizedDetails.includes("cancelled");
-      applyDeploymentOutcome(
-        { ...stateSetters, localChainIdRef },
-        createExecutionOutcome({
-          artifactId: artifact.artifactId ?? "unknown-artifact",
-          attemptId,
-          result: {
-            outcome: isUserCancelled ? "cancelled" : "failed",
-            stage: isUserCancelled ? "signing" : "submitting",
-            message: details,
-            errorCode: isUserCancelled ? "wallet-approval-rejected" : "deployment-executor-error",
-          },
-          startedAt: attemptStartedAt,
-          targetId: selectedTarget,
-        }),
-        derivedState.validation,
-      );
+    startRealDeployment({
+      account,
+      currentWallet,
+      derivedValidation: derivedState.validation,
+      localChainIdRef,
+      selectedTarget,
+      setIsDeploying,
+      stateSetters,
+      status,
+      suiClient,
     });
 
     return Promise.resolve();

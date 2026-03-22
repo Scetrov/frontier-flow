@@ -200,12 +200,12 @@ Current limitation for timing capture:
 
 - One subsequent retry in the same MCP-driven wallet session failed with `Transaction signing timed out`; that failure path was traced to premature `submitting` stage advancement in the app and to executor-backed attempts stamping `startedAt` only at completion.
 - After fixing the remote stage transition boundary and preserving executor-backed attempt start times, a clean timed retry succeeded with the following evidence:
-   - Timed target: `testnet:stillness`
-   - Timed package ID: `0xa0cb6ee594b1c72d869fe8b09a192c3c432db9d8ce2338a3b3affb91a53008ba`
-   - Timed confirmation reference: `A3JYukkpMne7PwxzfSAyHfn4yEL4gvYi8hFY5NSNZ6L`
-   - `latestAttempt.startedAt`: `1774198329204`
-   - `latestAttempt.endedAt`: `1774198333572`
-   - Confirmed transaction timestamp from `sui_getTransactionBlock`: `1774198330850`
+  - Timed target: `testnet:stillness`
+  - Timed package ID: `0xa0cb6ee594b1c72d869fe8b09a192c3c432db9d8ce2338a3b3affb91a53008ba`
+  - Timed confirmation reference: `A3JYukkpMne7PwxzfSAyHfn4yEL4gvYi8hFY5NSNZ6L`
+  - `latestAttempt.startedAt`: `1774198329204`
+  - `latestAttempt.endedAt`: `1774198333572`
+  - Confirmed transaction timestamp from `sui_getTransactionBlock`: `1774198330850`
 
 Summary against success criteria:
 

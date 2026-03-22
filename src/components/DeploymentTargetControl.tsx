@@ -22,6 +22,123 @@ interface DeploymentTargetMenuProps {
   readonly toggleButtonRef: React.RefObject<HTMLButtonElement | null>;
 }
 
+interface DeploymentPrimaryButtonProps {
+  readonly canDeploy: boolean;
+  readonly deployLabel: string;
+  readonly deployTitle: string | undefined;
+  readonly disabled: boolean;
+  readonly onDeploy?: () => void;
+  readonly statusDescriptionId: string;
+}
+
+interface DeploymentMenuToggleButtonProps {
+  readonly descriptionId: string;
+  readonly menuOpen: boolean;
+  readonly onOpenMenu: (initialFocus?: "first" | "last" | "selected") => void;
+  readonly setMenuOpen: (open: boolean) => void;
+  readonly toggleButtonRef: React.RefObject<HTMLButtonElement | null>;
+}
+
+function getDeployCopy(input: {
+  readonly canDeploy: boolean;
+  readonly isDeploying: boolean;
+  readonly isUpgrade: boolean;
+  readonly selectedTarget: DeploymentTargetId;
+}) {
+  const actionVerb = input.isUpgrade ? "Upgrade" : "Deploy";
+  const inProgressVerb = input.isUpgrade ? "Upgrading" : "Deploying";
+
+  return {
+    deployDescription: input.isDeploying
+      ? `${inProgressVerb} for ${input.selectedTarget} is currently in progress.`
+      : input.canDeploy
+        ? `Launch ${actionVerb.toLowerCase()} for ${input.selectedTarget}.`
+        : `Review blockers for ${input.selectedTarget} ${input.isUpgrade ? "upgrade" : "deployment"} before retrying.`,
+    deployLabel: input.isDeploying ? `${inProgressVerb} ${input.selectedTarget}` : `${actionVerb} ${input.selectedTarget}`,
+    deployTitle: input.canDeploy
+      ? undefined
+      : `Review blockers for ${input.selectedTarget} ${input.isUpgrade ? "upgrade" : "deployment"}`,
+  };
+}
+
+function DeploymentPrimaryButton({
+  canDeploy,
+  deployLabel,
+  deployTitle,
+  disabled,
+  onDeploy,
+  statusDescriptionId,
+}: DeploymentPrimaryButtonProps) {
+  return (
+    <button
+      aria-describedby={statusDescriptionId}
+      aria-label={deployLabel}
+      className="ff-header__button ff-header__button--compact ff-deployment-target-control__primary"
+      disabled={disabled}
+      onClick={() => {
+        onDeploy?.();
+      }}
+      title={canDeploy ? undefined : deployTitle}
+      type="button"
+    >
+      <span aria-hidden="true" className="ff-header__button-icon">
+        <ConservativeDeployIcon />
+      </span>
+      <span className="ff-header__button-label">{deployLabel}</span>
+    </button>
+  );
+}
+
+function DeploymentMenuToggleButton({
+  descriptionId,
+  menuOpen,
+  onOpenMenu,
+  setMenuOpen,
+  toggleButtonRef,
+}: DeploymentMenuToggleButtonProps) {
+  return (
+    <button
+      aria-controls="deployment-target-list"
+      aria-describedby={descriptionId}
+      aria-expanded={menuOpen}
+      aria-haspopup="menu"
+      aria-label="Select deployment target"
+      className="ff-header__button ff-header__button--compact ff-deployment-target-control__toggle"
+      onClick={() => {
+        if (menuOpen) {
+          setMenuOpen(false);
+          return;
+        }
+
+        onOpenMenu();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setMenuOpen(false);
+          return;
+        }
+
+        if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpenMenu(event.key === "ArrowDown" ? "first" : "selected");
+          return;
+        }
+
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          onOpenMenu("last");
+        }
+      }}
+      ref={toggleButtonRef}
+      title="Select deployment target"
+      type="button"
+    >
+      <span aria-hidden="true">▼</span>
+    </button>
+  );
+}
+
 function DeploymentTargetMenu({
   descriptionId,
   initialFocus,
@@ -140,18 +257,8 @@ function DeploymentTargetControl({
   const statusDescriptionId = useId();
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
   const isDeployDisabled = isDeploying || onDeploy === undefined;
-  const actionVerb = isUpgrade ? "Upgrade" : "Deploy";
-  const inProgressVerb = isUpgrade ? "Upgrading" : "Deploying";
-  const deployLabel = isDeploying ? `${inProgressVerb} ${selectedTarget}` : `${actionVerb} ${selectedTarget}`;
+  const { deployDescription, deployLabel, deployTitle } = getDeployCopy({ canDeploy, isDeploying, isUpgrade, selectedTarget });
   const containerClassName = `ff-deployment-target-control${isActive ? " ff-deployment-target-control--active" : ""}`;
-  const deployTitle = canDeploy
-    ? undefined
-    : `Review blockers for ${selectedTarget} ${isUpgrade ? "upgrade" : "deployment"}`;
-  const deployDescription = isDeploying
-    ? `${inProgressVerb} for ${selectedTarget} is currently in progress.`
-    : canDeploy
-      ? `Launch ${actionVerb.toLowerCase()} for ${selectedTarget}.`
-      : `Review blockers for ${selectedTarget} ${isUpgrade ? "upgrade" : "deployment"} before retrying.`;
 
   const openMenu = (initialFocus: "first" | "last" | "selected" = "selected") => {
     setMenuInitialFocus(initialFocus);
@@ -177,62 +284,22 @@ function DeploymentTargetControl({
         setIsActive(false);
       }}
     >
-      <button
-        aria-describedby={statusDescriptionId}
-        aria-label={deployLabel}
-        className="ff-header__button ff-header__button--compact ff-deployment-target-control__primary"
+      <DeploymentPrimaryButton
+        canDeploy={canDeploy}
+        deployLabel={deployLabel}
+        deployTitle={deployTitle}
         disabled={isDeployDisabled}
-        onClick={() => {
-          onDeploy?.();
-        }}
-        title={deployTitle}
-        type="button"
-      >
-        <span aria-hidden="true" className="ff-header__button-icon">
-          <ConservativeDeployIcon />
-        </span>
-        <span className="ff-header__button-label">{deployLabel}</span>
-      </button>
+        onDeploy={onDeploy}
+        statusDescriptionId={statusDescriptionId}
+      />
       <span className="ff-assistive-text" id={statusDescriptionId}>{deployDescription}</span>
-      <button
-        aria-controls="deployment-target-list"
-        aria-describedby={statusDescriptionId}
-        aria-expanded={menuOpen}
-        aria-haspopup="menu"
-        aria-label="Select deployment target"
-        className="ff-header__button ff-header__button--compact ff-deployment-target-control__toggle"
-        onClick={() => {
-          if (menuOpen) {
-            setMenuOpen(false);
-            return;
-          }
-
-          openMenu();
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            setMenuOpen(false);
-            return;
-          }
-
-          if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openMenu(event.key === "ArrowDown" ? "first" : "selected");
-            return;
-          }
-
-          if (event.key === "ArrowUp") {
-            event.preventDefault();
-            openMenu("last");
-          }
-        }}
-        ref={toggleButtonRef}
-        title="Select deployment target"
-        type="button"
-      >
-        <span aria-hidden="true">▼</span>
-      </button>
+      <DeploymentMenuToggleButton
+        descriptionId={statusDescriptionId}
+        menuOpen={menuOpen}
+        onOpenMenu={openMenu}
+        setMenuOpen={setMenuOpen}
+        toggleButtonRef={toggleButtonRef}
+      />
 
       {menuOpen ? (
         <DeploymentTargetMenu
