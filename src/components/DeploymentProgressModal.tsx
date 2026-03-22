@@ -35,8 +35,29 @@ function getModalTitle(latestAttempt: DeploymentAttempt | null, progress: Deploy
       return "Deployment cancelled";
     case "failed":
       return "Deployment failed";
+    case "unresolved":
+      return "Deployment unresolved";
     default:
       return "Deployment blocked";
+  }
+}
+
+function getTerminalRemediation(latestAttempt: DeploymentAttempt | null): string | null {
+  if (latestAttempt === null) {
+    return null;
+  }
+
+  switch (latestAttempt.outcome) {
+    case "cancelled":
+      return "Approve the wallet signing request to continue deployment.";
+    case "failed":
+      return "Review the wallet and RPC error details, then retry deployment once the target is healthy.";
+    case "unresolved":
+      return "Retry confirmation or redeploy after checking the target network and transaction digest.";
+    case "blocked":
+      return "Resolve the reported blocker before retrying deployment.";
+    default:
+      return null;
   }
 }
 
@@ -152,6 +173,7 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
   const title = getModalTitle(latestAttempt, progress);
   const terminalAttempt = isTerminalAttempt(latestAttempt, progress) ? latestAttempt : null;
   const progressPercent = getProgressPercent(progress);
+  const terminalRemediation = getTerminalRemediation(terminalAttempt);
 
   return (
     <div className="ff-deployment-modal" role="presentation">
@@ -179,6 +201,24 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
         </div>
 
         <p className="ff-deployment-modal__message">{terminalAttempt?.message ?? progress.activeMessage}</p>
+        <p aria-atomic="true" aria-live={terminalAttempt === null ? "polite" : "assertive"} className="ff-deployment-modal__status-live-region">
+          {terminalAttempt === null ? progress.activeMessage : `${title}. ${terminalAttempt.message}`}
+        </p>
+
+        {terminalAttempt?.packageId !== undefined || terminalAttempt?.confirmationReference !== undefined ? (
+          <ul className="ff-deployment-modal__details" aria-label="Deployment evidence">
+            {terminalAttempt?.packageId !== undefined ? (
+              <li className="ff-deployment-modal__detail">Package ID: {terminalAttempt.packageId}</li>
+            ) : null}
+            {terminalAttempt?.confirmationReference !== undefined ? (
+              <li className="ff-deployment-modal__detail">Transaction Digest: {terminalAttempt.confirmationReference}</li>
+            ) : null}
+          </ul>
+        ) : null}
+
+        {terminalRemediation !== null ? (
+          <p className="ff-deployment-modal__remediation">{terminalRemediation}</p>
+        ) : null}
 
         <ol className="ff-deployment-modal__stages">
           {(Object.keys(STAGE_LABELS) as DeploymentStage[]).map((stage) => {

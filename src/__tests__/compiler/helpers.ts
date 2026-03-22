@@ -82,6 +82,8 @@ export function createDeploymentStatus(
     status,
     targetId: overrides.targetId ?? "local",
     packageId: overrides.packageId,
+    confirmationReference: overrides.confirmationReference,
+    outcome: overrides.outcome,
     stage: overrides.stage,
     severity: overrides.severity,
     headline: overrides.headline ?? "Deployment blocked",
@@ -99,11 +101,14 @@ export function createDeploymentReviewEntry(
 ): DeploymentReviewEntry {
   return {
     attemptId: overrides.attemptId ?? "attempt-0001",
+    artifactId: overrides.artifactId ?? "starter_contract-00000000",
     headline: overrides.headline ?? "Deployment blocked",
     targetId: overrides.targetId ?? "local",
+    outcome: overrides.outcome ?? "blocked",
     severity: overrides.severity ?? "warning",
     stage: overrides.stage,
     packageId: overrides.packageId,
+    confirmationReference: overrides.confirmationReference,
     details: overrides.details ?? "Resolve the required inputs before deploying.",
     blockedReasons: overrides.blockedReasons ?? ["Existing turret attachment details are not configured yet."],
   };
@@ -121,6 +126,7 @@ export function createDeploymentAttempt(
     outcome: overrides.outcome ?? "blocked",
     currentStage: overrides.currentStage ?? "validating",
     packageId: overrides.packageId,
+    confirmationReference: overrides.confirmationReference,
     message: overrides.message ?? "Deployment is waiting for required inputs.",
     errorCode: overrides.errorCode,
   };

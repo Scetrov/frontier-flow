@@ -168,6 +168,11 @@ function DeploymentPanel({
             <span className="ff-compilation-status__message">Package ID: {status.packageId}</span>
           </li>
         ) : null}
+        {status.confirmationReference !== undefined ? (
+          <li>
+            <span className="ff-compilation-status__message">Transaction Digest: {status.confirmationReference}</span>
+          </li>
+        ) : null}
         {status.blockedReasons.map((reason) => (
           <li key={reason}>
             <span className="ff-compilation-status__message">{reason}</span>
@@ -195,6 +200,9 @@ function DeploymentPanel({
           <li key={entry.attemptId}>
             <span className="ff-compilation-status__message">{`${entry.headline} - ${entry.targetId}${entry.stage === undefined ? "" : ` - ${entry.stage}`}`}</span>
             <span className="ff-compilation-status__message">{entry.details}</span>
+            {entry.confirmationReference !== undefined ? (
+              <span className="ff-compilation-status__message">Transaction Digest: {entry.confirmationReference}</span>
+            ) : null}
           </li>
         ))}
       </ul>

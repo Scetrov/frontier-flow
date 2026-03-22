@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   useCurrentAccount as useCurrentAccountHook,
   useCurrentWallet as useCurrentWalletHook,
+  useSignAndExecuteTransaction as useSignAndExecuteTransactionHook,
+  useSuiClient as useSuiClientHook,
   useWallets as useWalletsHook,
 } from "@mysten/dapp-kit";
 
@@ -14,6 +16,8 @@ import { createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
+type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionHook>;
+type SuiClient = ReturnType<typeof useSuiClientHook>;
 type Wallets = ReturnType<typeof useWalletsHook>;
 
 interface CanvasWorkspaceProps {
@@ -35,11 +39,15 @@ let lastMoveSourcePanelProps: MoveSourcePanelProps | null = null;
 let hasReportedCompilation = false;
 const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
 const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
+const mockUseSignAndExecuteTransaction = vi.fn<() => SignAndExecuteTransaction>();
+const mockUseSuiClient = vi.fn<() => SuiClient>();
 const mockUseWallets = vi.fn<() => Wallets>();
 
 vi.mock("@mysten/dapp-kit", () => ({
   useCurrentAccount: () => mockUseCurrentAccount(),
   useCurrentWallet: () => mockUseCurrentWallet(),
+  useSignAndExecuteTransaction: () => mockUseSignAndExecuteTransaction(),
+  useSuiClient: () => mockUseSuiClient(),
   useWallets: () => mockUseWallets(),
 }));
 
@@ -108,6 +116,8 @@ describe("App compilation handoff", () => {
   beforeEach(() => {
     mockUseCurrentAccount.mockReturnValue(null);
     mockUseCurrentWallet.mockReturnValue({ isConnected: false } as CurrentWallet);
+    mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
+    mockUseSuiClient.mockReturnValue({} as SuiClient);
     mockUseWallets.mockReturnValue([]);
   });
 
@@ -119,6 +129,8 @@ describe("App compilation handoff", () => {
     window.localStorage.clear();
     mockUseCurrentAccount.mockReset();
     mockUseCurrentWallet.mockReset();
+    mockUseSignAndExecuteTransaction.mockReset();
+    mockUseSuiClient.mockReset();
     mockUseWallets.mockReset();
   });
 

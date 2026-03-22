@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   useCurrentAccount as useCurrentAccountHook,
   useCurrentWallet as useCurrentWalletHook,
+  useSignAndExecuteTransaction as useSignAndExecuteTransactionHook,
+  useSuiClient as useSuiClientHook,
   useWallets as useWalletsHook,
 } from "@mysten/dapp-kit";
 
@@ -11,10 +13,14 @@ import { createGeneratedArtifactStub } from "./compiler/helpers";
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
+type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionHook>;
+type SuiClient = ReturnType<typeof useSuiClientHook>;
 type Wallets = ReturnType<typeof useWalletsHook>;
 
 const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
 const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
+const mockUseSignAndExecuteTransaction = vi.fn<() => SignAndExecuteTransaction>();
+const mockUseSuiClient = vi.fn<() => SuiClient>();
 const mockUseWallets = vi.fn<() => Wallets>();
 const availableWallet = { name: "Sui Wallet" } as unknown as Wallets[number];
 
@@ -43,6 +49,8 @@ function createConnectedWalletState(): CurrentWallet {
 vi.mock("@mysten/dapp-kit", () => ({
   useCurrentAccount: () => mockUseCurrentAccount(),
   useCurrentWallet: () => mockUseCurrentWallet(),
+  useSignAndExecuteTransaction: () => mockUseSignAndExecuteTransaction(),
+  useSuiClient: () => mockUseSuiClient(),
   useWallets: () => mockUseWallets(),
 }));
 
@@ -60,6 +68,8 @@ describe("useDeployment blocker handling", () => {
     vi.useFakeTimers();
     mockUseCurrentAccount.mockReturnValue(null);
     mockUseCurrentWallet.mockReturnValue(createDisconnectedWalletState());
+    mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
+    mockUseSuiClient.mockReturnValue({} as SuiClient);
     mockUseWallets.mockReturnValue([availableWallet]);
     window.history.replaceState({}, "", "/?ff_mock_deploy_stage_delay_ms=25");
   });
@@ -195,5 +205,61 @@ describe("useDeployment blocker handling", () => {
     expect(result.current.latestAttempt?.errorCode).toBe("wallet-approval-rejected");
     expect(result.current.statusMessage?.headline).toBe("Deployment cancelled");
     expect(result.current.statusMessage?.details).toMatch(/Approve the wallet signing request to continue deployment/i);
+  });
+
+  it("marks mocked submission failures as failed deployments without surfacing success", async () => {
+    window.history.replaceState({}, "", "/?ff_mock_deploy_fail=1&ff_mock_deploy_stage_delay_ms=25");
+    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "testnet:stillness",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    await act(async () => {
+      await result.current.startDeployment();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(result.current.latestAttempt?.outcome).toBe("failed");
+    expect(result.current.latestAttempt?.currentStage).toBe("submitting");
+    expect(result.current.latestAttempt?.errorCode).toBe("submission-failed");
+    expect(result.current.deploymentStatus?.status).toBe("blocked");
+    expect(result.current.deploymentStatus?.outcome).toBe("failed");
+    expect(result.current.statusMessage?.headline).toBe("Deployment failed");
+  });
+
+  it("marks mocked confirmation timeouts as unresolved deployments without surfacing success", async () => {
+    window.history.replaceState({}, "", "/?ff_mock_deploy_unresolved=1&ff_mock_deploy_stage_delay_ms=25");
+    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "testnet:utopia",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    await act(async () => {
+      await result.current.startDeployment();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(result.current.latestAttempt?.outcome).toBe("unresolved");
+    expect(result.current.latestAttempt?.currentStage).toBe("confirming");
+    expect(result.current.latestAttempt?.errorCode).toBe("confirmation-timeout");
+    expect(result.current.latestAttempt?.packageId).toMatch(/^0x[a-f0-9]{64}$/);
+    expect(result.current.latestAttempt?.confirmationReference).toMatch(/^0x[a-f0-9]{64}$/);
+    expect(result.current.deploymentStatus?.status).toBe("blocked");
+    expect(result.current.deploymentStatus?.outcome).toBe("unresolved");
+    expect(result.current.statusMessage?.headline).toBe("Deployment unresolved");
   });
 });

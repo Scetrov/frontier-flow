@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   useCurrentAccount as useCurrentAccountHook,
   useCurrentWallet as useCurrentWalletHook,
+  useSignAndExecuteTransaction as useSignAndExecuteTransactionHook,
+  useSuiClient as useSuiClientHook,
   useWallets as useWalletsHook,
 } from "@mysten/dapp-kit";
 
@@ -11,10 +13,14 @@ import { createGeneratedArtifactStub } from "./compiler/helpers";
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
+type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionHook>;
+type SuiClient = ReturnType<typeof useSuiClientHook>;
 type Wallets = ReturnType<typeof useWalletsHook>;
 
 const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
 const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
+const mockUseSignAndExecuteTransaction = vi.fn<() => SignAndExecuteTransaction>();
+const mockUseSuiClient = vi.fn<() => SuiClient>();
 const mockUseWallets = vi.fn<() => Wallets>();
 const availableWallet = { name: "Sui Wallet" } as unknown as Wallets[number];
 
@@ -32,6 +38,8 @@ function createConnectedWalletState(): CurrentWallet {
 vi.mock("@mysten/dapp-kit", () => ({
   useCurrentAccount: () => mockUseCurrentAccount(),
   useCurrentWallet: () => mockUseCurrentWallet(),
+  useSignAndExecuteTransaction: () => mockUseSignAndExecuteTransaction(),
+  useSuiClient: () => mockUseSuiClient(),
   useWallets: () => mockUseWallets(),
 }));
 
@@ -46,6 +54,8 @@ beforeEach(() => {
     publicKey: new Uint8Array(),
   } as CurrentAccount);
   mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+  mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
+  mockUseSuiClient.mockReturnValue({} as SuiClient);
   mockUseWallets.mockReturnValue([availableWallet]);
   window.history.replaceState({}, "", "/?ff_mock_deploy_stage_delay_ms=0");
 });
@@ -89,8 +99,10 @@ describe("useDeployment success path", () => {
     expect(result.current.latestAttempt?.outcome).toBe("succeeded");
     expect(result.current.latestAttempt?.targetId).toBe("testnet:stillness");
     expect(result.current.latestAttempt?.packageId).toMatch(/^0x[a-f0-9]{64}$/);
+    expect(result.current.latestAttempt?.confirmationReference).toMatch(/^0x[a-f0-9]{64}$/);
     expect(result.current.deploymentStatus?.status).toBe("deployed");
     expect(result.current.deploymentStatus?.targetId).toBe("testnet:stillness");
+    expect(result.current.deploymentStatus?.confirmationReference).toMatch(/^0x[a-f0-9]{64}$/);
     expect(result.current.statusMessage?.headline).toBe("Deployed");
   });
 });

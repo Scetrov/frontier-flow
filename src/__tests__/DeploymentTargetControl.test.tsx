@@ -48,6 +48,15 @@ describe("DeploymentTargetControl", () => {
     expect(screen.queryByRole("menuitemradio", { name: "testnet:utopia" })).not.toBeInTheDocument();
   });
 
+  it("marks the selected target as checked when the target menu opens", () => {
+    render(<DeploymentTargetControl canDeploy={true} onDeploy={() => undefined} selectedTarget="testnet:utopia" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Select deployment target" }));
+
+    expect(screen.getByRole("menuitemradio", { name: "testnet:utopia" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("menuitemradio", { name: "local" })).toHaveAttribute("aria-checked", "false");
+  });
+
   it("closes the target menu when escape is pressed", () => {
     render(<DeploymentTargetControl canDeploy={true} onDeploy={() => undefined} selectedTarget="local" />);
 
@@ -55,6 +64,32 @@ describe("DeploymentTargetControl", () => {
     fireEvent.keyDown(screen.getByRole("menu", { name: "Deployment targets" }), { key: "Escape" });
 
     expect(screen.queryByRole("menu", { name: "Deployment targets" })).not.toBeInTheDocument();
+  });
+
+  it("supports keyboard target selection from the toggle button", () => {
+    const handleTargetChange = vi.fn();
+
+    render(
+      <DeploymentTargetControl
+        canDeploy={true}
+        onDeploy={() => undefined}
+        onTargetChange={handleTargetChange}
+        selectedTarget="local"
+      />, 
+    );
+
+    const toggleButton = screen.getByRole("button", { name: "Select deployment target" });
+    fireEvent.keyDown(toggleButton, { key: "ArrowDown" });
+
+    expect(screen.getByRole("menuitemradio", { name: "local" })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByRole("menu", { name: "Deployment targets" }), { key: "ArrowDown" });
+    expect(screen.getByRole("menuitemradio", { name: "testnet:stillness" })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByRole("menuitemradio", { name: "testnet:stillness" }), { key: "Enter" });
+
+    expect(handleTargetChange).toHaveBeenCalledWith("testnet:stillness");
+    expect(toggleButton).toHaveFocus();
   });
 
   it("launches deployment from the primary action", () => {
@@ -74,11 +109,26 @@ describe("DeploymentTargetControl", () => {
 
     const deployButton = screen.getByRole("button", { name: "Deploy local" });
 
+    expect(deployButton).toHaveAttribute("aria-describedby");
     expect(deployButton).toHaveAttribute("title", "Review blockers for local deployment");
 
     fireEvent.click(deployButton);
 
     expect(handleDeploy).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the target chooser accessible while the primary action is busy", () => {
+    render(
+      <DeploymentTargetControl
+        canDeploy={true}
+        isDeploying={true}
+        onDeploy={() => undefined}
+        selectedTarget="testnet:stillness"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Deploying testnet:stillness" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Select deployment target" })).toHaveAttribute("aria-haspopup", "menu");
   });
 
   it("uses upgrade-specific copy for in-progress state and blocker guidance", () => {

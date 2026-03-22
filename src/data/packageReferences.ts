@@ -27,15 +27,38 @@ export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
   },
 ];
 
+const PACKAGE_REFERENCE_BUNDLE_MAP = new Map(
+  PACKAGE_REFERENCE_BUNDLES.map((bundle) => [bundle.targetId, bundle]),
+);
+
+/**
+ * Return all maintained package reference bundles keyed by target id.
+ */
+export function getPackageReferenceBundleMap(): ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> {
+  return PACKAGE_REFERENCE_BUNDLE_MAP;
+}
+
 /**
  * Resolve the published package reference bundle for a non-local deployment target.
  */
 export function getPackageReferenceBundle(targetId: PackageReferenceBundle["targetId"]): PackageReferenceBundle {
-  const bundle = PACKAGE_REFERENCE_BUNDLES.find((candidate) => candidate.targetId === targetId);
+  const bundle = PACKAGE_REFERENCE_BUNDLE_MAP.get(targetId);
 
   if (bundle === undefined) {
     throw new Error(`Missing package reference bundle for ${targetId}`);
   }
 
   return bundle;
+}
+
+/**
+ * Validate that a maintained bundle preserves the published-target metadata shape.
+ */
+export function hasValidPackageReferenceBundleShape(bundle: PackageReferenceBundle): boolean {
+  return bundle.environmentLabel.length > 0
+    && bundle.source.length > 0
+    && bundle.lastVerifiedOn.length > 0
+    && bundle.worldPackageId.startsWith("0x")
+    && bundle.objectRegistryId.startsWith("0x")
+    && bundle.serverAddressRegistryId.startsWith("0x");
 }

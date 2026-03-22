@@ -5,6 +5,7 @@ import { getPackageReferenceBundle } from "../data/packageReferences";
 export type DeploymentBlockerCode =
   | "stale-artifact"
   | "missing-bytecode"
+  | "artifact-graph-mismatch"
   | "wallet-required"
   | "invalid-package-references"
   | "local-target-unavailable";
@@ -26,7 +27,9 @@ export interface DeploymentEnvironmentFlags {
   readonly mockWallet: "connected" | "disconnected" | "none" | null;
   readonly invalidatePackageReferences: boolean;
   readonly localTargetReady: boolean;
+  readonly failSubmission: boolean;
   readonly rejectApproval: boolean;
+  readonly unresolvedConfirmation: boolean;
   readonly deployStageDelayMs: number;
 }
 
@@ -62,7 +65,9 @@ export function getDeploymentEnvironmentFlags(search?: string): DeploymentEnviro
     mockWallet: parseMockWallet(params),
     invalidatePackageReferences: params?.get("ff_mock_invalid_package_refs") === "1",
     localTargetReady: params?.get("ff_local_deploy_ready") !== "0",
+    failSubmission: params?.get("ff_mock_deploy_fail") === "1",
     rejectApproval: params?.get("ff_mock_deploy_reject") === "1",
+    unresolvedConfirmation: params?.get("ff_mock_deploy_unresolved") === "1",
     deployStageDelayMs: parseStageDelay(params),
   };
 }
@@ -118,6 +123,7 @@ export function resolvePackageReferenceBundle(
 function createArtifactBlockers(input: {
   readonly artifactReady: boolean;
   readonly artifactHasBytecode: boolean;
+  readonly artifactGraphMatchesCurrentRevision: boolean;
 }): readonly DeploymentBlocker[] {
   if (!input.artifactReady) {
     return [{
@@ -134,6 +140,15 @@ function createArtifactBlockers(input: {
       stage: "validating",
       message: "A compiled bytecode artifact is required before deployment can continue.",
       remediation: "Compile the generated package successfully so deployable bytecode is available.",
+    }];
+  }
+
+  if (!input.artifactGraphMatchesCurrentRevision) {
+    return [{
+      code: "artifact-graph-mismatch",
+      stage: "validating",
+      message: "The compiled artifact no longer matches the current graph revision.",
+      remediation: "Rebuild the current graph so deployment stays bound to the artifact you intend to publish.",
     }];
   }
 
@@ -246,6 +261,7 @@ function getResolvedInputs(input: {
 function collectDeploymentBlockers(input: {
   readonly artifactHasBytecode: boolean;
   readonly artifactReady: boolean;
+  readonly artifactGraphMatchesCurrentRevision: boolean;
   readonly hasAvailableWallets: boolean;
   readonly hasConnectedWallet: boolean;
   readonly localTargetReady: boolean;
@@ -278,6 +294,7 @@ function collectDeploymentBlockers(input: {
 export function createDeploymentValidationResult(input: {
   readonly artifactReady: boolean;
   readonly artifactHasBytecode: boolean;
+  readonly artifactGraphMatchesCurrentRevision?: boolean;
   readonly hasConnectedWallet: boolean;
   readonly hasAvailableWallets: boolean;
   readonly search?: string;
@@ -288,6 +305,7 @@ export function createDeploymentValidationResult(input: {
   const blockers = collectDeploymentBlockers({
     artifactHasBytecode: input.artifactHasBytecode,
     artifactReady: input.artifactReady,
+    artifactGraphMatchesCurrentRevision: input.artifactGraphMatchesCurrentRevision ?? true,
     hasAvailableWallets: input.hasAvailableWallets,
     hasConnectedWallet: input.hasConnectedWallet,
     localTargetReady: flags.localTargetReady,

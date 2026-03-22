@@ -5,7 +5,7 @@ import CompilationStatus from "../components/CompilationStatus";
 import { createDeploymentReviewEntry, createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
 
 describe("CompilationStatus deployment popup review", () => {
-  it("renders target-aware success details including stage, severity, and package id", () => {
+  it("renders target-aware success details including stage, severity, package id, and digest", () => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("deployed", {
         headline: "Deployed",
@@ -13,6 +13,7 @@ describe("CompilationStatus deployment popup review", () => {
         stage: "confirming",
         severity: "success",
         packageId: "0xabc123",
+        confirmationReference: "7R4J3digest",
         nextActionSummary: "Deployment completed for testnet:stillness. Package ID: 0xabc123.",
       }),
     });
@@ -26,6 +27,7 @@ describe("CompilationStatus deployment popup review", () => {
     expect(screen.getByText("Stage: confirming")).toBeVisible();
     expect(screen.getByText("Severity: success")).toBeVisible();
     expect(screen.getByText("Package ID: 0xabc123")).toBeVisible();
+    expect(screen.getByText("Transaction Digest: 7R4J3digest")).toBeVisible();
     expect(screen.getByText("Deployment completed for testnet:stillness. Package ID: 0xabc123.")).toBeVisible();
   });
 
@@ -37,6 +39,7 @@ describe("CompilationStatus deployment popup review", () => {
         stage: "confirming",
         severity: "success",
         packageId: "0xabc123",
+        confirmationReference: "7R4J3digest",
         nextActionSummary: "Deployment completed for testnet:stillness. Package ID: 0xabc123.",
         reviewHistory: [
           createDeploymentReviewEntry({
@@ -46,6 +49,7 @@ describe("CompilationStatus deployment popup review", () => {
             severity: "success",
             stage: "confirming",
             packageId: "0xabc123",
+            confirmationReference: "7R4J3digest",
             details: "Deployment completed for testnet:stillness. Package ID: 0xabc123.",
             blockedReasons: [],
           }),
@@ -68,6 +72,7 @@ describe("CompilationStatus deployment popup review", () => {
 
     expect(screen.getByText("Earlier this session")).toBeVisible();
     expect(screen.getByText(/Deployment blocked - local - validating/)).toBeVisible();
+    expect(screen.getByText("Transaction Digest: 7R4J3digest")).toBeVisible();
     expect(screen.getByText("Start or configure the local deployment target before retrying.")).toBeVisible();
   });
 });

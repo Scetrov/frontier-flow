@@ -24,7 +24,6 @@ function Footer({ status = { state: "idle" }, diagnostics = [], remediationNotic
       <div className="flex flex-col gap-2 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="font-heading text-[0.7rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">v{__APP_VERSION__}</span>
-          <span>Low-code Sui Move automation shell for EVE Frontier.</span>
           <CompilationStatus diagnostics={mergedDiagnostics} onSelectDiagnostic={onSelectDiagnostic} status={status} />
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">

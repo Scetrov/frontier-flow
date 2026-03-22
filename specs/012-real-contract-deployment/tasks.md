@@ -11,10 +11,10 @@
 
 **Purpose**: Create the new Sui deployment execution module structure used across all stories.
 
-- [ ] T001 Create the deployment executor entry point in `src/deployment/executor.ts`
-- [ ] T002 [P] Create the local publish module in `src/deployment/publishLocal.ts`
-- [ ] T003 [P] Create the remote publish module in `src/deployment/publishRemote.ts`
-- [ ] T004 [P] Create the confirmation polling module in `src/deployment/confirmation.ts`
+- [X] T001 Create the deployment executor entry point in `src/deployment/executor.ts`
+- [X] T002 [P] Create the local publish module in `src/deployment/publishLocal.ts`
+- [X] T003 [P] Create the remote publish module in `src/deployment/publishRemote.ts`
+- [X] T004 [P] Create the confirmation polling module in `src/deployment/confirmation.ts`
 
 ---
 
@@ -24,12 +24,12 @@
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T005 Extend deployment outcome, evidence, and confirmation-reference types in `src/compiler/types.ts`
-- [ ] T006 [P] Expand target capability metadata for local and published targets in `src/data/deploymentTargets.ts`
-- [ ] T007 [P] Normalize published target reference metadata in `src/data/packageReferences.ts`
-- [ ] T008 Implement target-aware package manifest preparation in `src/compiler/emitter.ts`
-- [ ] T009 Implement artifact freshness and target prerequisite checks in `src/utils/deploymentValidation.ts`
-- [ ] T010 [P] Extend shared deployment fixtures for evidence and unresolved outcomes in `src/__tests__/deployment/testFactories.ts`
+- [X] T005 Extend deployment outcome, evidence, and confirmation-reference types in `src/compiler/types.ts`
+- [X] T006 [P] Expand target capability metadata for local and published targets in `src/data/deploymentTargets.ts`
+- [X] T007 [P] Normalize published target reference metadata in `src/data/packageReferences.ts`
+- [X] T008 Implement target-aware package manifest preparation in `src/compiler/emitter.ts`
+- [X] T009 Implement artifact freshness and target prerequisite checks in `src/utils/deploymentValidation.ts`
+- [X] T010 [P] Extend shared deployment fixtures for evidence and unresolved outcomes in `src/__tests__/deployment/testFactories.ts`
 
 **Checkpoint**: The typed deployment foundation, target metadata, and shared fixtures are ready for story work.
 
@@ -45,20 +45,22 @@
 
 **NOTE**: Write these tests first and confirm they fail before implementing the story.
 
-- [ ] T011 [P] [US1] Extend successful local and remote publish hook coverage in `src/__tests__/useDeployment.success.test.ts`
-- [ ] T012 [P] [US1] Extend deployment target readiness behavior tests in `src/__tests__/DeploymentTargetControl.test.tsx`
-- [ ] T013 [P] [US1] Extend successful progress-stage rendering tests in `src/__tests__/DeploymentProgressModal.test.tsx`
-- [ ] T014 [P] [US1] Add successful local and remote deployment journeys in `tests/e2e/deployment-progress.spec.ts`
+- [X] T011 [P] [US1] Extend successful local and remote publish hook coverage in `src/__tests__/useDeployment.success.test.ts`
+- [X] T012 [P] [US1] Extend deployment target readiness behavior tests in `src/__tests__/DeploymentTargetControl.test.tsx`
+- [X] T013 [P] [US1] Extend successful progress-stage rendering tests in `src/__tests__/DeploymentProgressModal.test.tsx`
+- [X] T014 [P] [US1] Add deploy-control keyboard, focus-visible, and accessible-name coverage in `src/__tests__/DeploymentTargetControl.test.tsx`
+- [X] T015 [P] [US1] Add successful local and remote deployment journeys in `tests/e2e/deployment-progress.spec.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Implement local validator publish execution in `src/deployment/publishLocal.ts`
-- [ ] T016 [US1] Implement wallet-backed remote publish execution in `src/deployment/publishRemote.ts`
-- [ ] T017 [US1] Implement publish confirmation polling and digest extraction in `src/deployment/confirmation.ts`
-- [ ] T018 [US1] Compose target-specific Sui execution in `src/deployment/executor.ts`
-- [ ] T019 [US1] Integrate the real executor, artifact binding, and success evidence flow in `src/hooks/useDeployment.ts`
-- [ ] T020 [US1] Wire deployment launch and target-confirmed success state updates in `src/App.tsx`
-- [ ] T021 [US1] Render confirmed package IDs and transaction digests in `src/components/CompilationStatus.tsx`
+- [X] T016 [US1] Implement local validator publish execution in `src/deployment/publishLocal.ts`
+- [X] T017 [US1] Implement wallet-backed remote publish execution in `src/deployment/publishRemote.ts`
+- [X] T018 [US1] Implement publish confirmation polling and digest extraction in `src/deployment/confirmation.ts`
+- [X] T019 [US1] Compose target-specific Sui execution in `src/deployment/executor.ts`
+- [X] T020 [US1] Integrate the real executor, artifact binding, and success evidence flow in `src/hooks/useDeployment.ts`
+- [X] T021 [US1] Implement keyboard, labeling, and focus-visible behavior in `src/components/DeploymentTargetControl.tsx`
+- [X] T022 [US1] Wire deployment launch and target-confirmed success state updates in `src/App.tsx`
+- [X] T023 [US1] Render confirmed package IDs and transaction digests in `src/components/CompilationStatus.tsx`
 
 **Checkpoint**: User Story 1 should support successful local and remote deployment with real confirmation evidence.
 
@@ -74,17 +76,19 @@
 
 **NOTE**: Write these tests first and confirm they fail before implementing the story.
 
-- [ ] T022 [P] [US2] Extend blocker and non-success classification tests in `src/__tests__/useDeployment.blockers.test.ts`
-- [ ] T023 [P] [US2] Extend deployment blocker popup coverage for failed and unresolved attempts in `src/__tests__/CompilationStatus.deployment-blockers.test.tsx`
-- [ ] T024 [P] [US2] Add blocked, cancelled, failed, and unresolved deployment journeys in `tests/e2e/deployment-blockers.spec.ts`
+- [X] T024 [P] [US2] Extend blocker and non-success classification tests in `src/__tests__/useDeployment.blockers.test.ts`
+- [X] T025 [P] [US2] Extend deployment blocker popup coverage for failed and unresolved attempts in `src/__tests__/CompilationStatus.deployment-blockers.test.tsx`
+- [X] T026 [P] [US2] Add progress-modal focus-management, dismissal, and live-region coverage in `src/__tests__/DeploymentProgressModal.test.tsx`
+- [X] T027 [P] [US2] Add blocked, cancelled, failed, and unresolved deployment journeys in `tests/e2e/deployment-blockers.spec.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Implement failure, cancellation, and verification-timeout outcome mapping in `src/deployment/executor.ts`
-- [ ] T026 [US2] Enforce cancelled, failed, and unresolved state transitions in `src/hooks/useDeployment.ts`
-- [ ] T027 [US2] Render terminal-stage remediation and non-success summaries in `src/components/DeploymentProgressModal.tsx`
-- [ ] T028 [US2] Surface blocker, failure, and unresolved guidance in `src/components/CompilationStatus.tsx`
-- [ ] T029 [US2] Refine target-specific blocker messaging and retry gating in `src/utils/deploymentValidation.ts`
+- [X] T028 [US2] Implement failure, cancellation, and verification-timeout outcome mapping in `src/deployment/executor.ts`
+- [X] T029 [US2] Enforce cancelled, failed, and unresolved state transitions in `src/hooks/useDeployment.ts`
+- [X] T030 [US2] Implement modal focus management, keyboard dismissal, and live announcements in `src/components/DeploymentProgressModal.tsx`
+- [X] T031 [US2] Render terminal-stage remediation and non-success summaries in `src/components/DeploymentProgressModal.tsx`
+- [X] T032 [US2] Surface blocker, failure, and unresolved guidance in `src/components/CompilationStatus.tsx`
+- [ ] T033 [US2] Refine target-specific blocker messaging and retry gating in `src/utils/deploymentValidation.ts`
 
 **Checkpoint**: User Story 2 should block incorrect deployments early and preserve accurate non-success classifications after execution begins.
 
@@ -100,17 +104,20 @@
 
 **NOTE**: Write these tests first and confirm they fail before implementing the story.
 
-- [ ] T030 [P] [US3] Extend retry-sequence and history-preservation hook tests in `src/__tests__/useDeployment.progress.test.ts`
-- [ ] T031 [P] [US3] Extend deployment evidence and history rendering tests in `src/__tests__/MoveSourcePanel.deployment.test.tsx`
-- [ ] T032 [P] [US3] Add retry-and-review deployment journeys in `tests/e2e/deployment-status-popup.spec.ts`
+- [ ] T034 [P] [US3] Extend retry-sequence and history-preservation hook tests in `src/__tests__/useDeployment.progress.test.ts`
+- [ ] T035 [P] [US3] Extend deployment evidence and history rendering tests in `src/__tests__/MoveSourcePanel.deployment.test.tsx`
+- [ ] T036 [P] [US3] Add accessible status-popup and review-surface coverage in `src/__tests__/CompilationStatus.deployment-popup.test.tsx` and `src/__tests__/MoveSourcePanel.deployment.test.tsx`
+- [ ] T037 [P] [US3] Add retry-and-review deployment journeys in `tests/e2e/deployment-status-popup.spec.ts`
+- [ ] T038 [P] [US3] Add local-validator reset and historical-evidence coverage in `src/__tests__/useDeployment.progress.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T033 [US3] Persist recent deployment evidence and review entries in `src/hooks/useDeployment.ts`
-- [ ] T034 [US3] Mirror deployment evidence and retry context in `src/components/MoveSourcePanel.tsx`
-- [ ] T035 [US3] Render latest evidence and recent attempt history in `src/components/CompilationStatus.tsx`
-- [ ] T036 [US3] Keep modal dismissal and reopening review-safe in `src/components/DeploymentProgressModal.tsx`
-- [ ] T037 [US3] Coordinate retry and review state across deployment surfaces in `src/App.tsx`
+- [ ] T039 [US3] Persist recent deployment evidence and review entries in `src/hooks/useDeployment.ts`
+- [ ] T040 [US3] Detect local-validator resets and preserve prior local evidence as historical-only in `src/hooks/useDeployment.ts`
+- [ ] T041 [US3] Implement accessible status-popup semantics, summaries, and history rendering in `src/components/CompilationStatus.tsx`
+- [ ] T042 [US3] Mirror deployment evidence and accessible review context in `src/components/MoveSourcePanel.tsx`
+- [ ] T043 [US3] Keep modal dismissal and reopening review-safe in `src/components/DeploymentProgressModal.tsx`
+- [ ] T044 [US3] Coordinate retry and review state across deployment surfaces in `src/App.tsx`
 
 **Checkpoint**: User Story 3 should let users review deployment evidence and compare retries without losing outcome context.
 
@@ -120,9 +127,17 @@
 
 **Purpose**: Finalize verification guidance and stabilize shared fixtures across stories.
 
-- [ ] T038 [P] Update local-validator and remote-target verification instructions in `specs/012-real-contract-deployment/quickstart.md`
-- [ ] T039 [P] Align Sui execution decisions and confirmation semantics in `specs/012-real-contract-deployment/research.md`
-- [ ] T040 Validate and stabilize shared deployment fixtures in `src/__tests__/deployment/testFactories.ts`
+- [ ] T045 [P] Update local-validator and remote-target verification instructions in `specs/012-real-contract-deployment/quickstart.md`
+- [ ] T046 [P] Sync post-implementation Sui execution and confirmation findings in `specs/012-real-contract-deployment/research.md`
+- [ ] T047 Validate and stabilize shared deployment fixtures in `src/__tests__/deployment/testFactories.ts`
+- [ ] T048 Review deployment logging and sanitize surfaced error details against the no-secrets constraint in `src/deployment/executor.ts`
+- [ ] T049 Verify deployment-path coverage against constitution thresholds and record the result in `specs/012-real-contract-deployment/quickstart.md`
+- [ ] T050 Run the explicit project-controlled local-validator verification flow from `specs/012-real-contract-deployment/quickstart.md`
+- [ ] T051 Run the explicit real remote deployment verification flow from `specs/012-real-contract-deployment/quickstart.md`
+- [ ] T052 Run the predefined deployment verification scenario five consecutive times and record repeatability results in `specs/012-real-contract-deployment/quickstart.md`
+- [ ] T053 Verify and record successful local deployment completion time against SC-003 in `specs/012-real-contract-deployment/quickstart.md`
+- [ ] T054 Verify and record successful remote deployment completion time against SC-004 in `specs/012-real-contract-deployment/quickstart.md`
+- [ ] T055 Verify and record confirmation-to-evidence latency against SC-005 in `specs/012-real-contract-deployment/quickstart.md`
 
 ---
 
@@ -154,10 +169,10 @@
 
 - **Setup**: T002, T003, and T004 can run in parallel after T001 defines the execution entry point.
 - **Foundational**: T006, T007, and T010 can run in parallel.
-- **US1 tests**: T011, T012, T013, and T014 can run in parallel.
-- **US2 tests**: T022, T023, and T024 can run in parallel.
-- **US3 tests**: T030, T031, and T032 can run in parallel.
-- **Polish**: T038 and T039 can run in parallel.
+- **US1 tests**: T011, T012, T013, T014, and T015 can run in parallel.
+- **US2 tests**: T024, T025, T026, and T027 can run in parallel.
+- **US3 tests**: T034, T035, T036, T037, and T038 can run in parallel.
+- **Polish**: T045 and T046 can run in parallel, T050 and T051 can run in parallel after implementation is complete, and T053 and T054 can run in parallel once the successful verification flows are stable.
 
 ## Parallel Example: User Story 1
 
@@ -166,25 +181,29 @@
 T011 src/__tests__/useDeployment.success.test.ts
 T012 src/__tests__/DeploymentTargetControl.test.tsx
 T013 src/__tests__/DeploymentProgressModal.test.tsx
-T014 tests/e2e/deployment-progress.spec.ts
+T014 src/__tests__/DeploymentTargetControl.test.tsx
+T015 tests/e2e/deployment-progress.spec.ts
 ```
 
 ## Parallel Example: User Story 2
 
 ```bash
 # Launch US2 correctness tests together
-T022 src/__tests__/useDeployment.blockers.test.ts
-T023 src/__tests__/CompilationStatus.deployment-blockers.test.tsx
-T024 tests/e2e/deployment-blockers.spec.ts
+T024 src/__tests__/useDeployment.blockers.test.ts
+T025 src/__tests__/CompilationStatus.deployment-blockers.test.tsx
+T026 src/__tests__/DeploymentProgressModal.test.tsx
+T027 tests/e2e/deployment-blockers.spec.ts
 ```
 
 ## Parallel Example: User Story 3
 
 ```bash
 # Launch US3 review-surface tests together
-T030 src/__tests__/useDeployment.progress.test.ts
-T031 src/__tests__/MoveSourcePanel.deployment.test.tsx
-T032 tests/e2e/deployment-status-popup.spec.ts
+T034 src/__tests__/useDeployment.progress.test.ts
+T035 src/__tests__/MoveSourcePanel.deployment.test.tsx
+T036 src/__tests__/CompilationStatus.deployment-popup.test.tsx
+T037 tests/e2e/deployment-status-popup.spec.ts
+T038 src/__tests__/useDeployment.progress.test.ts
 ```
 
 ## Implementation Strategy
@@ -200,7 +219,7 @@ T032 tests/e2e/deployment-status-popup.spec.ts
 1. Foundation first: typed execution boundary, target metadata, validation, and fixtures.
 2. Add US1: real publish and confirmation evidence.
 3. Add US2: correctness protections and non-success classification.
-4. Add US3: review history, retry confidence, and cross-surface evidence.
+4. Add US3: review history, local-reset handling, retry confidence, and cross-surface evidence.
 5. Finish with documentation and fixture stabilization.
 
 ### Parallel Team Strategy

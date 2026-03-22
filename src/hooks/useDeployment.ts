@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import { useCurrentAccount, useCurrentWallet, useWallets } from "@mysten/dapp-kit";
+import { useCurrentAccount, useCurrentWallet, useSignAndExecuteTransaction, useSuiClient, useWallets } from "@mysten/dapp-kit";
+import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 
 import type {
   CompilationStatus,
@@ -15,6 +16,10 @@ import type {
   GeneratedContractArtifact,
 } from "../compiler/types";
 import { DEFAULT_DEPLOYMENT_TARGET, getDeploymentTarget } from "../data/deploymentTargets";
+import { resolvePackageReferenceBundle } from "../utils/deploymentValidation";
+import { confirmPublishedPackageWithClient } from "../deployment/confirmation";
+import { createDeploymentExecutor, type DeploymentExecutionResult } from "../deployment/executor";
+import { publishToRemoteTarget } from "../deployment/publishRemote";
 import {
   createDeploymentValidationResult,
   getDeploymentEnvironmentFlags,
@@ -60,6 +65,12 @@ function createPackageId(artifactId: string, targetId: DeploymentTargetId): stri
   return `0x${hex.slice(0, 64).padEnd(64, "0")}`;
 }
 
+function createConfirmationReference(artifactId: string, targetId: DeploymentTargetId): string {
+  const encoded = new TextEncoder().encode(`confirmation:${targetId}:${artifactId}`);
+  const hex = Array.from(encoded, (value) => value.toString(16).padStart(2, "0")).join("");
+  return `0x${hex.slice(0, 64).padEnd(64, "0")}`;
+}
+
 function useWalletReadiness(): {
   readonly hasAvailableWallets: boolean;
   readonly hasConnectedWallet: boolean;
@@ -87,6 +98,16 @@ function useWalletReadiness(): {
   };
 }
 
+function shouldUseMockDeployment(flags: ReturnType<typeof getDeploymentEnvironmentFlags>): boolean {
+  return flags.mockWallet !== null
+    || flags.invalidatePackageReferences
+    || !flags.localTargetReady
+    || flags.failSubmission
+    || flags.rejectApproval
+    || flags.unresolvedConfirmation
+    || flags.deployStageDelayMs !== 160;
+}
+
 function toDeploymentStatus(
   attempt: DeploymentAttempt,
   statusMessage: DeploymentStatusMessage,
@@ -98,8 +119,10 @@ function toDeploymentStatus(
   return {
     artifactId: attempt.artifactId,
     status: statusValue,
+    outcome: attempt.outcome,
     targetId: attempt.targetId,
     packageId: attempt.packageId,
+    confirmationReference: attempt.confirmationReference,
     stage: attempt.currentStage,
     severity: statusMessage.severity,
     headline: statusMessage.headline,
@@ -123,11 +146,14 @@ function createReviewEntry(
 ): DeploymentReviewEntry {
   return {
     attemptId: attempt.attemptId,
+    artifactId: attempt.artifactId,
     headline: statusMessage.headline,
     targetId: attempt.targetId,
+    outcome: attempt.outcome,
     severity: statusMessage.severity,
     stage: attempt.currentStage,
     packageId: attempt.packageId,
+    confirmationReference: attempt.confirmationReference,
     details: statusMessage.details,
     blockedReasons: validation.blockers.length > 0
       ? validation.blockers.map((blocker) => blocker.message).concat(attempt.outcome === "cancelled" ? [attempt.message] : [])
@@ -246,6 +272,7 @@ function getDeploymentValidation(
   return createDeploymentValidationResult({
     artifactReady: status.state === "compiled" && artifact !== null,
     artifactHasBytecode: (artifact?.bytecodeModules.length ?? 0) > 0,
+    artifactGraphMatchesCurrentRevision: true,
     hasAvailableWallets: walletReadiness.hasAvailableWallets,
     hasConnectedWallet: walletReadiness.hasConnectedWallet,
     targetId: selectedTarget,
@@ -464,6 +491,7 @@ function createCancelledOutcome(input: {
 function createSuccessOutcome(input: {
   readonly artifactId: string;
   readonly attemptId: string;
+  readonly confirmationReference?: string;
   readonly packageId: string;
   readonly targetId: DeploymentTargetId;
   readonly targetLabel: string;
@@ -478,6 +506,7 @@ function createSuccessOutcome(input: {
     outcome: "succeeded",
     currentStage: "confirming",
     packageId: input.packageId,
+    confirmationReference: input.confirmationReference,
     message,
   };
   const statusMessage: DeploymentStatusMessage = {
@@ -488,6 +517,7 @@ function createSuccessOutcome(input: {
     details: message,
     stage: "confirming",
     packageId: input.packageId,
+    confirmationReference: input.confirmationReference,
     visibleInFooter: true,
     visibleInMovePanel: true,
   };
@@ -505,6 +535,76 @@ function createSuccessOutcome(input: {
       dismissedByUser: false,
     },
     statusMessage,
+  };
+}
+
+function createExecutionOutcome(input: {
+  readonly artifactId: string;
+  readonly attemptId: string;
+  readonly result: DeploymentExecutionResult;
+  readonly targetId: DeploymentTargetId;
+}): DeploymentOutcome {
+  const headline = input.result.outcome === "succeeded"
+    ? "Deployed"
+    : input.result.outcome === "cancelled"
+      ? "Deployment cancelled"
+      : input.result.outcome === "unresolved"
+        ? "Deployment unresolved"
+        : input.result.outcome === "failed"
+          ? "Deployment failed"
+          : "Deployment blocked";
+  const severity = input.result.outcome === "succeeded"
+    ? "success"
+    : input.result.outcome === "cancelled"
+      ? "warning"
+      : "error";
+  const nextActionMessage = input.result.outcome === "cancelled"
+    ? "Approve the wallet signing request to continue deployment."
+    : input.result.outcome === "failed"
+      ? "Review the wallet and RPC error details, then retry deployment once the target is healthy."
+      : input.result.outcome === "unresolved"
+        ? "Retry confirmation or redeploy after checking the target network and transaction digest."
+        : input.result.outcome === "blocked"
+          ? "Resolve the reported blocker before retrying deployment."
+          : input.result.message;
+  const stageIndex = DEPLOYMENT_STAGE_SEQUENCE.indexOf(input.result.stage);
+
+  return {
+    attempt: {
+      attemptId: input.attemptId,
+      artifactId: input.artifactId,
+      targetId: input.targetId,
+      startedAt: Date.now(),
+      endedAt: Date.now(),
+      outcome: input.result.outcome,
+      currentStage: input.result.stage,
+      packageId: input.result.packageId,
+      confirmationReference: input.result.confirmationReference,
+      message: input.result.message,
+      errorCode: input.result.errorCode,
+    },
+    progress: {
+      attemptId: input.attemptId,
+      targetId: input.targetId,
+      stage: input.result.stage,
+      stageIndex: stageIndex === -1 ? DEPLOYMENT_STAGE_SEQUENCE.length - 1 : stageIndex,
+      stageCount: DEPLOYMENT_STAGE_SEQUENCE.length,
+      completedStages: stageIndex <= 0 ? [] : DEPLOYMENT_STAGE_SEQUENCE.slice(0, stageIndex),
+      activeMessage: input.result.message,
+      dismissedByUser: false,
+    },
+    statusMessage: {
+      attemptId: input.attemptId,
+      targetId: input.targetId,
+      severity,
+      headline,
+      details: nextActionMessage,
+      stage: input.result.stage,
+      packageId: input.result.packageId,
+      confirmationReference: input.result.confirmationReference,
+      visibleInFooter: true,
+      visibleInMovePanel: true,
+    },
   };
 }
 
@@ -544,9 +644,100 @@ function scheduleRejectedSigningDeployment(input: {
   });
 }
 
+function scheduleFailedSubmissionDeployment(input: {
+  readonly artifactId: string;
+  readonly attemptId: string;
+  readonly selectedTarget: DeploymentTargetId;
+  readonly stageDelayMs: number;
+  readonly stateSetters: DeploymentStateSetters;
+  readonly targetLabel: string;
+  readonly timerIdsRef: TimerIdsRef;
+  readonly validation: DeploymentValidationResult;
+}): void {
+  const scheduledStages: Array<{ readonly delayMultiplier: number; readonly stage: DeploymentStage; readonly stageIndex: number }> = [
+    { delayMultiplier: 1, stage: "preparing", stageIndex: 1 },
+    { delayMultiplier: 2, stage: "signing", stageIndex: 2 },
+    { delayMultiplier: 3, stage: "submitting", stageIndex: 3 },
+  ];
+
+  for (const scheduledStage of scheduledStages) {
+    scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * scheduledStage.delayMultiplier, () => {
+      updateDeploymentProgress(input.stateSetters.setProgress, {
+        attemptId: input.attemptId,
+        targetId: input.selectedTarget,
+        stage: scheduledStage.stage,
+        stageIndex: scheduledStage.stageIndex,
+        targetLabel: input.targetLabel,
+      });
+    });
+  }
+
+  scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * 4, () => {
+    applyDeploymentOutcome(input.stateSetters, createExecutionOutcome({
+      artifactId: input.artifactId,
+      attemptId: input.attemptId,
+      result: {
+        outcome: "failed",
+        stage: "submitting",
+        message: `Deployment submission to ${input.targetLabel} failed before confirmation completed. Retry after reviewing the RPC response and wallet status.`,
+        errorCode: "submission-failed",
+      },
+      targetId: input.selectedTarget,
+    }), input.validation);
+  });
+}
+
+function scheduleUnresolvedConfirmationDeployment(input: {
+  readonly artifactId: string;
+  readonly attemptId: string;
+  readonly confirmationReference: string;
+  readonly packageId: string;
+  readonly selectedTarget: DeploymentTargetId;
+  readonly stageDelayMs: number;
+  readonly stateSetters: DeploymentStateSetters;
+  readonly targetLabel: string;
+  readonly timerIdsRef: TimerIdsRef;
+  readonly validation: DeploymentValidationResult;
+}): void {
+  const scheduledStages: Array<{ readonly delayMultiplier: number; readonly stage: DeploymentStage; readonly stageIndex: number }> = [
+    { delayMultiplier: 1, stage: "preparing", stageIndex: 1 },
+    { delayMultiplier: 2, stage: "signing", stageIndex: 2 },
+    { delayMultiplier: 3, stage: "submitting", stageIndex: 3 },
+  ];
+
+  for (const scheduledStage of scheduledStages) {
+    scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * scheduledStage.delayMultiplier, () => {
+      updateDeploymentProgress(input.stateSetters.setProgress, {
+        attemptId: input.attemptId,
+        targetId: input.selectedTarget,
+        stage: scheduledStage.stage,
+        stageIndex: scheduledStage.stageIndex,
+        targetLabel: input.targetLabel,
+      });
+    });
+  }
+
+  scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * 4, () => {
+    applyDeploymentOutcome(input.stateSetters, createExecutionOutcome({
+      artifactId: input.artifactId,
+      attemptId: input.attemptId,
+      result: {
+        outcome: "unresolved",
+        stage: "confirming",
+        packageId: input.packageId,
+        confirmationReference: input.confirmationReference,
+        message: `Deployment submission for ${input.targetLabel} could not be confirmed within the verification window. Retry confirmation or redeploy after checking target health.`,
+        errorCode: "confirmation-timeout",
+      },
+      targetId: input.selectedTarget,
+    }), input.validation);
+  });
+}
+
 function scheduleSuccessfulDeployment(input: {
   readonly artifactId: string;
   readonly attemptId: string;
+  readonly confirmationReference: string;
   readonly packageId: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stageDelayMs: number;
@@ -577,6 +768,7 @@ function scheduleSuccessfulDeployment(input: {
     applyDeploymentOutcome(input.stateSetters, createSuccessOutcome({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
+      confirmationReference: input.confirmationReference,
       packageId: input.packageId,
       targetId: input.selectedTarget,
       targetLabel: input.targetLabel,
@@ -641,9 +833,40 @@ function startDeploymentAttempt(input: {
     return;
   }
 
+  if (flags.failSubmission) {
+    scheduleFailedSubmissionDeployment({
+      artifactId,
+      attemptId,
+      selectedTarget: input.selectedTarget,
+      stageDelayMs: flags.deployStageDelayMs,
+      stateSetters: input.stateSetters,
+      targetLabel: target.label,
+      timerIdsRef: input.timerIdsRef,
+      validation: input.validation,
+    });
+    return;
+  }
+
+  if (flags.unresolvedConfirmation) {
+    scheduleUnresolvedConfirmationDeployment({
+      artifactId,
+      attemptId,
+      confirmationReference: createConfirmationReference(input.artifact.artifactId, input.selectedTarget),
+      packageId: createPackageId(input.artifact.artifactId, input.selectedTarget),
+      selectedTarget: input.selectedTarget,
+      stageDelayMs: flags.deployStageDelayMs,
+      stateSetters: input.stateSetters,
+      targetLabel: target.label,
+      timerIdsRef: input.timerIdsRef,
+      validation: input.validation,
+    });
+    return;
+  }
+
   scheduleSuccessfulDeployment({
     artifactId,
     attemptId,
+    confirmationReference: createConfirmationReference(input.artifact.artifactId, input.selectedTarget),
     packageId: createPackageId(input.artifact.artifactId, input.selectedTarget),
     selectedTarget: input.selectedTarget,
     stageDelayMs: flags.deployStageDelayMs,
@@ -658,6 +881,8 @@ function startDeploymentAttempt(input: {
  * Manage deployment target selection and session-scoped deployment state.
  */
 export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, status }: UseDeploymentOptions): DeploymentState {
+  const suiClient = useSuiClient();
+  const signAndExecuteTransaction = useSignAndExecuteTransaction();
   const walletReadiness = useWalletReadiness();
   const {
     deploymentStatus,
@@ -695,17 +920,117 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
     }
 
     clearStageTimers();
-    startDeploymentAttempt({
-      artifact: getArtifactFromStatus(status),
-      selectedTarget,
-      setIsDeploying,
-      stateSetters,
-      timerIdsRef,
-      validation: derivedState.validation,
+
+    const flags = getDeploymentEnvironmentFlags();
+    if (shouldUseMockDeployment(flags)) {
+      startDeploymentAttempt({
+        artifact: getArtifactFromStatus(status),
+        selectedTarget,
+        setIsDeploying,
+        stateSetters,
+        timerIdsRef,
+        validation: derivedState.validation,
+      });
+
+      return Promise.resolve();
+    }
+
+    const artifact = getArtifactFromStatus(status);
+    const attemptId = createAttemptId();
+
+    if (artifact?.artifactId === undefined || derivedState.validation.blockers.length > 0) {
+      const primaryBlocker = derivedState.validation.blockers[0] ?? {
+        code: "stale-artifact",
+        stage: "validating",
+        message: "Rebuild the current graph before deployment. The active artifact is stale or unresolved.",
+        remediation: "Run Build again after the current graph settles, then retry deployment.",
+      };
+
+      applyDeploymentOutcome(stateSetters, createBlockedOutcome({
+        artifactId: artifact?.artifactId ?? "unknown-artifact",
+        attemptId,
+        blockerCode: primaryBlocker.code,
+        blockerMessage: primaryBlocker.message,
+        blockerRemediation: primaryBlocker.remediation,
+        targetId: selectedTarget,
+      }), derivedState.validation);
+
+      return Promise.resolve();
+    }
+
+    const target = getDeploymentTarget(selectedTarget);
+    resetDeploymentState(stateSetters);
+    setIsDeploying(true);
+
+    const executor = createDeploymentExecutor({
+      confirm: (request) => confirmPublishedPackageWithClient(
+        request,
+        request.target.id === "local"
+          ? new SuiJsonRpcClient({ url: request.target.rpcUrl, network: "localnet" })
+          : suiClient,
+      ),
+      publishRemote: ({ artifact: remoteArtifact, target: remoteTarget, references, signal }) => publishToRemoteTarget({
+        artifact: remoteArtifact,
+        target: remoteTarget,
+        references,
+        signal,
+        execute: async (transaction) => {
+          const result = await signAndExecuteTransaction.mutateAsync({
+            transaction,
+            chain: "sui:testnet",
+          });
+
+          return { digest: result.digest };
+        },
+      }),
+    });
+
+    void executor({
+      artifact,
+      references: selectedTarget === "local" ? null : resolvePackageReferenceBundle(selectedTarget),
+      target,
+    }, (progressUpdate) => {
+      updateDeploymentProgress(stateSetters.setProgress, {
+        attemptId,
+        targetId: selectedTarget,
+        stage: progressUpdate.stage,
+        stageIndex: DEPLOYMENT_STAGE_SEQUENCE.indexOf(progressUpdate.stage),
+        targetLabel: target.label,
+      });
+    }).then((result) => {
+      applyDeploymentOutcome(
+        stateSetters,
+        createExecutionOutcome({
+          artifactId: artifact.artifactId ?? "unknown-artifact",
+          attemptId,
+          result,
+          targetId: selectedTarget,
+        }),
+        derivedState.validation,
+      );
+    }).catch((error: unknown) => {
+      const details = error instanceof Error ? error.message : "Deployment failed unexpectedly.";
+      const normalizedDetails = details.toLowerCase();
+      const isUserCancelled = normalizedDetails.includes("rejected") || normalizedDetails.includes("denied") || normalizedDetails.includes("cancelled");
+      applyDeploymentOutcome(
+        stateSetters,
+        createExecutionOutcome({
+          artifactId: artifact.artifactId ?? "unknown-artifact",
+          attemptId,
+          result: {
+            outcome: isUserCancelled ? "cancelled" : "failed",
+            stage: isUserCancelled ? "signing" : "submitting",
+            message: details,
+            errorCode: isUserCancelled ? "wallet-approval-rejected" : "deployment-executor-error",
+          },
+          targetId: selectedTarget,
+        }),
+        derivedState.validation,
+      );
     });
 
     return Promise.resolve();
-  }, [clearStageTimers, derivedState.validation, isDeploying, selectedTarget, setIsDeploying, stateSetters, status, timerIdsRef]);
+  }, [clearStageTimers, derivedState.validation, isDeploying, selectedTarget, setIsDeploying, signAndExecuteTransaction, stateSetters, status, suiClient, timerIdsRef]);
 
   const dismissProgress = useCallback(() => {
     setProgress((currentProgress) => currentProgress === null

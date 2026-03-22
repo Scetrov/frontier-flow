@@ -1,7 +1,9 @@
 import { createGenerationContext, getGenerator } from "./generators";
 import { createGeneratedContractArtifact, socketBindingKey } from "./generators/shared";
 import { emitReferenceContractTemplate } from "./referenceTemplates";
-import type { AnnotatedLine, EmitterOutput, IRGraph, SourceMapEntry } from "./types";
+import { getDeploymentTarget } from "../data/deploymentTargets";
+import { getPackageReferenceBundle } from "../data/packageReferences";
+import type { AnnotatedLine, ArtifactManifest, DeploymentTargetId, EmitterOutput, IRGraph, SourceMapEntry } from "./types";
 
 function createMoveToml(moduleName: string): string {
   return [
@@ -13,6 +15,28 @@ function createMoveToml(moduleName: string): string {
     'builder_extensions = "0x0"',
     "",
   ].join("\n");
+}
+
+/**
+ * Prepare a deployment manifest for a specific target without mutating compiled source state.
+ */
+export function prepareArtifactManifestForTarget(
+  moduleName: string,
+  targetId: DeploymentTargetId,
+  existingDependencies: readonly string[] = [],
+): ArtifactManifest {
+  const target = getDeploymentTarget(targetId);
+  const dependencies = target.requiresPublishedPackageRefs
+    ? (() => {
+        const bundle = getPackageReferenceBundle(targetId as Exclude<DeploymentTargetId, "local">);
+        return [...existingDependencies, bundle.worldPackageId, bundle.objectRegistryId, bundle.serverAddressRegistryId];
+      })()
+    : [...existingDependencies];
+
+  return {
+    moveToml: createMoveToml(moduleName),
+    dependencies,
+  };
 }
 
 function pushLine(lines: string[], sourceMap: SourceMapEntry[], code: string, nodeId: string | null): void {
