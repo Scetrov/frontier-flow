@@ -22,7 +22,7 @@ const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
 const mockUseDisconnectWallet = vi.fn<() => DisconnectWallet>();
 const mockUseSuiClientQuery = vi.fn<() => BalanceQuery>();
 const mockUseWallets = vi.fn<() => Wallets>();
-const mockFetch = vi.fn<typeof fetch>();
+const mockFetchCharacterNameForWalletAcrossTargets = vi.fn<typeof import("../utils/characterProfile").fetchCharacterNameForWalletAcrossTargets>();
 
 const availableWallet = { name: "Sui Wallet" } as unknown as Wallets[number];
 
@@ -73,6 +73,11 @@ vi.mock("@mysten/dapp-kit", () => ({
   useWallets: () => mockUseWallets(),
 }));
 
+vi.mock("../utils/characterProfile", () => ({
+  fetchCharacterNameForWalletAcrossTargets: (...args: Parameters<typeof mockFetchCharacterNameForWalletAcrossTargets>) =>
+    mockFetchCharacterNameForWalletAcrossTargets(...args),
+}));
+
 const connectedAccount = {
   address: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
   chains: [],
@@ -84,26 +89,16 @@ const connectedAccount = {
 
 describe("WalletStatus", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
     mockUseCurrentAccount.mockReturnValue(null);
     mockUseCurrentWallet.mockReturnValue(createDisconnectedWalletState());
     mockUseDisconnectWallet.mockReturnValue(createDisconnectMutation());
     mockUseSuiClientQuery.mockReturnValue(createBalanceQuery());
     mockUseWallets.mockReturnValue([availableWallet]);
-    mockFetch.mockReset();
-    mockFetch.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({
-      data: {
-        address: {
-          objects: {
-            nodes: [],
-          },
-        },
-      },
-    }), { status: 200, headers: { "content-type": "application/json" } })));
+    mockFetchCharacterNameForWalletAcrossTargets.mockReset();
+    mockFetchCharacterNameForWalletAcrossTargets.mockImplementation(() => new Promise(() => undefined));
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
@@ -213,49 +208,15 @@ describe("WalletStatus", () => {
     mockUseSuiClientQuery.mockReturnValue(createBalanceQuery({
       data: { totalBalance: "3000000000" },
     }));
-    mockFetch
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        data: {
-          address: {
-            objects: {
-              nodes: [],
-            },
-          },
-        },
-      }), { status: 200, headers: { "content-type": "application/json" } }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        data: {
-          address: {
-            objects: {
-              nodes: [{
-                contents: {
-                  json: { character_id: "0xabc123" },
-                },
-              }],
-            },
-          },
-        },
-      }), { status: 200, headers: { "content-type": "application/json" } }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        data: {
-          object: {
-            asMoveObject: {
-              contents: {
-                json: {
-                  metadata: {
-                    name: "Capsuleer One",
-                  },
-                },
-              },
-            },
-          },
-        },
-      }), { status: 200, headers: { "content-type": "application/json" } }));
+    mockFetchCharacterNameForWalletAcrossTargets.mockResolvedValue("Capsuleer One");
 
     render(<WalletStatus selectedDeploymentTarget="local" />);
 
     expect(await screen.findByText("Capsuleer One")).toBeVisible();
     expect(screen.getByText("3 SUI")).toBeVisible();
-    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(mockFetchCharacterNameForWalletAcrossTargets).toHaveBeenCalledWith(expect.objectContaining({
+      preferredTargetId: "local",
+      walletAddress: connectedAccount.address,
+    }));
   });
 });

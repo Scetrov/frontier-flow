@@ -44,7 +44,7 @@ vi.mock("@mysten/dapp-kit", () => ({
 }));
 
 vi.mock("../components/Header", () => ({
-  default: (props: { activeView?: string; onViewChange?: (view: "visual" | "move") => void }) => {
+  default: (props: { activeView?: string; onViewChange?: (view: "visual" | "move" | "authorize") => void }) => {
     headerSpy(props);
     return (
       <button
@@ -156,6 +156,27 @@ describe("App", () => {
     expect(headerSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         activeView: "move",
+      }),
+    );
+  });
+
+  it("falls back from authorize to visual when no valid deployment state exists", () => {
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "authorize",
+        selectedDeploymentTarget: "local",
+        isSidebarOpen: true,
+        isContractPanelOpen: true,
+      }),
+    );
+
+    render(<App />);
+
+    expect(headerSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        activeView: "visual",
       }),
     );
   });

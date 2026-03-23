@@ -1,1 +1,1 @@
-- 012-real-contract-deployment: Added TypeScript 5.9 (strict), React 19, generated Sui Move artifacts + `@mysten/sui`, `@mysten/dapp-kit`, `@zktx.io/sui-move-builder`, React 19, `@tanstack/react-query`, `@xyflow/react`
+- 013-turret-authorize: Added TypeScript 5.9 (strict, ES Modules) + React 19, Tailwind CSS 4, @mysten/sui (Sui SDK), @mysten/dapp-kit (wallet integration), @xyflow/react (canvas — not directly used by this feature)

@@ -3,13 +3,14 @@ import type { DeploymentTargetId } from "../compiler/types";
 import DeploymentTargetControl from "./DeploymentTargetControl";
 import WalletStatus from "./WalletStatus";
 
-export type PrimaryView = "visual" | "move";
+export type PrimaryView = "visual" | "move" | "authorize";
 
 interface HeaderProps {
   readonly isCompiling?: boolean;
   readonly isUpgrade?: boolean;
   readonly onBuild?: () => void;
   readonly activeView?: PrimaryView;
+  readonly hasAuthorizeAccess?: boolean;
   readonly canDeploy?: boolean;
   readonly isDeploying?: boolean;
   readonly onDeploy?: () => void;
@@ -32,20 +33,29 @@ interface HeaderActionsProps {
 
 interface NavigationButtonProps {
   readonly active: boolean;
+  readonly disabled?: boolean;
   readonly icon: React.ReactNode;
   readonly label: string;
   readonly onClick: () => void;
+  readonly tooltip?: string;
 }
 
-function NavigationButton({ active, icon, label, onClick }: NavigationButtonProps) {
-  const className = active ? "ff-header__nav-button ff-header__nav-button--active" : "ff-header__nav-button";
+function NavigationButton({ active, disabled = false, icon, label, onClick, tooltip }: NavigationButtonProps) {
+  const className = [
+    "ff-header__nav-button",
+    active ? "ff-header__nav-button--active" : "",
+    disabled ? "ff-header__nav-button--disabled" : "",
+  ].filter(Boolean).join(" ");
 
-  return (
+  const button = (
     <button
       aria-current={active ? "page" : undefined}
+      aria-disabled={disabled ? true : undefined}
       aria-label={label}
       className={className}
+      disabled={disabled}
       onClick={onClick}
+      title={tooltip}
       type="button"
     >
       <span aria-hidden="true" className="ff-header__nav-icon">
@@ -54,9 +64,19 @@ function NavigationButton({ active, icon, label, onClick }: NavigationButtonProp
       <span className="ff-header__nav-label">{label}</span>
     </button>
   );
+
+  return tooltip ? <span title={tooltip}>{button}</span> : button;
 }
 
-function ViewNavigation({ activeView, onViewChange }: { readonly activeView: PrimaryView; readonly onViewChange: (view: PrimaryView) => void }) {
+function ViewNavigation({
+  activeView,
+  canAuthorize,
+  onViewChange,
+}: {
+  readonly activeView: PrimaryView;
+  readonly canAuthorize: boolean;
+  readonly onViewChange: (view: PrimaryView) => void;
+}) {
   return (
     <nav aria-label="Primary" className="ff-header__nav">
       <NavigationButton
@@ -87,6 +107,22 @@ function ViewNavigation({ activeView, onViewChange }: { readonly activeView: Pri
         onClick={() => {
           onViewChange("move");
         }}
+      />
+      <NavigationButton
+        active={activeView === "authorize"}
+        disabled={!canAuthorize}
+        icon={(
+          <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 1.4L14.5 3.5V6.8C14.5 10 12.15 12.3 9 12.9C5.85 12.3 3.5 10 3.5 6.8V3.5L9 1.4Z" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M9 5.1V8.3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+            <circle cx="9" cy="9.9" fill="currentColor" r="0.8" />
+          </svg>
+        )}
+        label="Authorize"
+        onClick={() => {
+          onViewChange("authorize");
+        }}
+        tooltip={!canAuthorize ? "Deploy a contract first" : undefined}
       />
     </nav>
   );
@@ -145,6 +181,7 @@ function Header({
   isUpgrade = false,
   onBuild,
   activeView = "visual",
+  hasAuthorizeAccess = false,
   canDeploy = false,
   isDeploying = false,
   onDeploy,
@@ -176,7 +213,7 @@ function Header({
         </div>
 
         {onViewChange ? (
-          <ViewNavigation activeView={activeView} onViewChange={onViewChange} />
+          <ViewNavigation activeView={activeView} canAuthorize={hasAuthorizeAccess} onViewChange={onViewChange} />
         ) : null}
 
         <HeaderActions

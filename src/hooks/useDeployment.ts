@@ -26,6 +26,8 @@ import {
   getDeploymentEnvironmentFlags,
   type DeploymentValidationResult,
 } from "../utils/deploymentValidation";
+import { clearDeploymentState, loadActiveContractName, saveDeploymentState } from "../utils/deploymentStateStorage";
+import type { StoredDeploymentState } from "../types/authorization";
 
 interface UseDeploymentOptions {
   readonly initialTarget?: DeploymentTargetId;
@@ -1125,6 +1127,113 @@ function startRealDeployment(input: {
   });
 }
 
+function usePersistedDeploymentSnapshot(
+  deploymentStatus: DeploymentState["deploymentStatus"],
+  latestAttempt: DeploymentState["latestAttempt"],
+  status: UseDeploymentOptions["status"],
+) {
+  useEffect(() => {
+    const snapshot = getPersistedDeploymentSnapshot(deploymentStatus, latestAttempt, status);
+    if (snapshot === null || typeof window === "undefined") {
+      return;
+    }
+
+    saveDeploymentState(window.localStorage, snapshot);
+  }, [deploymentStatus, latestAttempt, status]);
+}
+
+function getPersistedDeploymentSnapshot(
+  deploymentStatus: DeploymentState["deploymentStatus"],
+  latestAttempt: DeploymentState["latestAttempt"],
+  status: UseDeploymentOptions["status"],
+): StoredDeploymentState | null {
+  if (deploymentStatus?.status !== "deployed" || latestAttempt?.outcome !== "succeeded" || latestAttempt.packageId === undefined) {
+    return null;
+  }
+
+  const artifact = getArtifactFromStatus(status);
+  if (artifact === null) {
+    return null;
+  }
+
+  return {
+    version: 1,
+    packageId: latestAttempt.packageId,
+    moduleName: artifact.moduleName,
+    targetId: latestAttempt.targetId,
+    transactionDigest: latestAttempt.confirmationReference ?? latestAttempt.packageId,
+    deployedAt: new Date(latestAttempt.endedAt ?? latestAttempt.startedAt).toISOString(),
+    contractName: loadActiveContractName(window.localStorage) ?? artifact.moduleName,
+  };
+}
+
+function beginDeploymentAttempt(input: {
+  readonly account: ReturnType<typeof useCurrentAccount>;
+  readonly clearStageTimers: () => void;
+  readonly currentWallet: ReturnType<typeof useCurrentWallet>;
+  readonly derivedValidation: ReturnType<typeof useDeploymentDerivedState>["validation"];
+  readonly isDeploying: boolean;
+  readonly localChainIdRef: ReturnType<typeof useDeploymentStore>["localChainIdRef"];
+  readonly selectedTarget: DeploymentTargetId;
+  readonly setIsDeploying: ReturnType<typeof useDeploymentStore>["setIsDeploying"];
+  readonly stateSetters: ReturnType<typeof useDeploymentStore>["stateSetters"];
+  readonly status: UseDeploymentOptions["status"];
+  readonly suiClient: ReturnType<typeof useSuiClient>;
+  readonly timerIdsRef: ReturnType<typeof useDeploymentStore>["timerIdsRef"];
+}): Promise<void> {
+  if (input.isDeploying) {
+    return Promise.resolve();
+  }
+
+  resetDeploymentAttemptState(input.clearStageTimers);
+
+  if (shouldUseMockDeployment(getDeploymentEnvironmentFlags())) {
+    startMockDeployment(input);
+    return Promise.resolve();
+  }
+
+  startRealDeployment({
+    account: input.account,
+    currentWallet: input.currentWallet,
+    derivedValidation: input.derivedValidation,
+    localChainIdRef: input.localChainIdRef,
+    selectedTarget: input.selectedTarget,
+    setIsDeploying: input.setIsDeploying,
+    stateSetters: input.stateSetters,
+    status: input.status,
+    suiClient: input.suiClient,
+  });
+
+  return Promise.resolve();
+}
+
+function resetDeploymentAttemptState(clearStageTimers: () => void) {
+  if (typeof window !== "undefined") {
+    clearDeploymentState(window.localStorage);
+  }
+
+  clearStageTimers();
+}
+
+function startMockDeployment(input: {
+  readonly derivedValidation: ReturnType<typeof useDeploymentDerivedState>["validation"];
+  readonly localChainIdRef: ReturnType<typeof useDeploymentStore>["localChainIdRef"];
+  readonly selectedTarget: DeploymentTargetId;
+  readonly setIsDeploying: ReturnType<typeof useDeploymentStore>["setIsDeploying"];
+  readonly stateSetters: ReturnType<typeof useDeploymentStore>["stateSetters"];
+  readonly status: UseDeploymentOptions["status"];
+  readonly timerIdsRef: ReturnType<typeof useDeploymentStore>["timerIdsRef"];
+}) {
+  startDeploymentAttempt({
+    artifact: getArtifactFromStatus(input.status),
+    selectedTarget: input.selectedTarget,
+    setIsDeploying: input.setIsDeploying,
+    stateSetters: { ...input.stateSetters, localChainIdRef: input.localChainIdRef },
+    timerIdsRef: input.timerIdsRef,
+    validation: input.derivedValidation,
+  });
+}
+
 /**
  * Manage deployment target selection and session-scoped deployment state.
  */
@@ -1163,41 +1272,23 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
   }, [timerIdsRef]);
 
   useEffect(() => clearStageTimers, [clearStageTimers]);
+  usePersistedDeploymentSnapshot(deploymentStatus, latestAttempt, status);
 
   const startDeployment = useCallback((): Promise<void> => {
-    if (isDeploying) {
-      return Promise.resolve();
-    }
-
-    clearStageTimers();
-
-    const flags = getDeploymentEnvironmentFlags();
-    if (shouldUseMockDeployment(flags)) {
-      startDeploymentAttempt({
-        artifact: getArtifactFromStatus(status),
-        selectedTarget,
-        setIsDeploying,
-        stateSetters: { ...stateSetters, localChainIdRef },
-        timerIdsRef,
-        validation: derivedState.validation,
-      });
-
-      return Promise.resolve();
-    }
-
-    startRealDeployment({
+    return beginDeploymentAttempt({
       account,
+      clearStageTimers,
       currentWallet,
       derivedValidation: derivedState.validation,
+      isDeploying,
       localChainIdRef,
       selectedTarget,
       setIsDeploying,
       stateSetters,
       status,
       suiClient,
+      timerIdsRef,
     });
-
-    return Promise.resolve();
   }, [account, clearStageTimers, currentWallet, derivedState.validation, isDeploying, localChainIdRef, selectedTarget, setIsDeploying, stateSetters, status, suiClient, timerIdsRef]);
 
   const dismissProgress = useCallback(() => {

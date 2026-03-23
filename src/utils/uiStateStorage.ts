@@ -1,6 +1,6 @@
 export const UI_STATE_STORAGE_KEY = "frontier-flow:ui-state";
 
-export type StoredPrimaryView = "visual" | "move";
+export type StoredPrimaryView = "visual" | "move" | "authorize";
 export type StoredDeploymentTarget = "local" | "testnet:stillness" | "testnet:utopia";
 
 export interface UiState {
@@ -72,7 +72,7 @@ function parseUiState(parsedValue: unknown): UiState {
 
   return {
     version: 1,
-    activeView: parsedValue.activeView === "move" ? "move" : defaults.activeView,
+    activeView: isStoredPrimaryView(parsedValue.activeView) ? parsedValue.activeView : defaults.activeView,
     selectedDeploymentTarget: isStoredDeploymentTarget(parsedValue.selectedDeploymentTarget)
       ? parsedValue.selectedDeploymentTarget
       : defaults.selectedDeploymentTarget,
@@ -102,4 +102,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isStoredDeploymentTarget(value: unknown): value is StoredDeploymentTarget {
   return value === "local" || value === "testnet:stillness" || value === "testnet:utopia";
+}
+
+function isStoredPrimaryView(value: unknown): value is StoredPrimaryView {
+  return value === "visual" || value === "move" || value === "authorize";
 }

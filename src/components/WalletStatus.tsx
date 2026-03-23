@@ -134,23 +134,15 @@ function WalletHelpStatus({
   );
 }
 
-function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selectedDeploymentTarget?: DeploymentTargetId }) {
-  const account = useCurrentAccount();
-  const wallets = useWallets();
-  const currentWallet = useCurrentWallet();
-  const disconnectWallet = useDisconnectWallet();
-  const [showWalletHelp, setShowWalletHelp] = useState(false);
+function useResolvedCharacterName(
+  account: ReturnType<typeof useCurrentAccount>,
+  selectedDeploymentTarget: DeploymentTargetId,
+): string | null {
   const [characterNameState, setCharacterNameState] = useState<{
     readonly targetId: DeploymentTargetId;
     readonly value: string | null;
     readonly walletAddress: string;
   } | null>(null);
-
-  const balanceQuery = useSuiClientQuery(
-    "getBalance",
-    { owner: account?.address ?? "0x0" },
-    { enabled: account !== null, staleTime: 15_000 },
-  );
 
   useEffect(() => {
     if (account === null) {
@@ -183,12 +175,68 @@ function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selecte
     };
   }, [account, selectedDeploymentTarget]);
 
-  const characterName = account !== null
+  return account !== null
     && characterNameState !== null
     && characterNameState.walletAddress === account.address
     && characterNameState.targetId === selectedDeploymentTarget
     ? characterNameState.value
     : null;
+}
+
+function getConnectedWalletPresentation(balanceQuery: unknown, accountAddress: string, characterName: string | null): {
+  readonly balanceLabel: string;
+  readonly identityLabel: string;
+} {
+  const balanceQuerySnapshot = getBalanceQuerySnapshot(balanceQuery);
+  const balanceLabel = balanceQuerySnapshot.isPending
+    ? "Loading..."
+    : balanceQuerySnapshot.isError
+      ? "-- SUI"
+      : formatBalance(balanceQuerySnapshot.totalBalance);
+
+  return {
+    balanceLabel,
+    identityLabel: characterName ?? formatAddress(accountAddress),
+  };
+}
+
+function getBalanceQuerySnapshot(query: unknown): {
+  readonly isError: boolean;
+  readonly isPending: boolean;
+  readonly totalBalance: string | null;
+} {
+  if (!isRecord(query)) {
+    return { isError: false, isPending: false, totalBalance: null };
+  }
+
+  const totalBalance = isRecord(query.data) && typeof query.data.totalBalance === "string"
+    ? query.data.totalBalance
+    : null;
+
+  return {
+    isError: query.isError === true,
+    isPending: query.isPending === true,
+    totalBalance,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selectedDeploymentTarget?: DeploymentTargetId }) {
+  const account = useCurrentAccount();
+  const wallets = useWallets();
+  const currentWallet = useCurrentWallet();
+  const disconnectWallet = useDisconnectWallet();
+  const [showWalletHelp, setShowWalletHelp] = useState(false);
+  const characterName = useResolvedCharacterName(account, selectedDeploymentTarget);
+
+  const balanceQuery = useSuiClientQuery(
+    "getBalance",
+    { owner: account?.address ?? "0x0" },
+    { enabled: account !== null, staleTime: 15_000 },
+  );
 
   const sharedButtonClassName =
     "ff-header__button ff-header__button--compact ff-wallet-status__action min-h-10 border px-3 py-2 font-heading text-xs uppercase tracking-[0.22em] transition-colors disabled:cursor-not-allowed disabled:opacity-60";
@@ -197,12 +245,7 @@ function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selecte
   const disabledButtonClassName = `${sharedButtonClassName} border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.85)] text-[var(--text-secondary)]`;
 
   if (account !== null) {
-    const balanceLabel = balanceQuery.isPending
-      ? "Loading..."
-      : balanceQuery.isError
-        ? "-- SUI"
-        : formatBalance(balanceQuery.data.totalBalance);
-    const identityLabel = characterName ?? formatAddress(account.address);
+    const { balanceLabel, identityLabel } = getConnectedWalletPresentation(balanceQuery, account.address, characterName);
 
     return (
       <ConnectedWalletStatus

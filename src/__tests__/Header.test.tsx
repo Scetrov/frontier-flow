@@ -20,6 +20,7 @@ describe("Header", () => {
     expect(screen.getByText("Frontier Flow")).toBeVisible();
     expect(screen.getByRole("button", { name: "Visual" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Move" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Authorize" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Build" })).toBeVisible();
     expect(screen.getByText("Deployment Target Control Slot")).toBeVisible();
     expect(screen.getByText("Wallet Status Slot")).toBeVisible();
@@ -51,12 +52,24 @@ describe("Header", () => {
   it("lets the user switch the primary view", () => {
     const onViewChange = vi.fn();
 
-    render(<Header activeView="visual" onViewChange={onViewChange} />);
+    render(<Header activeView="visual" hasAuthorizeAccess={true} onViewChange={onViewChange} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    fireEvent.click(screen.getByRole("button", { name: "Authorize" }));
 
     expect(onViewChange).toHaveBeenCalledWith("move");
+    expect(onViewChange).toHaveBeenCalledWith("authorize");
     expect(screen.getByRole("button", { name: "Visual" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("disables the Authorize tab until a deployment is available", () => {
+    render(<Header activeView="visual" hasAuthorizeAccess={false} onViewChange={() => undefined} />);
+
+    const authorizeButton = screen.getByRole("button", { name: "Authorize" });
+
+    expect(authorizeButton).toBeDisabled();
+    expect(authorizeButton).toHaveAttribute("aria-disabled", "true");
+    expect(authorizeButton).toHaveAttribute("title", "Deploy a contract first");
   });
 
   it("does not surface lifecycle automation actions outside the current feature scope", () => {

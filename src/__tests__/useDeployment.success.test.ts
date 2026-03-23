@@ -10,6 +10,7 @@ import type {
 import type { signTransaction as signTransactionFunction } from "@mysten/wallet-standard";
 
 import { useDeployment } from "../hooks/useDeployment";
+import { loadDeploymentState } from "../utils/deploymentStateStorage";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
@@ -60,6 +61,7 @@ vi.mock("@mysten/wallet-standard", () => ({
 
 beforeEach(() => {
   vi.useFakeTimers();
+  window.localStorage.clear();
   mockUseCurrentAccount.mockReturnValue({
     address: "0x1234",
     chains: [],
@@ -127,6 +129,47 @@ describe("useDeployment success path", () => {
     expect(result.current.deploymentStatus?.targetId).toBe("testnet:stillness");
     expect(result.current.deploymentStatus?.confirmationReference).toMatch(/^0x[a-f0-9]{64}$/);
     expect(result.current.statusMessage?.headline).toBe("Deployed");
+    expect(loadDeploymentState(window.localStorage)).toEqual({
+      version: 1,
+      packageId: result.current.latestAttempt?.packageId,
+      moduleName: artifact.moduleName,
+      targetId: "testnet:stillness",
+      transactionDigest: result.current.latestAttempt?.confirmationReference,
+      deployedAt: new Date(result.current.latestAttempt?.endedAt ?? 0).toISOString(),
+      contractName: artifact.moduleName,
+    });
+  });
+
+  it("clears a persisted deployment snapshot when a new deployment starts", async () => {
+    window.history.replaceState({}, "", "/?ff_mock_deploy_stage_delay_ms=1000");
+    window.localStorage.setItem("frontier-flow:deployment", JSON.stringify({
+      version: 1,
+      packageId: "0xabc",
+      moduleName: "starter_contract",
+      targetId: "local",
+      transactionDigest: "0xdigest",
+      deployedAt: "2026-03-23T00:00:00.000Z",
+      contractName: "starter_contract",
+    }));
+
+    const artifact = createGeneratedArtifactStub({
+      bytecodeModules: [new Uint8Array([1, 2, 3])],
+    });
+
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "local",
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([1, 2, 3])],
+        artifact,
+      },
+    }));
+
+    await act(async () => {
+      await result.current.startDeployment();
+    });
+
+    expect(loadDeploymentState(window.localStorage)).toBeNull();
   });
 
   it("preserves the real attempt start time when the executor-backed remote path succeeds", async () => {
