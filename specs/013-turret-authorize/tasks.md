@@ -113,15 +113,15 @@
 
 ### Tests for User Story 4
 
-- [ ] T021 [P] [US4] Unit tests for authorization transaction construction (valid transaction with correct Move calls, missing OwnerCap error, malformed turret ID, correct type arguments for auth witness) in src/**tests**/authorizationTransaction.test.ts
-- [ ] T022 [P] [US4] Component tests for AuthorizationProgressModal (renders pending turrets, transitions to submitting/confirming/confirmed/failed, confirmation timeout shows warning state, summary counts correct, wallet disconnection warning renders, close button triggers callback) in src/**tests**/AuthorizationProgressModal.test.tsx
+- [X] T021 [P] [US4] Unit tests for authorization transaction construction (valid transaction with correct Move calls, missing OwnerCap error, malformed turret ID, correct type arguments for auth witness) in src/**tests**/authorizationTransaction.test.ts
+- [X] T022 [P] [US4] Component tests for AuthorizationProgressModal (renders pending turrets, transitions to submitting/confirming/confirmed/failed, confirmation timeout shows warning state, summary counts correct, wallet disconnection warning renders, close button triggers callback) in src/**tests**/AuthorizationProgressModal.test.tsx
 
 ### Implementation for User Story 4
 
-- [ ] T023 [P] [US4] Create buildAuthorizeTurretTransaction function (constructs Transaction with borrow_owner_cap → authorize_extension → return_owner_cap) and fetchOwnerCap GraphQL query (resolves `OwnerCap<Turret>` by owner address) in src/utils/authorizationTransaction.ts
-- [ ] T024 [US4] Create useAuthorization hook for sequential per-turret execution with: status tracking (pending → submitting → confirming → confirmed/failed/warning), baseline waitForTransaction confirmation with AUTHORIZATION_CONFIRMATION_TIMEOUT_MS timeout (FR-018: only mark confirmed after on-chain confirmation; FR-023: transition to warning state on timeout), wallet disconnection detection with pause/resume (FR-021), continue-on-failure for remaining turrets (FR-019), and completion summary in src/hooks/useAuthorization.ts
-- [ ] T025 [US4] Create AuthorizationProgressModal with per-turret status rows (pending/submitting/confirming/confirmed/failed/warning icons and labels), timeout warning state with "check your wallet" guidance, wallet disconnected overlay with reconnection prompt, completion summary (success/failed counts), and close button; modelled after DeploymentProgressModal visual patterns (backdrop, panel, focus trap, aria-live regions) in src/components/AuthorizationProgressModal.tsx
-- [ ] T026 [US4] Wire authorization flow into AuthorizeView: "Authorize Selected" button triggers useAuthorization, opens AuthorizationProgressModal, post-close refreshes turret list to reflect updated extension state in src/components/AuthorizeView.tsx
+- [X] T023 [P] [US4] Create buildAuthorizeTurretTransaction function (constructs Transaction with borrow_owner_cap → authorize_extension → return_owner_cap) and fetchOwnerCap GraphQL query (resolves `OwnerCap<Turret>` by owner address) in src/utils/authorizationTransaction.ts
+- [X] T024 [US4] Create useAuthorization hook for sequential per-turret execution with: status tracking (pending → submitting → confirming → confirmed/failed/warning), baseline waitForTransaction confirmation with AUTHORIZATION_CONFIRMATION_TIMEOUT_MS timeout (FR-018: only mark confirmed after on-chain confirmation; FR-023: transition to warning state on timeout), wallet disconnection detection with pause/resume (FR-021), continue-on-failure for remaining turrets (FR-019), and completion summary in src/hooks/useAuthorization.ts
+- [X] T025 [US4] Create AuthorizationProgressModal with per-turret status rows (pending/submitting/confirming/confirmed/failed/warning icons and labels), timeout warning state with "check your wallet" guidance, wallet disconnected overlay with reconnection prompt, completion summary (success/failed counts), and close button; modelled after DeploymentProgressModal visual patterns (backdrop, panel, focus trap, aria-live regions) in src/components/AuthorizationProgressModal.tsx
+- [X] T026 [US4] Wire authorization flow into AuthorizeView: "Authorize Selected" button triggers useAuthorization, opens AuthorizationProgressModal, post-close refreshes turret list to reflect updated extension state in src/components/AuthorizeView.tsx
 
 **Checkpoint**: Full authorization flow works end-to-end — select turrets, click Authorize, sign transactions, see per-turret progress with on-chain confirmation (not optimistic), timeout warning states, wallet disconnection pause/resume, view summary. All P1 MUST requirements (FR-015 through FR-023) fulfilled.
 
@@ -135,12 +135,12 @@
 
 ### Tests for User Story 5
 
-- [ ] T027 [P] [US5] Unit tests for event-driven confirmation (event received transitions to confirmed, event timeout transitions to warning, retry after timeout re-checks for event) in src/**tests**/useAuthorization.test.ts
+- [X] T027 [P] [US5] Unit tests for event-driven confirmation (event received transitions to confirmed, event timeout transitions to warning, retry after timeout re-checks for event) in src/**tests**/useAuthorization.test.ts
 
 ### Implementation for User Story 5
 
-- [ ] T028 [US5] Add event-driven confirmation layer to useAuthorization: after waitForTransaction confirms, subscribe/poll for authorization event on-chain; only transition to "confirmed" when event is observed; transition to "warning" on event timeout with retry option in src/hooks/useAuthorization.ts
-- [ ] T029 [US5] Add confirming-to-event visual state in AuthorizationProgressModal: distinguish "transaction confirmed, awaiting event" from "transaction submitted"; add retry button on warning state in src/components/AuthorizationProgressModal.tsx
+- [X] T028 [US5] Add event-driven confirmation layer to useAuthorization: after waitForTransaction confirms, subscribe/poll for authorization event on-chain; only transition to "confirmed" when event is observed; transition to "warning" on event timeout with retry option in src/hooks/useAuthorization.ts
+- [X] T029 [US5] Add confirming-to-event visual state in AuthorizationProgressModal: distinguish "transaction confirmed, awaiting event" from "transaction submitted"; add retry button on warning state in src/components/AuthorizationProgressModal.tsx
 
 **Checkpoint**: Turrets show "confirming" state while awaiting events, transition to "confirmed" on event receipt, show "warning" on timeout with retry.
 
@@ -150,10 +150,10 @@
 
 **Purpose**: End-to-end validation, cross-cutting edge cases, and final polish
 
-- [ ] T030 [P] E2E test for full authorization workflow (deploy → authorize tab enabled → select turrets → authorize → verify per-turret confirmations → close and verify list refresh) using msw for GraphQL mocking and wallet simulation in tests/e2e/authorize.spec.ts
-- [ ] T031 [P] Add extension replacement warning for turrets with a different existing extension — show inline warning text "This will replace the current extension" when checkbox is toggled, per Edge Case from spec.md in src/components/AuthorizeTurretItem.tsx
-- [ ] T032 [P] Handle deployment target switching while on Authorize tab — clear turret list, re-fetch for new target, cancel any in-progress authorization per spec edge case in src/components/AuthorizeView.tsx
-- [ ] T033 Run quickstart.md end-to-end validation — follow all 5 steps in quickstart.md manually, verify each checkpoint passes
+ [X] T030 [P] E2E test for full authorization workflow (deploy → authorize tab enabled → select turrets → authorize → verify per-turret confirmations → close and verify list refresh) using msw for GraphQL mocking and wallet simulation in tests/e2e/authorize.spec.ts
+ [X] T031 [P] Add extension replacement warning for turrets with a different existing extension — show inline warning text "This will replace the current extension" when checkbox is toggled, per Edge Case from spec.md in src/components/AuthorizeTurretItem.tsx
+ [X] T032 [P] Handle deployment target switching while on Authorize tab — clear turret list, re-fetch for new target, cancel any in-progress authorization per spec edge case in src/components/AuthorizeView.tsx
+ [X] T033 Run quickstart.md end-to-end validation — follow all 5 steps in quickstart.md manually, verify each checkpoint passes
 
 ---
 

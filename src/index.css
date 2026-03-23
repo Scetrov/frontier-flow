@@ -694,6 +694,148 @@ button,
   justify-self: end;
 }
 
+.ff-authorization-modal__disconnect-banner {
+  border: 1px solid rgba(255, 185, 92, 0.4);
+  background: rgba(61, 39, 11, 0.78);
+  padding: 0.8rem 0.95rem;
+  color: #ffd38d;
+  font-size: 0.86rem;
+}
+
+.ff-authorization-modal__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.ff-authorization-modal__summary > div {
+  border: 1px solid rgba(250, 250, 229, 0.08);
+  background: rgba(16, 21, 31, 0.68);
+  padding: 0.8rem 0.9rem;
+}
+
+.ff-authorization-modal__summary-label,
+.ff-authorization-modal__row-status {
+  display: block;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ff-authorization-modal__summary-label {
+  color: var(--text-secondary);
+}
+
+.ff-authorization-modal__summary-value {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--cream-white);
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 1.1rem;
+}
+
+.ff-authorization-modal__rows {
+  display: flex;
+  max-height: 20rem;
+  flex-direction: column;
+  gap: 0.7rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ff-authorization-modal__row {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
+  gap: 0.8rem;
+  border: 1px solid rgba(250, 250, 229, 0.08);
+  background: rgba(13, 17, 25, 0.82);
+  padding: 0.85rem 0.95rem;
+}
+
+.ff-authorization-modal__row--confirmed {
+  border-color: rgba(102, 226, 159, 0.28);
+}
+
+.ff-authorization-modal__row--failed {
+  border-color: rgba(255, 107, 107, 0.34);
+}
+
+.ff-authorization-modal__row--warning {
+  border-color: rgba(255, 185, 92, 0.38);
+}
+
+.ff-authorization-modal__row-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 1px solid rgba(250, 250, 229, 0.18);
+  color: var(--cream-white);
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+}
+
+.ff-authorization-modal__row--confirmed .ff-authorization-modal__row-indicator {
+  border-color: rgba(102, 226, 159, 0.4);
+  color: #8ff2b5;
+}
+
+.ff-authorization-modal__row--failed .ff-authorization-modal__row-indicator {
+  border-color: rgba(255, 107, 107, 0.4);
+  color: #ff8d8d;
+}
+
+.ff-authorization-modal__row--warning .ff-authorization-modal__row-indicator {
+  border-color: rgba(255, 185, 92, 0.42);
+  color: #ffd38d;
+}
+
+.ff-authorization-modal__row-body {
+  min-width: 0;
+}
+
+.ff-authorization-modal__row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.ff-authorization-modal__row-title,
+.ff-authorization-modal__completion-note {
+  color: var(--cream-white);
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+}
+
+.ff-authorization-modal__row-title {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ff-authorization-modal__row-status {
+  color: var(--text-secondary);
+}
+
+.ff-authorization-modal__row-copy,
+.ff-authorization-modal__completion-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.ff-authorization-modal__row-copy {
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.ff-authorization-modal__completion-note {
+  margin-top: 0;
+}
+
 .ff-header__nav {
   display: inline-flex;
   align-items: center;
@@ -1693,6 +1835,15 @@ button,
   font-size: 0.78rem;
 }
 
+.ff-authorize-turret-item__warning {
+  margin-top: 0.55rem;
+  color: #ffd38d;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .ff-authorize-turret-item__badge {
   border: 1px solid rgba(250, 250, 229, 0.1);
   background: rgba(26, 10, 10, 0.72);
@@ -1757,6 +1908,15 @@ button,
 }
 
 @media (max-width: 960px) {
+  .ff-authorization-modal__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .ff-authorization-modal__row-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .ff-authorize-view__grid {
     grid-template-columns: 1fr;
   }

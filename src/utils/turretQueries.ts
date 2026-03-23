@@ -1,5 +1,6 @@
 import { getPackageReferenceBundle } from "../data/packageReferences";
 import type { StoredDeploymentState, TurretExtensionInfo, TurretInfo } from "../types/authorization";
+import { overlayMockAuthorizedTurrets } from "./authorizationMocking";
 
 interface GraphQlError {
   readonly message?: string;
@@ -106,7 +107,7 @@ export async function fetchTurrets(input: FetchTurretsInput): Promise<readonly T
     },
   });
 
-  return parseTurretResponse(data, input.deploymentState);
+  return overlayMockAuthorizedTurrets(parseTurretResponse(data, input.deploymentState), input.deploymentState);
 }
 
 async function postGraphQl<TData>(input: {

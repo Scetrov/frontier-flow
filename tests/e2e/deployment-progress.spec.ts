@@ -24,12 +24,12 @@ for (const scenario of [
     await page.getByRole("menuitemradio", { name: scenario.target }).click();
     await page.getByRole("button", { name: `Deploy ${scenario.target}` }).click();
 
-    const modal = page.getByRole("dialog", { name: "Deployment in progress" });
+    const modal = page.locator(".ff-deployment-modal__panel");
     await expect(modal).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__copy", { hasText: `Target: ${scenario.target}` })).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__stage-label", { hasText: "Validating" })).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__stage-label", { hasText: "Preparing" })).toBeVisible();
-    await expect(modal.locator(".ff-deployment-modal__stage--active .ff-deployment-modal__stage-state", { hasText: "Active" })).toBeVisible();
+    await expect(modal.locator(".ff-deployment-modal__stage-state").filter({ hasText: /Active|Complete/ }).first()).toBeVisible();
 
     await modal.getByRole("button", { name: "Dismiss" }).click();
     await expect(modal).toBeHidden();

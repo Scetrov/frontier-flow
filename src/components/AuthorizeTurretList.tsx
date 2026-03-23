@@ -67,6 +67,7 @@ function AuthorizeTurretList({ onSelectionChange, turrets }: AuthorizeTurretList
                   ? currentSelectedIds.filter((objectId) => objectId !== turret.objectId)
                   : [...currentSelectedIds, turret.objectId]);
               }}
+              showReplacementWarning={checked && turret.currentExtension !== null && !disabled}
               turret={turret}
             />
           );

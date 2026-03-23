@@ -1,8 +1,10 @@
-import { useCurrentAccount } from "@mysten/dapp-kit";
-import { useState } from "react";
+import { useCurrentAccount, useCurrentWallet, useSuiClient } from "@mysten/dapp-kit";
+import { useEffect, useRef, useState } from "react";
 
 import type { StoredDeploymentState } from "../types/authorization";
+import { useAuthorization } from "../hooks/useAuthorization";
 import { useTurretList } from "../hooks/useTurretList";
+import AuthorizationProgressModal from "./AuthorizationProgressModal";
 import AuthorizeTurretList from "./AuthorizeTurretList";
 
 interface AuthorizeViewProps {
@@ -16,15 +18,151 @@ interface AuthorizeViewPanelProps {
   readonly status: ReturnType<typeof useTurretList>["status"];
 }
 
-function AuthorizeViewActions({ selectedTurretCount }: { readonly selectedTurretCount: number }) {
-  const summary = selectedTurretCount === 0
-    ? "Select at least one turret to continue."
-    : `${String(selectedTurretCount)} turret${selectedTurretCount === 1 ? "" : "s"} ready for authorization.`;
+interface AuthorizeViewSelectionState {
+  readonly deploymentKey: string | null;
+  readonly turretIds: readonly string[];
+}
+
+function getDeploymentKey(deploymentState: StoredDeploymentState | null): string | null {
+  return deploymentState === null
+    ? null
+    : `${deploymentState.targetId}:${deploymentState.packageId}:${deploymentState.moduleName}`;
+}
+
+function AuthorizeViewHeader() {
+  return (
+    <header className="flex flex-col gap-2 border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.68)] p-5">
+      <p className="font-heading text-[0.68rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
+        Deployment Authorization
+      </p>
+      <h1 className="font-heading text-xl uppercase tracking-[0.14em] text-[var(--cream-white)] sm:text-2xl">
+        Authorize Turrets
+      </h1>
+      <p className="max-w-3xl text-sm text-[var(--text-secondary)]">
+        Select owned turrets, confirm the active extension state, and stage the authorization batch for the deployed contract.
+      </p>
+    </header>
+  );
+}
+
+function AuthorizeDeploymentPanel(input: {
+  readonly deploymentState: StoredDeploymentState | null;
+  readonly walletAddress: string | null | undefined;
+}) {
+  const { deploymentState, walletAddress } = input;
+
+  return (
+    <aside className="border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.78)] p-5">
+      <h2 className="font-heading text-sm uppercase tracking-[0.16em] text-[var(--cream-white)]">
+        Active Deployment
+      </h2>
+      {deploymentState === null ? (
+        <p className="mt-3 text-sm text-[var(--text-secondary)]">
+          No valid deployed contract is available for authorization.
+        </p>
+      ) : (
+        <dl className="mt-4 grid gap-3 text-sm text-[var(--text-secondary)]">
+          <div>
+            <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Package</dt>
+            <dd className="mt-1 break-all text-[var(--cream-white)]">{deploymentState.packageId}</dd>
+          </div>
+          <div>
+            <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Module</dt>
+            <dd className="mt-1 text-[var(--cream-white)]">{deploymentState.moduleName}</dd>
+          </div>
+          <div>
+            <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Target</dt>
+            <dd className="mt-1 text-[var(--cream-white)]">{deploymentState.targetId}</dd>
+          </div>
+          <div>
+            <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Wallet</dt>
+            <dd className="mt-1 break-all text-[var(--cream-white)]">{walletAddress ?? "Connect wallet"}</dd>
+          </div>
+        </dl>
+      )}
+    </aside>
+  );
+}
+
+function useAuthorizeViewSelection(input: {
+  readonly authorization: ReturnType<typeof useAuthorization>;
+  readonly deploymentKey: string | null;
+  readonly turretList: ReturnType<typeof useTurretList>;
+}) {
+  const { authorization, deploymentKey, turretList } = input;
+  const [listInstanceKey, setListInstanceKey] = useState(0);
+  const [selectionState, setSelectionState] = useState<AuthorizeViewSelectionState>({ deploymentKey: null, turretIds: [] });
+  const deploymentKeyRef = useRef<string | null>(null);
+  const selectedTurretIds = selectionState.deploymentKey === deploymentKey ? selectionState.turretIds : [];
+
+  useEffect(() => {
+    if (deploymentKeyRef.current === null) {
+      deploymentKeyRef.current = deploymentKey;
+      return;
+    }
+
+    if (deploymentKeyRef.current !== deploymentKey) {
+      deploymentKeyRef.current = deploymentKey;
+      authorization.cancelAuthorization();
+      return;
+    }
+
+    deploymentKeyRef.current = deploymentKey;
+  }, [authorization, deploymentKey]);
+
+  const clearSelection = () => {
+    setSelectionState({ deploymentKey, turretIds: [] });
+    setListInstanceKey((value) => value + 1);
+  };
+
+  return {
+    handleAuthorize: () => {
+      if (selectedTurretIds.length === 0) {
+        return;
+      }
+
+      const turretIds = [...selectedTurretIds];
+      clearSelection();
+      void authorization.startAuthorization(turretIds);
+    },
+    handleDismissProgress: () => {
+      const hasCompletedBatch = authorization.progress?.completedAt !== null;
+      authorization.dismissProgress();
+
+      if (hasCompletedBatch) {
+        clearSelection();
+        void turretList.refresh();
+      }
+    },
+    handleSelectionChange: (turretIds: readonly string[]) => {
+      setSelectionState({ deploymentKey, turretIds });
+    },
+    listInstanceKey,
+    selectedTurretIds,
+  };
+}
+
+function AuthorizeViewActions(input: {
+  readonly isAuthorizing: boolean;
+  readonly onAuthorize: () => void;
+  readonly selectedTurretCount: number;
+}) {
+  const { isAuthorizing, onAuthorize, selectedTurretCount } = input;
+  const summary = isAuthorizing
+    ? "Authorization batch is running. Keep this window connected until every turret settles."
+    : selectedTurretCount === 0
+      ? "Select at least one turret to continue."
+      : `${String(selectedTurretCount)} turret${selectedTurretCount === 1 ? "" : "s"} ready for authorization.`;
 
   return (
     <div className="ff-authorize-view__actions">
       <p className="ff-authorize-view__selection-summary">{summary}</p>
-      <button className="ff-authorize-view__action ff-authorize-view__action--primary" disabled={selectedTurretCount === 0} type="button">
+      <button
+        className="ff-authorize-view__action ff-authorize-view__action--primary"
+        disabled={selectedTurretCount === 0 || isAuthorizing}
+        onClick={onAuthorize}
+        type="button"
+      >
         Authorize Selected
       </button>
     </div>
@@ -85,33 +223,46 @@ function AuthorizeViewStatePanel({ deploymentState, errorMessage, onRetry, statu
 
 function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
   const account = useCurrentAccount();
-  const [selectedTurretIds, setSelectedTurretIds] = useState<readonly string[]>([]);
+  const currentWallet = useCurrentWallet();
+  const suiClient = useSuiClient();
   const turretList = useTurretList({
     deploymentState,
     walletAddress: account?.address ?? null,
   });
+  const authorization = useAuthorization({
+    deploymentState,
+    walletAccount: account,
+    currentWallet,
+    suiClient,
+  });
+  const deploymentKey = getDeploymentKey(deploymentState);
+  const {
+    handleAuthorize,
+    handleDismissProgress,
+    handleSelectionChange,
+    listInstanceKey,
+    selectedTurretIds,
+  } = useAuthorizeViewSelection({ authorization, deploymentKey, turretList });
 
   return (
     <section aria-label="Authorize view" className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
       <div className="ff-authorize-view">
-        <header className="flex flex-col gap-2 border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.68)] p-5">
-          <p className="font-heading text-[0.68rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
-            Deployment Authorization
-          </p>
-          <h1 className="font-heading text-xl uppercase tracking-[0.14em] text-[var(--cream-white)] sm:text-2xl">
-            Authorize Turrets
-          </h1>
-          <p className="max-w-3xl text-sm text-[var(--text-secondary)]">
-            Select owned turrets, confirm the active extension state, and stage the authorization batch for the deployed contract.
-          </p>
-        </header>
+        <AuthorizeViewHeader />
 
         <div className="ff-authorize-view__grid">
           <div className="ff-authorize-view__primary">
             {turretList.status === "success" && turretList.turrets.length > 0 ? (
               <>
-                <AuthorizeTurretList onSelectionChange={setSelectedTurretIds} turrets={turretList.turrets} />
-                <AuthorizeViewActions selectedTurretCount={selectedTurretIds.length} />
+                <AuthorizeTurretList
+                  key={`${deploymentKey ?? "no-deployment"}:${String(listInstanceKey)}`}
+                  onSelectionChange={handleSelectionChange}
+                  turrets={turretList.turrets}
+                />
+                <AuthorizeViewActions
+                  isAuthorizing={authorization.isAuthorizing}
+                  onAuthorize={handleAuthorize}
+                  selectedTurretCount={selectedTurretIds.length}
+                />
               </>
             ) : null}
             {!(turretList.status === "success" && turretList.turrets.length > 0) ? (
@@ -124,42 +275,22 @@ function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
                   }}
                   status={turretList.status}
                 />
-                <AuthorizeViewActions selectedTurretCount={0} />
+                <AuthorizeViewActions isAuthorizing={authorization.isAuthorizing} onAuthorize={handleAuthorize} selectedTurretCount={0} />
               </>
             ) : null}
           </div>
 
-          <aside className="border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.78)] p-5">
-            <h2 className="font-heading text-sm uppercase tracking-[0.16em] text-[var(--cream-white)]">
-              Active Deployment
-            </h2>
-            {deploymentState === null ? (
-              <p className="mt-3 text-sm text-[var(--text-secondary)]">
-                No valid deployed contract is available for authorization.
-              </p>
-            ) : (
-              <dl className="mt-4 grid gap-3 text-sm text-[var(--text-secondary)]">
-                <div>
-                  <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Package</dt>
-                  <dd className="mt-1 break-all text-[var(--cream-white)]">{deploymentState.packageId}</dd>
-                </div>
-                <div>
-                  <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Module</dt>
-                  <dd className="mt-1 text-[var(--cream-white)]">{deploymentState.moduleName}</dd>
-                </div>
-                <div>
-                  <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Target</dt>
-                  <dd className="mt-1 text-[var(--cream-white)]">{deploymentState.targetId}</dd>
-                </div>
-                <div>
-                  <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Wallet</dt>
-                  <dd className="mt-1 break-all text-[var(--cream-white)]">{account?.address ?? "Connect wallet"}</dd>
-                </div>
-              </dl>
-            )}
-          </aside>
+          <AuthorizeDeploymentPanel deploymentState={deploymentState} walletAddress={account?.address} />
         </div>
       </div>
+
+      <AuthorizationProgressModal
+        onClose={handleDismissProgress}
+        onRetryEventConfirmation={(turretObjectId) => {
+          void authorization.retryEventConfirmation(turretObjectId);
+        }}
+        progress={authorization.progress}
+      />
     </section>
   );
 }

@@ -26,13 +26,25 @@ export interface TurretInfo {
 }
 
 export type AuthorizationTurretStatus = "pending" | "submitting" | "confirming" | "confirmed" | "failed" | "warning";
+export type AuthorizationConfirmationPhase = "transaction" | "event";
 
 export interface AuthorizationTarget {
   readonly turretObjectId: string;
   readonly ownerCapId: string;
   readonly status: AuthorizationTurretStatus;
+  readonly confirmationPhase: AuthorizationConfirmationPhase | null;
   readonly transactionDigest: string | null;
   readonly errorMessage: string | null;
+}
+
+export interface AuthorizationProgressState {
+  readonly targetId: DeploymentTargetId;
+  readonly targets: readonly AuthorizationTarget[];
+  readonly activeTurretObjectId: string | null;
+  readonly startedAt: number;
+  readonly completedAt: number | null;
+  readonly dismissedByUser: boolean;
+  readonly walletDisconnected: boolean;
 }
 
 export type { DeploymentTargetId } from "../compiler/types";
