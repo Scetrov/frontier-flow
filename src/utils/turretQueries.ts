@@ -1,5 +1,6 @@
 import { getPackageReferenceBundle } from "../data/packageReferences";
 import type { StoredDeploymentState, TurretExtensionInfo, TurretInfo } from "../types/authorization";
+import { fetchAuthorizationCharacterId } from "./authorizationTransaction";
 import { overlayMockAuthorizedTurrets } from "./authorizationMocking";
 
 interface GraphQlError {
@@ -20,6 +21,16 @@ interface TurretLookupResponse {
           readonly json?: unknown;
         } | null;
       }>;
+    } | null;
+  } | null;
+}
+
+interface TurretObjectResponse {
+  readonly object?: {
+    readonly asMoveObject?: {
+      readonly contents?: {
+        readonly json?: unknown;
+      } | null;
     } | null;
   } | null;
 }
@@ -50,6 +61,16 @@ const TURRETS_QUERY = `query Turrets($owner: SuiAddress!, $type: String!) {
         contents {
           json
         }
+      }
+    }
+  }
+}`;
+
+const TURRET_OBJECT_QUERY = `query TurretObject($id: SuiAddress!) {
+  object(address: $id) {
+    asMoveObject {
+      contents {
+        json
       }
     }
   }
@@ -95,19 +116,78 @@ export async function fetchTurrets(input: FetchTurretsInput): Promise<readonly T
   const endpoint = TESTNET_GRAPHQL_ENDPOINT;
 
   const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
-  const turretType = `${getPackageReferenceBundle(remoteTargetId).worldPackageId}::turret::Turret`;
+  const bundle = getPackageReferenceBundle(remoteTargetId);
+  const characterId = await fetchAuthorizationCharacterId({
+    targetId: remoteTargetId,
+    walletAddress: input.walletAddress,
+    signal: input.signal,
+    fetchFn,
+  });
+
+  if (characterId === null) {
+    return [];
+  }
+
+  const ownerCapType = `${bundle.worldPackageId}::character::OwnerCap<${bundle.worldPackageId}::turret::Turret>`;
   const data = await postGraphQl<TurretLookupResponse>({
     endpoint,
     fetchFn,
     query: TURRETS_QUERY,
     signal: input.signal,
     variables: {
-      owner: input.walletAddress,
-      type: turretType,
+      owner: characterId,
+      type: ownerCapType,
     },
   });
 
-  return overlayMockAuthorizedTurrets(parseTurretResponse(data, input.deploymentState), input.deploymentState);
+  const turretIds = getTurretNodes(data)
+    .map((node) => extractTurretIdFromOwnerCap(node.contents?.json))
+    .filter(isNonNullable)
+    .filter(isSuiAddress);
+
+  const uniqueTurretIds = [...new Set(turretIds)];
+
+  if (uniqueTurretIds.length === 0) {
+    return [];
+  }
+
+  const turrets = await Promise.all(uniqueTurretIds.map(async (turretId) => loadTurretInfo({
+    deploymentState: input.deploymentState,
+    endpoint,
+    fetchFn,
+    signal: input.signal,
+    turretId,
+  })));
+
+  return overlayMockAuthorizedTurrets(turrets.filter(isNonNullable), input.deploymentState);
+}
+
+async function loadTurretInfo(input: {
+  readonly deploymentState: StoredDeploymentState;
+  readonly endpoint: string;
+  readonly fetchFn: typeof fetch;
+  readonly signal?: AbortSignal;
+  readonly turretId: string;
+}): Promise<TurretInfo | null> {
+  const data = await postGraphQl<TurretObjectResponse>({
+    endpoint: input.endpoint,
+    fetchFn: input.fetchFn,
+    query: TURRET_OBJECT_QUERY,
+    signal: input.signal,
+    variables: { id: input.turretId },
+  });
+
+  const content = data.object?.asMoveObject?.contents?.json;
+
+  if (content === undefined || content === null) {
+    return null;
+  }
+
+  return {
+    objectId: input.turretId,
+    displayName: extractTurretDisplayName(content),
+    currentExtension: extractTurretExtension(content, input.deploymentState),
+  } satisfies TurretInfo;
 }
 
 async function postGraphQl<TData>(input: {
@@ -212,6 +292,25 @@ function getExtensionContainer(content: unknown): unknown {
   ]) ?? content;
 }
 
+function extractTurretIdFromOwnerCap(content: unknown): string | null {
+  const turretId = findFirstStringAtKeys(content, [
+    "authorized_object_id",
+    "authorizedObjectId",
+    "assembly_uid",
+    "assemblyUid",
+    "assembly_id",
+    "assemblyId",
+    "target_id",
+    "targetId",
+    "turret_id",
+    "turretId",
+    "object_id",
+    "objectId",
+  ]);
+
+  return isSuiAddress(turretId) ? turretId : null;
+}
+
 function getExtensionIdentity(content: unknown): { readonly packageId: string; readonly moduleName: string; readonly typeName: string } | null {
   const rawTypeName = findFirstStringAtKeys(content, ["typeName", "type_name", "authorizationType", "authorization_type"]);
   const rawPackageId = findFirstStringAtKeys(content, ["packageId", "package_id"]);
@@ -312,6 +411,10 @@ function findFirstStringAtKeys(input: unknown, keys: readonly string[]): string 
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isNonNullable<TValue>(value: TValue | null | undefined): value is TValue {
+  return value !== null && value !== undefined;
 }
 
 function isSuiAddress(value: string | null): value is string {

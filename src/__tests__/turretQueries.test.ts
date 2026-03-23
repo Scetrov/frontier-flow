@@ -17,6 +17,81 @@ describe("turretQueries", () => {
   it("returns the published GraphQL endpoint for remote targets", () => {
     expect(getTurretGraphQlEndpoint("local")).toBeNull();
     expect(getTurretGraphQlEndpoint("testnet:stillness")).toBe("https://graphql.testnet.sui.io/graphql");
+    expect(getTurretGraphQlEndpoint("testnet:utopia")).toBe("https://graphql.testnet.sui.io/graphql");
+  });
+
+  it("loads turrets via the active character ownership path", async () => {
+    const utopiaDeploymentState: StoredDeploymentState = {
+      ...deploymentState,
+      targetId: "testnet:utopia",
+    };
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: {
+                    character_id: "0x1234",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                address: "0xownercap",
+                contents: {
+                  json: {
+                    authorized_object_id: "0x111",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          object: {
+            asMoveObject: {
+              contents: {
+                json: {
+                  metadata: { name: "Utopia Bastion" },
+                  extension: {
+                    packageId: "0xfeedface",
+                    moduleName: "starter_contract",
+                    typeName: "0xfeedface::starter_contract::TurretAuth",
+                  },
+                },
+              },
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    await expect(fetchTurrets({
+      walletAddress: "0x9999",
+      deploymentState: utopiaDeploymentState,
+      fetchFn,
+    })).resolves.toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Utopia Bastion",
+        currentExtension: {
+          packageId: "0xfeedface",
+          moduleName: "starter_contract",
+          typeName: "0xfeedface::starter_contract::TurretAuth",
+          isCurrentDeployment: true,
+        },
+      },
+    ]);
   });
 
   it("parses turret payloads and marks the current deployment extension", () => {

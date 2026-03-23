@@ -44,24 +44,38 @@ describe("authorizationTransaction", () => {
   });
 
   it("returns the owner capability matching the selected turret", async () => {
-    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
-      data: {
-        address: {
-          objects: {
-            nodes: [{
-              address: "0xabcd",
-              contents: {
-                json: {
-                  fields: {
-                    turret_id: "0x1111",
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: {
+                    character_id: "0x1234",
                   },
                 },
-              },
-            }],
+              }],
+            },
           },
         },
-      },
-    }), { status: 200, headers: { "content-type": "application/json" } }));
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                address: "0xabcd",
+                contents: {
+                  json: {
+                    authorized_object_id: "0x1111",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
 
     await expect(fetchOwnerCap({
       deploymentState,
@@ -72,24 +86,38 @@ describe("authorizationTransaction", () => {
   });
 
   it("fails when the owner capability query does not contain the selected turret", async () => {
-    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
-      data: {
-        address: {
-          objects: {
-            nodes: [{
-              address: "0xabcd",
-              contents: {
-                json: {
-                  fields: {
-                    turret_id: "0x2222",
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: {
+                    character_id: "0x1234",
                   },
                 },
-              },
-            }],
+              }],
+            },
           },
         },
-      },
-    }), { status: 200, headers: { "content-type": "application/json" } }));
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                address: "0xabcd",
+                contents: {
+                  json: {
+                    authorized_object_id: "0x2222",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
 
     await expect(fetchOwnerCap({
       deploymentState,

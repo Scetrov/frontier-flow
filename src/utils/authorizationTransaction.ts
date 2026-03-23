@@ -106,14 +106,26 @@ export async function fetchAuthorizationCharacterId(
 export async function fetchOwnerCap(input: FetchOwnerCapInput): Promise<string> {
   validateFetchOwnerCapInput(input);
   const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
-  const bundle = getPackageReferenceBundle(getPublishedTargetId(input.deploymentState));
+  const targetId = getPublishedTargetId(input.deploymentState);
+  const bundle = getPackageReferenceBundle(targetId);
+  const characterId = await fetchAuthorizationCharacterId({
+    targetId,
+    walletAddress: input.walletAddress,
+    signal: input.signal,
+    fetchFn,
+  });
+
+  if (characterId === null) {
+    throw new Error("Could not resolve the active character for this wallet.");
+  }
+
   const data = await postGraphQl<AuthorizationLookupResponse>({
     endpoint: TESTNET_GRAPHQL_ENDPOINT,
     fetchFn,
     query: OWNER_CAPS_QUERY,
     signal: input.signal,
     variables: {
-      owner: input.walletAddress,
+      owner: characterId,
       type: `${bundle.worldPackageId}::character::OwnerCap<${bundle.worldPackageId}::turret::Turret>`,
     },
   });
@@ -152,6 +164,8 @@ function findOwnerCapId(nodes: readonly AuthorizationLookupNode[], turretObjectI
     }
 
     const turretId = findFirstMatchingAddress(node.contents?.json, turretObjectId, [
+      "authorized_object_id",
+      "authorizedObjectId",
       "assembly_uid",
       "assemblyUid",
       "assembly_id",
