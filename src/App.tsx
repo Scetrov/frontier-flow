@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 
 import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, GeneratedContractArtifact } from "./compiler/types";
 import AlphaBanner from "./components/AlphaBanner";
@@ -398,7 +398,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     });
   }, [deployment.selectedTarget]);
 
-  const handleCompilationStateChange = (
+  const handleCompilationStateChange = useCallback((
     status: CompilationStatus,
     nextDiagnostics: readonly CompilerDiagnostic[],
     nextSourceCode: string | null,
@@ -422,14 +422,14 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     setCompilationStatus(status);
     setDiagnostics(nextDiagnostics);
     setMoveSourceCode(nextMoveSourceCode);
-  };
+  }, []);
 
-  const handleSelectDiagnostic = (nodeId: string) => {
+  const handleSelectDiagnostic = useCallback((nodeId: string) => {
     setFocusedDiagnosticSelection((currentSelection) => ({
       nodeId,
       requestKey: (currentSelection?.requestKey ?? 0) + 1,
     }));
-  };
+  }, []);
 
   return (
     <StandardAppLayout
