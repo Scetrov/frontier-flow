@@ -188,6 +188,52 @@ function artifactBundlesWorldShim(artifact: GeneratedContractArtifact): boolean 
   return (artifact.sourceFiles ?? []).some((file) => file.path.startsWith("deps/world/"));
 }
 
+function handleBuildSuccess(
+  result: BuildSuccessResult,
+  artifact: GeneratedContractArtifact,
+  bundledDependencyModules: ReadonlySet<string> | null,
+): CompileResult {
+  const warnings = result.warnings === undefined ? [] : parseCompilerOutput(result.warnings, artifact.sourceMap);
+  const compiledModules = bundledDependencyModules === null
+    ? result.modules
+    : filterBundledDependencyModules(result.modules, bundledDependencyModules);
+  const modules = compiledModules.map((moduleBytes: string) => decodeBase64(moduleBytes));
+  const dependencies = result.dependencies ?? [];
+
+  return {
+    success: true,
+    modules,
+    dependencies,
+    errors: null,
+    warnings,
+    artifact: attachArtifactDiagnostics(attachCompiledArtifactResult(artifact, modules, dependencies), warnings),
+  };
+}
+
+function handleBuildError(result: BuildErrorResult, artifact: GeneratedContractArtifact): CompileResult {
+  const errors = parseCompilerOutput(result.error, artifact.sourceMap);
+  return {
+    success: false,
+    modules: null,
+    dependencies: null,
+    errors,
+    warnings: [],
+    artifact: attachArtifactDiagnostics(artifact, errors),
+  };
+}
+
+function handleCompileFailure(rawMessage: string, artifact: GeneratedContractArtifact): CompileResult {
+  const errors = parseCompilerOutput(rawMessage, artifact.sourceMap);
+  return {
+    success: false,
+    modules: null,
+    dependencies: null,
+    errors,
+    warnings: [],
+    artifact: attachArtifactDiagnostics(artifact, errors),
+  };
+}
+
 /**
  * Compile Move source in memory via the browser WASM wrapper.
  */
@@ -217,54 +263,16 @@ export async function compileMove(
     const [result, bundledDependencyModules] = await Promise.all([buildPromise, bundledDependencyModulesPromise]);
 
     if ("modules" in result) {
-      const warnings = result.warnings === undefined ? [] : parseCompilerOutput(result.warnings, artifact.sourceMap);
-      const compiledModules = bundledDependencyModules === null
-        ? result.modules
-        : filterBundledDependencyModules(result.modules, bundledDependencyModules);
-      const modules = compiledModules.map((moduleBytes: string) => decodeBase64(moduleBytes));
-      const dependencies = result.dependencies ?? [];
-
-      return {
-        success: true,
-        modules,
-        dependencies,
-        errors: null,
-        warnings,
-        artifact: attachArtifactDiagnostics(attachCompiledArtifactResult(artifact, modules, dependencies), warnings),
-      };
+      return handleBuildSuccess(result, artifact, bundledDependencyModules);
     }
 
     if ("error" in result) {
-      const errors = parseCompilerOutput(result.error, artifact.sourceMap);
-      return {
-        success: false,
-        modules: null,
-        dependencies: null,
-        errors,
-        warnings: [],
-        artifact: attachArtifactDiagnostics(artifact, errors),
-      };
+      return handleBuildError(result, artifact);
     }
 
-    const unknownErrors = parseCompilerOutput("Unknown Move compilation failure.", artifact.sourceMap);
-    return {
-      success: false,
-      modules: null,
-      dependencies: null,
-      errors: unknownErrors,
-      warnings: [],
-      artifact: attachArtifactDiagnostics(artifact, unknownErrors),
-    };
+    return handleCompileFailure("Unknown Move compilation failure.", artifact);
   } catch (error) {
     const rawMessage = error instanceof Error ? error.message : String(error);
-    const errors = parseCompilerOutput(rawMessage, artifact.sourceMap);
-    return {
-      success: false,
-      modules: null,
-      dependencies: null,
-      errors,
-      warnings: [],
-      artifact: attachArtifactDiagnostics(artifact, errors),
-    };
+    return handleCompileFailure(rawMessage, artifact);
   }
 }

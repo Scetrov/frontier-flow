@@ -339,6 +339,39 @@ function StandardAppLayout({
   );
 }
 
+function createCompilationStateChangeHandler(
+  setPersistedCompilationSnapshot: (snapshot: PersistedCompilationState) => void,
+  setCompilationStatus: (status: CompilationStatus) => void,
+  setDiagnostics: (diagnostics: readonly CompilerDiagnostic[]) => void,
+  setMoveSourceCode: (code: string | null) => void,
+) {
+  return (
+    status: CompilationStatus,
+    nextDiagnostics: readonly CompilerDiagnostic[],
+    nextSourceCode: string | null,
+    artifactMoveSource?: string | null,
+  ) => {
+    const nextMoveSourceCode = artifactMoveSource ?? nextSourceCode;
+
+    if (hasCompiledWorkflowAccess(status)) {
+      const nextSnapshot: PersistedCompilationState = {
+        version: 1,
+        graphKey: getCurrentContractGraphKey(),
+        status,
+        diagnostics: nextDiagnostics,
+        moveSourceCode: nextMoveSourceCode,
+      };
+
+      setPersistedCompilationSnapshot(nextSnapshot);
+      saveCompilationState(getBrowserStorage(), nextSnapshot);
+    }
+
+    setCompilationStatus(status);
+    setDiagnostics(nextDiagnostics);
+    setMoveSourceCode(nextMoveSourceCode);
+  };
+}
+
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
   const initialAppState = useMemo(() => getInitialAppState(), []);
   const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>(initialAppState.compilationSnapshot?.status ?? { state: "idle" });
@@ -355,11 +388,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     : null;
   const effectiveCompilationState = useMemo(() => {
     if (hasCompiledWorkflowAccess(compilationStatus)) {
-      return {
-        diagnostics,
-        moveSourceCode,
-        status: compilationStatus,
-      };
+      return { diagnostics, moveSourceCode, status: compilationStatus };
     }
 
     if (restoredCompilationSnapshot !== null) {
@@ -370,11 +399,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       };
     }
 
-    return {
-      diagnostics,
-      moveSourceCode,
-      status: compilationStatus,
-    };
+    return { diagnostics, moveSourceCode, status: compilationStatus };
   }, [compilationStatus, diagnostics, moveSourceCode, restoredCompilationSnapshot]);
   const deployment = useDeployment({
     initialTarget: initialAppState.selectedDeploymentTarget,
@@ -406,31 +431,10 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     });
   }, [deployment.selectedTarget]);
 
-  const handleCompilationStateChange = useCallback((
-    status: CompilationStatus,
-    nextDiagnostics: readonly CompilerDiagnostic[],
-    nextSourceCode: string | null,
-    artifactMoveSource?: string | null,
-  ) => {
-    const nextMoveSourceCode = artifactMoveSource ?? nextSourceCode;
-
-    if (hasCompiledWorkflowAccess(status)) {
-      const nextSnapshot: PersistedCompilationState = {
-        version: 1,
-        graphKey: getCurrentContractGraphKey(),
-        status,
-        diagnostics: nextDiagnostics,
-        moveSourceCode: nextMoveSourceCode,
-      };
-
-      setPersistedCompilationSnapshot(nextSnapshot);
-      saveCompilationState(getBrowserStorage(), nextSnapshot);
-    }
-
-    setCompilationStatus(status);
-    setDiagnostics(nextDiagnostics);
-    setMoveSourceCode(nextMoveSourceCode);
-  }, []);
+  const handleCompilationStateChange = useMemo(
+    () => createCompilationStateChangeHandler(setPersistedCompilationSnapshot, setCompilationStatus, setDiagnostics, setMoveSourceCode),
+    [],
+  );
 
   const handleSelectDiagnostic = useCallback((nodeId: string) => {
     setFocusedDiagnosticSelection((currentSelection) => ({

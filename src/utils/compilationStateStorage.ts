@@ -158,47 +158,51 @@ function parsePersistedCompilationState(value: unknown): PersistedCompilationSta
   };
 }
 
+function parseCompiledStatus(value: Record<string, unknown>): CompilationStatus | null {
+  const bytecode = parseBytecodeModules(value.bytecode);
+  const artifact = value.artifact === undefined ? undefined : parseArtifact(value.artifact);
+  if (bytecode === null || artifact === null) {
+    return null;
+  }
+
+  return { state: "compiled", bytecode, artifact };
+}
+
+function parseErrorStatus(value: Record<string, unknown>): CompilationStatus | null {
+  const diagnostics = parseDiagnostics(value.diagnostics);
+  const artifact = value.artifact === undefined ? undefined : parseArtifact(value.artifact);
+  if (diagnostics === null || artifact === null) {
+    return null;
+  }
+
+  return { state: "error", diagnostics, artifact };
+}
+
 function parseCompilationStatus(value: unknown): CompilationStatus | null {
   if (!isRecord(value) || typeof value.state !== "string") {
     return null;
   }
 
   if (value.state === "compiled") {
-    const bytecode = parseBytecodeModules(value.bytecode);
-    const artifact = value.artifact === undefined ? undefined : parseArtifact(value.artifact);
-    if (bytecode === null || artifact === null) {
-      return null;
-    }
-
-    return {
-      state: "compiled",
-      bytecode,
-      artifact,
-    };
+    return parseCompiledStatus(value);
   }
 
   if (value.state === "error") {
-    const diagnostics = parseDiagnostics(value.diagnostics);
-    const artifact = value.artifact === undefined ? undefined : parseArtifact(value.artifact);
-    if (diagnostics === null || artifact === null) {
-      return null;
-    }
-
-    return {
-      state: "error",
-      diagnostics,
-      artifact,
-    };
+    return parseErrorStatus(value);
   }
 
   return null;
 }
 
-function parseArtifact(value: unknown): GeneratedContractArtifact | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
+function parseArtifactRequiredFields(value: Record<string, unknown>): {
+  readonly moduleName: string;
+  readonly sourceFilePath: string;
+  readonly moveToml: string;
+  readonly moveSource: string;
+  readonly sourceMap: readonly SourceMapEntry[];
+  readonly dependencies: readonly string[];
+  readonly bytecodeModules: readonly Uint8Array[];
+} | null {
   const sourceMap = parseSourceMapEntries(value.sourceMap);
   const dependencies = parseStringArray(value.dependencies);
   const bytecodeModules = parseBytecodeModules(value.bytecodeModules);
@@ -214,33 +218,7 @@ function parseArtifact(value: unknown): GeneratedContractArtifact | null {
     return null;
   }
 
-  const contractIdentity = value.contractIdentity === undefined ? undefined : parseContractIdentity(value.contractIdentity);
-  const sourceFiles = value.sourceFiles === undefined ? undefined : parseGeneratedSourceFiles(value.sourceFiles);
-  const manifest = value.manifest === undefined ? undefined : parseArtifactManifest(value.manifest);
-  const traceSections = value.traceSections === undefined ? undefined : parseTraceSections(value.traceSections);
-  const diagnostics = value.diagnostics === undefined ? undefined : parseDiagnostics(value.diagnostics);
-  const compileReadiness = value.compileReadiness === undefined ? undefined : parseCompileReadiness(value.compileReadiness);
-
-  if (
-    contractIdentity === null
-    || sourceFiles === null
-    || manifest === null
-    || traceSections === null
-    || diagnostics === null
-    || compileReadiness === null
-  ) {
-    return null;
-  }
-
   return {
-    artifactId: typeof value.artifactId === "string" ? value.artifactId : undefined,
-    sourceDagId: typeof value.sourceDagId === "string" ? value.sourceDagId : undefined,
-    contractIdentity,
-    sourceFiles,
-    manifest,
-    traceSections,
-    diagnostics,
-    compileReadiness,
     moduleName: value.moduleName,
     sourceFilePath: value.sourceFilePath,
     moveToml: value.moveToml,
@@ -248,6 +226,62 @@ function parseArtifact(value: unknown): GeneratedContractArtifact | null {
     sourceMap,
     dependencies,
     bytecodeModules,
+  };
+}
+
+function parseOptionalField<T>(value: unknown, parser: (v: unknown) => T | null): T | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return parser(value);
+}
+
+function parseArtifactOptionalFields(value: Record<string, unknown>): {
+  readonly contractIdentity: ContractIdentity | undefined;
+  readonly sourceFiles: readonly GeneratedSourceFile[] | undefined;
+  readonly manifest: StoredArtifactManifest | undefined;
+  readonly traceSections: readonly ContractSectionTrace[] | undefined;
+  readonly diagnostics: readonly CompilerDiagnostic[] | undefined;
+  readonly compileReadiness: CompileReadiness | undefined;
+} | null {
+  const contractIdentity = parseOptionalField(value.contractIdentity, parseContractIdentity);
+  if (contractIdentity === null) return null;
+
+  const sourceFiles = parseOptionalField(value.sourceFiles, parseGeneratedSourceFiles);
+  if (sourceFiles === null) return null;
+
+  const manifest = parseOptionalField(value.manifest, parseArtifactManifest);
+  if (manifest === null) return null;
+
+  const traceSections = parseOptionalField(value.traceSections, parseTraceSections);
+  if (traceSections === null) return null;
+
+  const diagnostics = parseOptionalField(value.diagnostics, parseDiagnostics);
+  if (diagnostics === null) return null;
+
+  const compileReadiness = parseOptionalField(value.compileReadiness, parseCompileReadiness);
+  if (compileReadiness === null) return null;
+
+  return { contractIdentity, sourceFiles, manifest, traceSections, diagnostics, compileReadiness };
+}
+
+function parseArtifact(value: unknown): GeneratedContractArtifact | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const required = parseArtifactRequiredFields(value);
+  const optional = required !== null ? parseArtifactOptionalFields(value) : null;
+  if (required === null || optional === null) {
+    return null;
+  }
+
+  return {
+    artifactId: typeof value.artifactId === "string" ? value.artifactId : undefined,
+    sourceDagId: typeof value.sourceDagId === "string" ? value.sourceDagId : undefined,
+    ...optional,
+    ...required,
   };
 }
 
@@ -377,6 +411,47 @@ function parseSourceMapEntries(value: unknown): readonly SourceMapEntry[] | null
   return entries;
 }
 
+function isValidDiagnosticSeverity(value: unknown): value is "error" | "warning" {
+  return value === "error" || value === "warning";
+}
+
+function isValidDiagnosticStage(value: unknown): value is "validation" | "sanitization" | "emission" | "compilation" | undefined {
+  return value === undefined || value === "validation" || value === "sanitization" || value === "emission" || value === "compilation";
+}
+
+function isNullOrString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isNullOrFiniteNumber(value: unknown): value is number | null {
+  return value === null || isFiniteNumber(value);
+}
+
+function parseSingleDiagnostic(entry: unknown): CompilerDiagnostic | null {
+  if (
+    !isRecord(entry)
+    || !isValidDiagnosticSeverity(entry.severity)
+    || !isValidDiagnosticStage(entry.stage)
+    || typeof entry.rawMessage !== "string"
+    || !isNullOrFiniteNumber(entry.line)
+    || !isNullOrString(entry.reactFlowNodeId)
+    || !isNullOrString(entry.socketId)
+    || typeof entry.userMessage !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    severity: entry.severity,
+    stage: entry.stage,
+    rawMessage: entry.rawMessage,
+    line: entry.line,
+    reactFlowNodeId: entry.reactFlowNodeId,
+    socketId: entry.socketId,
+    userMessage: entry.userMessage,
+  };
+}
+
 function parseDiagnostics(value: unknown): readonly CompilerDiagnostic[] | null {
   if (!Array.isArray(value)) {
     return null;
@@ -384,28 +459,12 @@ function parseDiagnostics(value: unknown): readonly CompilerDiagnostic[] | null 
 
   const diagnostics: CompilerDiagnostic[] = [];
   for (const entry of value) {
-    if (
-      !isRecord(entry)
-      || (entry.severity !== "error" && entry.severity !== "warning")
-      || (entry.stage !== undefined && entry.stage !== "validation" && entry.stage !== "sanitization" && entry.stage !== "emission" && entry.stage !== "compilation")
-      || typeof entry.rawMessage !== "string"
-      || (entry.line !== null && !isFiniteNumber(entry.line))
-      || (entry.reactFlowNodeId !== null && typeof entry.reactFlowNodeId !== "string")
-      || (entry.socketId !== null && typeof entry.socketId !== "string")
-      || typeof entry.userMessage !== "string"
-    ) {
+    const diagnostic = parseSingleDiagnostic(entry);
+    if (diagnostic === null) {
       return null;
     }
 
-    diagnostics.push({
-      severity: entry.severity,
-      stage: entry.stage,
-      rawMessage: entry.rawMessage,
-      line: entry.line,
-      reactFlowNodeId: entry.reactFlowNodeId,
-      socketId: entry.socketId,
-      userMessage: entry.userMessage,
-    });
+    diagnostics.push(diagnostic);
   }
 
   return diagnostics;

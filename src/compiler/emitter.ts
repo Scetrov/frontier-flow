@@ -252,6 +252,43 @@ function resolveActionResultBindings(graph: IRGraph, bindings: ReadonlyMap<strin
   };
 }
 
+function emitBcsUnpackerFunctions(lines: string[], sourceMap: SourceMapEntry[]): void {
+  pushLine(lines, sourceMap, "    fun unpack_candidate_list(candidate_list_bytes: vector<u8>): vector<TargetCandidateArg> {", null);
+  pushLine(lines, sourceMap, "        if (vector::length(&candidate_list_bytes) == 0) {", null);
+  pushLine(lines, sourceMap, "            return vector::empty()", null);
+  pushLine(lines, sourceMap, "        };", null);
+  pushLine(lines, sourceMap, "        let mut bcs_data = bcs::new(candidate_list_bytes);", null);
+  pushLine(lines, sourceMap, "        bcs_data.peel_vec!(|candidate_bcs| peel_target_candidate_from_bcs(candidate_bcs))", null);
+  pushLine(lines, sourceMap, "    }", null);
+  pushLine(lines, sourceMap, "", null);
+  pushLine(lines, sourceMap, "    fun peel_target_candidate_from_bcs(bcs_data: &mut bcs::BCS): TargetCandidateArg {", null);
+  pushLine(lines, sourceMap, "        let item_id = bcs_data.peel_u64();", null);
+  pushLine(lines, sourceMap, "        let type_id = bcs_data.peel_u64();", null);
+  pushLine(lines, sourceMap, "        let group_id = bcs_data.peel_u64();", null);
+  pushLine(lines, sourceMap, "        let character_id = bcs_data.peel_u32();", null);
+  pushLine(lines, sourceMap, "        let character_tribe = bcs_data.peel_u32();", null);
+  pushLine(lines, sourceMap, "        let hp_ratio = bcs_data.peel_u64();", null);
+  pushLine(lines, sourceMap, "        let shield_ratio = bcs_data.peel_u64();", null);
+  pushLine(lines, sourceMap, "        let armor_ratio = bcs_data.peel_u64();", null);
+  pushLine(lines, sourceMap, "        let is_aggressor = bcs_data.peel_bool();", null);
+  pushLine(lines, sourceMap, "        let priority_weight = bcs_data.peel_u64();", null);
+  pushLine(lines, sourceMap, "        let behaviour_change = bcs_data.peel_u8();", null);
+  pushLine(lines, sourceMap, "        TargetCandidateArg {", null);
+  pushLine(lines, sourceMap, "            item_id,", null);
+  pushLine(lines, sourceMap, "            type_id,", null);
+  pushLine(lines, sourceMap, "            group_id,", null);
+  pushLine(lines, sourceMap, "            character_id,", null);
+  pushLine(lines, sourceMap, "            character_tribe,", null);
+  pushLine(lines, sourceMap, "            hp_ratio,", null);
+  pushLine(lines, sourceMap, "            shield_ratio,", null);
+  pushLine(lines, sourceMap, "            armor_ratio,", null);
+  pushLine(lines, sourceMap, "            is_aggressor,", null);
+  pushLine(lines, sourceMap, "            priority_weight,", null);
+  pushLine(lines, sourceMap, "            behaviour_change,", null);
+  pushLine(lines, sourceMap, "        }", null);
+  pushLine(lines, sourceMap, "    }", null);
+}
+
 function emitGenericSynthesizedContract(graph: IRGraph, annotatedLines: readonly AnnotatedLine[], bindings: ReadonlyMap<string, string>): {
   readonly code: string;
   readonly sourceMap: readonly SourceMapEntry[];
@@ -316,40 +353,7 @@ function emitGenericSynthesizedContract(graph: IRGraph, annotatedLines: readonly
   pushLine(lines, sourceMap, `        (${actionResultBindings.weightBinding}, ${actionResultBindings.includeBinding})`, null);
   pushLine(lines, sourceMap, "    }", null);
   pushLine(lines, sourceMap, "", null);
-  pushLine(lines, sourceMap, "    fun unpack_candidate_list(candidate_list_bytes: vector<u8>): vector<TargetCandidateArg> {", null);
-  pushLine(lines, sourceMap, "        if (vector::length(&candidate_list_bytes) == 0) {", null);
-  pushLine(lines, sourceMap, "            return vector::empty()", null);
-  pushLine(lines, sourceMap, "        };", null);
-  pushLine(lines, sourceMap, "        let mut bcs_data = bcs::new(candidate_list_bytes);", null);
-  pushLine(lines, sourceMap, "        bcs_data.peel_vec!(|candidate_bcs| peel_target_candidate_from_bcs(candidate_bcs))", null);
-  pushLine(lines, sourceMap, "    }", null);
-  pushLine(lines, sourceMap, "", null);
-  pushLine(lines, sourceMap, "    fun peel_target_candidate_from_bcs(bcs_data: &mut bcs::BCS): TargetCandidateArg {", null);
-  pushLine(lines, sourceMap, "        let item_id = bcs_data.peel_u64();", null);
-  pushLine(lines, sourceMap, "        let type_id = bcs_data.peel_u64();", null);
-  pushLine(lines, sourceMap, "        let group_id = bcs_data.peel_u64();", null);
-  pushLine(lines, sourceMap, "        let character_id = bcs_data.peel_u32();", null);
-  pushLine(lines, sourceMap, "        let character_tribe = bcs_data.peel_u32();", null);
-  pushLine(lines, sourceMap, "        let hp_ratio = bcs_data.peel_u64();", null);
-  pushLine(lines, sourceMap, "        let shield_ratio = bcs_data.peel_u64();", null);
-  pushLine(lines, sourceMap, "        let armor_ratio = bcs_data.peel_u64();", null);
-  pushLine(lines, sourceMap, "        let is_aggressor = bcs_data.peel_bool();", null);
-  pushLine(lines, sourceMap, "        let priority_weight = bcs_data.peel_u64();", null);
-  pushLine(lines, sourceMap, "        let behaviour_change = bcs_data.peel_u8();", null);
-  pushLine(lines, sourceMap, "        TargetCandidateArg {", null);
-  pushLine(lines, sourceMap, "            item_id,", null);
-  pushLine(lines, sourceMap, "            type_id,", null);
-  pushLine(lines, sourceMap, "            group_id,", null);
-  pushLine(lines, sourceMap, "            character_id,", null);
-  pushLine(lines, sourceMap, "            character_tribe,", null);
-  pushLine(lines, sourceMap, "            hp_ratio,", null);
-  pushLine(lines, sourceMap, "            shield_ratio,", null);
-  pushLine(lines, sourceMap, "            armor_ratio,", null);
-  pushLine(lines, sourceMap, "            is_aggressor,", null);
-  pushLine(lines, sourceMap, "            priority_weight,", null);
-  pushLine(lines, sourceMap, "            behaviour_change,", null);
-  pushLine(lines, sourceMap, "        }", null);
-  pushLine(lines, sourceMap, "    }", null);
+  emitBcsUnpackerFunctions(lines, sourceMap);
   pushLine(lines, sourceMap, "}", null);
 
   return {

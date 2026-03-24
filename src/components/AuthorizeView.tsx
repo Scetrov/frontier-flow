@@ -1,5 +1,5 @@
 import { useCurrentAccount, useCurrentWallet, useSuiClient } from "@mysten/dapp-kit";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { StoredDeploymentState } from "../types/authorization";
 import { useAuthorization } from "../hooks/useAuthorization";
@@ -93,7 +93,10 @@ function useAuthorizeViewSelection(input: {
   const [listInstanceKey, setListInstanceKey] = useState(0);
   const [selectionState, setSelectionState] = useState<AuthorizeViewSelectionState>({ deploymentKey: null, turretIds: [] });
   const deploymentKeyRef = useRef<string | null>(null);
-  const selectedTurretIds = selectionState.deploymentKey === deploymentKey ? selectionState.turretIds : [];
+  const selectedTurretIds = useMemo(
+    () => selectionState.deploymentKey === deploymentKey ? selectionState.turretIds : [],
+    [deploymentKey, selectionState],
+  );
 
   useEffect(() => {
     if (deploymentKeyRef.current === null) {

@@ -8,6 +8,89 @@ interface VisualDeploymentTargetSelectorProps {
   readonly selectedTarget: DeploymentTargetId;
 }
 
+interface TargetMenuProps {
+  readonly buttonRef: React.RefObject<HTMLButtonElement | null>;
+  readonly focusOption: (index: number) => void;
+  readonly menuId: string;
+  readonly onTargetChange: (target: DeploymentTargetId) => void;
+  readonly optionRefs: React.RefObject<Array<HTMLButtonElement | null>>;
+  readonly selectedTarget: DeploymentTargetId;
+  readonly setMenuOpen: (open: boolean) => void;
+}
+
+function TargetMenu({ buttonRef, focusOption, menuId, onTargetChange, optionRefs, selectedTarget, setMenuOpen }: TargetMenuProps) {
+  return (
+    <div
+      aria-label="Target network/server"
+      className="ff-visual-target-selector__menu"
+      id={menuId}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setMenuOpen(false);
+          buttonRef.current?.focus();
+          return;
+        }
+
+        const focusedIndex = optionRefs.current.findIndex((option) => option === document.activeElement);
+
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          focusOption(focusedIndex === -1 ? 0 : focusedIndex + 1);
+          return;
+        }
+
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          focusOption(focusedIndex === -1 ? DEPLOYMENT_TARGETS.length - 1 : focusedIndex - 1);
+          return;
+        }
+
+        if (event.key === "Home") {
+          event.preventDefault();
+          focusOption(0);
+          return;
+        }
+
+        if (event.key === "End") {
+          event.preventDefault();
+          focusOption(DEPLOYMENT_TARGETS.length - 1);
+        }
+      }}
+      role="menu"
+      tabIndex={-1}
+    >
+      {DEPLOYMENT_TARGETS.map((target, index) => (
+        <button
+          aria-checked={target.id === selectedTarget}
+          className="ff-visual-target-selector__option"
+          key={target.id}
+          onClick={() => {
+            onTargetChange(target.id);
+            setMenuOpen(false);
+            buttonRef.current?.focus();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onTargetChange(target.id);
+              setMenuOpen(false);
+              buttonRef.current?.focus();
+            }
+          }}
+          ref={(element) => {
+            optionRefs.current[index] = element;
+          }}
+          role="menuitemradio"
+          type="button"
+        >
+          <span className="ff-visual-target-selector__option-label">{target.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Fixed-width deployment target selector anchored inside the Visual workspace.
  */
@@ -103,74 +186,15 @@ function VisualDeploymentTargetSelector({ onTargetChange, selectedTarget }: Visu
         <span aria-hidden="true" className="ff-visual-target-selector__caret">▼</span>
       </div>
       {menuOpen ? (
-        <div
-          aria-label="Target network/server"
-          className="ff-visual-target-selector__menu"
-          id={menuId}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.preventDefault();
-              setMenuOpen(false);
-              buttonRef.current?.focus();
-              return;
-            }
-
-            const focusedIndex = optionRefs.current.findIndex((option) => option === document.activeElement);
-
-            if (event.key === "ArrowDown") {
-              event.preventDefault();
-              focusOption(focusedIndex === -1 ? 0 : focusedIndex + 1);
-              return;
-            }
-
-            if (event.key === "ArrowUp") {
-              event.preventDefault();
-              focusOption(focusedIndex === -1 ? DEPLOYMENT_TARGETS.length - 1 : focusedIndex - 1);
-              return;
-            }
-
-            if (event.key === "Home") {
-              event.preventDefault();
-              focusOption(0);
-              return;
-            }
-
-            if (event.key === "End") {
-              event.preventDefault();
-              focusOption(DEPLOYMENT_TARGETS.length - 1);
-            }
-          }}
-          role="menu"
-          tabIndex={-1}
-        >
-          {DEPLOYMENT_TARGETS.map((target, index) => (
-            <button
-              aria-checked={target.id === selectedTarget}
-              className="ff-visual-target-selector__option"
-              key={target.id}
-              onClick={() => {
-                onTargetChange(target.id);
-                setMenuOpen(false);
-                buttonRef.current?.focus();
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onTargetChange(target.id);
-                  setMenuOpen(false);
-                  buttonRef.current?.focus();
-                }
-              }}
-              ref={(element) => {
-                optionRefs.current[index] = element;
-              }}
-              role="menuitemradio"
-              type="button"
-            >
-              <span className="ff-visual-target-selector__option-label">{target.label}</span>
-            </button>
-          ))}
-        </div>
+        <TargetMenu
+          buttonRef={buttonRef}
+          focusOption={focusOption}
+          menuId={menuId}
+          onTargetChange={onTargetChange}
+          optionRefs={optionRefs}
+          selectedTarget={selectedTarget}
+          setMenuOpen={setMenuOpen}
+        />
       ) : null}
     </div>
   );
