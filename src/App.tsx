@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 
-import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, GeneratedContractArtifact } from "./compiler/types";
+import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, DeploymentTargetId, GeneratedContractArtifact } from "./compiler/types";
 import AlphaBanner from "./components/AlphaBanner";
 import AuthorizeView from "./components/AuthorizeView";
 import CanvasWorkspace from "./components/CanvasWorkspace";
@@ -11,6 +11,7 @@ import Header from "./components/Header";
 import type { PrimaryView } from "./components/Header";
 import MoveSourcePanel from "./components/MoveSourcePanel";
 import Sidebar from "./components/Sidebar";
+import VisualDeploymentTargetSelector from "./components/VisualDeploymentTargetSelector";
 import { seededExampleContracts } from "./data/exampleContracts";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
 import { useDeployment } from "./hooks/useDeployment";
@@ -55,12 +56,16 @@ interface AppMainContentProps {
     artifactMoveSource?: string | null,
   ) => void;
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
+  readonly onSelectedDeploymentTargetChange: (target: DeploymentTargetId) => void;
+  readonly selectedDeploymentTarget: DeploymentTargetId;
 }
 
 interface VisualWorkspaceViewProps {
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
+  readonly onSelectedDeploymentTargetChange: (target: DeploymentTargetId) => void;
+  readonly selectedDeploymentTarget: DeploymentTargetId;
 }
 
 interface StandardAppLayoutProps {
@@ -79,6 +84,7 @@ interface StandardAppLayoutProps {
   readonly onSelectDiagnostic: (nodeId: string) => void;
   readonly onViewChange: (view: PrimaryView) => void;
   readonly remediationNotices: readonly RemediationNotice[];
+  readonly selectedDeploymentTarget: DeploymentTargetId;
 }
 
 function getBrowserStorage(): Storage | undefined {
@@ -138,6 +144,8 @@ function VisualWorkspaceView({
   focusedDiagnosticSelection,
   onCompilationStateChange,
   onRemediationNoticesChange,
+  onSelectedDeploymentTargetChange,
+  selectedDeploymentTarget,
 }: VisualWorkspaceViewProps) {
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -145,6 +153,12 @@ function VisualWorkspaceView({
         aria-label="Node editor canvas"
         className="relative flex-1 overflow-hidden border-y border-[var(--ui-border-dark)]"
       >
+        <div className="ff-visual-target-selector__anchor">
+          <VisualDeploymentTargetSelector
+            onTargetChange={onSelectedDeploymentTargetChange}
+            selectedTarget={selectedDeploymentTarget}
+          />
+        </div>
         <CanvasWorkspace
           focusedDiagnosticNodeId={focusedDiagnosticSelection?.nodeId ?? null}
           focusedDiagnosticRequestKey={focusedDiagnosticSelection?.requestKey ?? 0}
@@ -178,6 +192,8 @@ function AppMainContent({
   moveSourceCode,
   onCompilationStateChange,
   onRemediationNoticesChange,
+  onSelectedDeploymentTargetChange,
+  selectedDeploymentTarget,
 }: AppMainContentProps) {
   if (activeView === "visual") {
     return (
@@ -185,6 +201,8 @@ function AppMainContent({
         focusedDiagnosticSelection={focusedDiagnosticSelection}
         onCompilationStateChange={onCompilationStateChange}
         onRemediationNoticesChange={onRemediationNoticesChange}
+        onSelectedDeploymentTargetChange={onSelectedDeploymentTargetChange}
+        selectedDeploymentTarget={selectedDeploymentTarget}
       />
     );
   }
@@ -278,6 +296,7 @@ function StandardAppLayout({
   onSelectDiagnostic,
   onViewChange,
   remediationNotices,
+  selectedDeploymentTarget,
 }: StandardAppLayoutProps) {
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -310,6 +329,8 @@ function StandardAppLayout({
             moveSourceCode={moveSourceCode}
             onCompilationStateChange={onCompilationStateChange}
             onRemediationNoticesChange={onRemediationNoticesChange}
+            onSelectedDeploymentTargetChange={deployment.setSelectedTarget}
+            selectedDeploymentTarget={selectedDeploymentTarget}
           />
         </main>
       )}
@@ -448,6 +469,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       onSelectDiagnostic={handleSelectDiagnostic}
       onViewChange={setActiveView}
       remediationNotices={remediationNotices}
+      selectedDeploymentTarget={deployment.selectedTarget}
     />
   );
 }

@@ -458,6 +458,138 @@ button,
   background: rgba(255, 71, 0, 0.12);
 }
 
+.ff-visual-target-selector__anchor {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.ff-visual-target-selector {
+  position: relative;
+  width: 16rem;
+  pointer-events: auto;
+}
+
+.ff-visual-target-selector__field {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.9rem minmax(0, 1fr);
+  align-items: stretch;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.92);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+}
+
+.ff-visual-target-selector__icon-shell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--ui-border-dark);
+  background:
+    linear-gradient(180deg, rgba(255, 71, 0, 0.16), rgba(255, 71, 0, 0.06)),
+    rgba(26, 10, 10, 0.92);
+  color: var(--brand-orange);
+}
+
+.ff-visual-target-selector__trigger {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  width: 100%;
+  min-height: 2.75rem;
+  border: 0;
+  background: transparent;
+  padding: 0.75rem 2.5rem 0.75rem 0.9rem;
+  color: var(--cream-white);
+  cursor: pointer;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.ff-visual-target-selector__field:hover,
+.ff-visual-target-selector__field:focus-within {
+  border-color: var(--brand-orange);
+}
+
+.ff-visual-target-selector__trigger:focus-visible {
+  outline: none;
+}
+
+.ff-visual-target-selector--active .ff-visual-target-selector__field {
+  border-color: var(--brand-orange);
+}
+
+.ff-visual-target-selector__value {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ff-visual-target-selector__menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  width: 100%;
+  gap: 0.2rem;
+  border: 1px solid var(--brand-orange);
+  background: rgba(16, 21, 31, 0.98);
+  padding: 0.35rem;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+}
+
+.ff-visual-target-selector__option {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  border: 1px solid transparent;
+  background: rgba(22, 28, 40, 0.94);
+  color: var(--cream-white);
+  cursor: pointer;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 0.75rem 0.8rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.ff-visual-target-selector__option:hover,
+.ff-visual-target-selector__option:focus-visible,
+.ff-visual-target-selector__option[aria-checked="true"] {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.12);
+  outline: none;
+}
+
+.ff-visual-target-selector__option-label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ff-visual-target-selector__caret {
+  position: absolute;
+  top: 50%;
+  right: 0.95rem;
+  transform: translateY(-50%);
+  color: var(--brand-orange);
+  font-size: 0.72rem;
+  pointer-events: none;
+}
+
+.ff-deploy-workflow__action {
+  min-width: 13.5rem;
+  justify-content: center;
+  border-color: var(--brand-orange);
+}
+
 .ff-header__bar {
   display: flex;
   align-items: center;
@@ -2545,6 +2677,11 @@ button,
     gap: 0.5rem;
   }
 
+  .ff-visual-target-selector__anchor {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+
   .ff-canvas__empty-state {
     left: 1rem;
     right: 1rem;
@@ -2566,6 +2703,10 @@ button,
 
   .ff-header__actions {
     gap: 0.25rem;
+  }
+
+  .ff-deploy-workflow__action {
+    min-width: 0;
   }
 
   .ff-header__button--compact {

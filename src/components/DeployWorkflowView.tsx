@@ -7,7 +7,7 @@ import {
 
 import type { DeploymentState } from "../compiler/types";
 import { getDeploymentTarget } from "../data/deploymentTargets";
-import DeploymentTargetControl from "./DeploymentTargetControl";
+import { ConservativeDeployIcon } from "./HeaderActionIcons";
 
 const MIST_PER_SUI = 1_000_000_000;
 
@@ -267,8 +267,31 @@ function getDeploymentStatusDetails(deployment: DeploymentState): string | null 
   return deployment.deploymentStatus?.nextActionSummary ?? null;
 }
 
+function getDeployActionCopy(input: {
+  readonly canDeploy: boolean;
+  readonly isDeploying: boolean;
+  readonly isUpgrade: boolean;
+  readonly selectedTarget: DeploymentState["selectedTarget"];
+}) {
+  const actionVerb = input.isUpgrade ? "Upgrade" : "Deploy";
+  const inProgressVerb = input.isUpgrade ? "Upgrading" : "Deploying";
+
+  return {
+    actionLabel: input.isDeploying ? `${inProgressVerb} ${input.selectedTarget}` : `${actionVerb} ${input.selectedTarget}`,
+    actionTitle: input.canDeploy
+      ? undefined
+      : `Review blockers for ${input.selectedTarget} ${input.isUpgrade ? "upgrade" : "deployment"}`,
+  };
+}
+
 function DeployWorkflowHeader({ deployment }: DeployWorkflowViewProps) {
   const isUpgrade = deployment.deploymentStatus?.status === "deployed";
+  const { actionLabel, actionTitle } = getDeployActionCopy({
+    canDeploy: deployment.canDeploy,
+    isDeploying: deployment.isDeploying,
+    isUpgrade,
+    selectedTarget: deployment.selectedTarget,
+  });
 
   return (
     <header className="grid gap-4 border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.72)] p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
@@ -287,16 +310,21 @@ function DeployWorkflowHeader({ deployment }: DeployWorkflowViewProps) {
         </div>
       </div>
 
-      <DeploymentTargetControl
-        canDeploy={deployment.canDeploy}
-        isDeploying={deployment.isDeploying}
-        isUpgrade={isUpgrade}
-        onDeploy={() => {
+      <button
+        aria-label={actionLabel}
+        className="ff-header__button ff-deploy-workflow__action"
+        disabled={deployment.isDeploying}
+        onClick={() => {
           void deployment.startDeployment();
         }}
-        onTargetChange={deployment.setSelectedTarget}
-        selectedTarget={deployment.selectedTarget}
-      />
+        title={actionTitle}
+        type="button"
+      >
+        <span aria-hidden="true" className="ff-header__button-icon">
+          <ConservativeDeployIcon />
+        </span>
+        <span className="ff-header__button-label">{actionLabel}</span>
+      </button>
     </header>
   );
 }

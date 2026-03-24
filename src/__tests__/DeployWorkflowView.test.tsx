@@ -11,10 +11,6 @@ vi.mock("@mysten/dapp-kit", () => ({
   useWallets: () => ([{ name: "Vault" }]),
 }));
 
-vi.mock("../components/DeploymentTargetControl", () => ({
-  default: () => <div>Deployment Target Control Slot</div>,
-}));
-
 function createDeploymentState(overrides: Partial<DeploymentState> = {}): DeploymentState {
   return {
     selectedTarget: "testnet:stillness",
@@ -55,7 +51,7 @@ describe("DeployWorkflowView", () => {
     render(<DeployWorkflowView deployment={createDeploymentState()} />);
 
     expect(screen.getByRole("heading", { name: "Pre-flight deployment checks" })).toBeVisible();
-    expect(screen.getByText("Deployment Target Control Slot")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Deploy testnet:stillness" })).toBeVisible();
     expect(screen.getByText("current compiled bytecode artifact")).toBeVisible();
     expect(screen.getByText("connected Sui wallet for testnet:stillness")).toBeVisible();
     expect(screen.getByText("Connect a Sui-compatible wallet before deploying to testnet:stillness.")).toBeVisible();

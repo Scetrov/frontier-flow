@@ -11,7 +11,9 @@ export async function openDeployWorkflow(page: Page) {
 }
 
 export async function selectDeploymentTarget(page: Page, target: "local" | "testnet:stillness" | "testnet:utopia") {
-  await openDeployWorkflow(page);
-  await page.getByRole("button", { name: "Select deployment target" }).click();
+  await page.locator("header").getByRole("button", { name: "Visual", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Target network/server" })).toBeVisible();
+  await page.getByRole("button", { name: "Target network/server" }).click();
   await page.getByRole("menuitemradio", { name: target }).click();
+  await openDeployWorkflow(page);
 }
