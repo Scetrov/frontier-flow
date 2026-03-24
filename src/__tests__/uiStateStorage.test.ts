@@ -89,6 +89,27 @@ describe("uiStateStorage", () => {
     });
   });
 
+  it("restores the deploy view when it is persisted", () => {
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "deploy",
+        selectedDeploymentTarget: "testnet:stillness",
+        isSidebarOpen: true,
+        isContractPanelOpen: false,
+      }),
+    );
+
+    expect(loadUiState(window.localStorage)).toEqual({
+      version: 1,
+      activeView: "deploy",
+      selectedDeploymentTarget: "testnet:stillness",
+      isSidebarOpen: true,
+      isContractPanelOpen: false,
+    });
+  });
+
   it("merges partial updates with the stored snapshot", () => {
     window.localStorage.setItem(
       UI_STATE_STORAGE_KEY,

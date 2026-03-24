@@ -336,4 +336,64 @@ describe("useAutoCompile", () => {
     expect(result.current.status.state).toBe("compiled");
     expect(result.current.sourceCode).toBe("module builder_extensions::starter_contract {}");
   });
+
+  it("recompiles when node field values change", async () => {
+    const firstNodes = [createFlowNode("node_1", "aggression", { x: 0, y: 0 }, { threshold: 1 })];
+    const secondNodes = [createFlowNode("node_1", "aggression", { x: 0, y: 0 }, { threshold: 2 })];
+
+    const { rerender } = renderHook(
+      ({ nodes }) => useAutoCompile(nodes, emptyEdges, "starter_contract", 100),
+      { initialProps: { nodes: firstNodes } },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(compilePipeline).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      rerender({ nodes: secondNodes });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(compilePipeline).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not recompile when a node only changes position", async () => {
+    const firstNodes = [createFlowNode("node_1", "aggression", { x: 0, y: 0 })];
+    const secondNodes = [createFlowNode("node_1", "aggression", { x: 240, y: 96 })];
+
+    const { rerender } = renderHook(
+      ({ nodes }) => useAutoCompile(nodes, emptyEdges, "starter_contract", 100),
+      { initialProps: { nodes: firstNodes } },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(compilePipeline).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      rerender({ nodes: secondNodes });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(compilePipeline).toHaveBeenCalledTimes(1);
+  });
 });

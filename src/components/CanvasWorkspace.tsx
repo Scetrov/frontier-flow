@@ -65,7 +65,6 @@ interface CanvasWorkspaceProps {
     artifactMoveSource?: string | null,
   ) => void;
   readonly onRemediationNoticesChange?: (notices: readonly RemediationNotice[]) => void;
-  readonly onTriggerCompileChange?: (triggerCompile: () => void) => void;
 }
 
 interface ContextMenuState {
@@ -826,7 +825,6 @@ function useCanvasCompilationState({
   nodes,
   nodeDeleteStates,
   onCompilationStateChange,
-  onTriggerCompileChange,
   clearNodeDeleteState,
   deleteNodeById,
   setNodes,
@@ -837,7 +835,6 @@ function useCanvasCompilationState({
   readonly nodes: readonly FlowNode[];
   readonly nodeDeleteStates: Readonly<Record<string, DeleteConfirmationState>>;
   readonly onCompilationStateChange?: CanvasWorkspaceProps["onCompilationStateChange"];
-  readonly onTriggerCompileChange?: CanvasWorkspaceProps["onTriggerCompileChange"];
   readonly clearNodeDeleteState: (nodeId: string) => void;
   readonly deleteNodeById: (nodeId: string) => void;
   readonly setNodes: SetFlowNodes;
@@ -880,10 +877,6 @@ function useCanvasCompilationState({
   useEffect(() => {
     onCompilationStateChange?.(compilation.status, compilation.diagnostics, compilation.sourceCode, compilation.artifact?.moveSource ?? null);
   }, [compilation.artifact, compilation.diagnostics, compilation.sourceCode, compilation.status, onCompilationStateChange]);
-
-  useEffect(() => {
-    onTriggerCompileChange?.(compilation.triggerCompile);
-  }, [compilation.triggerCompile, onTriggerCompileChange]);
 
   return { compilation, handleNodeFieldsChange, renderedNodes };
 }
@@ -1312,7 +1305,6 @@ function FlowEditor({
   focusedDiagnosticRequestKey = 0,
   onCompilationStateChange,
   onRemediationNoticesChange,
-  onTriggerCompileChange,
 }: CanvasWorkspaceProps) {
   const initialLibrarySnapshot = useInitialLibrarySnapshot({ initialContractName, initialEdges, initialNodes, mode });
   const activeInitialContract = initialLibrarySnapshot.library.contracts.find((contract) => contract.name === initialLibrarySnapshot.library.activeContractName) ?? initialLibrarySnapshot.library.contracts[0];
@@ -1322,7 +1314,7 @@ function FlowEditor({
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
   const contractManager = useContractManager({ initialLibrarySnapshot, mode, nodes, edges, reactFlow, setEdges, setNodes });
   const deleteManager = useDeleteManager({ setEdges, setNodes });
-  const compilationState = useCanvasCompilationState({ clearNodeDeleteState: deleteManager.clearNodeDeleteState, deleteNodeById: deleteManager.deleteNodeById, draftContractName: contractManager.draftContractName, edges, handleNodeDeleteRequest: deleteManager.handleNodeDeleteRequest, nodeDeleteStates: deleteManager.nodeDeleteStates, nodes, onCompilationStateChange, onTriggerCompileChange, setNodes });
+  const compilationState = useCanvasCompilationState({ clearNodeDeleteState: deleteManager.clearNodeDeleteState, deleteNodeById: deleteManager.deleteNodeById, draftContractName: contractManager.draftContractName, edges, handleNodeDeleteRequest: deleteManager.handleNodeDeleteRequest, nodeDeleteStates: deleteManager.nodeDeleteStates, nodes, onCompilationStateChange, setNodes });
   const selectionState = useCanvasSelectionState({ edges, nodes, selectedEdgeDeleteAnchor: deleteManager.selectedEdgeDeleteAnchor, setEdges, setNodes });
   const interactionHandlers = useCanvasInteractions({ deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, nodes, reactFlow, selectTarget: selectionState.selectTarget, setContextMenu: deleteManager.setContextMenu, setEdges, setNodes });
   useFlowEditorEffects({ contextMenu: deleteManager.contextMenu, contextMenuRef: deleteManager.contextMenuRef, deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, fallbackSelectedEdgeDeleteAnchor: selectionState.activeSelectedEdgeDeleteAnchor, focusedDiagnosticNodeId, focusedDiagnosticRequestKey, nodes, reactFlow, selectedTarget: selectionState.selectedTarget, setContextMenu: deleteManager.setContextMenu, setSelectedEdgeDeleteAnchor: deleteManager.setSelectedEdgeDeleteAnchor });
@@ -1356,7 +1348,6 @@ function CanvasWorkspace({
   focusedDiagnosticRequestKey,
   onCompilationStateChange,
   onRemediationNoticesChange,
-  onTriggerCompileChange,
 }: CanvasWorkspaceProps) {
   return (
     <ReactFlowProvider>
@@ -1369,7 +1360,6 @@ function CanvasWorkspace({
         mode={mode}
         onCompilationStateChange={onCompilationStateChange}
         onRemediationNoticesChange={onRemediationNoticesChange}
-        onTriggerCompileChange={onTriggerCompileChange}
       />
     </ReactFlowProvider>
   );

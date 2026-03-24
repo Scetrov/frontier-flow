@@ -111,11 +111,11 @@ function getStatusLabel(status: CompilationStatus): string {
 function getEmptyMessage(status: CompilationStatus): string {
   switch (status.state) {
     case "compiling":
-      return "Generating Move source from the current graph.";
+      return "Automatic compile is generating Move source from the current graph.";
     case "error":
       return "No Move source is available for the current graph yet. Resolve graph validation issues or compile errors to inspect generated output.";
     default:
-      return "Build or edit a valid graph to inspect the generated Move source here.";
+      return "Edit the graph and wait for the automatic compile cycle to inspect generated Move source here.";
   }
 }
 
@@ -227,7 +227,7 @@ function MoveSourcePanel({ deploymentStatus = null, sourceCode, status }: MoveSo
         <div>
           <p className="ff-move-source__eyebrow">Move</p>
           <h2 className="ff-move-source__title">Generated source</h2>
-          <p className="ff-move-source__copy">Read-only generated Move output with syntax highlighting for review, debugging, and contributor inspection.</p>
+          <p className="ff-move-source__copy">Read-only generated Move output with syntax highlighting for workflow review, debugging, and contributor inspection.</p>
         </div>
 
         <MoveSourceMeta deployment={deployment} filename={displayedFilename} status={status} />

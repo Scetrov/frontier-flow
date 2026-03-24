@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CompilationState, CompilationStatus, CompilerDiagnostic, GeneratedContractArtifact } from "../compiler/types";
-import type { FlowEdge, FlowNode } from "../types/nodes";
+import type { FlowEdge, FlowNode, NodeFieldMap, NodeFieldValue } from "../types/nodes";
 
 export const AUTO_COMPILE_IDLE_MS = 2500;
 const IDLE_STATUS: CompilationStatus = { state: "idle" };
@@ -103,6 +103,12 @@ function createCompilationRequest(
   return request;
 }
 
+function serializeNodeFields(fields: NodeFieldMap): Array<readonly [string, NodeFieldValue]> {
+  return Object.entries(fields)
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+    .map(([fieldKey, fieldValue]) => [fieldKey, fieldValue] as const);
+}
+
 function createCompilationGraphKey(
   nodes: readonly FlowNode[],
   edges: readonly FlowEdge[],
@@ -138,6 +144,7 @@ function createCompilationGraphKey(
     nodes: nodes
       .map((node) => ({
         category: node.data.category,
+        fields: serializeNodeFields(node.data.fields),
         id: node.id,
         label: node.data.label,
         sockets: node.data.sockets.map((socket) => ({
@@ -264,6 +271,7 @@ export function useAutoCompile(
     diagnostics: shouldShowCurrentGraphState ? diagnostics : EMPTY_DIAGNOSTICS,
     sourceCode: shouldShowCurrentGraphState ? sourceCode : null,
     artifact: shouldShowCurrentGraphState ? artifact : null,
+    hasSettledGraph: isCurrentGraphSettled,
     triggerCompile,
   };
 }

@@ -34,6 +34,7 @@ interface MoveSourcePanelProps {
   readonly status: CompilationStatus;
 }
 
+const deployWorkflowViewSpy = vi.fn();
 const moveSourcePanelSpy = vi.fn<(props: MoveSourcePanelProps) => void>();
 let lastMoveSourcePanelProps: MoveSourcePanelProps | null = null;
 let hasReportedCompilation = false;
@@ -52,15 +53,25 @@ vi.mock("@mysten/dapp-kit", () => ({
 }));
 
 vi.mock("../components/Header", () => ({
-  default: (props: { onViewChange?: (view: "visual" | "move") => void }) => (
-    <button
-      type="button"
-      onClick={() => {
-        props.onViewChange?.("move");
-      }}
-    >
-      Header Slot
-    </button>
+  default: (props: { onViewChange?: (view: "visual" | "move" | "deploy") => void }) => (
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          props.onViewChange?.("move");
+        }}
+      >
+        Header Move Slot
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          props.onViewChange?.("deploy");
+        }}
+      >
+        Header Deploy Slot
+      </button>
+    </div>
   ),
 }));
 
@@ -112,6 +123,13 @@ vi.mock("../components/MoveSourcePanel", () => ({
   },
 }));
 
+vi.mock("../components/DeployWorkflowView", () => ({
+  default: (props: unknown) => {
+    deployWorkflowViewSpy(props);
+    return <div>Deploy Workflow Slot</div>;
+  },
+}));
+
 describe("App compilation handoff", () => {
   beforeEach(() => {
     mockUseCurrentAccount.mockReturnValue(null);
@@ -122,6 +140,7 @@ describe("App compilation handoff", () => {
   });
 
   afterEach(() => {
+    deployWorkflowViewSpy.mockClear();
     moveSourcePanelSpy.mockClear();
     lastMoveSourcePanelProps = null;
     hasReportedCompilation = false;
@@ -138,13 +157,30 @@ describe("App compilation handoff", () => {
     render(<App />);
 
     expect(await screen.findByText("Canvas Workspace Slot")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Header Slot" }));
+    fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
 
     await waitFor(() => {
       expect(moveSourcePanelSpy).toHaveBeenCalled();
       expect(lastMoveSourcePanelProps).not.toBeNull();
       expect(lastMoveSourcePanelProps?.sourceCode).toBe("module builder_extensions::artifact_contract {}");
       expect(lastMoveSourcePanelProps?.status.state).toBe("compiled");
+    });
+  });
+
+  it("routes compiled workflows into the deploy step", async () => {
+    render(<App />);
+
+    expect(await screen.findByText("Canvas Workspace Slot")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Header Deploy Slot" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Header Deploy Slot" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Deploy Workflow Slot")).toBeInTheDocument();
+      expect(deployWorkflowViewSpy).toHaveBeenCalled();
     });
   });
 

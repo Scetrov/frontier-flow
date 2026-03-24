@@ -44,17 +44,27 @@ vi.mock("@mysten/dapp-kit", () => ({
 }));
 
 vi.mock("../components/Header", () => ({
-  default: (props: { activeView?: string; onViewChange?: (view: "visual" | "move" | "authorize") => void }) => {
+  default: (props: { activeView?: string; onViewChange?: (view: "visual" | "move" | "deploy" | "authorize") => void }) => {
     headerSpy(props);
     return (
-      <button
-        type="button"
-        onClick={() => {
-          props.onViewChange?.("move");
-        }}
-      >
-        Header Slot
-      </button>
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            props.onViewChange?.("move");
+          }}
+        >
+          Header Move Slot
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            props.onViewChange?.("deploy");
+          }}
+        >
+          Header Deploy Slot
+        </button>
+      </div>
     );
   },
 }));
@@ -140,12 +150,13 @@ describe("App", () => {
     );
   });
 
-  it("restores the primary view from local storage", () => {
+  it("falls back from persisted move to visual until the compiled workflow is ready", () => {
     window.localStorage.setItem(
       UI_STATE_STORAGE_KEY,
       JSON.stringify({
         version: 1,
         activeView: "move",
+        selectedDeploymentTarget: "local",
         isSidebarOpen: true,
         isContractPanelOpen: true,
       }),
@@ -155,7 +166,7 @@ describe("App", () => {
 
     expect(headerSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        activeView: "move",
+        activeView: "visual",
       }),
     );
   });
@@ -184,10 +195,10 @@ describe("App", () => {
   it("persists the primary view when the header switches tabs", () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Header Slot" }));
+    fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
 
     expect(JSON.parse(window.localStorage.getItem(UI_STATE_STORAGE_KEY) ?? "{}")).toMatchObject({
-      activeView: "move",
+      activeView: "visual",
     });
   });
 

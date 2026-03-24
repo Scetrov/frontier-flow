@@ -1,5 +1,5 @@
 import { useCurrentAccount, useCurrentWallet, useSuiClient } from "@mysten/dapp-kit";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { StoredDeploymentState } from "../types/authorization";
 import { useAuthorization } from "../hooks/useAuthorization";
@@ -110,33 +110,39 @@ function useAuthorizeViewSelection(input: {
     deploymentKeyRef.current = deploymentKey;
   }, [authorization, deploymentKey]);
 
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     setSelectionState({ deploymentKey, turretIds: [] });
     setListInstanceKey((value) => value + 1);
-  };
+  }, [deploymentKey]);
+
+  const handleAuthorize = useCallback(() => {
+    if (selectedTurretIds.length === 0) {
+      return;
+    }
+
+    const turretIds = [...selectedTurretIds];
+    clearSelection();
+    void authorization.startAuthorization(turretIds);
+  }, [authorization, clearSelection, selectedTurretIds]);
+
+  const handleDismissProgress = useCallback(() => {
+    const hasCompletedBatch = authorization.progress?.completedAt !== null;
+    authorization.dismissProgress();
+
+    if (hasCompletedBatch) {
+      clearSelection();
+      void turretList.refresh();
+    }
+  }, [authorization, clearSelection, turretList]);
+
+  const handleSelectionChange = useCallback((turretIds: readonly string[]) => {
+    setSelectionState({ deploymentKey, turretIds });
+  }, [deploymentKey]);
 
   return {
-    handleAuthorize: () => {
-      if (selectedTurretIds.length === 0) {
-        return;
-      }
-
-      const turretIds = [...selectedTurretIds];
-      clearSelection();
-      void authorization.startAuthorization(turretIds);
-    },
-    handleDismissProgress: () => {
-      const hasCompletedBatch = authorization.progress?.completedAt !== null;
-      authorization.dismissProgress();
-
-      if (hasCompletedBatch) {
-        clearSelection();
-        void turretList.refresh();
-      }
-    },
-    handleSelectionChange: (turretIds: readonly string[]) => {
-      setSelectionState({ deploymentKey, turretIds });
-    },
+    handleAuthorize,
+    handleDismissProgress,
+    handleSelectionChange,
     listInstanceKey,
     selectedTurretIds,
   };

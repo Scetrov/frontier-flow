@@ -285,6 +285,7 @@ export interface CompilationState {
   readonly diagnostics: readonly CompilerDiagnostic[];
   readonly sourceCode: string | null;
   readonly artifact: GeneratedContractArtifact | null;
+  readonly hasSettledGraph: boolean;
   readonly triggerCompile: () => void;
 }
 
@@ -294,6 +295,8 @@ export interface DeploymentState {
   readonly isDeploying: boolean;
   readonly isProgressModalOpen: boolean;
   readonly blockerReasons: readonly string[];
+  readonly requiredInputs: readonly string[];
+  readonly resolvedInputs: readonly string[];
   readonly deploymentStatus: DeploymentStatus | null;
   readonly latestAttempt: DeploymentAttempt | null;
   readonly progress: DeploymentProgress | null;

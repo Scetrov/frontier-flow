@@ -4,6 +4,7 @@ import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, Generated
 import AlphaBanner from "./components/AlphaBanner";
 import AuthorizeView from "./components/AuthorizeView";
 import CanvasWorkspace from "./components/CanvasWorkspace";
+import DeployWorkflowView from "./components/DeployWorkflowView";
 import DeploymentProgressModal from "./components/DeploymentProgressModal";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
@@ -37,6 +38,7 @@ interface FocusedDiagnosticSelection {
 interface AppMainContentProps {
   readonly activeView: PrimaryView;
   readonly authorizeDeploymentState: StoredDeploymentState | null;
+  readonly deployment: ReturnType<typeof useDeployment>;
   readonly deploymentStatus: DeploymentStatus | null;
   readonly displayStatus: CompilationStatus;
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
@@ -48,14 +50,12 @@ interface AppMainContentProps {
     artifactMoveSource?: string | null,
   ) => void;
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
-  readonly onTriggerCompileChange: (nextTriggerCompile: () => void) => void;
 }
 
 interface VisualWorkspaceViewProps {
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
-  readonly onTriggerCompileChange: AppMainContentProps["onTriggerCompileChange"];
 }
 
 interface StandardAppLayoutProps {
@@ -66,14 +66,12 @@ interface StandardAppLayoutProps {
   readonly displayStatus: CompilationStatus;
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
   readonly isCompiling: boolean;
+  readonly isCompiledWorkflowReady: boolean;
   readonly isKitchenSinkRoute: boolean;
-  readonly isUpgrade: boolean;
   readonly moveSourceCode: string | null;
-  readonly onBuild: () => void;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
   readonly onSelectDiagnostic: (nodeId: string) => void;
-  readonly onTriggerCompileChange: AppMainContentProps["onTriggerCompileChange"];
   readonly onViewChange: (view: PrimaryView) => void;
   readonly remediationNotices: readonly RemediationNotice[];
 }
@@ -121,7 +119,6 @@ function VisualWorkspaceView({
   focusedDiagnosticSelection,
   onCompilationStateChange,
   onRemediationNoticesChange,
-  onTriggerCompileChange,
 }: VisualWorkspaceViewProps) {
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -137,7 +134,6 @@ function VisualWorkspaceView({
           initialNodes={defaultContractFlow.nodes}
           onCompilationStateChange={onCompilationStateChange}
           onRemediationNoticesChange={onRemediationNoticesChange}
-          onTriggerCompileChange={onTriggerCompileChange}
         />
       </section>
       <Sidebar />
@@ -156,13 +152,13 @@ function MoveSourceView({ deploymentStatus, displayStatus, moveSourceCode }: Pic
 function AppMainContent({
   activeView,
   authorizeDeploymentState,
+  deployment,
   deploymentStatus,
   displayStatus,
   focusedDiagnosticSelection,
   moveSourceCode,
   onCompilationStateChange,
   onRemediationNoticesChange,
-  onTriggerCompileChange,
 }: AppMainContentProps) {
   if (activeView === "visual") {
     return (
@@ -170,9 +166,12 @@ function AppMainContent({
         focusedDiagnosticSelection={focusedDiagnosticSelection}
         onCompilationStateChange={onCompilationStateChange}
         onRemediationNoticesChange={onRemediationNoticesChange}
-        onTriggerCompileChange={onTriggerCompileChange}
       />
     );
+  }
+
+  if (activeView === "deploy") {
+    return <DeployWorkflowView deployment={deployment} />;
   }
 
   if (activeView === "authorize") {
@@ -224,8 +223,24 @@ function getStatusArtifact(status: CompilationStatus): GeneratedContractArtifact
   return status.artifact ?? null;
 }
 
-function resolveActiveView(activeView: PrimaryView, authorizeDeploymentState: StoredDeploymentState | null): PrimaryView {
-  return activeView === "authorize" && authorizeDeploymentState === null ? "visual" : activeView;
+function hasCompiledWorkflowAccess(status: CompilationStatus): boolean {
+  return status.state === "compiled" || status.state === "error";
+}
+
+function resolveActiveView(input: {
+  readonly activeView: PrimaryView;
+  readonly authorizeDeploymentState: StoredDeploymentState | null;
+  readonly canAccessCompiledWorkflow: boolean;
+}): PrimaryView {
+  if (input.activeView === "authorize" && input.authorizeDeploymentState === null) {
+    return input.canAccessCompiledWorkflow ? "deploy" : "visual";
+  }
+
+  if ((input.activeView === "move" || input.activeView === "deploy") && !input.canAccessCompiledWorkflow) {
+    return "visual";
+  }
+
+  return input.activeView;
 }
 
 function StandardAppLayout({
@@ -236,14 +251,12 @@ function StandardAppLayout({
   displayStatus,
   focusedDiagnosticSelection,
   isCompiling,
+  isCompiledWorkflowReady,
   isKitchenSinkRoute,
-  isUpgrade,
   moveSourceCode,
-  onBuild,
   onCompilationStateChange,
   onRemediationNoticesChange,
   onSelectDiagnostic,
-  onTriggerCompileChange,
   onViewChange,
   remediationNotices,
 }: StandardAppLayoutProps) {
@@ -251,16 +264,10 @@ function StandardAppLayout({
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Header
         activeView={activeView}
-        canDeploy={deployment.canDeploy}
+        canAccessDeploy={isCompiledWorkflowReady}
+        canAccessMove={isCompiledWorkflowReady}
         hasAuthorizeAccess={authorizeDeploymentState !== null}
-        isDeploying={deployment.isDeploying}
         isCompiling={isCompiling}
-        isUpgrade={isUpgrade}
-        onBuild={onBuild}
-        onDeploy={() => {
-          void deployment.startDeployment();
-        }}
-        onDeploymentTargetChange={deployment.setSelectedTarget}
         onViewChange={isKitchenSinkRoute ? undefined : onViewChange}
         selectedDeploymentTarget={deployment.selectedTarget}
       />
@@ -274,13 +281,13 @@ function StandardAppLayout({
           <AppMainContent
             activeView={activeView}
             authorizeDeploymentState={authorizeDeploymentState}
+            deployment={deployment}
             deploymentStatus={deployment.deploymentStatus}
             displayStatus={displayStatus}
             focusedDiagnosticSelection={focusedDiagnosticSelection}
             moveSourceCode={moveSourceCode}
             onCompilationStateChange={onCompilationStateChange}
             onRemediationNoticesChange={onRemediationNoticesChange}
-            onTriggerCompileChange={onTriggerCompileChange}
           />
         </main>
       )}
@@ -310,7 +317,6 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
   const [focusedDiagnosticSelection, setFocusedDiagnosticSelection] = useState<FocusedDiagnosticSelection | null>(null);
   const [activeView, setActiveView] = useState<PrimaryView>(initialAppState.activeView);
   const [moveSourceCode, setMoveSourceCode] = useState<string | null>(null);
-  const [triggerCompile, setTriggerCompile] = useState<() => void>(() => () => undefined);
   const deployment = useDeployment({
     initialTarget: initialAppState.selectedDeploymentTarget,
     status: compilationStatus,
@@ -321,12 +327,12 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     () => persistedDeploymentState ?? getLiveDeploymentState(deployment.deploymentStatus, deployment.latestAttempt, compilationStatus),
     [compilationStatus, deployment.deploymentStatus, deployment.latestAttempt, persistedDeploymentState],
   );
+  const isCompiledWorkflowReady = hasCompiledWorkflowAccess(compilationStatus);
   const resolvedActiveView = useMemo(
-    () => resolveActiveView(activeView, authorizeDeploymentState),
-    [activeView, authorizeDeploymentState],
+    () => resolveActiveView({ activeView, authorizeDeploymentState, canAccessCompiledWorkflow: isCompiledWorkflowReady }),
+    [activeView, authorizeDeploymentState, isCompiledWorkflowReady],
   );
   const isCompiling = compilationStatus.state === "compiling";
-  const isUpgrade = deployment.deploymentStatus?.status === "deployed";
 
   useEffect(() => {
     mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, { activeView: resolvedActiveView });
@@ -349,10 +355,6 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     setMoveSourceCode(artifactMoveSource ?? nextSourceCode);
   };
 
-  const handleBuild = () => {
-    triggerCompile();
-  };
-
   const handleSelectDiagnostic = (nodeId: string) => {
     setFocusedDiagnosticSelection((currentSelection) => ({
       nodeId,
@@ -369,16 +371,12 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       displayStatus={displayStatus}
       focusedDiagnosticSelection={focusedDiagnosticSelection}
       isCompiling={isCompiling}
+      isCompiledWorkflowReady={isCompiledWorkflowReady}
       isKitchenSinkRoute={isKitchenSinkRoute}
-      isUpgrade={isUpgrade}
       moveSourceCode={moveSourceCode}
-      onBuild={handleBuild}
       onCompilationStateChange={handleCompilationStateChange}
       onRemediationNoticesChange={setRemediationNotices}
       onSelectDiagnostic={handleSelectDiagnostic}
-      onTriggerCompileChange={(nextTriggerCompile) => {
-        setTriggerCompile(() => nextTriggerCompile);
-      }}
       onViewChange={setActiveView}
       remediationNotices={remediationNotices}
     />

@@ -1306,6 +1306,8 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
     isDeploying,
     isProgressModalOpen: derivedState.isProgressModalOpen,
     blockerReasons: derivedState.blockerReasons,
+    requiredInputs: derivedState.validation.requiredInputs,
+    resolvedInputs: derivedState.validation.resolvedInputs,
     deploymentStatus,
     latestAttempt,
     progress,
