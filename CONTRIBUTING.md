@@ -52,6 +52,8 @@ bun dev
 | --------------- | ------------------------------------------------------- | --------------------------------------------------------- |
 | `dev`           | `bun dev`                                               | Start Vite dev server                                     |
 | `build`         | `bun run build`                                         | Type-check and production build                           |
+| `build:with-world-contracts` | `bun run build:with-world-contracts`              | Fetch the pinned `world-contracts` reference checkout, then build |
+| `fetch:world-contracts` | `bun run fetch:world-contracts`                      | Materialize the pinned ignored `vendor/world-contracts` checkout on demand |
 | `lint`          | `bun run lint`                                          | Run ESLint                                                |
 | `preview`       | `bun run preview`                                       | Preview production build                                  |
 | `release`       | `bun run release`                                       | Bump version + update changelog from Conventional Commits |
@@ -66,6 +68,8 @@ bun dev
 | `audit`         | `bunx npm-audit --audit-level=high`                     | Dependency vulnerability audit                            |
 | `verify`        | `bun run lint && bun run typecheck && bun run test:run` | Local pre-commit quality gate                             |
 | `verify:full`   | `bun run verify && bun run build`                       | Full local CI-style verification                          |
+
+The `vendor/` directory is intentionally ignored. Use `bun run fetch:world-contracts` or `bun run build:with-world-contracts` when you need a pinned local checkout of the upstream `world-contracts` repository for inspection or compatibility work.
 
 ### 1.4 Project Structure
 

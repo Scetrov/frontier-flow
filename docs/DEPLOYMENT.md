@@ -86,6 +86,8 @@ flowchart TB
     Cache-Control = "public, max-age=31536000, immutable"
 ```
 
+The standard deployment build does not depend on a checked-in `vendor/` directory. If a maintainer needs the pinned upstream `world-contracts` checkout for local investigation, use `bun run build:with-world-contracts` locally; hosted builds should continue using `bun run build`.
+
 ### 2.2 Serverless Function
 
 The GitHub OAuth callback is located at `netlify/functions/github-callback.ts`:

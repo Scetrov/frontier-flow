@@ -98,11 +98,18 @@
 - Focusable elements MUST have a distinct, high-contrast
   `:focus-visible` state with a logical tab order.
 
+### VIII. Durability & Maintainability
+
+- Code MUST be modular, with single-responsibility functions and
+  components.
+- State must be durable across sessions within the same browser
+  instance; use IndexedDB or localStorage for persistence.
+
 ## Architecture & Design Standards
 
 - **Runtime**: React 19, TypeScript 5.9 (strict), ES Modules.
 - **Build**: Vite (Rolldown fork), Bun (`bun dev`, `bun run
-  build`, `bun run lint`, `bun run test`).
+build`, `bun run lint`, `bun run test`).
 - **Graph Engine**: `@xyflow/react` (React Flow v12).
 - **Styling**: Tailwind CSS v4, PostCSS, CSS variables.
   Usage-based tokens (e.g., `--bg-primary`, `--text-primary`).

@@ -10,9 +10,10 @@
         "chrome-devtools-mcp@latest",
         "--executablePath",
         "/usr/bin/chromium",
+        "--ozone-platform-hint=auto",
         "--ignore-default-chrome-arg=--disable-extensions",
-        "--chromeArg=--disable-extensions-except=/home/scetrov/source/eve-vault-chrome",
-        "--chromeArg=--load-extension=/home/scetrov/source/eve-vault-chrome"
+        "--chromeArg=--disable-extensions-except=/home/scetrov/source/sui-test-wallet/dist",
+        "--chromeArg=--load-extension=/home/scetrov/source/sui-test-wallet/dist"
       ]
     }
   }
