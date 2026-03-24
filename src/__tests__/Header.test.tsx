@@ -19,7 +19,7 @@ describe("Header", () => {
     expect(screen.getByRole("button", { name: "Deploy" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Authorize" })).toBeVisible();
     expect(screen.getByText("Wallet Status Slot")).toBeVisible();
-    expect(screen.getAllByText("→")).toHaveLength(3);
+    expect(screen.getAllByText("▶")).toHaveLength(3);
   });
 
   it("disables the move and deploy tabs until automatic compile has settled", () => {

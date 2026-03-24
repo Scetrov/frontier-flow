@@ -55,7 +55,7 @@ function NavigationButton({ active, disabled = false, icon, label, onClick, tool
 }
 
 function WorkflowSeparator() {
-  return <span aria-hidden="true" className="ff-header__nav-label text-[0.8rem] text-[var(--text-secondary)]">→</span>;
+  return <span aria-hidden="true" className="ff-header__nav-label text-[0.8rem] text-[var(--text-secondary)]">▶</span>;
 }
 
 function ViewNavigation({
