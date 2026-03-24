@@ -287,6 +287,9 @@ function StandardAppLayout({
         canAccessMove={isCompiledWorkflowReady}
         hasAuthorizeAccess={authorizeDeploymentState !== null}
         isCompiling={isCompiling}
+        onDetectedDeploymentTarget={(targetId) => {
+          deployment.setSelectedTarget(targetId);
+        }}
         onViewChange={isKitchenSinkRoute ? undefined : onViewChange}
         selectedDeploymentTarget={deployment.selectedTarget}
       />

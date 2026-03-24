@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ConnectModal,
   useCurrentAccount,
@@ -9,8 +9,9 @@ import {
 } from "@mysten/dapp-kit";
 
 import type { DeploymentTargetId } from "../compiler/types";
+import { refreshPublishedWorldPackageManifest } from "../data/packageReferences";
 import { formatAddress } from "../utils/formatAddress";
-import { fetchCharacterNameForWalletAcrossTargets } from "../utils/characterProfile";
+import { fetchCharacterIdentityForWalletAcrossTargets } from "../utils/characterProfile";
 import { ConservativeConnectIcon } from "./HeaderActionIcons";
 
 const MIST_PER_SUI = 1_000_000_000;
@@ -137,15 +138,18 @@ function WalletHelpStatus({
 function useResolvedCharacterName(
   account: ReturnType<typeof useCurrentAccount>,
   selectedDeploymentTarget: DeploymentTargetId,
+  onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void,
 ): string | null {
   const [characterNameState, setCharacterNameState] = useState<{
     readonly targetId: DeploymentTargetId;
     readonly value: string | null;
     readonly walletAddress: string;
   } | null>(null);
+  const lastAutoDetectedTargetRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (account === null) {
+      lastAutoDetectedTargetRef.current = null;
       return undefined;
     }
 
@@ -153,13 +157,25 @@ function useResolvedCharacterName(
     const walletAddress = account.address;
     const targetId = selectedDeploymentTarget;
 
-    void fetchCharacterNameForWalletAcrossTargets({
+    void refreshPublishedWorldPackageManifest().catch(() => undefined).then(async () => fetchCharacterIdentityForWalletAcrossTargets({
       walletAddress,
       preferredTargetId: targetId,
       signal: controller.signal,
-    }).then((resolvedCharacterName) => {
+    })).then((resolvedIdentity) => {
       if (!controller.signal.aborted) {
-        setCharacterNameState({ targetId, value: resolvedCharacterName, walletAddress });
+        setCharacterNameState({
+          targetId: resolvedIdentity?.targetId ?? targetId,
+          value: resolvedIdentity?.characterName ?? null,
+          walletAddress,
+        });
+
+        if (resolvedIdentity !== null && onDetectedDeploymentTarget !== undefined) {
+          const detectionKey = `${walletAddress}:${resolvedIdentity.targetId}`;
+          if (detectionKey !== lastAutoDetectedTargetRef.current) {
+            lastAutoDetectedTargetRef.current = detectionKey;
+            onDetectedDeploymentTarget(resolvedIdentity.targetId);
+          }
+        }
       }
     }).catch((error: unknown) => {
       if (controller.signal.aborted) {
@@ -173,12 +189,12 @@ function useResolvedCharacterName(
     return () => {
       controller.abort();
     };
-  }, [account, selectedDeploymentTarget]);
+  }, [account, onDetectedDeploymentTarget, selectedDeploymentTarget]);
 
   return account !== null
     && characterNameState !== null
     && characterNameState.walletAddress === account.address
-    && characterNameState.targetId === selectedDeploymentTarget
+    && (selectedDeploymentTarget === "local" || characterNameState.targetId === selectedDeploymentTarget)
     ? characterNameState.value
     : null;
 }
@@ -224,13 +240,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selectedDeploymentTarget?: DeploymentTargetId }) {
+function WalletStatus({
+  onDetectedDeploymentTarget,
+  selectedDeploymentTarget = "local",
+}: {
+  readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
+  readonly selectedDeploymentTarget?: DeploymentTargetId;
+}) {
   const account = useCurrentAccount();
   const wallets = useWallets();
   const currentWallet = useCurrentWallet();
   const disconnectWallet = useDisconnectWallet();
   const [showWalletHelp, setShowWalletHelp] = useState(false);
-  const characterName = useResolvedCharacterName(account, selectedDeploymentTarget);
+  const characterName = useResolvedCharacterName(account, selectedDeploymentTarget, onDetectedDeploymentTarget);
 
   const balanceQuery = useSuiClientQuery(
     "getBalance",

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   extractCharacterIdFromProfileContent,
   extractCharacterNameFromCharacterContent,
+  fetchCharacterIdentityForWalletAcrossTargets,
   fetchCharacterNameForWalletAcrossTargets,
   fetchCharacterNameForWallet,
   getCharacterProfileGraphQlEndpoint,
@@ -116,5 +117,46 @@ describe("characterProfile", () => {
     })).resolves.toBe("Pilot Prime");
 
     expect(fetchFn).toHaveBeenCalledTimes(3);
+  });
+
+  it("returns the resolved target alongside the character name across published worlds", async () => {
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: { character_id: "0xabc123" },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          object: {
+            asMoveObject: {
+              contents: {
+                json: {
+                  metadata: {
+                    name: "Pilot Prime",
+                  },
+                },
+              },
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    await expect(fetchCharacterIdentityForWalletAcrossTargets({
+      walletAddress: "0x123456",
+      preferredTargetId: "testnet:utopia",
+      fetchFn,
+    })).resolves.toEqual({
+      characterName: "Pilot Prime",
+      targetId: "testnet:utopia",
+    });
   });
 });

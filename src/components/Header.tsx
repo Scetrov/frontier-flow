@@ -9,11 +9,13 @@ interface HeaderProps {
   readonly canAccessMove?: boolean;
   readonly hasAuthorizeAccess?: boolean;
   readonly isCompiling?: boolean;
+  readonly onDetectedDeploymentTarget?: (targetId: "testnet:stillness" | "testnet:utopia") => void;
   readonly onViewChange?: (view: PrimaryView) => void;
   readonly selectedDeploymentTarget?: "local" | "testnet:stillness" | "testnet:utopia";
 }
 
 interface HeaderActionsProps {
+  readonly onDetectedDeploymentTarget?: (targetId: "testnet:stillness" | "testnet:utopia") => void;
   readonly selectedDeploymentTarget: "local" | "testnet:stillness" | "testnet:utopia";
 }
 
@@ -145,10 +147,10 @@ function ViewNavigation({
   );
 }
 
-function HeaderActions({ selectedDeploymentTarget }: HeaderActionsProps) {
+function HeaderActions({ onDetectedDeploymentTarget, selectedDeploymentTarget }: HeaderActionsProps) {
   return (
     <div className="ff-header__actions">
-      <WalletStatus selectedDeploymentTarget={selectedDeploymentTarget} />
+      <WalletStatus onDetectedDeploymentTarget={onDetectedDeploymentTarget} selectedDeploymentTarget={selectedDeploymentTarget} />
     </div>
   );
 }
@@ -159,6 +161,7 @@ function Header({
   canAccessMove = false,
   hasAuthorizeAccess = false,
   isCompiling = false,
+  onDetectedDeploymentTarget,
   onViewChange,
   selectedDeploymentTarget = "local",
 }: HeaderProps) {
@@ -194,7 +197,7 @@ function Header({
           />
         ) : null}
 
-        <HeaderActions selectedDeploymentTarget={selectedDeploymentTarget} />
+        <HeaderActions onDetectedDeploymentTarget={onDetectedDeploymentTarget} selectedDeploymentTarget={selectedDeploymentTarget} />
       </div>
     </header>
   );
