@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
+
 const CONNECTED_ADDRESS = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 const CHARACTER_ID = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const OWNER_CAP_ID = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -16,26 +18,11 @@ function createGraphQlResponse() {
         objects: {
           nodes: [
             {
-              address: TURRET_ID,
+              address: OWNER_CAP_ID,
               contents: {
                 json: {
                   fields: {
-                    name: "Shield Bastion",
-                    authorized_extension: {
-                      packageId: LEGACY_PACKAGE_ID,
-                      moduleName: LEGACY_MODULE_NAME,
-                      typeName: `${LEGACY_PACKAGE_ID}::${LEGACY_MODULE_NAME}::TurretAuth`,
-                    },
-                  },
-                },
-              },
-            },
-            {
-              address: "0x1111111111111111111111111111111111111111111111111111111111111111",
-              contents: {
-                json: {
-                  fields: {
-                    name: "Perimeter Lancer",
+                    turret_id: TURRET_ID,
                   },
                 },
               },
@@ -117,6 +104,34 @@ test("runs the full turret authorization workflow and refreshes the list after c
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(createGraphQlResponse()),
+      });
+      return;
+    }
+
+    if (query.includes("query TurretObject")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            object: {
+              asMoveObject: {
+                contents: {
+                  json: {
+                    fields: {
+                      name: "Shield Bastion",
+                      authorized_extension: {
+                        packageId: LEGACY_PACKAGE_ID,
+                        moduleName: LEGACY_MODULE_NAME,
+                        typeName: `${LEGACY_PACKAGE_ID}::${LEGACY_MODULE_NAME}::TurretAuth`,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
       });
       return;
     }
@@ -214,10 +229,9 @@ test("runs the full turret authorization workflow and refreshes the list after c
 
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_wallet=connected&ff_mock_deploy_stage_delay_ms=0&ff_mock_authorize_delay_ms=10");
 
-  await expect(page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]')).toContainText("Compiled");
+  await expect(getCompilationStatusButton(page)).toContainText("Compiled");
 
-  await page.getByRole("button", { name: "Select deployment target" }).click();
-  await page.getByRole("menuitemradio", { name: "testnet:stillness" }).click();
+  await selectDeploymentTarget(page, "testnet:stillness");
   await page.getByRole("button", { name: "Deploy testnet:stillness" }).click();
 
   const deploymentModal = page.getByRole("dialog", { name: "Deployed" });

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { getCompilationStatusButton } from "./fixtures/workflow";
 import { openAuthorizationReadinessPage } from "./fixtures/authorizationReadiness";
 import { referenceGraphFixtures } from "./referenceGraphFixtures";
 
@@ -9,11 +10,11 @@ test("preview and build consume the same generated artifact", async ({ page, isM
   const referenceFixture = referenceGraphFixtures[0];
   await openAuthorizationReadinessPage(page, referenceFixture.contractName);
 
-  const statusButton = page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
+  const statusButton = getCompilationStatusButton(page);
   await expect(statusButton).toContainText("Compiled");
 
-  await page.getByRole("button", { name: "Build", exact: true }).click();
-  await expect(statusButton).toContainText("Compiled");
+  await expect(page.getByRole("button", { name: "Move", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Deploy", exact: true })).toBeEnabled();
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await expect(page.getByText(`${referenceFixture.expectedModuleName}.move`)).toBeVisible();

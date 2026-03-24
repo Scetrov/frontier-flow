@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
+
 for (const scenario of [
   {
     target: "testnet:stillness",
@@ -17,11 +19,10 @@ for (const scenario of [
 
     await page.goto(`/${scenario.search}`);
 
-    const compilationStatus = page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
+    const compilationStatus = getCompilationStatusButton(page);
     await expect(compilationStatus).toContainText("Compiled");
 
-    await page.getByRole("button", { name: "Select deployment target" }).click();
-    await page.getByRole("menuitemradio", { name: scenario.target }).click();
+    await selectDeploymentTarget(page, scenario.target);
     await page.getByRole("button", { name: `Deploy ${scenario.target}` }).click();
 
     const modal = page.locator(".ff-deployment-modal__panel");
