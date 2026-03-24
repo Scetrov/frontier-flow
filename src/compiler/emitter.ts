@@ -4,6 +4,30 @@ import { emitReferenceContractTemplate } from "./referenceTemplates";
 import { getDeploymentTarget } from "../data/deploymentTargets";
 import { getPackageReferenceBundle } from "../data/packageReferences";
 import type { AnnotatedLine, ArtifactManifest, DeploymentTargetId, EmitterOutput, IRGraph, SourceMapEntry } from "./types";
+const MOVE_IDENTIFIER_PATTERN = /\b[A-Za-z_][A-Za-z0-9_]*\b/g;
+const MOVE_IDENTIFIER_STOP_WORDS = new Set([
+  "TargetCandidateArg",
+  "ReturnTargetPriorityList",
+  "bool",
+  "builder_extensions",
+  "copy",
+  "drop",
+  "else",
+  "false",
+  "fun",
+  "has",
+  "if",
+  "let",
+  "module",
+  "mut",
+  "public",
+  "std",
+  "store",
+  "true",
+  "u64",
+  "use",
+  "vector",
+]);
 
 function createMoveToml(moduleName: string): string {
   return [
@@ -48,6 +72,77 @@ function pushLine(lines: string[], sourceMap: SourceMapEntry[], code: string, no
       reactFlowNodeId: nodeId,
     });
   }
+}
+
+function collectMoveIdentifiers(code: string): readonly string[] {
+  const matches = code.match(MOVE_IDENTIFIER_PATTERN) ?? [];
+  return matches.filter((identifier) => !MOVE_IDENTIFIER_STOP_WORDS.has(identifier));
+}
+
+function pruneUnusedAnnotatedLines(
+  annotatedLines: readonly AnnotatedLine[],
+  requiredBindings: readonly string[],
+): readonly AnnotatedLine[] {
+  const keepLine = annotatedLines.map(() => true);
+  const usedBindings = new Set(requiredBindings);
+
+  for (let index = annotatedLines.length - 1; index >= 0; index -= 1) {
+    const line = annotatedLines[index];
+    const trimmed = line.code.trim();
+
+    if (trimmed.startsWith("//")) {
+      continue;
+    }
+
+    const bindingMatch = trimmed.match(/^let\s+(?:mut\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*:/);
+    if (bindingMatch === null) {
+      for (const identifier of collectMoveIdentifiers(trimmed)) {
+        usedBindings.add(identifier);
+      }
+      continue;
+    }
+
+    const binding = bindingMatch[1];
+    if (!usedBindings.has(binding)) {
+      keepLine[index] = false;
+      continue;
+    }
+
+    const assignmentIndex = trimmed.indexOf("=");
+    if (assignmentIndex >= 0) {
+      for (const identifier of collectMoveIdentifiers(trimmed.slice(assignmentIndex + 1))) {
+        usedBindings.add(identifier);
+      }
+    }
+    usedBindings.delete(binding);
+  }
+
+  return annotatedLines.filter((line, index) => {
+    if (!keepLine[index]) {
+      return false;
+    }
+
+    if (!line.code.trim().startsWith("//")) {
+      return true;
+    }
+
+    for (let nextIndex = index + 1; nextIndex < annotatedLines.length; nextIndex += 1) {
+      if (!keepLine[nextIndex]) {
+        continue;
+      }
+
+      const nextLine = annotatedLines[nextIndex];
+      if (nextLine.nodeId !== line.nodeId) {
+        return false;
+      }
+
+      if (!nextLine.code.trim().startsWith("//")) {
+        return true;
+      }
+    }
+
+    return false;
+  });
 }
 
 function createGenericPreamble(lines: string[], sourceMap: SourceMapEntry[]): void {
@@ -136,6 +231,8 @@ function emitGenericSynthesizedContract(graph: IRGraph, annotatedLines: readonly
   const lines: string[] = [];
   const sourceMap: SourceMapEntry[] = [];
   const actionResultBindings = resolveActionResultBindings(graph, bindings);
+  const requiredBindings = collectMoveIdentifiers(`${actionResultBindings.weightBinding} ${actionResultBindings.includeBinding}`);
+  const prunedLines = pruneUnusedAnnotatedLines(annotatedLines, requiredBindings);
 
   pushLine(lines, sourceMap, `module builder_extensions::${graph.moduleName} {`, null);
   createGenericPreamble(lines, sourceMap);
@@ -174,7 +271,7 @@ function emitGenericSynthesizedContract(graph: IRGraph, annotatedLines: readonly
   pushLine(lines, sourceMap, "        candidate: &TargetCandidateArg,", null);
   pushLine(lines, sourceMap, "    ): (u64, bool) {", null);
 
-  for (const annotatedLine of annotatedLines) {
+  for (const annotatedLine of prunedLines) {
     pushLine(lines, sourceMap, `${"    ".repeat(annotatedLine.indent)}${annotatedLine.code}`, annotatedLine.nodeId);
   }
 

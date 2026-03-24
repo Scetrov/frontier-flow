@@ -89,16 +89,11 @@ module builder_extensions::graph_to_move_supported {
     ): (u64, bool) {
         // event trigger aggression
         // bind the current target candidate into the scoring pipeline
-        let aggression_supported_aggression_target: &TargetCandidateArg = candidate;
         let aggression_supported_aggression_priority: u64 = candidate.priority_weight;
         // action addToQueue
         // append candidate to the outgoing priority queue
         let addtoqueue_supported_add_to_queue_include_result: bool = true;
         let addtoqueue_supported_add_to_queue_priority_out: u64 = aggression_supported_aggression_priority;
-        // accessor getTribe
-        // extract tribe and owner tribe
-        let gettribe_supported_get_tribe_tribe: u64 = aggression_supported_aggression_target.character_tribe;
-        let gettribe_supported_get_tribe_owner_tribe: u64 = owner_tribe;
         (addtoqueue_supported_add_to_queue_priority_out, addtoqueue_supported_add_to_queue_include_result)
     }
 }

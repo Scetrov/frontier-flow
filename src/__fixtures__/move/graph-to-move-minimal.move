@@ -87,10 +87,6 @@ module builder_extensions::graph_to_move_minimal {
         owner_tribe: u64,
         candidate: &TargetCandidateArg,
     ): (u64, bool) {
-        // event trigger proximity
-        // bind the current target candidate into the scoring pipeline
-        let proximity_minimal_proximity_target: &TargetCandidateArg = candidate;
-        let proximity_minimal_proximity_priority: u64 = candidate.priority_weight;
         (candidate.priority_weight, true)
     }
 }

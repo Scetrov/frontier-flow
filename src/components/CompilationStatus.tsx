@@ -161,6 +161,13 @@ function getStatusLabel(status: CompilationStatusValue): string {
   }
 }
 
+function getDiagnosticsBlock(diagnostics: readonly CompilerDiagnostic[]): string {
+  return Array.from(new Set(diagnostics
+    .map((diagnostic) => diagnostic.rawMessage.trim())
+    .filter((message) => message.length > 0)))
+    .join("\n\n");
+}
+
 function getStatusClassName(status: CompilationStatusValue): string {
   return `ff-compilation-status ff-compilation-status--${status.state}`;
 }
@@ -191,31 +198,29 @@ function StatusButton({ ariaControls, ariaExpanded, className, disabled = false,
 }
 
 function DiagnosticsPanel({ diagnostics, onSelectDiagnostic }: Pick<CompilationStatusProps, "diagnostics" | "onSelectDiagnostic">) {
+  const compilerOutput = getDiagnosticsBlock(diagnostics);
+  const mappedDiagnostics = diagnostics.filter((diagnostic) => diagnostic.reactFlowNodeId !== null);
+
   return (
     <div className="ff-compilation-status__panel" id="compilation-diagnostics">
-      <ul className="ff-compilation-status__list">
-        {diagnostics.map((diagnostic, index) => {
-          const canFocusNode = diagnostic.reactFlowNodeId !== null && onSelectDiagnostic !== undefined;
-
-          return (
-            <li key={`${diagnostic.userMessage}-${String(index)}`}>
-              {canFocusNode ? (
-                <button
-                  className="ff-compilation-status__diagnostic"
-                  onClick={() => {
-                    onSelectDiagnostic(diagnostic.reactFlowNodeId ?? "");
-                  }}
-                  type="button"
-                >
-                  {diagnostic.userMessage}
-                </button>
-              ) : (
-                <span className="ff-compilation-status__message">{diagnostic.userMessage}</span>
-              )}
+      <pre className="ff-compilation-status__code-block">{compilerOutput}</pre>
+      {mappedDiagnostics.length > 0 && onSelectDiagnostic !== undefined ? (
+        <ul className="ff-compilation-status__list">
+          {mappedDiagnostics.map((diagnostic, index) => (
+            <li key={`${diagnostic.reactFlowNodeId ?? "node"}-${String(index)}`}>
+              <button
+                className="ff-compilation-status__diagnostic"
+                onClick={() => {
+                  onSelectDiagnostic(diagnostic.reactFlowNodeId ?? "");
+                }}
+                type="button"
+              >
+                {diagnostic.userMessage}
+              </button>
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

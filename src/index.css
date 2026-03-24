@@ -1044,6 +1044,20 @@ button,
   list-style: none;
 }
 
+.ff-compilation-status__code-block {
+  margin: 0 0 0.6rem;
+  overflow-x: auto;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(26, 10, 10, 0.9);
+  padding: 0.75rem 0.8rem;
+  color: var(--cream-white);
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .ff-compilation-status__diagnostic,
 .ff-compilation-status__message {
   display: block;

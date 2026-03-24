@@ -90,7 +90,6 @@ module builder_extensions::starter_contract {
         // event trigger aggression
         // bind the current target candidate into the scoring pipeline
         let aggression_default_aggression_target: &TargetCandidateArg = candidate;
-        let aggression_default_aggression_priority: u64 = candidate.priority_weight;
         // accessor getPriorityWeight
         // read base priority weight
         let getpriorityweight_default_get_priority_weight_weight: u64 = aggression_default_aggression_target.priority_weight;
