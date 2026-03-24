@@ -11,10 +11,14 @@ import Header from "./components/Header";
 import type { PrimaryView } from "./components/Header";
 import MoveSourcePanel from "./components/MoveSourcePanel";
 import Sidebar from "./components/Sidebar";
+import { seededExampleContracts } from "./data/exampleContracts";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
 import { useDeployment } from "./hooks/useDeployment";
 import type { RemediationNotice } from "./types/nodes";
 import type { StoredDeploymentState } from "./types/authorization";
+import { createNamedFlowContract, loadContractLibrary } from "./utils/contractStorage";
+import { createCompilationGraphKey } from "./utils/compilationGraphKey";
+import { loadCompilationState, saveCompilationState, type PersistedCompilationState } from "./utils/compilationStateStorage";
 import { loadActiveContractName, loadDeploymentState, validateDeploymentState } from "./utils/deploymentStateStorage";
 import { mergeDeploymentStatus } from "./utils/mergeDeploymentStatus";
 import { loadUiState, mergeUiState } from "./utils/uiStateStorage";
@@ -26,6 +30,7 @@ const IconPreviewPage = lazy(() => import("./components/IconPreviewPage"));
 
 interface InitialAppState {
   readonly activeView: PrimaryView;
+  readonly compilationSnapshot: PersistedCompilationState | null;
   readonly deploymentState: StoredDeploymentState | null;
   readonly selectedDeploymentTarget: "local" | "testnet:stillness" | "testnet:utopia";
 }
@@ -80,10 +85,20 @@ function getBrowserStorage(): Storage | undefined {
   return typeof window === "undefined" ? undefined : window.localStorage;
 }
 
+function getCurrentContractGraphKey(storage = getBrowserStorage()): string {
+  const fallbackContract = createNamedFlowContract(defaultContractName, defaultContractFlow.nodes, defaultContractFlow.edges);
+  const contractLibrary = loadContractLibrary(storage, fallbackContract, seededExampleContracts);
+  const activeContract = contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName) ?? fallbackContract;
+
+  return createCompilationGraphKey(activeContract.nodes, activeContract.edges, activeContract.name);
+}
+
 function getInitialAppState(): InitialAppState {
   const storage = getBrowserStorage();
   const uiState = loadUiState(storage);
   const activeContractName = loadActiveContractName(storage);
+  const currentGraphKey = getCurrentContractGraphKey(storage);
+  const compilationSnapshot = loadCompilationState(storage);
   const deploymentState = loadDeploymentState(storage);
   const nextDeploymentState = deploymentState !== null && validateDeploymentState(deploymentState, {
     contractName: activeContractName,
@@ -91,9 +106,13 @@ function getInitialAppState(): InitialAppState {
   })
     ? deploymentState
     : null;
+  const nextCompilationSnapshot = compilationSnapshot !== null && compilationSnapshot.graphKey === currentGraphKey
+    ? compilationSnapshot
+    : null;
 
   return {
     activeView: uiState.activeView === "authorize" && nextDeploymentState === null ? "visual" : uiState.activeView,
+    compilationSnapshot: nextCompilationSnapshot,
     deploymentState: nextDeploymentState,
     selectedDeploymentTarget: uiState.selectedDeploymentTarget,
   };
@@ -311,23 +330,55 @@ function StandardAppLayout({
 
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
   const initialAppState = useMemo(() => getInitialAppState(), []);
-  const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>({ state: "idle" });
-  const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>([]);
+  const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>(initialAppState.compilationSnapshot?.status ?? { state: "idle" });
+  const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>(initialAppState.compilationSnapshot?.diagnostics ?? []);
   const [remediationNotices, setRemediationNotices] = useState<readonly RemediationNotice[]>([]);
   const [focusedDiagnosticSelection, setFocusedDiagnosticSelection] = useState<FocusedDiagnosticSelection | null>(null);
   const [activeView, setActiveView] = useState<PrimaryView>(initialAppState.activeView);
-  const [moveSourceCode, setMoveSourceCode] = useState<string | null>(null);
+  const [moveSourceCode, setMoveSourceCode] = useState<string | null>(initialAppState.compilationSnapshot?.moveSourceCode ?? null);
+  const [persistedCompilationSnapshot, setPersistedCompilationSnapshot] = useState<PersistedCompilationState | null>(initialAppState.compilationSnapshot);
+  const currentContractGraphKey = getCurrentContractGraphKey();
+  const restoredCompilationSnapshot = persistedCompilationSnapshot !== null
+    && persistedCompilationSnapshot.graphKey === currentContractGraphKey
+    ? persistedCompilationSnapshot
+    : null;
+  const effectiveCompilationState = useMemo(() => {
+    if (hasCompiledWorkflowAccess(compilationStatus)) {
+      return {
+        diagnostics,
+        moveSourceCode,
+        status: compilationStatus,
+      };
+    }
+
+    if (restoredCompilationSnapshot !== null) {
+      return {
+        diagnostics: restoredCompilationSnapshot.diagnostics,
+        moveSourceCode: restoredCompilationSnapshot.moveSourceCode,
+        status: restoredCompilationSnapshot.status,
+      };
+    }
+
+    return {
+      diagnostics,
+      moveSourceCode,
+      status: compilationStatus,
+    };
+  }, [compilationStatus, diagnostics, moveSourceCode, restoredCompilationSnapshot]);
   const deployment = useDeployment({
     initialTarget: initialAppState.selectedDeploymentTarget,
-    status: compilationStatus,
+    status: effectiveCompilationState.status,
   });
   const persistedDeploymentState = getValidatedDeploymentState(deployment.selectedTarget);
-  const displayStatus = useMemo(() => mergeDeploymentStatus(compilationStatus, deployment.deploymentStatus), [compilationStatus, deployment.deploymentStatus]);
-  const authorizeDeploymentState = useMemo(
-    () => persistedDeploymentState ?? getLiveDeploymentState(deployment.deploymentStatus, deployment.latestAttempt, compilationStatus),
-    [compilationStatus, deployment.deploymentStatus, deployment.latestAttempt, persistedDeploymentState],
+  const displayStatus = useMemo(
+    () => mergeDeploymentStatus(effectiveCompilationState.status, deployment.deploymentStatus),
+    [deployment.deploymentStatus, effectiveCompilationState.status],
   );
-  const isCompiledWorkflowReady = hasCompiledWorkflowAccess(compilationStatus);
+  const authorizeDeploymentState = useMemo(
+    () => persistedDeploymentState ?? getLiveDeploymentState(deployment.deploymentStatus, deployment.latestAttempt, effectiveCompilationState.status),
+    [deployment.deploymentStatus, deployment.latestAttempt, effectiveCompilationState.status, persistedDeploymentState],
+  );
+  const isCompiledWorkflowReady = hasCompiledWorkflowAccess(effectiveCompilationState.status);
   const resolvedActiveView = useMemo(
     () => resolveActiveView({ activeView, authorizeDeploymentState, canAccessCompiledWorkflow: isCompiledWorkflowReady }),
     [activeView, authorizeDeploymentState, isCompiledWorkflowReady],
@@ -350,9 +401,24 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     nextSourceCode: string | null,
     artifactMoveSource?: string | null,
   ) => {
+    const nextMoveSourceCode = artifactMoveSource ?? nextSourceCode;
+
+    if (hasCompiledWorkflowAccess(status)) {
+      const nextSnapshot: PersistedCompilationState = {
+        version: 1,
+        graphKey: getCurrentContractGraphKey(),
+        status,
+        diagnostics: nextDiagnostics,
+        moveSourceCode: nextMoveSourceCode,
+      };
+
+      setPersistedCompilationSnapshot(nextSnapshot);
+      saveCompilationState(getBrowserStorage(), nextSnapshot);
+    }
+
     setCompilationStatus(status);
     setDiagnostics(nextDiagnostics);
-    setMoveSourceCode(artifactMoveSource ?? nextSourceCode);
+    setMoveSourceCode(nextMoveSourceCode);
   };
 
   const handleSelectDiagnostic = (nodeId: string) => {
@@ -367,13 +433,13 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       activeView={resolvedActiveView}
       authorizeDeploymentState={authorizeDeploymentState}
       deployment={deployment}
-      diagnostics={diagnostics}
+      diagnostics={effectiveCompilationState.diagnostics}
       displayStatus={displayStatus}
       focusedDiagnosticSelection={focusedDiagnosticSelection}
       isCompiling={isCompiling}
       isCompiledWorkflowReady={isCompiledWorkflowReady}
       isKitchenSinkRoute={isKitchenSinkRoute}
-      moveSourceCode={moveSourceCode}
+      moveSourceCode={effectiveCompilationState.moveSourceCode}
       onCompilationStateChange={handleCompilationStateChange}
       onRemediationNoticesChange={setRemediationNotices}
       onSelectDiagnostic={handleSelectDiagnostic}

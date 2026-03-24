@@ -229,7 +229,6 @@ function MoveSourcePanel({ deploymentStatus = null, sourceCode, status }: MoveSo
           <h2 className="ff-move-source__title">Generated source</h2>
           <p className="ff-move-source__copy">Read-only generated Move output with syntax highlighting for workflow review, debugging, and contributor inspection.</p>
         </div>
-
         <MoveSourceMeta deployment={deployment} filename={displayedFilename} status={status} />
       </header>
 

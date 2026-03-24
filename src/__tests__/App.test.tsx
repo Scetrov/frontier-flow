@@ -10,7 +10,10 @@ import type {
 
 import App from "../App";
 import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
+import { createCompilationGraphKey } from "../utils/compilationGraphKey";
+import { saveCompilationState } from "../utils/compilationStateStorage";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
+import { createGeneratedArtifactStub } from "./compiler/helpers";
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
@@ -169,6 +172,71 @@ describe("App", () => {
         activeView: "visual",
       }),
     );
+  });
+
+  it("restores the persisted move view when a matching compilation snapshot exists", () => {
+    const artifact = createGeneratedArtifactStub({
+      moduleName: "starter_contract",
+      moveSource: "module builder_extensions::starter_contract {}",
+      bytecodeModules: [new Uint8Array([1, 2, 3])],
+    });
+
+    saveCompilationState(window.localStorage, {
+      version: 1,
+      graphKey: createCompilationGraphKey(defaultContractFlow.nodes, defaultContractFlow.edges, "Starter Contract"),
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([1, 2, 3])],
+        artifact,
+      },
+      diagnostics: [],
+      moveSourceCode: artifact.moveSource,
+    });
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "move",
+        selectedDeploymentTarget: "local",
+        isSidebarOpen: true,
+        isContractPanelOpen: true,
+      }),
+    );
+
+    render(<App />);
+
+    expect(headerSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        activeView: "move",
+      }),
+    );
+    expect(screen.getByText("Move Source Slot")).toBeInTheDocument();
+  });
+
+  it("lets Move reopen from visual while the matching cached build is available", () => {
+    const artifact = createGeneratedArtifactStub({
+      moduleName: "starter_contract",
+      moveSource: "module builder_extensions::starter_contract {}",
+      bytecodeModules: [new Uint8Array([1, 2, 3])],
+    });
+
+    saveCompilationState(window.localStorage, {
+      version: 1,
+      graphKey: createCompilationGraphKey(defaultContractFlow.nodes, defaultContractFlow.edges, "Starter Contract"),
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([1, 2, 3])],
+        artifact,
+      },
+      diagnostics: [],
+      moveSourceCode: artifact.moveSource,
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
+
+    expect(screen.getByText("Move Source Slot")).toBeInTheDocument();
   });
 
   it("falls back from authorize to visual when no valid deployment state exists", () => {
