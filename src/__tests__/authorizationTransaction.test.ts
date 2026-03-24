@@ -83,6 +83,11 @@ describe("authorizationTransaction", () => {
       turretObjectId: "0x1111",
       fetchFn,
     })).resolves.toBe("0xabcd");
+
+    const ownerCapLookupRequest = fetchFn.mock.calls[1]?.[1];
+    expect(typeof ownerCapLookupRequest?.body).toBe("string");
+    expect(ownerCapLookupRequest?.body).toContain("first: 50");
+    expect(ownerCapLookupRequest?.body).toContain("::access::OwnerCap<");
   });
 
   it("fails when the owner capability query does not contain the selected turret", async () => {

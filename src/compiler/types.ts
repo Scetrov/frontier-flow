@@ -117,6 +117,7 @@ export interface DeploymentAttempt {
   readonly attemptId: string;
   readonly artifactId: string;
   readonly targetId: DeploymentTargetId;
+  readonly moduleName?: string;
   readonly startedAt: number;
   readonly endedAt?: number;
   readonly outcome: DeploymentAttemptOutcome;

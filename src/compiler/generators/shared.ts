@@ -1,6 +1,7 @@
 import type {
   AnnotatedLine,
   GeneratedContractArtifact,
+  GeneratedSourceFile,
   GenerationContext,
   IRNode,
   SourceMapEntry,
@@ -17,6 +18,7 @@ interface GeneratedContractArtifactInput {
   readonly moveToml: string;
   readonly moveSource: string;
   readonly sourceMap: readonly SourceMapEntry[];
+  readonly sourceFiles?: readonly GeneratedSourceFile[];
 }
 
 export function createGeneratedSourceFilePath(moduleName: string): string {
@@ -29,6 +31,7 @@ export function createGeneratedContractArtifact({
   moveToml,
   moveSource,
   sourceMap,
+  sourceFiles,
 }: GeneratedContractArtifactInput): GeneratedContractArtifact {
   const sourceFilePath = createGeneratedSourceFilePath(moduleName);
   const artifactId = createArtifactId(moduleName, requestedModuleName, moveToml, moveSource);
@@ -44,7 +47,7 @@ export function createGeneratedContractArtifact({
       moduleName,
       requestedModuleName,
     },
-    sourceFiles: [{ path: sourceFilePath, content: moveSource }],
+    sourceFiles: sourceFiles ?? [{ path: sourceFilePath, content: moveSource }],
     manifest: {
       moveToml,
       dependencies: [],
@@ -52,8 +55,8 @@ export function createGeneratedContractArtifact({
     traceSections: sourceMap.length === 0
       ? []
       : [{
-          id: "execute",
-          label: "execute",
+          id: "get_target_priority_list",
+          label: "get_target_priority_list",
           nodeIds: traceNodeIds,
           lineStart: firstTraceLine,
           lineEnd: lastTraceLine,

@@ -4,12 +4,12 @@ import {
   useCurrentAccount,
   useCurrentWallet,
   useDisconnectWallet,
-  useSuiClientQuery,
   useWallets,
 } from "@mysten/dapp-kit";
 
 import type { DeploymentTargetId } from "../compiler/types";
 import { refreshPublishedWorldPackageManifest } from "../data/packageReferences";
+import { useTargetBalance } from "../hooks/useTargetBalance";
 import { formatAddress } from "../utils/formatAddress";
 import { fetchCharacterIdentityForWalletAcrossTargets } from "../utils/characterProfile";
 import { ConservativeConnectIcon } from "./HeaderActionIcons";
@@ -253,12 +253,7 @@ function WalletStatus({
   const disconnectWallet = useDisconnectWallet();
   const [showWalletHelp, setShowWalletHelp] = useState(false);
   const characterName = useResolvedCharacterName(account, selectedDeploymentTarget, onDetectedDeploymentTarget);
-
-  const balanceQuery = useSuiClientQuery(
-    "getBalance",
-    { owner: account?.address ?? "0x0" },
-    { enabled: account !== null, staleTime: 15_000 },
-  );
+  const balanceQuery = useTargetBalance(account?.address ?? null, selectedDeploymentTarget);
 
   const sharedButtonClassName =
     "ff-header__button ff-header__button--compact ff-wallet-status__action min-h-10 border px-3 py-2 font-heading text-xs uppercase tracking-[0.22em] transition-colors disabled:cursor-not-allowed disabled:opacity-60";

@@ -27,8 +27,8 @@ original-id = "0x222"
 published-at = "0x333"
 original-id = "0x444"
 `)).toEqual({
-      "testnet:stillness": "0x222",
-      "testnet:utopia": "0x444",
+  "testnet:stillness": "0x222",
+  "testnet:utopia": "0x444",
     });
   });
 

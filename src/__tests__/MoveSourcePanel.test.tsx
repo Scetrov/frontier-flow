@@ -23,6 +23,7 @@ describe("MoveSourcePanel", () => {
 
     expect(screen.getByLabelText("Move source view")).toBeInTheDocument();
     expect(screen.getByText("Generated source")).toBeVisible();
+    expect(screen.getByText("You can view the generated source in this tab to help diagnose problems, move on to Deploy to deploy to the server.")).toBeVisible();
     expect(screen.getByText(/Learn how to extend this code using/i)).toBeVisible();
     expect(screen.getByRole("link", { name: "Learn Move on Sui" })).toHaveAttribute("href", "https://evefrontier.space/move/");
     expect(screen.getByText(/module builder_extensions::starter_contract/)).toBeVisible();
@@ -38,7 +39,28 @@ describe("MoveSourcePanel", () => {
     expect(screen.getByText(/Resolve graph validation issues or compile errors/)).toBeVisible();
   });
 
-  it("shows the generated artifact filename when one is available", () => {
+  it("does not render deployment review content for blocked deployment state", () => {
+    render(
+      <MoveSourcePanel
+        sourceCode={compiledArtifact.moveSource}
+        status={{
+          state: "compiled",
+          bytecode: [new Uint8Array([1])],
+          artifact: createGeneratedArtifactStub({
+            deploymentStatus: createDeploymentStatus("blocked", {
+              targetId: "local",
+              nextActionSummary: "Provide the target turret package and extension registration details to continue deployment.",
+            }),
+          }),
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Provide the target turret package and extension registration details to continue deployment/i)).not.toBeInTheDocument();
+  });
+
+  it("does not render the previous header chips", () => {
     render(
       <MoveSourcePanel
         sourceCode={compiledArtifact.moveSource}
@@ -46,29 +68,14 @@ describe("MoveSourcePanel", () => {
       />,
     );
 
-    expect(screen.getByText("starter_contract.move")).toBeVisible();
+    expect(screen.queryByText("starter_contract.move")).not.toBeInTheDocument();
+    expect(screen.queryAllByText("Compiled")).toHaveLength(0);
   });
 
-  it("surfaces deployment status metadata alongside the artifact", () => {
-    render(
-      <MoveSourcePanel
-        sourceCode={compiledArtifact.moveSource}
-        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
-      />,
-    );
-
-    expect(screen.getByText("Deployment Blocked")).toBeVisible();
-    expect(screen.getAllByText(/Provide the target turret package and extension registration details to continue deployment/i)[0]).toBeVisible();
-  });
-
-  it.each([
-    ["ready", "Deployment Ready", "Ready to deploy the generated artifact to the selected turret."],
-    ["deployed", "Deployed", "Deployment completed for the selected turret."],
-  ] as const)("renders %s deployment state", (status, label, summary) => {
+  it("does not render deployment review content for ready deployment state", () => {
     const artifact = createGeneratedArtifactStub({
-      deploymentStatus: createDeploymentStatus(status, {
-        nextActionSummary: summary,
-        packageId: status === "deployed" ? "0xabc123" : undefined,
+      deploymentStatus: createDeploymentStatus("ready", {
+        nextActionSummary: "Ready to deploy the generated artifact to the selected turret.",
         targetId: "testnet:stillness",
       }),
     });
@@ -80,11 +87,8 @@ describe("MoveSourcePanel", () => {
       />,
     );
 
-    expect(screen.getByText(label)).toBeVisible();
-    expect(screen.getByText("testnet:stillness")).toBeVisible();
-    if (status === "deployed") {
-      expect(screen.getByText("0xabc123")).toBeVisible();
-    }
-    expect(screen.getAllByText(summary)[0]).toBeVisible();
+    expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Target: testnet:stillness")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ready to deploy the generated artifact to the selected turret.")).not.toBeInTheDocument();
   });
 });

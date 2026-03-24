@@ -48,21 +48,46 @@ describe("deploymentValidation", () => {
     const validation = createDeploymentValidationResult({
       artifactReady: true,
       artifactHasBytecode: true,
-      hasAvailableWallets: false,
-      hasConnectedWallet: false,
+      hasAvailableWallets: true,
+      hasConnectedWallet: true,
       search: "?ff_local_deploy_ready=0",
       targetId: "local",
     });
 
     expect(validation.requiredInputs).toEqual([
       "current compiled bytecode artifact",
+      "connected Sui wallet for local",
       "available local validator",
     ]);
-    expect(validation.resolvedInputs).toEqual(["current compiled bytecode artifact"]);
+    expect(validation.resolvedInputs).toEqual([
+      "current compiled bytecode artifact",
+      "connected Sui wallet for local",
+    ]);
     expect(validation.blockers[0]).toMatchObject({
       code: "local-target-unavailable",
       message: "The local validator required for local deployment is unavailable.",
       remediation: "Start or configure the local validator, then retry deployment to local.",
+    });
+  });
+
+  it("requires a connected wallet for local deployment", () => {
+    const validation = createDeploymentValidationResult({
+      artifactReady: true,
+      artifactHasBytecode: true,
+      hasAvailableWallets: true,
+      hasConnectedWallet: false,
+      targetId: "local",
+    });
+
+    expect(validation.requiredInputs).toEqual([
+      "current compiled bytecode artifact",
+      "connected Sui wallet for local",
+      "available local validator",
+    ]);
+    expect(validation.blockers[0]).toMatchObject({
+      code: "wallet-required",
+      message: "Connect a Sui-compatible wallet before deploying to local.",
+      remediation: "Connect and approve a Sui-compatible wallet for local, then retry deployment.",
     });
   });
 

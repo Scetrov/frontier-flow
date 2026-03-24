@@ -214,4 +214,40 @@ describe("useDeployment success path", () => {
     expect(result.current.latestAttempt?.startedAt).toBe(Date.parse("2026-03-22T12:00:00.000Z"));
     expect(result.current.latestAttempt?.endedAt).toBe(Date.parse("2026-03-22T12:00:02.000Z"));
   });
+
+  it("keeps the persisted deployment snapshot tied to the deployed module after later recompiles", async () => {
+    const deployedArtifact = createGeneratedArtifactStub({
+      moduleName: "starter_contract",
+      bytecodeModules: [new Uint8Array([1, 2, 3])],
+    });
+    const recompiledArtifact = createGeneratedArtifactStub({
+      moduleName: "renamed_contract",
+      bytecodeModules: [new Uint8Array([4, 5, 6])],
+    });
+
+    const { result, rerender } = renderHook(
+      ({ artifact }) => useDeployment({
+        initialTarget: "testnet:stillness",
+        status: {
+          state: "compiled",
+          bytecode: artifact.bytecodeModules,
+          artifact,
+        },
+      }),
+      { initialProps: { artifact: deployedArtifact } },
+    );
+
+    await act(async () => {
+      await result.current.startDeployment();
+      vi.runOnlyPendingTimers();
+      await Promise.resolve();
+    });
+
+    const persistedSnapshot = loadDeploymentState(window.localStorage);
+    expect(persistedSnapshot?.moduleName).toBe("starter_contract");
+
+    rerender({ artifact: recompiledArtifact });
+
+    expect(loadDeploymentState(window.localStorage)).toEqual(persistedSnapshot);
+  });
 });

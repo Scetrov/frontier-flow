@@ -64,58 +64,69 @@ function pushBlankLine(builder: TemplateBuilder): void {
 function emitCommonPreamble(builder: TemplateBuilder): void {
   pushLine(builder, `module builder_extensions::${builder.graph.moduleName} {`);
   pushLine(builder, "    use std::vector;");
+  pushLine(builder, "    use sui::{bcs, object};");
+  pushLine(builder, "    use world::{");
+  pushLine(builder, "        character::{Self, Character},");
+  pushLine(builder, "        in_game_id,");
+  pushLine(builder, "        turret::{OnlineReceipt, ReturnTargetPriorityList, Turret},");
+  pushLine(builder, "    };");
+  pushLine(builder, "    use world::turret as world_turret;");
   pushBlankLine(builder);
-  pushLine(builder, "    const BEHAVIOUR_STOPPED_ATTACK: u64 = 0;");
-  pushLine(builder, "    const BEHAVIOUR_ENTERED: u64 = 1;");
-  pushLine(builder, "    const BEHAVIOUR_STARTED_ATTACK: u64 = 2;");
+  pushLine(builder, "    const BEHAVIOUR_STOPPED_ATTACK: u8 = 3;");
+  pushLine(builder, "    const BEHAVIOUR_ENTERED: u8 = 1;");
+  pushLine(builder, "    const BEHAVIOUR_STARTED_ATTACK: u8 = 2;");
   pushBlankLine(builder);
   pushLine(builder, "    public struct TargetCandidateArg has copy, drop, store {");
   pushLine(builder, "        item_id: u64,");
-  pushLine(builder, "        character_id: u64,");
-  pushLine(builder, "        character_tribe: u64,");
-  pushLine(builder, "        behaviour_change: u64,");
-  pushLine(builder, "        is_aggressor: bool,");
-  pushLine(builder, "        priority_weight: u64,");
+  pushLine(builder, "        type_id: u64,");
+  pushLine(builder, "        group_id: u64,");
+  pushLine(builder, "        character_id: u32,");
+  pushLine(builder, "        character_tribe: u32,");
+  pushLine(builder, "        hp_ratio: u64,");
   pushLine(builder, "        shield_ratio: u64,");
   pushLine(builder, "        armor_ratio: u64,");
-  pushLine(builder, "        hp_ratio: u64,");
-  pushLine(builder, "        group_id: u64,");
+  pushLine(builder, "        is_aggressor: bool,");
+  pushLine(builder, "        priority_weight: u64,");
+  pushLine(builder, "        behaviour_change: u8,");
   pushLine(builder, "    }");
   pushBlankLine(builder);
-  pushLine(builder, "    public struct ReturnTargetPriorityList has copy, drop, store {");
-  pushLine(builder, "        item_id: u64,");
-  pushLine(builder, "        weight: u64,");
-  pushLine(builder, "    }");
-  pushBlankLine(builder);
-  pushLine(builder, "    fun new_return_target_priority_list(item_id: u64, weight: u64): ReturnTargetPriorityList {");
-  pushLine(builder, "        ReturnTargetPriorityList { item_id, weight }");
-  pushLine(builder, "    }");
+  pushLine(builder, "    public struct TurretAuth has drop {}");
   pushBlankLine(builder);
 }
 
 function emitCommonBuildLoop(builder: TemplateBuilder): void {
-  pushLine(builder, "    public fun execute(");
-  pushLine(builder, "        owner_character_id: u64,");
-  pushLine(builder, "        owner_tribe: u64,");
-  pushLine(builder, "        candidates: vector<TargetCandidateArg>,");
-  pushLine(builder, "    ): vector<ReturnTargetPriorityList> {");
-  pushLine(builder, "        build_priority_list_for_owner(owner_character_id, owner_tribe, candidates)");
+  pushLine(builder, "    public fun get_target_priority_list(");
+  pushLine(builder, "        turret: &Turret,");
+  pushLine(builder, "        owner_character: &Character,");
+  pushLine(builder, "        target_candidate_list: vector<u8>,");
+  pushLine(builder, "        receipt: OnlineReceipt,");
+  pushLine(builder, "    ): vector<u8> {");
+  pushLine(builder, "        assert!(receipt.turret_id() == object::id(turret), 0);");
+  pushLine(builder, "        let owner_character_id = in_game_id::item_id(&character::key(owner_character)) as u32;");
+  pushLine(builder, "        let return_list = build_priority_list_for_owner(");
+  pushLine(builder, "            owner_character_id,");
+  pushLine(builder, "            character::tribe(owner_character),");
+  pushLine(builder, "            target_candidate_list,");
+  pushLine(builder, "        );");
+  pushLine(builder, "        world_turret::destroy_online_receipt(receipt, TurretAuth {});");
+  pushLine(builder, "        bcs::to_bytes(&return_list)");
   pushLine(builder, "    }");
   pushBlankLine(builder);
-  pushLine(builder, "    public fun build_priority_list_for_owner(");
-  pushLine(builder, "        owner_character_id: u64,");
-  pushLine(builder, "        owner_tribe: u64,");
-  pushLine(builder, "        candidates: vector<TargetCandidateArg>,");
+  pushLine(builder, "    public(package) fun build_priority_list_for_owner(");
+  pushLine(builder, "        owner_character_id: u32,");
+  pushLine(builder, "        owner_tribe: u32,");
+  pushLine(builder, "        target_candidate_list: vector<u8>,");
   pushLine(builder, "    ): vector<ReturnTargetPriorityList> {");
+  pushLine(builder, "        let candidates = unpack_candidate_list(target_candidate_list);");
   pushLine(builder, "        let mut return_list = vector::empty<ReturnTargetPriorityList>();", "addToQueue");
   pushLine(builder, "        let candidate_count = vector::length(&candidates);");
-  pushLine(builder, "        let mut index = 0;", "aggression");
+  pushLine(builder, "        let mut index = 0u64;", "aggression");
   pushLine(builder, "", undefined);
   pushLine(builder, "        while (index < candidate_count) {", "aggression");
   pushLine(builder, "            let candidate = vector::borrow(&candidates, index);", "aggression");
   pushLine(builder, "            let (weight, include) = score_candidate(owner_character_id, owner_tribe, candidate);", "addToQueue");
   pushLine(builder, "            if (include) {", "addToQueue");
-  pushLine(builder, "                vector::push_back(&mut return_list, new_return_target_priority_list(candidate.item_id, weight));", "addToQueue");
+  pushLine(builder, "                vector::push_back(&mut return_list, world_turret::new_return_target_priority_list(candidate.item_id, weight));", "addToQueue");
   pushLine(builder, "            };", "addToQueue");
   pushLine(builder, "            index = index + 1;", "aggression");
   pushLine(builder, "        };", "aggression");
@@ -123,6 +134,43 @@ function emitCommonBuildLoop(builder: TemplateBuilder): void {
   pushLine(builder, "        return_list", "addToQueue");
   pushLine(builder, "    }");
   pushBlankLine(builder);
+}
+
+function emitCommonCandidateUnpackHelpers(builder: TemplateBuilder): void {
+  pushLine(builder, "    fun unpack_candidate_list(candidate_list_bytes: vector<u8>): vector<TargetCandidateArg> {");
+  pushLine(builder, "        if (vector::length(&candidate_list_bytes) == 0) {");
+  pushLine(builder, "            return vector::empty()");
+  pushLine(builder, "        };");
+  pushLine(builder, "        let mut bcs_data = bcs::new(candidate_list_bytes);");
+  pushLine(builder, "        bcs_data.peel_vec!(|candidate_bcs| peel_target_candidate_from_bcs(candidate_bcs))");
+  pushLine(builder, "    }");
+  pushBlankLine(builder);
+  pushLine(builder, "    fun peel_target_candidate_from_bcs(bcs_data: &mut bcs::BCS): TargetCandidateArg {");
+  pushLine(builder, "        let item_id = bcs_data.peel_u64();");
+  pushLine(builder, "        let type_id = bcs_data.peel_u64();");
+  pushLine(builder, "        let group_id = bcs_data.peel_u64();");
+  pushLine(builder, "        let character_id = bcs_data.peel_u32();");
+  pushLine(builder, "        let character_tribe = bcs_data.peel_u32();");
+  pushLine(builder, "        let hp_ratio = bcs_data.peel_u64();");
+  pushLine(builder, "        let shield_ratio = bcs_data.peel_u64();");
+  pushLine(builder, "        let armor_ratio = bcs_data.peel_u64();");
+  pushLine(builder, "        let is_aggressor = bcs_data.peel_bool();");
+  pushLine(builder, "        let priority_weight = bcs_data.peel_u64();");
+  pushLine(builder, "        let behaviour_change = bcs_data.peel_u8();");
+  pushLine(builder, "        TargetCandidateArg {");
+  pushLine(builder, "            item_id,");
+  pushLine(builder, "            type_id,");
+  pushLine(builder, "            group_id,");
+  pushLine(builder, "            character_id,");
+  pushLine(builder, "            character_tribe,");
+  pushLine(builder, "            hp_ratio,");
+  pushLine(builder, "            shield_ratio,");
+  pushLine(builder, "            armor_ratio,");
+  pushLine(builder, "            is_aggressor,");
+  pushLine(builder, "            priority_weight,");
+  pushLine(builder, "            behaviour_change,");
+  pushLine(builder, "        }");
+  pushLine(builder, "    }");
 }
 
 function emitAggressorFirstTemplate(builder: TemplateBuilder): void {
@@ -136,8 +184,8 @@ function emitAggressorFirstTemplate(builder: TemplateBuilder): void {
   pushBlankLine(builder);
   emitCommonBuildLoop(builder);
   pushLine(builder, "    fun score_candidate(");
-  pushLine(builder, "        owner_character_id: u64,");
-  pushLine(builder, "        owner_tribe: u64,");
+  pushLine(builder, "        owner_character_id: u32,");
+  pushLine(builder, "        owner_tribe: u32,");
   pushLine(builder, "        candidate: &TargetCandidateArg,");
   pushLine(builder, "    ): (u64, bool) {");
   pushLine(builder, "        if (candidate.character_id == owner_character_id || candidate.behaviour_change == BEHAVIOUR_STOPPED_ATTACK) {", "aggression");
@@ -164,6 +212,8 @@ function emitAggressorFirstTemplate(builder: TemplateBuilder): void {
   pushLine(builder, "        weight = weight + ((100 - candidate.hp_ratio) * HULL_BREAK_BONUS_MULTIPLIER);", "hpRatio");
   pushLine(builder, "        (weight, true)", "damageBonus");
   pushLine(builder, "    }");
+  pushBlankLine(builder);
+  emitCommonCandidateUnpackHelpers(builder);
   pushLine(builder, "}");
 }
 
@@ -176,8 +226,8 @@ function emitLowHpFinisherTemplate(builder: TemplateBuilder): void {
   pushBlankLine(builder);
   emitCommonBuildLoop(builder);
   pushLine(builder, "    fun score_candidate(");
-  pushLine(builder, "        owner_character_id: u64,");
-  pushLine(builder, "        owner_tribe: u64,");
+  pushLine(builder, "        owner_character_id: u32,");
+  pushLine(builder, "        owner_tribe: u32,");
   pushLine(builder, "        candidate: &TargetCandidateArg,");
   pushLine(builder, "    ): (u64, bool) {");
   pushLine(builder, "        if (candidate.character_id == owner_character_id || candidate.behaviour_change == BEHAVIOUR_STOPPED_ATTACK) {", "aggression");
@@ -203,6 +253,8 @@ function emitLowHpFinisherTemplate(builder: TemplateBuilder): void {
   pushLine(builder, "        weight = weight + (damage_total * EHP_DAMAGE_MULTIPLIER);", "damageBonus");
   pushLine(builder, "        (weight, true)", "addToQueue");
   pushLine(builder, "    }");
+  pushBlankLine(builder);
+  emitCommonCandidateUnpackHelpers(builder);
   pushLine(builder, "}");
 }
 
@@ -215,8 +267,8 @@ function emitPlayerScreenTemplate(builder: TemplateBuilder): void {
   pushBlankLine(builder);
   emitCommonBuildLoop(builder);
   pushLine(builder, "    fun score_candidate(");
-  pushLine(builder, "        owner_character_id: u64,");
-  pushLine(builder, "        owner_tribe: u64,");
+  pushLine(builder, "        owner_character_id: u32,");
+  pushLine(builder, "        owner_tribe: u32,");
   pushLine(builder, "        candidate: &TargetCandidateArg,");
   pushLine(builder, "    ): (u64, bool) {");
   pushLine(builder, "        let character_id = candidate.character_id;", "excludeNpc");
@@ -241,6 +293,8 @@ function emitPlayerScreenTemplate(builder: TemplateBuilder): void {
   pushLine(builder, "        };", "behaviourBonus");
   pushLine(builder, "        (weight, true)", "addToQueue");
   pushLine(builder, "    }");
+  pushBlankLine(builder);
+  emitCommonCandidateUnpackHelpers(builder);
   pushLine(builder, "}");
 }
 
@@ -259,8 +313,8 @@ function emitSizePriorityTemplate(builder: TemplateBuilder): void {
   pushBlankLine(builder);
   emitCommonBuildLoop(builder);
   pushLine(builder, "    fun score_candidate(");
-  pushLine(builder, "        owner_character_id: u64,");
-  pushLine(builder, "        owner_tribe: u64,");
+  pushLine(builder, "        owner_character_id: u32,");
+  pushLine(builder, "        owner_tribe: u32,");
   pushLine(builder, "        candidate: &TargetCandidateArg,");
   pushLine(builder, "    ): (u64, bool) {");
   pushLine(builder, "        if (candidate.character_id == owner_character_id || candidate.behaviour_change == BEHAVIOUR_STOPPED_ATTACK) {", "aggression");
@@ -295,6 +349,8 @@ function emitSizePriorityTemplate(builder: TemplateBuilder): void {
   pushLine(builder, "        else if (group_id == GROUP_CORVETTE) { 1 }", "getGroupId");
   pushLine(builder, "        else { 1 }", "getGroupId");
   pushLine(builder, "    }");
+  pushBlankLine(builder);
+  emitCommonCandidateUnpackHelpers(builder);
   pushLine(builder, "}");
 }
 

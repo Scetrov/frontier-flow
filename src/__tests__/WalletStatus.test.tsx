@@ -5,7 +5,6 @@ import type {
   useCurrentAccount as useCurrentAccountHook,
   useCurrentWallet as useCurrentWalletHook,
   useDisconnectWallet as useDisconnectWalletHook,
-  useSuiClientQuery as useSuiClientQueryHook,
   useWallets as useWalletsHook,
 } from "@mysten/dapp-kit";
 
@@ -14,15 +13,15 @@ import WalletStatus from "../components/WalletStatus";
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
 type DisconnectWallet = ReturnType<typeof useDisconnectWalletHook>;
-type BalanceQuery = ReturnType<typeof useSuiClientQueryHook>;
 type Wallets = ReturnType<typeof useWalletsHook>;
 type ResolvedWalletCharacterIdentity = import("../utils/characterProfile").ResolvedWalletCharacterIdentity;
+type TargetBalanceQuery = ReturnType<typeof import("../hooks/useTargetBalance").useTargetBalance>;
 
 const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
 const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
 const mockUseDisconnectWallet = vi.fn<() => DisconnectWallet>();
-const mockUseSuiClientQuery = vi.fn<() => BalanceQuery>();
 const mockUseWallets = vi.fn<() => Wallets>();
+const mockUseTargetBalance = vi.fn<(...args: [string | null, import("../compiler/types").DeploymentTargetId]) => TargetBalanceQuery>();
 const mockFetchCharacterIdentityForWalletAcrossTargets = vi.fn<typeof import("../utils/characterProfile").fetchCharacterIdentityForWalletAcrossTargets>();
 const mockRefreshPublishedWorldPackageManifest = vi.fn<typeof import("../data/packageReferences").refreshPublishedWorldPackageManifest>();
 
@@ -57,13 +56,13 @@ function createDisconnectMutation(mutate = vi.fn()): DisconnectWallet {
   } as unknown as DisconnectWallet;
 }
 
-function createBalanceQuery(overrides: Partial<BalanceQuery> = {}): BalanceQuery {
+function createBalanceQuery(overrides: Partial<TargetBalanceQuery> = {}): TargetBalanceQuery {
   return {
     data: undefined,
     isError: false,
     isPending: false,
     ...overrides,
-  } as unknown as BalanceQuery;
+  } as unknown as TargetBalanceQuery;
 }
 
 vi.mock("@mysten/dapp-kit", () => ({
@@ -71,8 +70,11 @@ vi.mock("@mysten/dapp-kit", () => ({
   useCurrentAccount: () => mockUseCurrentAccount(),
   useCurrentWallet: () => mockUseCurrentWallet(),
   useDisconnectWallet: () => mockUseDisconnectWallet(),
-  useSuiClientQuery: () => mockUseSuiClientQuery(),
   useWallets: () => mockUseWallets(),
+}));
+
+vi.mock("../hooks/useTargetBalance", () => ({
+  useTargetBalance: (...args: Parameters<typeof import("../hooks/useTargetBalance").useTargetBalance>) => mockUseTargetBalance(...args),
 }));
 
 vi.mock("../utils/characterProfile", () => ({
@@ -104,7 +106,7 @@ describe("WalletStatus", () => {
     mockUseCurrentAccount.mockReturnValue(null);
     mockUseCurrentWallet.mockReturnValue(createDisconnectedWalletState());
     mockUseDisconnectWallet.mockReturnValue(createDisconnectMutation());
-    mockUseSuiClientQuery.mockReturnValue(createBalanceQuery());
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery());
     mockUseWallets.mockReturnValue([availableWallet]);
     mockFetchCharacterIdentityForWalletAcrossTargets.mockReset();
     mockFetchCharacterIdentityForWalletAcrossTargets.mockImplementation(() => new Promise(() => undefined));
@@ -136,7 +138,7 @@ describe("WalletStatus", () => {
   it("renders the connected wallet address and balance", () => {
     mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
-    mockUseSuiClientQuery.mockReturnValue(createBalanceQuery({
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
       data: { totalBalance: "12500000000" },
     }));
 
@@ -150,7 +152,7 @@ describe("WalletStatus", () => {
   it("renders zero balances without collapsing the value", () => {
     mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
-    mockUseSuiClientQuery.mockReturnValue(createBalanceQuery({
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
       data: { totalBalance: "0" },
     }));
 
@@ -162,7 +164,7 @@ describe("WalletStatus", () => {
   it("falls back to a placeholder balance when the query fails", () => {
     mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
-    mockUseSuiClientQuery.mockReturnValue(createBalanceQuery({
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
       isError: true,
     }));
 
@@ -177,7 +179,7 @@ describe("WalletStatus", () => {
     mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     mockUseDisconnectWallet.mockReturnValue(createDisconnectMutation(mutate));
-    mockUseSuiClientQuery.mockReturnValue(createBalanceQuery({
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
       data: { totalBalance: "5000000000" },
     }));
 
@@ -197,7 +199,7 @@ describe("WalletStatus", () => {
   it("renders a restored connected state on the first paint", () => {
     mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
-    mockUseSuiClientQuery.mockReturnValue(createBalanceQuery({
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
       data: { totalBalance: "1000000000" },
     }));
 
@@ -219,7 +221,7 @@ describe("WalletStatus", () => {
   it("renders the character name even when the selected target is local by falling back across published worlds", async () => {
     mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
-    mockUseSuiClientQuery.mockReturnValue(createBalanceQuery({
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
       data: { totalBalance: "3000000000" },
     }));
     mockFetchCharacterIdentityForWalletAcrossTargets.mockResolvedValue({
@@ -238,12 +240,24 @@ describe("WalletStatus", () => {
     }));
   });
 
+  it("queries the wallet balance against the selected deployment target", () => {
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
+      data: { totalBalance: "3000000000" },
+    }));
+
+    render(<WalletStatus selectedDeploymentTarget="local" />);
+
+    expect(mockUseTargetBalance).toHaveBeenCalledWith(connectedAccount.address, "local");
+  });
+
   it("notifies the app when Vault resolves the connected wallet to a published world", async () => {
     const onDetectedDeploymentTarget = vi.fn();
 
     mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
-    mockUseSuiClientQuery.mockReturnValue(createBalanceQuery({
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
       data: { totalBalance: "3000000000" },
     }));
     mockFetchCharacterIdentityForWalletAcrossTargets.mockResolvedValue({

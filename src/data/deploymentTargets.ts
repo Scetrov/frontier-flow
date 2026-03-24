@@ -14,7 +14,7 @@ export const DEPLOYMENT_TARGETS: readonly DeploymentTarget[] = [
     label: "local",
     networkFamily: "local",
     requiresPublishedPackageRefs: false,
-    supportsWalletSigning: false,
+    supportsWalletSigning: true,
     rpcUrl: "http://127.0.0.1:9000",
     requiresLocalValidator: true,
   },

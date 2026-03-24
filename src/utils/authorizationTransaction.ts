@@ -50,6 +50,7 @@ export interface BuildAuthorizeTurretTransactionInput {
 }
 
 const TESTNET_GRAPHQL_ENDPOINT = "https://graphql.testnet.sui.io/graphql";
+const GRAPHQL_PAGE_SIZE = 50;
 
 const PLAYER_PROFILE_QUERY = `query PlayerProfile($owner: SuiAddress!, $type: String!) {
   address(address: $owner) {
@@ -65,7 +66,7 @@ const PLAYER_PROFILE_QUERY = `query PlayerProfile($owner: SuiAddress!, $type: St
 
 const OWNER_CAPS_QUERY = `query OwnerCaps($owner: SuiAddress!, $type: String!) {
   address(address: $owner) {
-    objects(filter: { type: $type }, first: 100) {
+    objects(filter: { type: $type }, first: ${String(GRAPHQL_PAGE_SIZE)}) {
       nodes {
         address
         contents {
@@ -126,7 +127,7 @@ export async function fetchOwnerCap(input: FetchOwnerCapInput): Promise<string> 
     signal: input.signal,
     variables: {
       owner: characterId,
-      type: `${bundle.worldPackageId}::character::OwnerCap<${bundle.worldPackageId}::turret::Turret>`,
+      type: `${bundle.worldPackageId}::access::OwnerCap<${bundle.worldPackageId}::turret::Turret>`,
     },
   });
 

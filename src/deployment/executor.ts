@@ -120,7 +120,7 @@ export function createDeploymentExecutor(
 
       const publishResult = await (async (): Promise<LocalPublishResult | RemotePublishResult | DeploymentExecutionResult> => {
         try {
-          if (request.target.supportsWalletSigning) {
+          if (request.target.requiresPublishedPackageRefs) {
             currentStage = "signing";
             onProgress?.({ message: "Waiting for wallet signing approval.", stage: "signing" });
             return await resolvedDependencies.publishRemote({

@@ -1,12 +1,11 @@
 import {
   useCurrentAccount,
   useCurrentWallet,
-  useSuiClientQuery,
-  useWallets,
 } from "@mysten/dapp-kit";
 
 import type { DeploymentState } from "../compiler/types";
 import { getDeploymentTarget } from "../data/deploymentTargets";
+import { useTargetBalance } from "../hooks/useTargetBalance";
 import { ConservativeDeployIcon } from "./HeaderActionIcons";
 
 const MIST_PER_SUI = 1_000_000_000;
@@ -26,38 +25,6 @@ function formatBalance(balanceMist: string | null | undefined): string {
   }
 
   return `${amount.toFixed(4).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1")} SUI`;
-}
-
-function getWalletState(input: {
-  readonly hasWallets: boolean;
-  readonly isConnected: boolean;
-  readonly requiresWallet: boolean;
-}) {
-  if (!input.requiresWallet) {
-    return {
-      label: "Not required for local deployment",
-      tone: "neutral",
-    } as const;
-  }
-
-  if (input.isConnected) {
-    return {
-      label: "Connected wallet detected",
-      tone: "positive",
-    } as const;
-  }
-
-  if (input.hasWallets) {
-    return {
-      label: "Wallet available but not connected",
-      tone: "warning",
-    } as const;
-  }
-
-  return {
-    label: "No compatible wallet detected",
-    tone: "warning",
-  } as const;
 }
 
 function getBalanceState(input: {
@@ -110,20 +77,37 @@ function ChecklistItem({
   readonly label: string;
   readonly state: "blocked" | "info" | "ready";
 }) {
-  const stateClassName = state === "ready"
-    ? "border-[rgba(70,173,109,0.4)] bg-[rgba(32,73,42,0.4)] text-[var(--cream-white)]"
-    : state === "blocked"
-      ? "border-[rgba(255,71,0,0.4)] bg-[rgba(81,26,18,0.45)] text-[var(--cream-white)]"
+  const stateClassName = state === "blocked"
+    ? "border-[rgba(255,71,0,0.35)] bg-[rgba(81,26,18,0.34)]"
+    : "border-[var(--ui-border-dark)] bg-[rgba(20,10,10,0.52)]";
+  const iconClassName = state === "blocked"
+      ? "border-[rgba(255,71,0,0.4)] bg-[rgba(81,26,18,0.4)] text-[var(--brand-orange)]"
+      : state === "ready"
+        ? "border-[var(--ui-border-dark)] bg-[rgba(20,10,10,0.52)] text-[rgba(137,223,168,0.96)]"
       : "border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.6)] text-[var(--text-secondary)]";
-  const badgeLabel = state === "ready" ? "Ready" : state === "blocked" ? "Blocked" : "Info";
 
   return (
-    <li className={`flex items-start justify-between gap-4 border px-4 py-3 ${stateClassName}`}>
-      <div className="space-y-1">
-        <p className="font-heading text-xs uppercase tracking-[0.18em]">{label}</p>
+    <li className={`grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 border px-4 py-3 ${stateClassName}`}>
+      <span aria-hidden="true" className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center border ${iconClassName}`}>
+        {state === "ready" ? (
+          <svg fill="none" height="12" viewBox="0 0 12 12" width="12" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 6.2L4.6 8.8L10 3.4" stroke="currentColor" strokeLinecap="square" strokeWidth="1.5" />
+          </svg>
+        ) : state === "blocked" ? (
+          <svg fill="none" height="12" viewBox="0 0 12 12" width="12" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 2.2V6.5" stroke="currentColor" strokeLinecap="square" strokeWidth="1.5" />
+            <path d="M6 8.8V9.2" stroke="currentColor" strokeLinecap="square" strokeWidth="1.5" />
+          </svg>
+        ) : (
+          <svg fill="none" height="12" viewBox="0 0 12 12" width="12" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="6" cy="6" fill="currentColor" r="1.2" />
+          </svg>
+        )}
+      </span>
+      <div className="min-w-0 space-y-1">
+        <p className="font-heading text-xs uppercase tracking-[0.18em] text-[var(--cream-white)]">{label}</p>
         {detail ? <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{detail}</p> : null}
       </div>
-      <span className="shrink-0 font-heading text-[0.65rem] uppercase tracking-[0.22em] text-[var(--brand-orange)]">{badgeLabel}</span>
     </li>
   );
 }
@@ -140,14 +124,25 @@ function toChecklistState(tone: "neutral" | "positive" | "warning"): "blocked" |
 }
 
 function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
+  const account = useCurrentAccount();
+  const currentWallet = useCurrentWallet();
+  const target = getDeploymentTarget(deployment.selectedTarget);
+  const balanceQuery = useTargetBalance(account?.address ?? null, deployment.selectedTarget);
+  const balanceState = getBalanceState({
+    isConnected: account !== null && currentWallet.isConnected,
+    isError: balanceQuery.isError,
+    isPending: balanceQuery.isPending,
+    requiresWallet: target.supportsWalletSigning,
+    totalBalance: balanceQuery.data?.totalBalance ?? null,
+  });
   const resolvedInputs = new Set(deployment.resolvedInputs);
 
   return (
     <section className="space-y-4 border border-[var(--ui-border-dark)] bg-[rgba(20,10,10,0.78)] p-5">
       <div className="space-y-2">
-        <h3 className="font-heading text-lg uppercase tracking-[0.08em] text-[var(--cream-white)]">Blocking prerequisites</h3>
+        <h3 className="font-heading text-lg uppercase tracking-[0.08em] text-[var(--cream-white)]">Deployment checks</h3>
         <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-          These checks come from the existing deployment validation pipeline and decide whether the deploy action is enabled.
+          Review the deployment prerequisites and current wallet balance before publishing the generated Move package.
         </p>
       </div>
 
@@ -157,13 +152,19 @@ function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
 
           return (
             <ChecklistItem
-              detail={isResolved ? "Requirement satisfied for the selected target." : "Still required before deployment can continue."}
+              detail={isResolved ? undefined : "Still required before deployment can continue."}
               key={requiredInput}
               label={requiredInput}
               state={isResolved ? "ready" : "blocked"}
             />
           );
         })}
+
+        <ChecklistItem
+          detail={balanceState.label}
+          label="SUI token balance"
+          state={toChecklistState(balanceState.tone)}
+        />
       </ul>
 
       {deployment.blockerReasons.length > 0 ? (
@@ -173,53 +174,7 @@ function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
             {deployment.blockerReasons.map((reason) => <li key={reason}>{reason}</li>)}
           </ul>
         </div>
-      ) : (
-        <div className="border border-[rgba(70,173,109,0.35)] bg-[rgba(32,73,42,0.35)] p-4 text-sm leading-relaxed text-[var(--cream-white)]">
-          All blocking deployment prerequisites are currently satisfied for {deployment.selectedTarget}.
-        </div>
-      )}
-    </section>
-  );
-}
-
-function InformationalChecks({ deployment }: DeployWorkflowViewProps) {
-  const account = useCurrentAccount();
-  const currentWallet = useCurrentWallet();
-  const wallets = useWallets();
-  const target = getDeploymentTarget(deployment.selectedTarget);
-  const balanceQuery = useSuiClientQuery(
-    "getBalance",
-    { owner: account?.address ?? "0x0" },
-    { enabled: account !== null && target.supportsWalletSigning, staleTime: 15_000 },
-  );
-  const walletState = getWalletState({
-    hasWallets: wallets.length > 0,
-    isConnected: account !== null && currentWallet.isConnected,
-    requiresWallet: target.supportsWalletSigning,
-  });
-  const balanceState = getBalanceState({
-    isConnected: account !== null && currentWallet.isConnected,
-    isError: balanceQuery.isError,
-    isPending: balanceQuery.isPending,
-    requiresWallet: target.supportsWalletSigning,
-    totalBalance: balanceQuery.data?.totalBalance ?? null,
-  });
-  const walletChecklistState = toChecklistState(walletState.tone);
-  const balanceChecklistState = toChecklistState(balanceState.tone);
-
-  return (
-    <section className="space-y-4 border border-[var(--ui-border-dark)] bg-[rgba(20,10,10,0.78)] p-5">
-      <div className="space-y-2">
-        <h3 className="font-heading text-lg uppercase tracking-[0.08em] text-[var(--cream-white)]">Informational checks</h3>
-        <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-          These checks help the operator assess readiness, but they do not add new deploy blockers in this release.
-        </p>
-      </div>
-
-      <ul className="space-y-3">
-        <ChecklistItem label="Connected wallet" state={walletChecklistState} detail={walletState.label} />
-        <ChecklistItem label="SUI token balance" state={balanceChecklistState} detail={balanceState.label} />
-      </ul>
+      ) : null}
     </section>
   );
 }
@@ -335,13 +290,9 @@ function DeployWorkflowView({ deployment }: DeployWorkflowViewProps) {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <DeployWorkflowHeader deployment={deployment} />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.9fr)]">
+        <div className="grid gap-6">
           <BlockingChecklist deployment={deployment} />
-
-          <div className="space-y-6">
-            <InformationalChecks deployment={deployment} />
-            <DeploymentStatusSummary deployment={deployment} />
-          </div>
+          <DeploymentStatusSummary deployment={deployment} />
         </div>
       </div>
     </section>

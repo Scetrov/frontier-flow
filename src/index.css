@@ -461,7 +461,7 @@ button,
 .ff-visual-target-selector__anchor {
   position: absolute;
   top: 1rem;
-  right: 1rem;
+  left: 1rem;
   z-index: 40;
   pointer-events: none;
 }
@@ -534,7 +534,7 @@ button,
 .ff-visual-target-selector__menu {
   position: absolute;
   top: calc(100% + 0.35rem);
-  right: 0;
+  left: 0;
   z-index: 30;
   display: grid;
   width: 100%;
@@ -2679,7 +2679,7 @@ button,
 
   .ff-visual-target-selector__anchor {
     top: 0.75rem;
-    right: 0.75rem;
+    left: 0.75rem;
   }
 
   .ff-canvas__empty-state {

@@ -52,10 +52,11 @@ interface FetchTurretsInput {
 }
 
 const TESTNET_GRAPHQL_ENDPOINT = "https://graphql.testnet.sui.io/graphql";
+const GRAPHQL_PAGE_SIZE = 50;
 
 const TURRETS_QUERY = `query Turrets($owner: SuiAddress!, $type: String!) {
   address(address: $owner) {
-    objects(filter: { type: $type }, first: 100) {
+    objects(filter: { type: $type }, first: ${String(GRAPHQL_PAGE_SIZE)}) {
       nodes {
         address
         contents {
@@ -128,7 +129,7 @@ export async function fetchTurrets(input: FetchTurretsInput): Promise<readonly T
     return [];
   }
 
-  const ownerCapType = `${bundle.worldPackageId}::character::OwnerCap<${bundle.worldPackageId}::turret::Turret>`;
+  const ownerCapType = `${bundle.worldPackageId}::access::OwnerCap<${bundle.worldPackageId}::turret::Turret>`;
   const data = await postGraphQl<TurretLookupResponse>({
     endpoint,
     fetchFn,

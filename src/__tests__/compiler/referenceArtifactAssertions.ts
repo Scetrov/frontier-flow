@@ -15,9 +15,13 @@ export function expectSupportedReferenceArtifact(
   expect(resolvedArtifact.moduleName).toBe(referenceCase.expectedModuleName);
   expect(resolvedArtifact.sourceFilePath).toBe(`sources/${referenceCase.expectedModuleName}.move`);
   expect(resolvedArtifact.moveSource).toContain(`module builder_extensions::${referenceCase.expectedModuleName}`);
-  expect(resolvedArtifact.moveSource).toContain("public fun build_priority_list_for_owner(");
+  expect(resolvedArtifact.moveSource).toContain("public fun get_target_priority_list(");
+  expect(resolvedArtifact.moveSource).toContain("public(package) fun build_priority_list_for_owner(");
   expect(resolvedArtifact.moveSource).toContain("fun score_candidate(");
   expect(resolvedArtifact.moveSource).toContain("public struct TargetCandidateArg has copy, drop, store");
+  expect(resolvedArtifact.moveSource).toContain("public struct TurretAuth has drop {}");
+  expect(resolvedArtifact.moveSource).toContain("world_turret::destroy_online_receipt(receipt, TurretAuth {})");
+  expect(resolvedArtifact.moveSource).toContain("fun unpack_candidate_list(candidate_list_bytes: vector<u8>)");
   expect(resolvedArtifact.moveSource).not.toContain("% 11");
   expect(resolvedArtifact.compileReadiness?.ready ?? true).toBe(true);
   expect(resolvedArtifact.deploymentStatus?.targetMode).toBe("existing-turret");

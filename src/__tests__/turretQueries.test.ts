@@ -92,6 +92,11 @@ describe("turretQueries", () => {
         },
       },
     ]);
+
+    const turretLookupRequest = fetchFn.mock.calls[1]?.[1];
+    expect(typeof turretLookupRequest?.body).toBe("string");
+    expect(turretLookupRequest?.body).toContain("first: 50");
+    expect(turretLookupRequest?.body).toContain("::access::OwnerCap<");
   });
 
   it("parses turret payloads and marks the current deployment extension", () => {

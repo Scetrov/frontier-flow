@@ -179,6 +179,8 @@ describe("useDeployment blocker handling", () => {
 
   it("blocks local deployment when the local target is unavailable", async () => {
     window.history.replaceState({}, "", "/?ff_local_deploy_ready=0");
+    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
     const { result } = renderHook(() => useDeployment({
       initialTarget: "local",
@@ -193,6 +195,46 @@ describe("useDeployment blocker handling", () => {
 
     expect(result.current.latestAttempt?.outcome).toBe("blocked");
     expect(result.current.latestAttempt?.errorCode).toBe("local-target-unavailable");
+  });
+
+  it("blocks local deployment when a wallet is not connected", async () => {
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "local",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    expect(result.current.blockerReasons).toContain(
+      "Connect a Sui-compatible wallet before deploying to local.",
+    );
+
+    await act(async () => {
+      await result.current.startDeployment();
+    });
+
+    expect(result.current.latestAttempt?.outcome).toBe("blocked");
+    expect(result.current.latestAttempt?.errorCode).toBe("wallet-required");
+  });
+
+  it("updates deployment status previews when the selected target changes before deployment", () => {
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "local",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    act(() => {
+      result.current.setSelectedTarget("testnet:stillness");
+    });
+
+    expect(result.current.deploymentStatus?.targetId).toBe("testnet:stillness");
+    expect(result.current.deploymentStatus?.status).toBe("blocked");
+    expect(result.current.deploymentStatus?.blockedReasons).toContain(
+      "Connect a Sui-compatible wallet before deploying to testnet:stillness.",
+    );
+    expect(result.current.deploymentStatus?.nextActionSummary).toBe(
+      "Connect and approve a Sui-compatible wallet for testnet:stillness, then retry deployment.",
+    );
   });
 
   it("marks rejected wallet approval as a cancelled deployment", async () => {

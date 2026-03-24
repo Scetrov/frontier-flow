@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 
-import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, DeploymentTargetId, GeneratedContractArtifact } from "./compiler/types";
+import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, DeploymentTargetId } from "./compiler/types";
 import AlphaBanner from "./components/AlphaBanner";
 import AuthorizeView from "./components/AuthorizeView";
 import CanvasWorkspace from "./components/CanvasWorkspace";
@@ -45,7 +45,6 @@ interface AppMainContentProps {
   readonly activeView: PrimaryView;
   readonly authorizeDeploymentState: StoredDeploymentState | null;
   readonly deployment: ReturnType<typeof useDeployment>;
-  readonly deploymentStatus: DeploymentStatus | null;
   readonly displayStatus: CompilationStatus;
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
   readonly moveSourceCode: string | null;
@@ -174,10 +173,10 @@ function VisualWorkspaceView({
   );
 }
 
-function MoveSourceView({ deploymentStatus, displayStatus, moveSourceCode }: Pick<AppMainContentProps, "deploymentStatus" | "displayStatus" | "moveSourceCode">) {
+function MoveSourceView({ displayStatus, moveSourceCode }: Pick<AppMainContentProps, "displayStatus" | "moveSourceCode">) {
   return (
     <section aria-label="Move source view" className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
-      <MoveSourcePanel deploymentStatus={deploymentStatus} sourceCode={moveSourceCode} status={displayStatus} />
+      <MoveSourcePanel sourceCode={moveSourceCode} status={displayStatus} />
     </section>
   );
 }
@@ -186,7 +185,6 @@ function AppMainContent({
   activeView,
   authorizeDeploymentState,
   deployment,
-  deploymentStatus,
   displayStatus,
   focusedDiagnosticSelection,
   moveSourceCode,
@@ -215,31 +213,29 @@ function AppMainContent({
     return <AuthorizeView deploymentState={authorizeDeploymentState} />;
   }
 
-  return <MoveSourceView deploymentStatus={deploymentStatus} displayStatus={displayStatus} moveSourceCode={moveSourceCode} />;
+  return <MoveSourceView displayStatus={displayStatus} moveSourceCode={moveSourceCode} />;
 }
 
 function getLiveDeploymentState(
   deploymentStatus: DeploymentStatus | null,
   latestAttempt: ReturnType<typeof useDeployment>["latestAttempt"],
-  status: CompilationStatus,
 ): StoredDeploymentState | null {
   if (!hasLiveDeploymentSnapshot(deploymentStatus, latestAttempt)) {
     return null;
   }
 
-  const artifact = getStatusArtifact(status);
-  if (artifact === null) {
+  if (latestAttempt.moduleName === undefined) {
     return null;
   }
 
   return {
     version: 1,
     packageId: latestAttempt.packageId,
-    moduleName: artifact.moduleName,
+    moduleName: latestAttempt.moduleName,
     targetId: latestAttempt.targetId,
     transactionDigest: latestAttempt.confirmationReference ?? latestAttempt.packageId,
     deployedAt: new Date(latestAttempt.endedAt ?? latestAttempt.startedAt).toISOString(),
-    contractName: loadActiveContractName(getBrowserStorage()) ?? artifact.moduleName,
+    contractName: loadActiveContractName(getBrowserStorage()) ?? latestAttempt.moduleName,
   };
 }
 
@@ -250,14 +246,6 @@ function hasLiveDeploymentSnapshot(
   return deploymentStatus?.status === "deployed"
     && latestAttempt?.packageId !== undefined
     && latestAttempt.outcome === "succeeded";
-}
-
-function getStatusArtifact(status: CompilationStatus): GeneratedContractArtifact | null {
-  if (status.state !== "compiled" && status.state !== "error") {
-    return null;
-  }
-
-  return status.artifact ?? null;
 }
 
 function hasCompiledWorkflowAccess(status: CompilationStatus): boolean {
@@ -323,7 +311,6 @@ function StandardAppLayout({
             activeView={activeView}
             authorizeDeploymentState={authorizeDeploymentState}
             deployment={deployment}
-            deploymentStatus={deployment.deploymentStatus}
             displayStatus={displayStatus}
             focusedDiagnosticSelection={focusedDiagnosticSelection}
             moveSourceCode={moveSourceCode}
@@ -399,8 +386,8 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     [deployment.deploymentStatus, effectiveCompilationState.status],
   );
   const authorizeDeploymentState = useMemo(
-    () => persistedDeploymentState ?? getLiveDeploymentState(deployment.deploymentStatus, deployment.latestAttempt, effectiveCompilationState.status),
-    [deployment.deploymentStatus, deployment.latestAttempt, effectiveCompilationState.status, persistedDeploymentState],
+    () => persistedDeploymentState ?? getLiveDeploymentState(deployment.deploymentStatus, deployment.latestAttempt),
+    [deployment.deploymentStatus, deployment.latestAttempt, persistedDeploymentState],
   );
   const isCompiledWorkflowReady = hasCompiledWorkflowAccess(effectiveCompilationState.status);
   const resolvedActiveView = useMemo(
