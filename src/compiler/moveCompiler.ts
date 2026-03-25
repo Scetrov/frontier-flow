@@ -1,5 +1,6 @@
 import { attachArtifactDiagnostics, attachCompiledArtifactResult } from "./generators/shared";
 import { parseCompilerOutput } from "./errorParser";
+import { createStandaloneWorldShimPackageFiles } from "./worldShim";
 import type { CompileResult, GeneratedContractArtifact } from "./types";
 
 interface BuildSuccessResult {
@@ -27,11 +28,13 @@ type MoveCompilerLoader = () => Promise<MoveCompilerModule>;
 
 let compilerModulePromise: Promise<MoveCompilerModule> | null = null;
 let initialisationPromise: Promise<void> | null = null;
+let worldShimModuleSetPromise: Promise<ReadonlySet<string>> | null = null;
 let compilerModuleLoader: MoveCompilerLoader = () => import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
 
 function resetCompilerState(): void {
   compilerModulePromise = null;
   initialisationPromise = null;
+  worldShimModuleSetPromise = null;
 }
 
 export function resetMoveCompilerStateForTests(): void {
@@ -155,6 +158,82 @@ async function ensureCompilerInitialised(): Promise<MoveCompilerModule> {
   return compilerModule;
 }
 
+async function getWorldShimModuleSet(compilerModule: MoveCompilerModule): Promise<ReadonlySet<string>> {
+  if (worldShimModuleSetPromise === null) {
+    worldShimModuleSetPromise = compilerModule.buildMovePackage({
+      files: createStandaloneWorldShimPackageFiles(),
+      silenceWarnings: true,
+      network: "testnet",
+    }).then((result) => {
+      if (!("modules" in result)) {
+        throw new Error(`Failed to compile bundled world shim: ${result.error}`);
+      }
+
+      return new Set(result.modules);
+    }).catch((error: unknown) => {
+      worldShimModuleSetPromise = null;
+      throw error;
+    });
+  }
+
+  return worldShimModuleSetPromise;
+}
+
+function filterBundledDependencyModules(modules: readonly string[], bundledDependencyModules: ReadonlySet<string>): readonly string[] {
+  const filteredModules = modules.filter((moduleBytes) => !bundledDependencyModules.has(moduleBytes));
+  return filteredModules.length === 0 ? modules : filteredModules;
+}
+
+function artifactBundlesWorldShim(artifact: GeneratedContractArtifact): boolean {
+  return (artifact.sourceFiles ?? []).some((file) => file.path.startsWith("deps/world/"));
+}
+
+function handleBuildSuccess(
+  result: BuildSuccessResult,
+  artifact: GeneratedContractArtifact,
+  bundledDependencyModules: ReadonlySet<string> | null,
+): CompileResult {
+  const warnings = result.warnings === undefined ? [] : parseCompilerOutput(result.warnings, artifact.sourceMap);
+  const compiledModules = bundledDependencyModules === null
+    ? result.modules
+    : filterBundledDependencyModules(result.modules, bundledDependencyModules);
+  const modules = compiledModules.map((moduleBytes: string) => decodeBase64(moduleBytes));
+  const dependencies = result.dependencies ?? [];
+
+  return {
+    success: true,
+    modules,
+    dependencies,
+    errors: null,
+    warnings,
+    artifact: attachArtifactDiagnostics(attachCompiledArtifactResult(artifact, modules, dependencies), warnings),
+  };
+}
+
+function handleBuildError(result: BuildErrorResult, artifact: GeneratedContractArtifact): CompileResult {
+  const errors = parseCompilerOutput(result.error, artifact.sourceMap);
+  return {
+    success: false,
+    modules: null,
+    dependencies: null,
+    errors,
+    warnings: [],
+    artifact: attachArtifactDiagnostics(artifact, errors),
+  };
+}
+
+function handleCompileFailure(rawMessage: string, artifact: GeneratedContractArtifact): CompileResult {
+  const errors = parseCompilerOutput(rawMessage, artifact.sourceMap);
+  return {
+    success: false,
+    modules: null,
+    dependencies: null,
+    errors,
+    warnings: [],
+    artifact: attachArtifactDiagnostics(artifact, errors),
+  };
+}
+
 /**
  * Compile Move source in memory via the browser WASM wrapper.
  */
@@ -167,61 +246,33 @@ export async function compileMove(
 
   try {
     const compilerModule = await ensureCompilerInitialised();
-    const result = await compilerModule.buildMovePackage({
-      files: {
-        "Move.toml": artifact.moveToml,
-        [artifact.sourceFilePath]: artifact.moveSource,
-      },
+    const files: Record<string, string> = {
+      "Move.toml": artifact.moveToml,
+    };
+    for (const file of artifact.sourceFiles ?? [{ path: artifact.sourceFilePath, content: artifact.moveSource }]) {
+      files[file.path] = file.content;
+    }
+    const buildPromise = compilerModule.buildMovePackage({
+      files,
       silenceWarnings: false,
       network: "testnet",
     });
+    const bundledDependencyModulesPromise = artifactBundlesWorldShim(artifact)
+      ? getWorldShimModuleSet(compilerModule)
+      : Promise.resolve<ReadonlySet<string> | null>(null);
+    const [result, bundledDependencyModules] = await Promise.all([buildPromise, bundledDependencyModulesPromise]);
 
     if ("modules" in result) {
-      const warnings = result.warnings === undefined ? [] : parseCompilerOutput(result.warnings, artifact.sourceMap);
-      const modules = result.modules.map((moduleBytes: string) => decodeBase64(moduleBytes));
-      const dependencies = result.dependencies ?? [];
-
-      return {
-        success: true,
-        modules,
-        dependencies,
-        errors: null,
-        warnings,
-        artifact: attachArtifactDiagnostics(attachCompiledArtifactResult(artifact, modules, dependencies), warnings),
-      };
+      return handleBuildSuccess(result, artifact, bundledDependencyModules);
     }
 
     if ("error" in result) {
-      const errors = parseCompilerOutput(result.error, artifact.sourceMap);
-      return {
-        success: false,
-        modules: null,
-        dependencies: null,
-        errors,
-        warnings: [],
-        artifact: attachArtifactDiagnostics(artifact, errors),
-      };
+      return handleBuildError(result, artifact);
     }
 
-    const unknownErrors = parseCompilerOutput("Unknown Move compilation failure.", artifact.sourceMap);
-    return {
-      success: false,
-      modules: null,
-      dependencies: null,
-      errors: unknownErrors,
-      warnings: [],
-      artifact: attachArtifactDiagnostics(artifact, unknownErrors),
-    };
+    return handleCompileFailure("Unknown Move compilation failure.", artifact);
   } catch (error) {
     const rawMessage = error instanceof Error ? error.message : String(error);
-    const errors = parseCompilerOutput(rawMessage, artifact.sourceMap);
-    return {
-      success: false,
-      modules: null,
-      dependencies: null,
-      errors,
-      warnings: [],
-      artifact: attachArtifactDiagnostics(artifact, errors),
-    };
+    return handleCompileFailure(rawMessage, artifact);
   }
 }

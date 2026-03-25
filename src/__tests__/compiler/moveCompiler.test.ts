@@ -22,6 +22,7 @@ import {
   resetMoveCompilerStateForTests,
   setMoveCompilerLoaderForTests,
 } from "../../compiler/moveCompiler";
+import { createStandaloneWorldShimPackageFiles } from "../../compiler/worldShim";
 
 function encodeBase64(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes));
@@ -246,5 +247,53 @@ describe("compileMove", () => {
     expect(secondResult.success).toBe(true);
     expect(mockInitMoveCompiler).toHaveBeenCalledTimes(2);
     expect(mockBuildMovePackage).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes bundled dependency source files to the WASM package builder", async () => {
+    const shimModuleBytes = new Uint8Array([9, 9, 9]);
+    const rootModuleBytes = new Uint8Array([7, 7, 7]);
+    const artifact = {
+      ...createArtifact(),
+      sourceFiles: [
+        { path: "sources/graph_to_move_supported.move", content: "module builder_extensions::graph_to_move_supported {}" },
+        { path: "deps/world/Move.toml", content: "[package]\nname = \"world\"\n\n[addresses]\nworld = \"0x0\"\n" },
+        { path: "deps/world/sources/character.move", content: "module world::character;" },
+        { path: "deps/world/sources/in_game_id.move", content: "module world::in_game_id;" },
+        { path: "deps/world/sources/turret.move", content: "module world::turret;" },
+      ],
+    } as const;
+
+    mockBuildMovePackage
+      .mockResolvedValueOnce({
+        modules: [encodeBase64(rootModuleBytes), encodeBase64(shimModuleBytes)],
+        dependencies: graphToMoveDependencyFixture,
+      })
+      .mockResolvedValueOnce({
+        modules: [encodeBase64(shimModuleBytes)],
+        dependencies: [],
+      });
+
+    const result = await compileMove(artifact);
+
+    expect(result.success).toBe(true);
+    expect(result.modules).toEqual([rootModuleBytes]);
+    expect(result.artifact?.bytecodeModules).toEqual([rootModuleBytes]);
+    expect(mockBuildMovePackage).toHaveBeenNthCalledWith(1, {
+      files: {
+        "Move.toml": artifact.moveToml,
+        "sources/graph_to_move_supported.move": "module builder_extensions::graph_to_move_supported {}",
+        "deps/world/Move.toml": "[package]\nname = \"world\"\n\n[addresses]\nworld = \"0x0\"\n",
+        "deps/world/sources/character.move": "module world::character;",
+        "deps/world/sources/in_game_id.move": "module world::in_game_id;",
+        "deps/world/sources/turret.move": "module world::turret;",
+      },
+      silenceWarnings: false,
+      network: "testnet",
+    });
+    expect(mockBuildMovePackage).toHaveBeenNthCalledWith(2, {
+      files: createStandaloneWorldShimPackageFiles(),
+      silenceWarnings: true,
+      network: "testnet",
+    });
   });
 });

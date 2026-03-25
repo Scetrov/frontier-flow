@@ -22,6 +22,9 @@ export interface DeploymentConfirmationOptions {
   readonly retryDelayMs?: number;
 }
 
+const DEPLOYMENT_INTERFACE_TIMEOUT_MS = 30_000;
+const DEPLOYMENT_INTERFACE_POLL_INTERVAL_MS = 1_000;
+
 function getPublishedPackageId(result: SuiTransactionBlockResponse): string | undefined {
   return result.objectChanges?.find((change) => change.type === "published")?.packageId;
 }
@@ -53,12 +56,62 @@ export async function confirmPublishedPackageWithClient(
   });
   const packageId = getPublishedPackageId(result) ?? request.packageId;
 
+  if (result.effects?.status.status === "success" && packageId !== undefined) {
+    const interfaceReady = await waitForPublishedExtensionInterface({
+      client,
+      moduleName: request.artifact.moduleName,
+      packageId,
+      signal: request.signal,
+      timeoutMs: DEPLOYMENT_INTERFACE_TIMEOUT_MS,
+    });
+
+    if (!interfaceReady) {
+      return {
+        confirmed: false,
+        confirmationReference: result.digest,
+        packageId,
+        finalStage: "confirming",
+      };
+    }
+  }
+
   return {
     confirmed: result.effects?.status.status === "success",
     confirmationReference: result.digest,
     packageId,
     finalStage: "confirming",
   };
+}
+
+async function waitForPublishedExtensionInterface(input: {
+  readonly client: SuiJsonRpcClient;
+  readonly moduleName: string;
+  readonly packageId: string;
+  readonly signal?: AbortSignal;
+  readonly timeoutMs: number;
+}): Promise<boolean> {
+  const deadline = Date.now() + input.timeoutMs;
+
+  while (Date.now() <= deadline) {
+    try {
+      await input.client.getNormalizedMoveStruct({
+        package: input.packageId,
+        module: input.moduleName,
+        struct: "TurretAuth",
+        signal: input.signal,
+      });
+      return true;
+    } catch {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        break;
+      }
+
+      await sleep(Math.min(DEPLOYMENT_INTERFACE_POLL_INTERVAL_MS, remainingMs), input.signal);
+    }
+  }
+
+  return false;
 }
 
 function createAbortError(): Error {

@@ -60,10 +60,10 @@ describe("reference DAG validation", () => {
 
     expect(artifactIds).toMatchInlineSnapshot(`
       {
-        "turret_aggressor_first": "turret_aggressor_first-d7c2bc7c",
-        "turret_low_hp_finisher": "turret_low_hp_finisher-be8d9260",
-        "turret_player_screen": "turret_player_screen-3952ac9c",
-        "turret_size_priority": "turret_size_priority-afaeabd6",
+        "turret_aggressor_first": "turret_aggressor_first-0d176de7",
+        "turret_low_hp_finisher": "turret_low_hp_finisher-845a2f5b",
+        "turret_player_screen": "turret_player_screen-4c7590eb",
+        "turret_size_priority": "turret_size_priority-1d5271cd",
       }
     `);
   });

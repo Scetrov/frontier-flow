@@ -3,7 +3,7 @@ title: Frontier Flow — Outstanding Questions
 version: 1.0.0
 status: active
 created: 2026-02-27
-updated: 2026-03-21
+updated: 2026-03-25
 author: Scetrov
 description: Unresolved integration questions arising from the turrets.diff PR analysis that affect how FrontierFlow hooks into the on-chain contract.
 ---
@@ -73,7 +73,9 @@ public fun get_target_priority_list(
 
 This function accepts BCS-serialized `vector<TargetCandidate>` and returns BCS-serialized `vector<ReturnTargetPriorityList>`. The world contract provides utility functions: `unpack_candidate_list()`, `unpack_priority_list()`, and `unpack_return_priority_list()` for deserialization.
 
-**Resolution:** FrontierFlow's Emitter must generate extension contracts that match this exact signature. The game server calls the extension by resolving the package ID from the `turret.extension` TypeName field set by `authorize_extension<Auth>()`.
+**Resolution:** FrontierFlow's Emitter must generate extension contracts that match this exact signature. The game server calls the extension by resolving the package ID from the `turret.extension` TypeName field set by `authorize_extension<Auth>()`. The auth witness must live in that same extension module as `public struct TurretAuth has drop {}` so authorization uses `package_id::module_name::TurretAuth`, matching the world-contracts example package and the `ts-scripts/builder_extension/authorize-turret.ts` helper.
+
+**Operational note:** A publish transaction reaching `success` is not sufficient for authorization readiness on testnet. Frontier Flow now treats deployment as unresolved until the published package exposes `TurretAuth` through RPC normalization queries, because wallet transaction resolution for `authorize_extension<TurretAuth>` can still fail during propagation with `TypeNotFound` even after publish confirmation.
 
 ---
 
@@ -201,6 +203,8 @@ public fun get_target_priority_list(
 - Referencing a known published address on each network.
 
 **Question:** What is the GitHub repository (or package registry) for the `world` contract? Is it published to a well-known address on devnet/testnet/mainnet? How should `Move.toml` reference it for WASM compilation?
+
+**Operational note:** Remote deployment cannot safely publish bytecode compiled only against an unpublished local `deps/world` shim and then append `worldPackageId` at transaction time. That produces bytecode the chain can reject with `VMVerificationOrDeserializationError in command 0` even when the wallet flow is otherwise healthy. For published targets, Frontier Flow must compile the remote deployment artifact with a generated `deps/world/Published.toml` that points at the selected `worldPackageId`, and the root extension package must not redeclare `world = "0x0"` in its own `[addresses]` block.
 
 ---
 

@@ -1,10 +1,14 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import MoveSourcePanel from "../components/MoveSourcePanel";
 import { createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
 
 const compiledArtifact = createGeneratedArtifactStub();
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("MoveSourcePanel", () => {
   it("renders read-only Move source without altering the generated formatting", () => {
@@ -13,22 +17,52 @@ describe("MoveSourcePanel", () => {
         let compiled = true;
     }
 }`;
+    const artifact = createGeneratedArtifactStub({
+      moveSource: sourceCode,
+      sourceFiles: [{ path: "sources/starter_contract.move", content: sourceCode }],
+    });
 
     const { container } = render(
       <MoveSourcePanel
         sourceCode={sourceCode}
-        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }}
       />,
     );
 
     expect(screen.getByLabelText("Move source view")).toBeInTheDocument();
     expect(screen.getByText("Generated source")).toBeVisible();
+    expect(screen.getByText("Inspect the generated Move package in this tab to diagnose issues before switching to Deploy.")).toBeVisible();
     expect(screen.getByText(/Learn how to extend this code using/i)).toBeVisible();
     expect(screen.getByRole("link", { name: "Learn Move on Sui" })).toHaveAttribute("href", "https://evefrontier.space/move/");
+    expect(screen.getByRole("tab", { name: artifact.sourceFilePath })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "/Move.toml" })).toBeVisible();
     expect(screen.getByText(/module builder_extensions::starter_contract/)).toBeVisible();
-    expect(screen.getByLabelText("Generated Move source code").textContent).toBe(sourceCode);
+    expect(screen.getByLabelText(`${artifact.sourceFilePath} contents`).textContent).toBe(sourceCode);
     expect(container.querySelector(".hljs-keyword")).not.toBeNull();
     expect(screen.getByRole("region", { name: "Move source view" })).toBeInTheDocument();
+  });
+
+  it("lets the user inspect root Move.toml and additional virtual files", () => {
+    const artifact = createGeneratedArtifactStub({
+      moveToml: "[package]\nname = \"starter_contract\"\n",
+      sourceFiles: [
+        { path: "sources/starter_contract.move", content: "module builder_extensions::starter_contract {}" },
+        { path: "Move.lock", content: "[move]\nversion = 4\n" },
+      ],
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={artifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "/Move.toml" }));
+    expect(screen.getByLabelText("Move.toml contents").textContent).toContain("name = \"starter_contract\"");
+
+    fireEvent.click(screen.getByRole("tab", { name: "/Move.lock" }));
+    expect(screen.getByLabelText("Move.lock contents").textContent).toContain("version = 4");
   });
 
   it("shows an empty state when no source is available", () => {
@@ -38,37 +72,66 @@ describe("MoveSourcePanel", () => {
     expect(screen.getByText(/Resolve graph validation issues or compile errors/)).toBeVisible();
   });
 
-  it("shows the generated artifact filename when one is available", () => {
+  it("does not render deployment review content for blocked deployment state", () => {
     render(
+      <MoveSourcePanel
+        sourceCode={compiledArtifact.moveSource}
+        status={{
+          state: "compiled",
+          bytecode: [new Uint8Array([1])],
+          artifact: createGeneratedArtifactStub({
+            deploymentStatus: createDeploymentStatus("blocked", {
+              targetId: "local",
+              nextActionSummary: "Provide the target turret package and extension registration details to continue deployment.",
+            }),
+          }),
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Provide the target turret package and extension registration details to continue deployment/i)).toBeVisible();
+  });
+
+  it("renders deployment metadata without restoring the old compiled-status chip", () => {
+    const { container } = render(
       <MoveSourcePanel
         sourceCode={compiledArtifact.moveSource}
         status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
       />,
     );
 
-    expect(screen.getByText("starter_contract.move")).toBeVisible();
+    expect(container.querySelector(".ff-move-source__meta")).not.toBeNull();
+    expect(screen.getByText("Provide the target turret package and extension registration details to continue deployment.")).toBeVisible();
+    expect(screen.queryAllByText("Compiled")).toHaveLength(0);
   });
 
-  it("surfaces deployment status metadata alongside the artifact", () => {
-    render(
-      <MoveSourcePanel
-        sourceCode={compiledArtifact.moveSource}
-        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
-      />,
-    );
-
-    expect(screen.getByText("Deployment Blocked")).toBeVisible();
-    expect(screen.getAllByText(/Provide the target turret package and extension registration details to continue deployment/i)[0]).toBeVisible();
-  });
-
-  it.each([
-    ["ready", "Deployment Ready", "Ready to deploy the generated artifact to the selected turret."],
-    ["deployed", "Deployed", "Deployment completed for the selected turret."],
-  ] as const)("renders %s deployment state", (status, label, summary) => {
+  it("surfaces deployment metadata for successful deployments in the Move tab", () => {
     const artifact = createGeneratedArtifactStub({
-      deploymentStatus: createDeploymentStatus(status, {
-        nextActionSummary: summary,
-        packageId: status === "deployed" ? "0xabc123" : undefined,
+      deploymentStatus: createDeploymentStatus("deployed", {
+        targetId: "testnet:stillness",
+        packageId: "0xabc123",
+        confirmationReference: "0xdigest123",
+        nextActionSummary: "Deployment completed for testnet:stillness. Package ID: 0xabc123.",
+      }),
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={artifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }}
+      />,
+    );
+
+    expect(screen.getByText("testnet:stillness")).toBeVisible();
+    expect(screen.getByText("0xabc123")).toBeVisible();
+    expect(screen.getByText("0xdigest123")).toBeVisible();
+  });
+
+  it("does not render deployment review content for ready deployment state", () => {
+    const artifact = createGeneratedArtifactStub({
+      deploymentStatus: createDeploymentStatus("ready", {
+        nextActionSummary: "Ready to deploy the generated artifact to the selected turret.",
         targetId: "testnet:stillness",
       }),
     });
@@ -80,11 +143,83 @@ describe("MoveSourcePanel", () => {
       />,
     );
 
-    expect(screen.getByText(label)).toBeVisible();
-    expect(screen.getByText("testnet:stillness")).toBeVisible();
-    if (status === "deployed") {
-      expect(screen.getByText("0xabc123")).toBeVisible();
-    }
-    expect(screen.getAllByText(summary)[0]).toBeVisible();
+    expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Target: testnet:stillness")).not.toBeInTheDocument();
+    expect(screen.getByText("Ready to deploy the generated artifact to the selected turret.")).toBeVisible();
+  });
+
+  it("invokes rebuild when the Move tab rebuild button is pressed", () => {
+    const handleRebuild = vi.fn();
+
+    render(
+      <MoveSourcePanel
+        onRebuild={handleRebuild}
+        sourceCode={compiledArtifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Rebuild" }));
+
+    expect(handleRebuild).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows rebuilding feedback while compilation is in progress", () => {
+    render(
+      <MoveSourcePanel
+        sourceCode={compiledArtifact.moveSource}
+        status={{ state: "compiling" }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Rebuilding..." })).toBeDisabled();
+  });
+
+  it("copies generated source and updates the action label", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText,
+      },
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={compiledArtifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(compiledArtifact.moveSource);
+    });
+    expect(screen.getByRole("button", { name: "Copied" })).toBeInTheDocument();
+  });
+
+  it("copies the selected virtual file contents", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText,
+      },
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={compiledArtifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "/Move.toml" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(compiledArtifact.moveToml);
+    });
   });
 });

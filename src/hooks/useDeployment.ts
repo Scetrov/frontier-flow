@@ -26,6 +26,8 @@ import {
   getDeploymentEnvironmentFlags,
   type DeploymentValidationResult,
 } from "../utils/deploymentValidation";
+import { clearDeploymentState, loadActiveContractName, saveDeploymentState } from "../utils/deploymentStateStorage";
+import type { StoredDeploymentState } from "../types/authorization";
 
 interface UseDeploymentOptions {
   readonly initialTarget?: DeploymentTargetId;
@@ -251,6 +253,7 @@ interface DeploymentDerivedState {
 
 interface DeploymentStore {
   readonly deploymentStatus: DeploymentStatus | null;
+  readonly hasExplicitTargetSelection: boolean;
   readonly isDeploying: boolean;
   readonly localChainIdRef: LocalChainIdRef;
   readonly latestAttempt: DeploymentAttempt | null;
@@ -261,7 +264,7 @@ interface DeploymentStore {
   readonly setLatestAttempt: Dispatch<SetStateAction<DeploymentAttempt | null>>;
   readonly setProgress: Dispatch<SetStateAction<DeploymentProgress | null>>;
   readonly setReviewHistory: ReviewHistorySetter;
-  readonly setSelectedTarget: Dispatch<SetStateAction<DeploymentTargetId>>;
+  readonly setSelectedTarget: (target: DeploymentTargetId) => void;
   readonly setStatusMessage: Dispatch<SetStateAction<DeploymentStatusMessage | null>>;
   readonly stateSetters: DeploymentStateSetters;
   readonly statusMessage: DeploymentStatusMessage | null;
@@ -290,8 +293,79 @@ function getDeploymentValidation(
   });
 }
 
+function createValidationPreviewDeploymentStatus(input: {
+  readonly artifact: GeneratedContractArtifact;
+  readonly previousStatus: DeploymentStatus | null;
+  readonly selectedTarget: DeploymentTargetId;
+  readonly validation: DeploymentValidationResult;
+}): DeploymentStatus {
+  const primaryBlocker = input.validation.blockers.at(0);
+
+  if (primaryBlocker !== undefined) {
+    return {
+      artifactId: input.artifact.artifactId ?? "unknown-artifact",
+      status: "blocked",
+      targetId: input.selectedTarget,
+      stage: primaryBlocker.stage,
+      severity: "error",
+      headline: "Deployment Blocked",
+      targetMode: "existing-turret",
+      requiredInputs: input.validation.requiredInputs,
+      resolvedInputs: input.validation.resolvedInputs,
+      blockedReasons: input.validation.blockers.map((blocker) => blocker.message),
+      nextActionSummary: primaryBlocker.remediation,
+      reviewHistory: input.previousStatus?.reviewHistory,
+    };
+  }
+
+  return {
+    artifactId: input.artifact.artifactId ?? "unknown-artifact",
+    status: "ready",
+    targetId: input.selectedTarget,
+    severity: "success",
+    headline: "Deployment Ready",
+    targetMode: "existing-turret",
+    requiredInputs: input.validation.requiredInputs,
+    resolvedInputs: input.validation.resolvedInputs,
+    blockedReasons: [],
+    nextActionSummary: `Ready to deploy the generated artifact to ${getDeploymentTarget(input.selectedTarget).label}.`,
+    reviewHistory: input.previousStatus?.reviewHistory,
+  };
+}
+
+function getResolvedDeploymentStatus(input: {
+  readonly deploymentStatus: DeploymentStatus | null;
+  readonly hasExplicitTargetSelection: boolean;
+  readonly selectedTarget: DeploymentTargetId;
+  readonly status: CompilationStatus;
+  readonly validation: DeploymentValidationResult;
+}): DeploymentStatus | null {
+  const artifact = getArtifactFromStatus(input.status);
+  const existingStatus = input.deploymentStatus ?? artifact?.deploymentStatus ?? null;
+
+  if (artifact?.artifactId === undefined) {
+    return existingStatus;
+  }
+
+  if (
+    existingStatus !== null
+    && existingStatus.artifactId === artifact.artifactId
+    && (!input.hasExplicitTargetSelection || existingStatus.targetId === input.selectedTarget)
+  ) {
+    return existingStatus;
+  }
+
+  return createValidationPreviewDeploymentStatus({
+    artifact,
+    previousStatus: existingStatus,
+    selectedTarget: input.selectedTarget,
+    validation: input.validation,
+  });
+}
+
 function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore {
   const [selectedTarget, setSelectedTarget] = useState<DeploymentTargetId>(initialTarget);
+  const [hasExplicitTargetSelection, setHasExplicitTargetSelection] = useState(initialTarget !== DEFAULT_DEPLOYMENT_TARGET);
   const [latestAttempt, setLatestAttempt] = useState<DeploymentAttempt | null>(null);
   const [, setReviewHistory] = useState<readonly DeploymentReviewEntry[]>([]);
   const [progress, setProgress] = useState<DeploymentProgress | null>(null);
@@ -300,6 +374,10 @@ function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore 
   const [isDeploying, setIsDeploying] = useState(false);
   const timerIdsRef = useRef<number[]>([]);
   const localChainIdRef = useRef<string | null>(null);
+  const handleSelectedTargetChange = useCallback((target: DeploymentTargetId) => {
+    setHasExplicitTargetSelection(true);
+    setSelectedTarget(target);
+  }, []);
   const stateSetters = useMemo<DeploymentStateSetters>(() => ({
     setDeploymentStatus,
     setIsDeploying,
@@ -311,6 +389,7 @@ function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore 
 
   return {
     deploymentStatus,
+    hasExplicitTargetSelection,
     isDeploying,
     localChainIdRef,
     latestAttempt,
@@ -321,7 +400,7 @@ function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore 
     setLatestAttempt,
     setProgress,
     setReviewHistory,
-    setSelectedTarget,
+    setSelectedTarget: handleSelectedTargetChange,
     setStatusMessage,
     stateSetters,
     statusMessage,
@@ -438,12 +517,14 @@ function createBlockedOutcome(input: {
   readonly blockerCode: string;
   readonly blockerMessage: string;
   readonly blockerRemediation: string;
+  readonly moduleName?: string;
   readonly targetId: DeploymentTargetId;
 }): DeploymentOutcome {
   const attempt: DeploymentAttempt = {
     attemptId: input.attemptId,
     artifactId: input.artifactId,
     targetId: input.targetId,
+    moduleName: input.moduleName,
     startedAt: Date.now(),
     endedAt: Date.now(),
     outcome: "blocked",
@@ -481,6 +562,7 @@ function createBlockedOutcome(input: {
 function createCancelledOutcome(input: {
   readonly artifactId: string;
   readonly attemptId: string;
+  readonly moduleName?: string;
   readonly targetId: DeploymentTargetId;
   readonly targetLabel: string;
 }): DeploymentOutcome {
@@ -489,6 +571,7 @@ function createCancelledOutcome(input: {
     attemptId: input.attemptId,
     artifactId: input.artifactId,
     targetId: input.targetId,
+    moduleName: input.moduleName,
     startedAt: Date.now(),
     endedAt: Date.now(),
     outcome: "cancelled",
@@ -527,6 +610,7 @@ function createSuccessOutcome(input: {
   readonly artifactId: string;
   readonly attemptId: string;
   readonly confirmationReference?: string;
+  readonly moduleName: string;
   readonly packageId: string;
   readonly targetId: DeploymentTargetId;
   readonly targetLabel: string;
@@ -536,6 +620,7 @@ function createSuccessOutcome(input: {
     attemptId: input.attemptId,
     artifactId: input.artifactId,
     targetId: input.targetId,
+    moduleName: input.moduleName,
     startedAt: Date.now(),
     endedAt: Date.now(),
     outcome: "succeeded",
@@ -599,11 +684,19 @@ function getExecutionOutcomeSeverity(outcome: DeploymentExecutionResult["outcome
   }
 }
 
+function shouldSurfaceFailureMessageDirectly(result: DeploymentExecutionResult): boolean {
+  return result.outcome === "failed" && result.stage === "preparing";
+}
+
 function getExecutionOutcomeNextAction(result: DeploymentExecutionResult): string {
   switch (result.outcome) {
     case "cancelled":
       return "Approve the wallet signing request to continue deployment.";
     case "failed":
+      if (shouldSurfaceFailureMessageDirectly(result)) {
+        return result.message;
+      }
+
       return "Review the wallet and RPC error details, then retry deployment once the target is healthy.";
     case "unresolved":
       return "Retry confirmation or redeploy after checking the target network and transaction digest.";
@@ -622,6 +715,7 @@ function getStageIndex(stage: DeploymentStage): number {
 function createExecutionOutcome(input: {
   readonly artifactId: string;
   readonly attemptId: string;
+  readonly moduleName?: string;
   readonly result: DeploymentExecutionResult;
   readonly startedAt: number;
   readonly targetId: DeploymentTargetId;
@@ -636,6 +730,7 @@ function createExecutionOutcome(input: {
       attemptId: input.attemptId,
       artifactId: input.artifactId,
       targetId: input.targetId,
+      moduleName: input.moduleName,
       startedAt: input.startedAt,
       endedAt: Date.now(),
       outcome: input.result.outcome,
@@ -688,6 +783,7 @@ function getPrimaryBlocker(validation: DeploymentValidationResult) {
 function applyBlockedDeploymentOutcome(input: {
   readonly artifactId: string;
   readonly attemptId: string;
+  readonly moduleName?: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stateSetters: DeploymentOutcomeSetters;
   readonly validation: DeploymentValidationResult;
@@ -700,6 +796,7 @@ function applyBlockedDeploymentOutcome(input: {
     blockerCode: primaryBlocker.code,
     blockerMessage: primaryBlocker.message,
     blockerRemediation: primaryBlocker.remediation,
+    moduleName: input.moduleName,
     targetId: input.selectedTarget,
   }), input.validation);
 }
@@ -707,6 +804,7 @@ function applyBlockedDeploymentOutcome(input: {
 function scheduleMockDeploymentScenario(input: {
   readonly artifactId: string;
   readonly attemptId: string;
+  readonly moduleName: string;
   readonly flags: ReturnType<typeof getDeploymentEnvironmentFlags>;
   readonly selectedTarget: DeploymentTargetId;
   readonly stateSetters: DeploymentOutcomeSetters;
@@ -718,6 +816,7 @@ function scheduleMockDeploymentScenario(input: {
     scheduleRejectedSigningDeployment({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
+      moduleName: input.moduleName,
       selectedTarget: input.selectedTarget,
       stageDelayMs: input.flags.deployStageDelayMs,
       stateSetters: input.stateSetters,
@@ -732,6 +831,7 @@ function scheduleMockDeploymentScenario(input: {
     scheduleFailedSubmissionDeployment({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
+      moduleName: input.moduleName,
       selectedTarget: input.selectedTarget,
       stageDelayMs: input.flags.deployStageDelayMs,
       stateSetters: input.stateSetters,
@@ -750,6 +850,7 @@ function scheduleMockDeploymentScenario(input: {
       artifactId: input.artifactId,
       attemptId: input.attemptId,
       confirmationReference,
+      moduleName: input.moduleName,
       packageId,
       selectedTarget: input.selectedTarget,
       stageDelayMs: input.flags.deployStageDelayMs,
@@ -765,6 +866,7 @@ function scheduleMockDeploymentScenario(input: {
     artifactId: input.artifactId,
     attemptId: input.attemptId,
     confirmationReference,
+    moduleName: input.moduleName,
     packageId,
     selectedTarget: input.selectedTarget,
     stageDelayMs: input.flags.deployStageDelayMs,
@@ -778,6 +880,7 @@ function scheduleMockDeploymentScenario(input: {
 function scheduleRejectedSigningDeployment(input: {
   readonly artifactId: string;
   readonly attemptId: string;
+  readonly moduleName: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stageDelayMs: number;
   readonly stateSetters: DeploymentOutcomeSetters;
@@ -799,6 +902,7 @@ function scheduleRejectedSigningDeployment(input: {
     applyDeploymentOutcome(input.stateSetters, createCancelledOutcome({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
+      moduleName: input.moduleName,
       targetId: input.selectedTarget,
       targetLabel: input.targetLabel,
     }), input.validation);
@@ -808,6 +912,7 @@ function scheduleRejectedSigningDeployment(input: {
 function scheduleFailedSubmissionDeployment(input: {
   readonly artifactId: string;
   readonly attemptId: string;
+  readonly moduleName: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stageDelayMs: number;
   readonly stateSetters: DeploymentOutcomeSetters;
@@ -837,6 +942,7 @@ function scheduleFailedSubmissionDeployment(input: {
     applyDeploymentOutcome(input.stateSetters, createExecutionOutcome({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
+      moduleName: input.moduleName,
       result: {
         outcome: "failed",
         stage: "submitting",
@@ -853,6 +959,7 @@ function scheduleUnresolvedConfirmationDeployment(input: {
   readonly artifactId: string;
   readonly attemptId: string;
   readonly confirmationReference: string;
+  readonly moduleName: string;
   readonly packageId: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stageDelayMs: number;
@@ -883,6 +990,7 @@ function scheduleUnresolvedConfirmationDeployment(input: {
     applyDeploymentOutcome(input.stateSetters, createExecutionOutcome({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
+      moduleName: input.moduleName,
       result: {
         outcome: "unresolved",
         stage: "confirming",
@@ -901,6 +1009,7 @@ function scheduleSuccessfulDeployment(input: {
   readonly artifactId: string;
   readonly attemptId: string;
   readonly confirmationReference: string;
+  readonly moduleName: string;
   readonly packageId: string;
   readonly selectedTarget: DeploymentTargetId;
   readonly stageDelayMs: number;
@@ -932,6 +1041,7 @@ function scheduleSuccessfulDeployment(input: {
       artifactId: input.artifactId,
       attemptId: input.attemptId,
       confirmationReference: input.confirmationReference,
+      moduleName: input.moduleName,
       packageId: input.packageId,
       targetId: input.selectedTarget,
       targetLabel: input.targetLabel,
@@ -953,6 +1063,7 @@ function startDeploymentAttempt(input: {
     applyBlockedDeploymentOutcome({
       artifactId: input.artifact?.artifactId ?? "unknown-artifact",
       attemptId,
+      moduleName: input.artifact?.moduleName,
       selectedTarget: input.selectedTarget,
       stateSetters: input.stateSetters,
       validation: input.validation,
@@ -977,6 +1088,7 @@ function startDeploymentAttempt(input: {
   scheduleMockDeploymentScenario({
     artifactId,
     attemptId,
+    moduleName: input.artifact.moduleName,
     flags,
     selectedTarget: input.selectedTarget,
     stateSetters: input.stateSetters,
@@ -1051,6 +1163,7 @@ function startRealDeployment(input: {
     applyBlockedDeploymentOutcome({
       artifactId: artifact?.artifactId ?? "unknown-artifact",
       attemptId,
+      moduleName: artifact?.moduleName,
       selectedTarget: input.selectedTarget,
       stateSetters: { ...input.stateSetters, localChainIdRef: input.localChainIdRef },
       validation: input.derivedValidation,
@@ -1096,6 +1209,7 @@ function startRealDeployment(input: {
       createExecutionOutcome({
         artifactId: artifact.artifactId ?? "unknown-artifact",
         attemptId,
+        moduleName: artifact.moduleName,
         result,
         startedAt: attemptStartedAt,
         targetId: input.selectedTarget,
@@ -1111,6 +1225,7 @@ function startRealDeployment(input: {
       createExecutionOutcome({
         artifactId: artifact.artifactId ?? "unknown-artifact",
         attemptId,
+        moduleName: artifact.moduleName,
         result: {
           outcome: isUserCancelled ? "cancelled" : "failed",
           stage: isUserCancelled ? "signing" : "submitting",
@@ -1125,6 +1240,112 @@ function startRealDeployment(input: {
   });
 }
 
+function usePersistedDeploymentSnapshot(
+  deploymentStatus: DeploymentState["deploymentStatus"],
+  latestAttempt: DeploymentState["latestAttempt"],
+) {
+  useEffect(() => {
+    const snapshot = getPersistedDeploymentSnapshot(deploymentStatus, latestAttempt);
+    if (snapshot === null || typeof window === "undefined") {
+      return;
+    }
+
+    saveDeploymentState(window.localStorage, snapshot);
+  }, [deploymentStatus, latestAttempt]);
+}
+
+function getPersistedDeploymentSnapshot(
+  deploymentStatus: DeploymentState["deploymentStatus"],
+  latestAttempt: DeploymentState["latestAttempt"],
+): StoredDeploymentState | null {
+  if (
+    deploymentStatus?.status !== "deployed"
+    || latestAttempt?.outcome !== "succeeded"
+    || latestAttempt.confirmationReference === undefined
+    || latestAttempt.packageId === undefined
+    || latestAttempt.moduleName === undefined
+  ) {
+    return null;
+  }
+
+  return {
+    version: 1,
+    packageId: latestAttempt.packageId,
+    moduleName: latestAttempt.moduleName,
+    targetId: latestAttempt.targetId,
+    transactionDigest: latestAttempt.confirmationReference,
+    deployedAt: new Date(latestAttempt.endedAt ?? latestAttempt.startedAt).toISOString(),
+    contractName: loadActiveContractName(window.localStorage) ?? latestAttempt.moduleName,
+  };
+}
+
+function beginDeploymentAttempt(input: {
+  readonly account: ReturnType<typeof useCurrentAccount>;
+  readonly clearStageTimers: () => void;
+  readonly currentWallet: ReturnType<typeof useCurrentWallet>;
+  readonly derivedValidation: ReturnType<typeof useDeploymentDerivedState>["validation"];
+  readonly isDeploying: boolean;
+  readonly localChainIdRef: ReturnType<typeof useDeploymentStore>["localChainIdRef"];
+  readonly selectedTarget: DeploymentTargetId;
+  readonly setIsDeploying: ReturnType<typeof useDeploymentStore>["setIsDeploying"];
+  readonly stateSetters: ReturnType<typeof useDeploymentStore>["stateSetters"];
+  readonly status: UseDeploymentOptions["status"];
+  readonly suiClient: ReturnType<typeof useSuiClient>;
+  readonly timerIdsRef: ReturnType<typeof useDeploymentStore>["timerIdsRef"];
+}): Promise<void> {
+  if (input.isDeploying) {
+    return Promise.resolve();
+  }
+
+  resetDeploymentAttemptState(input.clearStageTimers);
+
+  if (shouldUseMockDeployment(getDeploymentEnvironmentFlags())) {
+    startMockDeployment(input);
+    return Promise.resolve();
+  }
+
+  startRealDeployment({
+    account: input.account,
+    currentWallet: input.currentWallet,
+    derivedValidation: input.derivedValidation,
+    localChainIdRef: input.localChainIdRef,
+    selectedTarget: input.selectedTarget,
+    setIsDeploying: input.setIsDeploying,
+    stateSetters: input.stateSetters,
+    status: input.status,
+    suiClient: input.suiClient,
+  });
+
+  return Promise.resolve();
+}
+
+function resetDeploymentAttemptState(clearStageTimers: () => void) {
+  if (typeof window !== "undefined") {
+    clearDeploymentState(window.localStorage);
+  }
+
+  clearStageTimers();
+}
+
+function startMockDeployment(input: {
+  readonly derivedValidation: ReturnType<typeof useDeploymentDerivedState>["validation"];
+  readonly localChainIdRef: ReturnType<typeof useDeploymentStore>["localChainIdRef"];
+  readonly selectedTarget: DeploymentTargetId;
+  readonly setIsDeploying: ReturnType<typeof useDeploymentStore>["setIsDeploying"];
+  readonly stateSetters: ReturnType<typeof useDeploymentStore>["stateSetters"];
+  readonly status: UseDeploymentOptions["status"];
+  readonly timerIdsRef: ReturnType<typeof useDeploymentStore>["timerIdsRef"];
+}) {
+  startDeploymentAttempt({
+    artifact: getArtifactFromStatus(input.status),
+    selectedTarget: input.selectedTarget,
+    setIsDeploying: input.setIsDeploying,
+    stateSetters: { ...input.stateSetters, localChainIdRef: input.localChainIdRef },
+    timerIdsRef: input.timerIdsRef,
+    validation: input.derivedValidation,
+  });
+}
+
 /**
  * Manage deployment target selection and session-scoped deployment state.
  */
@@ -1135,6 +1356,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
   const walletReadiness = useWalletReadiness();
   const {
     deploymentStatus,
+    hasExplicitTargetSelection,
     isDeploying,
     localChainIdRef,
     latestAttempt,
@@ -1153,6 +1375,13 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
     status,
     walletReadiness,
   });
+  const resolvedDeploymentStatus = useMemo(() => getResolvedDeploymentStatus({
+    deploymentStatus,
+    hasExplicitTargetSelection,
+    selectedTarget,
+    status,
+    validation: derivedState.validation,
+  }), [deploymentStatus, derivedState.validation, hasExplicitTargetSelection, selectedTarget, status]);
 
   const clearStageTimers = useCallback(() => {
     for (const timerId of timerIdsRef.current) {
@@ -1163,41 +1392,23 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
   }, [timerIdsRef]);
 
   useEffect(() => clearStageTimers, [clearStageTimers]);
+  usePersistedDeploymentSnapshot(deploymentStatus, latestAttempt);
 
   const startDeployment = useCallback((): Promise<void> => {
-    if (isDeploying) {
-      return Promise.resolve();
-    }
-
-    clearStageTimers();
-
-    const flags = getDeploymentEnvironmentFlags();
-    if (shouldUseMockDeployment(flags)) {
-      startDeploymentAttempt({
-        artifact: getArtifactFromStatus(status),
-        selectedTarget,
-        setIsDeploying,
-        stateSetters: { ...stateSetters, localChainIdRef },
-        timerIdsRef,
-        validation: derivedState.validation,
-      });
-
-      return Promise.resolve();
-    }
-
-    startRealDeployment({
+    return beginDeploymentAttempt({
       account,
+      clearStageTimers,
       currentWallet,
       derivedValidation: derivedState.validation,
+      isDeploying,
       localChainIdRef,
       selectedTarget,
       setIsDeploying,
       stateSetters,
       status,
       suiClient,
+      timerIdsRef,
     });
-
-    return Promise.resolve();
   }, [account, clearStageTimers, currentWallet, derivedState.validation, isDeploying, localChainIdRef, selectedTarget, setIsDeploying, stateSetters, status, suiClient, timerIdsRef]);
 
   const dismissProgress = useCallback(() => {
@@ -1215,7 +1426,9 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
     isDeploying,
     isProgressModalOpen: derivedState.isProgressModalOpen,
     blockerReasons: derivedState.blockerReasons,
-    deploymentStatus,
+    requiredInputs: derivedState.validation.requiredInputs,
+    resolvedInputs: derivedState.validation.resolvedInputs,
+    deploymentStatus: resolvedDeploymentStatus,
     latestAttempt,
     progress,
     statusMessage,

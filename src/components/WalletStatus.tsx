@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ConnectModal,
   useCurrentAccount,
   useCurrentWallet,
   useDisconnectWallet,
-  useSuiClientQuery,
   useWallets,
 } from "@mysten/dapp-kit";
 
 import type { DeploymentTargetId } from "../compiler/types";
+import { refreshPublishedWorldPackageManifest, shouldRefreshPublishedWorldPackageManifest } from "../data/packageReferences";
+import { useTargetBalance } from "../hooks/useTargetBalance";
 import { formatAddress } from "../utils/formatAddress";
-import { fetchCharacterNameForWalletAcrossTargets } from "../utils/characterProfile";
+import { fetchCharacterIdentityForWalletAcrossTargets } from "../utils/characterProfile";
 import { ConservativeConnectIcon } from "./HeaderActionIcons";
 
 const MIST_PER_SUI = 1_000_000_000;
@@ -134,26 +135,21 @@ function WalletHelpStatus({
   );
 }
 
-function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selectedDeploymentTarget?: DeploymentTargetId }) {
-  const account = useCurrentAccount();
-  const wallets = useWallets();
-  const currentWallet = useCurrentWallet();
-  const disconnectWallet = useDisconnectWallet();
-  const [showWalletHelp, setShowWalletHelp] = useState(false);
+function useResolvedCharacterName(
+  account: ReturnType<typeof useCurrentAccount>,
+  selectedDeploymentTarget: DeploymentTargetId,
+  onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void,
+): string | null {
   const [characterNameState, setCharacterNameState] = useState<{
     readonly targetId: DeploymentTargetId;
     readonly value: string | null;
     readonly walletAddress: string;
   } | null>(null);
-
-  const balanceQuery = useSuiClientQuery(
-    "getBalance",
-    { owner: account?.address ?? "0x0" },
-    { enabled: account !== null, staleTime: 15_000 },
-  );
+  const lastAutoDetectedTargetRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (account === null) {
+      lastAutoDetectedTargetRef.current = null;
       return undefined;
     }
 
@@ -161,13 +157,29 @@ function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selecte
     const walletAddress = account.address;
     const targetId = selectedDeploymentTarget;
 
-    void fetchCharacterNameForWalletAcrossTargets({
+    if (shouldRefreshPublishedWorldPackageManifest()) {
+      void refreshPublishedWorldPackageManifest().catch(() => undefined);
+    }
+
+    void fetchCharacterIdentityForWalletAcrossTargets({
       walletAddress,
       preferredTargetId: targetId,
       signal: controller.signal,
-    }).then((resolvedCharacterName) => {
+    }).then((resolvedIdentity) => {
       if (!controller.signal.aborted) {
-        setCharacterNameState({ targetId, value: resolvedCharacterName, walletAddress });
+        setCharacterNameState({
+          targetId: resolvedIdentity?.targetId ?? targetId,
+          value: resolvedIdentity?.characterName ?? null,
+          walletAddress,
+        });
+
+        if (resolvedIdentity !== null && onDetectedDeploymentTarget !== undefined) {
+          const detectionKey = `${walletAddress}:${resolvedIdentity.targetId}`;
+          if (detectionKey !== lastAutoDetectedTargetRef.current) {
+            lastAutoDetectedTargetRef.current = detectionKey;
+            onDetectedDeploymentTarget(resolvedIdentity.targetId);
+          }
+        }
       }
     }).catch((error: unknown) => {
       if (controller.signal.aborted) {
@@ -181,14 +193,71 @@ function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selecte
     return () => {
       controller.abort();
     };
-  }, [account, selectedDeploymentTarget]);
+  }, [account, onDetectedDeploymentTarget, selectedDeploymentTarget]);
 
-  const characterName = account !== null
+  return account !== null
     && characterNameState !== null
     && characterNameState.walletAddress === account.address
-    && characterNameState.targetId === selectedDeploymentTarget
+    && (selectedDeploymentTarget === "local" || characterNameState.targetId === selectedDeploymentTarget)
     ? characterNameState.value
     : null;
+}
+
+function getConnectedWalletPresentation(balanceQuery: unknown, accountAddress: string, characterName: string | null): {
+  readonly balanceLabel: string;
+  readonly identityLabel: string;
+} {
+  const balanceQuerySnapshot = getBalanceQuerySnapshot(balanceQuery);
+  const balanceLabel = balanceQuerySnapshot.isPending
+    ? "Loading..."
+    : balanceQuerySnapshot.isError
+      ? "-- SUI"
+      : formatBalance(balanceQuerySnapshot.totalBalance);
+
+  return {
+    balanceLabel,
+    identityLabel: characterName ?? formatAddress(accountAddress),
+  };
+}
+
+function getBalanceQuerySnapshot(query: unknown): {
+  readonly isError: boolean;
+  readonly isPending: boolean;
+  readonly totalBalance: string | null;
+} {
+  if (!isRecord(query)) {
+    return { isError: false, isPending: false, totalBalance: null };
+  }
+
+  const totalBalance = isRecord(query.data) && typeof query.data.totalBalance === "string"
+    ? query.data.totalBalance
+    : null;
+
+  return {
+    isError: query.isError === true,
+    isPending: query.isPending === true,
+    totalBalance,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function WalletStatus({
+  onDetectedDeploymentTarget,
+  selectedDeploymentTarget = "local",
+}: {
+  readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
+  readonly selectedDeploymentTarget?: DeploymentTargetId;
+}) {
+  const account = useCurrentAccount();
+  const wallets = useWallets();
+  const currentWallet = useCurrentWallet();
+  const disconnectWallet = useDisconnectWallet();
+  const [showWalletHelp, setShowWalletHelp] = useState(false);
+  const characterName = useResolvedCharacterName(account, selectedDeploymentTarget, onDetectedDeploymentTarget);
+  const balanceQuery = useTargetBalance(account?.address ?? null, selectedDeploymentTarget);
 
   const sharedButtonClassName =
     "ff-header__button ff-header__button--compact ff-wallet-status__action min-h-10 border px-3 py-2 font-heading text-xs uppercase tracking-[0.22em] transition-colors disabled:cursor-not-allowed disabled:opacity-60";
@@ -197,12 +266,7 @@ function WalletStatus({ selectedDeploymentTarget = "local" }: { readonly selecte
   const disabledButtonClassName = `${sharedButtonClassName} border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.85)] text-[var(--text-secondary)]`;
 
   if (account !== null) {
-    const balanceLabel = balanceQuery.isPending
-      ? "Loading..."
-      : balanceQuery.isError
-        ? "-- SUI"
-        : formatBalance(balanceQuery.data.totalBalance);
-    const identityLabel = characterName ?? formatAddress(account.address);
+    const { balanceLabel, identityLabel } = getConnectedWalletPresentation(balanceQuery, account.address, characterName);
 
     return (
       <ConnectedWalletStatus

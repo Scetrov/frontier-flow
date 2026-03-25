@@ -31,6 +31,15 @@ describe("emitMove", () => {
 
     expect(emitted.code.trim()).toBe(expectedMinimalArtifact.trim());
     expect(emitted.moveToml).toContain('name = "graph_to_move_minimal"');
+    expect(emitted.moveToml).toContain('world = { local = "deps/world" }');
+    expect(emitted.artifact.sourceFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "deps/world/Move.toml" }),
+        expect.objectContaining({ path: "deps/world/sources/character.move" }),
+        expect.objectContaining({ path: "deps/world/sources/in_game_id.move" }),
+        expect.objectContaining({ path: "deps/world/sources/turret.move" }),
+      ]),
+    );
   });
 
   it("includes only published package dependencies for remote manifests", () => {

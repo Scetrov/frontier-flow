@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
+
 test("selects a deployment target and surfaces deployment success metadata", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.clear();
@@ -7,11 +9,10 @@ test("selects a deployment target and surfaces deployment success metadata", asy
 
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_wallet=connected&ff_mock_deploy_stage_delay_ms=0");
 
-  const compilationStatus = page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
+  const compilationStatus = getCompilationStatusButton(page);
   await expect(compilationStatus).toContainText("Compiled");
 
-  await page.getByRole("button", { name: "Select deployment target" }).click();
-  await page.getByRole("menuitemradio", { name: "testnet:stillness" }).click();
+  await selectDeploymentTarget(page, "testnet:stillness");
   await page.getByRole("button", { name: "Deploy testnet:stillness" }).click();
 
   const deploymentModal = page.getByRole("dialog", { name: "Deployed" });

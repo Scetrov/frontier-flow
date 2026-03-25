@@ -165,6 +165,14 @@ bun run test:e2e -- generated-contracts.spec.ts authorization-readiness.spec.ts
 bun run build
 ```
 
+Fetch the pinned `world-contracts` reference checkout only when you explicitly need it:
+
+```bash
+bun run build:with-world-contracts
+```
+
+This populates `vendor/world-contracts` at the pinned upstream tag used for local reference work, then runs the normal production build. The `vendor/` directory is intentionally ignored and is not part of the app's tracked runtime dependencies.
+
 ### Typical contributor workflow
 
 ```bash
@@ -178,6 +186,9 @@ bun run dev
 bun run lint
 bun run typecheck
 bun run test:run
+
+# fetch the pinned world-contracts checkout only if you need that local reference repo
+bun run fetch:world-contracts
 ```
 
 ## Workflow Screenshots

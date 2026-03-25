@@ -73,8 +73,8 @@ function createGetTribeAccessor(): NodeCodeGenerator {
 
       return [
         ...createCommentBlock(node, ["accessor getTribe", "extract tribe and owner tribe"]),
-        { code: `let ${tribeBinding}: u64 = ${targetBinding}.character_tribe;`, nodeId: node.id, indent: 2 },
-        { code: `let ${ownerTribeBinding}: u64 = owner_tribe;`, nodeId: node.id, indent: 2 },
+        { code: `let ${tribeBinding}: u32 = ${targetBinding}.character_tribe;`, nodeId: node.id, indent: 2 },
+        { code: `let ${ownerTribeBinding}: u32 = owner_tribe;`, nodeId: node.id, indent: 2 },
       ];
     },
   };
@@ -152,7 +152,7 @@ const dataAccessorGenerators: readonly NodeCodeGenerator[] = [
 
       return [
         ...createCommentBlock(node, ["accessor getBehaviour", "read behaviour code"]),
-        { code: `let ${outputBinding}: u64 = ${targetBinding}.behaviour_change;`, nodeId: node.id, indent: 2 },
+        { code: `let ${outputBinding}: u8 = ${targetBinding}.behaviour_change;`, nodeId: node.id, indent: 2 },
       ];
     },
   },

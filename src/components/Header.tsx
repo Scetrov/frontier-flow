@@ -1,51 +1,50 @@
 import logoUrl from "../../assets/favicon@32px.png";
 import type { DeploymentTargetId } from "../compiler/types";
-import DeploymentTargetControl from "./DeploymentTargetControl";
 import WalletStatus from "./WalletStatus";
 
-export type PrimaryView = "visual" | "move";
+export type PrimaryView = "visual" | "move" | "deploy" | "authorize";
 
 interface HeaderProps {
-  readonly isCompiling?: boolean;
-  readonly isUpgrade?: boolean;
-  readonly onBuild?: () => void;
   readonly activeView?: PrimaryView;
-  readonly canDeploy?: boolean;
-  readonly isDeploying?: boolean;
-  readonly onDeploy?: () => void;
-  readonly onDeploymentTargetChange?: (target: DeploymentTargetId) => void;
-  readonly selectedDeploymentTarget?: DeploymentTargetId;
+  readonly canAccessDeploy?: boolean;
+  readonly canAccessMove?: boolean;
+  readonly hasAuthorizeAccess?: boolean;
+  readonly isCompiling?: boolean;
+  readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
   readonly onViewChange?: (view: PrimaryView) => void;
+  readonly selectedDeploymentTarget?: DeploymentTargetId;
 }
 
 interface HeaderActionsProps {
-  readonly canDeploy: boolean;
-  readonly isBuildDisabled: boolean;
-  readonly isCompiling: boolean;
-  readonly isDeploying: boolean;
-  readonly isUpgrade: boolean;
-  readonly onBuild?: () => void;
-  readonly onDeploy?: () => void;
-  readonly onDeploymentTargetChange?: (target: DeploymentTargetId) => void;
+  readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
   readonly selectedDeploymentTarget: DeploymentTargetId;
 }
 
 interface NavigationButtonProps {
   readonly active: boolean;
+  readonly disabled?: boolean;
   readonly icon: React.ReactNode;
   readonly label: string;
   readonly onClick: () => void;
+  readonly tooltip?: string;
 }
 
-function NavigationButton({ active, icon, label, onClick }: NavigationButtonProps) {
-  const className = active ? "ff-header__nav-button ff-header__nav-button--active" : "ff-header__nav-button";
+function NavigationButton({ active, disabled = false, icon, label, onClick, tooltip }: NavigationButtonProps) {
+  const className = [
+    "ff-header__nav-button",
+    active ? "ff-header__nav-button--active" : "",
+    disabled ? "ff-header__nav-button--disabled" : "",
+  ].filter(Boolean).join(" ");
 
-  return (
+  const button = (
     <button
       aria-current={active ? "page" : undefined}
+      aria-disabled={disabled ? true : undefined}
       aria-label={label}
       className={className}
+      disabled={disabled}
       onClick={onClick}
+      title={tooltip}
       type="button"
     >
       <span aria-hidden="true" className="ff-header__nav-icon">
@@ -54,9 +53,29 @@ function NavigationButton({ active, icon, label, onClick }: NavigationButtonProp
       <span className="ff-header__nav-label">{label}</span>
     </button>
   );
+
+  return tooltip ? <span title={tooltip}>{button}</span> : button;
 }
 
-function ViewNavigation({ activeView, onViewChange }: { readonly activeView: PrimaryView; readonly onViewChange: (view: PrimaryView) => void }) {
+function WorkflowSeparator() {
+  return <span aria-hidden="true" className="ff-header__nav-label text-[0.8rem] text-[var(--text-secondary)]">▶</span>;
+}
+
+function ViewNavigation({
+  activeView,
+  canAccessDeploy,
+  canAccessMove,
+  canAuthorize,
+  isCompiling,
+  onViewChange,
+}: {
+  readonly activeView: PrimaryView;
+  readonly canAccessDeploy: boolean;
+  readonly canAccessMove: boolean;
+  readonly canAuthorize: boolean;
+  readonly isCompiling: boolean;
+  readonly onViewChange: (view: PrimaryView) => void;
+}) {
   return (
     <nav aria-label="Primary" className="ff-header__nav">
       <NavigationButton
@@ -74,8 +93,10 @@ function ViewNavigation({ activeView, onViewChange }: { readonly activeView: Pri
           onViewChange("visual");
         }}
       />
+      <WorkflowSeparator />
       <NavigationButton
         active={activeView === "move"}
+        disabled={!canAccessMove}
         icon={(
           <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
             <path d="M6 2L2.5 7L6 12" stroke="currentColor" strokeWidth="1.6" />
@@ -87,73 +108,64 @@ function ViewNavigation({ activeView, onViewChange }: { readonly activeView: Pri
         onClick={() => {
           onViewChange("move");
         }}
+        tooltip={!canAccessMove ? (isCompiling ? "Automatic compile is in progress" : "Automatic compile will unlock Move after the current graph settles") : undefined}
+      />
+      <WorkflowSeparator />
+      <NavigationButton
+        active={activeView === "deploy"}
+        disabled={!canAccessDeploy}
+        icon={(
+          <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 1.5V9.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+            <path d="M5.8 6.6L9 9.8L12.2 6.6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+            <path d="M3 12H15" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+          </svg>
+        )}
+        label="Deploy"
+        onClick={() => {
+          onViewChange("deploy");
+        }}
+        tooltip={!canAccessDeploy ? (isCompiling ? "Automatic compile is in progress" : "Compile the current graph before reviewing deploy checks") : undefined}
+      />
+      <WorkflowSeparator />
+      <NavigationButton
+        active={activeView === "authorize"}
+        disabled={!canAuthorize}
+        icon={(
+          <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 1.4L14.5 3.5V6.8C14.5 10 12.15 12.3 9 12.9C5.85 12.3 3.5 10 3.5 6.8V3.5L9 1.4Z" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M9 5.1V8.3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+            <circle cx="9" cy="9.9" fill="currentColor" r="0.8" />
+          </svg>
+        )}
+        label="Authorize"
+        onClick={() => {
+          onViewChange("authorize");
+        }}
+        tooltip={!canAuthorize ? "Deploy a contract first" : undefined}
       />
     </nav>
   );
 }
 
-function HeaderActions({
-  canDeploy,
-  isBuildDisabled,
-  isCompiling,
-  isDeploying,
-  isUpgrade,
-  onBuild,
-  onDeploy,
-  onDeploymentTargetChange,
-  selectedDeploymentTarget,
-}: HeaderActionsProps) {
+function HeaderActions({ onDetectedDeploymentTarget, selectedDeploymentTarget }: HeaderActionsProps) {
   return (
     <div className="ff-header__actions">
-      <DeploymentTargetControl
-        canDeploy={canDeploy}
-        isDeploying={isDeploying}
-        isUpgrade={isUpgrade}
-        onDeploy={onDeploy}
-        onTargetChange={onDeploymentTargetChange}
-        selectedTarget={selectedDeploymentTarget}
-      />
-      <button
-        aria-label={isCompiling ? "Building" : "Build"}
-        className="ff-header__button ff-header__button--compact"
-        disabled={isBuildDisabled}
-        onClick={() => {
-          onBuild?.();
-        }}
-        type="button"
-      >
-        <span aria-hidden="true" className="ff-header__button-icon">
-          <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 3H6.5V6.5H3V3Z" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M9.5 3H13V6.5H9.5V3Z" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M3 9.5H6.5V13H3V9.5Z" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M8.3 9.6H10.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-            <path d="M9.4 8.5V10.7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-            <path d="M12 9.6H12.8" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-            <path d="M12.4 9.2V10" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-          </svg>
-        </span>
-        <span className="ff-header__button-label">{isCompiling ? "Building" : "Build"}</span>
-      </button>
-      <WalletStatus selectedDeploymentTarget={selectedDeploymentTarget} />
+      <WalletStatus onDetectedDeploymentTarget={onDetectedDeploymentTarget} selectedDeploymentTarget={selectedDeploymentTarget} />
     </div>
   );
 }
 
 function Header({
-  isCompiling = false,
-  isUpgrade = false,
-  onBuild,
   activeView = "visual",
-  canDeploy = false,
-  isDeploying = false,
-  onDeploy,
-  onDeploymentTargetChange,
-  selectedDeploymentTarget = "local",
+  canAccessDeploy = false,
+  canAccessMove = false,
+  hasAuthorizeAccess = false,
+  isCompiling = false,
+  onDetectedDeploymentTarget,
   onViewChange,
+  selectedDeploymentTarget = "local",
 }: HeaderProps) {
-  const isBuildDisabled = isCompiling || onBuild === undefined;
-
   return (
     <header className="relative z-40 border-b border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.92)] px-4 py-3 backdrop-blur-sm sm:px-6">
       <div className="ff-header__bar">
@@ -176,20 +188,17 @@ function Header({
         </div>
 
         {onViewChange ? (
-          <ViewNavigation activeView={activeView} onViewChange={onViewChange} />
+          <ViewNavigation
+            activeView={activeView}
+            canAccessDeploy={canAccessDeploy}
+            canAccessMove={canAccessMove}
+            canAuthorize={hasAuthorizeAccess}
+            isCompiling={isCompiling}
+            onViewChange={onViewChange}
+          />
         ) : null}
 
-        <HeaderActions
-          canDeploy={canDeploy}
-          isBuildDisabled={isBuildDisabled}
-          isCompiling={isCompiling}
-          isDeploying={isDeploying}
-          isUpgrade={isUpgrade}
-          onBuild={onBuild}
-          onDeploy={onDeploy}
-          onDeploymentTargetChange={onDeploymentTargetChange}
-          selectedDeploymentTarget={selectedDeploymentTarget}
-        />
+        <HeaderActions onDetectedDeploymentTarget={onDetectedDeploymentTarget} selectedDeploymentTarget={selectedDeploymentTarget} />
       </div>
     </header>
   );

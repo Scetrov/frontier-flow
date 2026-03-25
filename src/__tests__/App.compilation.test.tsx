@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   useCurrentAccount as useCurrentAccountHook,
@@ -10,6 +10,7 @@ import type {
 
 import App from "../App";
 import { mergeDeploymentStatus } from "../utils/mergeDeploymentStatus";
+import { mergeUiState } from "../utils/uiStateStorage";
 
 import type { CompilationStatus, CompilerDiagnostic } from "../compiler/types";
 import { createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
@@ -30,13 +31,17 @@ interface CanvasWorkspaceProps {
 }
 
 interface MoveSourcePanelProps {
+  readonly onRebuild?: () => Promise<void>;
   readonly sourceCode: string | null;
   readonly status: CompilationStatus;
 }
 
+const deployWorkflowViewSpy = vi.fn();
+const footerSpy = vi.fn();
 const moveSourcePanelSpy = vi.fn<(props: MoveSourcePanelProps) => void>();
 let lastMoveSourcePanelProps: MoveSourcePanelProps | null = null;
 let hasReportedCompilation = false;
+const mockCompilePipeline = vi.fn<typeof import("../compiler/pipeline").compilePipeline>();
 const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
 const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
 const mockUseSignAndExecuteTransaction = vi.fn<() => SignAndExecuteTransaction>();
@@ -52,20 +57,37 @@ vi.mock("@mysten/dapp-kit", () => ({
 }));
 
 vi.mock("../components/Header", () => ({
-  default: (props: { onViewChange?: (view: "visual" | "move") => void }) => (
-    <button
-      type="button"
-      onClick={() => {
-        props.onViewChange?.("move");
-      }}
-    >
-      Header Slot
-    </button>
+  default: (props: { onViewChange?: (view: "visual" | "move" | "deploy") => void }) => (
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          props.onViewChange?.("move");
+        }}
+      >
+        Header Move Slot
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          props.onViewChange?.("deploy");
+        }}
+      >
+        Header Deploy Slot
+      </button>
+    </div>
   ),
 }));
 
 vi.mock("../components/Footer", () => ({
-  default: () => <div>Footer Slot</div>,
+  default: (props: { transientStatusMessage?: { text: string } | null }) => {
+    footerSpy(props);
+    return <div>{props.transientStatusMessage?.text ?? "Footer Slot"}</div>;
+  },
+}));
+
+vi.mock("../compiler/pipeline", () => ({
+  compilePipeline: (...args: Parameters<typeof import("../compiler/pipeline").compilePipeline>) => mockCompilePipeline(...args),
 }));
 
 vi.mock("../components/Sidebar", () => ({
@@ -112,6 +134,13 @@ vi.mock("../components/MoveSourcePanel", () => ({
   },
 }));
 
+vi.mock("../components/DeployWorkflowView", () => ({
+  default: (props: unknown) => {
+    deployWorkflowViewSpy(props);
+    return <div>Deploy Workflow Slot</div>;
+  },
+}));
+
 describe("App compilation handoff", () => {
   beforeEach(() => {
     mockUseCurrentAccount.mockReturnValue(null);
@@ -122,6 +151,8 @@ describe("App compilation handoff", () => {
   });
 
   afterEach(() => {
+    deployWorkflowViewSpy.mockClear();
+    footerSpy.mockClear();
     moveSourcePanelSpy.mockClear();
     lastMoveSourcePanelProps = null;
     hasReportedCompilation = false;
@@ -132,13 +163,14 @@ describe("App compilation handoff", () => {
     mockUseSignAndExecuteTransaction.mockReset();
     mockUseSuiClient.mockReset();
     mockUseWallets.mockReset();
+    mockCompilePipeline.mockReset();
   });
 
   it("prefers artifact-backed Move source when the workspace reports it", async () => {
     render(<App />);
 
     expect(await screen.findByText("Canvas Workspace Slot")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Header Slot" }));
+    fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
 
     await waitFor(() => {
       expect(moveSourcePanelSpy).toHaveBeenCalled();
@@ -146,6 +178,107 @@ describe("App compilation handoff", () => {
       expect(lastMoveSourcePanelProps?.sourceCode).toBe("module builder_extensions::artifact_contract {}");
       expect(lastMoveSourcePanelProps?.status.state).toBe("compiled");
     });
+  });
+
+  it("routes compiled workflows into the deploy step", async () => {
+    render(<App />);
+
+    expect(await screen.findByText("Canvas Workspace Slot")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Header Deploy Slot" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Header Deploy Slot" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Deploy Workflow Slot")).toBeInTheDocument();
+      expect(deployWorkflowViewSpy).toHaveBeenCalled();
+    });
+  });
+
+  it("shows footer rebuild success feedback after a manual Move rebuild completes", async () => {
+    mockCompilePipeline.mockResolvedValue({
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([4, 5, 6])],
+        artifact: createGeneratedArtifactStub({
+          moduleName: "starter_contract",
+          moveSource: "module builder_extensions::starter_contract {}",
+          bytecodeModules: [new Uint8Array([4, 5, 6])],
+        }),
+      },
+      diagnostics: [],
+      code: "module builder_extensions::starter_contract {}",
+      sourceMap: null,
+      optimizationReport: null,
+      artifact: createGeneratedArtifactStub({
+        moduleName: "starter_contract",
+        moveSource: "module builder_extensions::starter_contract {}",
+        bytecodeModules: [new Uint8Array([4, 5, 6])],
+      }),
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Canvas Workspace Slot")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
+
+    await waitFor(() => {
+      expect(lastMoveSourcePanelProps?.onRebuild).toBeTypeOf("function");
+    });
+
+    await act(async () => {
+      await lastMoveSourcePanelProps?.onRebuild?.();
+    });
+
+    await waitFor(() => {
+      expect(footerSpy).toHaveBeenLastCalledWith(expect.objectContaining({
+        transientStatusMessage: { tone: "success", text: "Rebuild success" },
+      }));
+      expect(screen.getByText("Rebuild success")).toBeInTheDocument();
+    });
+  });
+
+  it("rebuilds using the persisted live draft contract name", async () => {
+    mergeUiState(window.localStorage, { currentDraftContractName: "Turret Priority Draft" });
+    mockCompilePipeline.mockResolvedValue({
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([7, 8, 9])],
+        artifact: createGeneratedArtifactStub({
+          moduleName: "turret_priority_draft",
+          moveSource: "module builder_extensions::turret_priority_draft {}",
+          bytecodeModules: [new Uint8Array([7, 8, 9])],
+        }),
+      },
+      diagnostics: [],
+      code: "module builder_extensions::turret_priority_draft {}",
+      sourceMap: null,
+      optimizationReport: null,
+      artifact: createGeneratedArtifactStub({
+        moduleName: "turret_priority_draft",
+        moveSource: "module builder_extensions::turret_priority_draft {}",
+        bytecodeModules: [new Uint8Array([7, 8, 9])],
+      }),
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Canvas Workspace Slot")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
+
+    await waitFor(() => {
+      expect(lastMoveSourcePanelProps?.onRebuild).toBeTypeOf("function");
+    });
+
+    await act(async () => {
+      await lastMoveSourcePanelProps?.onRebuild?.();
+    });
+
+    expect(mockCompilePipeline).toHaveBeenLastCalledWith(expect.objectContaining({
+      moduleName: "Turret Priority Draft",
+    }));
   });
 
   it("does not merge deployment metadata from a different artifact revision", () => {

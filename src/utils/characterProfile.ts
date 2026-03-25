@@ -50,6 +50,11 @@ interface CharacterNameAcrossTargetsLookupInput {
   readonly fetchFn?: typeof fetch;
 }
 
+export interface ResolvedWalletCharacterIdentity {
+  readonly characterName: string;
+  readonly targetId: RemoteDeploymentTargetId;
+}
+
 const TESTNET_GRAPHQL_ENDPOINT = "https://graphql.testnet.sui.io/graphql";
 
 const PLAYER_PROFILE_QUERY = `query PlayerProfile($owner: SuiAddress!, $type: String!) {
@@ -149,6 +154,17 @@ export async function fetchCharacterNameForWallet(input: CharacterNameLookupInpu
 export async function fetchCharacterNameForWalletAcrossTargets(
   input: CharacterNameAcrossTargetsLookupInput,
 ): Promise<string | null> {
+  const identity = await fetchCharacterIdentityForWalletAcrossTargets(input);
+
+  return identity?.characterName ?? null;
+}
+
+/**
+ * Resolve the first available character identity for a wallet across the published world targets.
+ */
+export async function fetchCharacterIdentityForWalletAcrossTargets(
+  input: CharacterNameAcrossTargetsLookupInput,
+): Promise<ResolvedWalletCharacterIdentity | null> {
   const candidateTargets = getCandidateTargets(input.preferredTargetId);
 
   for (const targetId of candidateTargets) {
@@ -160,7 +176,10 @@ export async function fetchCharacterNameForWalletAcrossTargets(
     });
 
     if (characterName !== null) {
-      return characterName;
+      return {
+        characterName,
+        targetId,
+      };
     }
   }
 

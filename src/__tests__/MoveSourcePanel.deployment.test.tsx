@@ -5,7 +5,7 @@ import MoveSourcePanel from "../components/MoveSourcePanel";
 import { createDeploymentReviewEntry, createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
 
 describe("MoveSourcePanel deployment parity", () => {
-  it("renders target, stage, severity, headline, and package metadata for the latest deployment", () => {
+  it("does not render deployment review content for completed deployments", () => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("deployed", {
         headline: "Deployed",
@@ -20,16 +20,14 @@ describe("MoveSourcePanel deployment parity", () => {
 
     render(<MoveSourcePanel sourceCode={artifact.moveSource} status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }} />);
 
-    expect(screen.getAllByText("Deployed")).toHaveLength(1);
-    expect(screen.getByText("testnet:utopia")).toBeVisible();
-    expect(screen.getByText("confirming")).toBeVisible();
-    expect(screen.getByText("success")).toBeVisible();
-    expect(screen.getByText("0xdef456")).toBeVisible();
-    expect(screen.getByText(`Artifact ID: ${artifact.artifactId ?? ""}`)).toBeVisible();
-    expect(screen.getByText("Transaction Digest: digest-utopia-01")).toBeVisible();
+    expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Target: testnet:utopia")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stage: confirming")).not.toBeInTheDocument();
+    expect(screen.queryByText("Package ID: 0xdef456")).not.toBeInTheDocument();
+    expect(screen.queryByText("Transaction Digest: digest-utopia-01")).not.toBeInTheDocument();
   });
 
-  it("shows prior session deployment review entries alongside the latest summary", () => {
+  it("does not render prior deployment history inside the Move tab", () => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("deployed", {
         headline: "Deployed",
@@ -66,9 +64,9 @@ describe("MoveSourcePanel deployment parity", () => {
 
     render(<MoveSourcePanel sourceCode={artifact.moveSource} status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }} />);
 
-    expect(screen.getByText(/Earlier this session: Deployment cancelled - testnet:stillness - signing/)).toBeVisible();
-    expect(screen.getByText("Approve the wallet signing request to continue deployment.")).toBeVisible();
-    expect(screen.getByText("Historical only")).toBeVisible();
-    expect(screen.getByText("Local validator state changed after this attempt. Re-verify this evidence before relying on it.")).toBeVisible();
+    expect(screen.queryByText(/Earlier this session: Deployment cancelled - testnet:stillness - signing/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Approve the wallet signing request to continue deployment.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Historical only")).not.toBeInTheDocument();
+    expect(screen.queryByText("Local validator state changed after this attempt. Re-verify this evidence before relying on it.")).not.toBeInTheDocument();
   });
 });

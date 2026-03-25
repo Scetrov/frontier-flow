@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { CONTRACT_LIBRARY_STORAGE_KEY } from "../../src/utils/contractStorage";
+import { getCompilationStatusButton } from "./fixtures/workflow";
 import { referenceGraphFixtures, type GraphFixtureEdge, type GraphFixtureNode } from "./referenceGraphFixtures";
 
 async function prepareCompilationPage(page: Page) {
@@ -58,27 +59,22 @@ async function ensureCategoryExpanded(page: Page, categoryLabel: string) {
   }
 }
 
-function getCompilationStatusButton(page: Page) {
-  return page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
-}
-
-test("auto-compiles after idle and supports manual build", async ({ page, isMobile }) => {
+test("auto-compiles after idle and unlocks the workflow", async ({ page, isMobile }) => {
   test.skip(isMobile, "Desktop drag and drop coverage only.");
 
   await prepareCompilationPage(page);
 
   const statusButton = getCompilationStatusButton(page);
-  const buildButton = page.getByRole("button", { name: "Build" });
   const moveTab = page.getByRole("button", { name: "Move" });
+  const deployTab = page.locator("header").getByRole("button", { name: "Deploy", exact: true });
 
   await expect(statusButton).toBeVisible();
   await ensureCategoryExpanded(page, "Event Trigger");
   await dropNode(page, "Proximity", 360, 260);
   await expect(statusButton).toContainText("Compiled");
 
-  await buildButton.click();
-  await expect(page.getByRole("button", { name: "Building" })).toBeDisabled();
-  await expect(statusButton).toContainText("Compiled");
+  await expect(moveTab).toBeEnabled();
+  await expect(deployTab).toBeEnabled();
 
   await moveTab.click();
   await expect(page.getByText("Generated source")).toBeVisible();
@@ -108,12 +104,12 @@ test("reference graph matrix compiles multiple supported saved contracts through
     });
 
     const statusButton = getCompilationStatusButton(page);
-    const buildButton = page.getByRole("button", { name: "Build", exact: true });
     const moveTab = page.getByRole("button", { name: "Move", exact: true });
+    const deployTab = page.locator("header").getByRole("button", { name: "Deploy", exact: true });
 
     await expect(statusButton).toContainText("Compiled");
-    await buildButton.click();
-    await expect(statusButton).toContainText("Compiled");
+    await expect(moveTab).toBeEnabled();
+    await expect(deployTab).toBeEnabled();
 
     await moveTab.click();
     await expect(page.getByText(`${entry.expectedModuleName}.move`)).toBeVisible();

@@ -227,4 +227,35 @@ describe("DeploymentProgressModal", () => {
     expect(screen.getByRole("dialog", { name: "Deployment failed" })).toBeVisible();
     expect(screen.getByText("Review the wallet and RPC error details, then retry deployment once the target is healthy.")).toBeVisible();
   });
+
+  it("renders preparation-stage compiler blocker details for failed outcomes", () => {
+    const progress = createDeploymentProgressFixture({
+      attemptId: "attempt-prepare-failed",
+      targetId: "testnet:stillness",
+      stage: "preparing",
+      stageIndex: 1,
+      stageCount: 5,
+      completedStages: ["validating"],
+      activeMessage: "Preparing deployment payload.",
+    });
+
+    render(
+      <DeploymentProgressModal
+        latestAttempt={createDeploymentAttemptFixture({
+          attemptId: "attempt-prepare-failed",
+          targetId: "testnet:stillness",
+          outcome: "failed",
+          currentStage: "preparing",
+          endedAt: 12,
+          message: "Remote deployment cannot resolve the published world dependency in the browser Move compiler.",
+          errorCode: "deployment-executor-error",
+        })}
+        onDismiss={() => undefined}
+        progress={progress}
+      />,
+    );
+
+    expect(screen.getByRole("dialog", { name: "Deployment failed" })).toBeVisible();
+    expect(screen.getAllByText("Remote deployment cannot resolve the published world dependency in the browser Move compiler.")).toHaveLength(2);
+  });
 });

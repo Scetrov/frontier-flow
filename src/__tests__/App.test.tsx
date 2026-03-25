@@ -10,7 +10,10 @@ import type {
 
 import App from "../App";
 import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
+import { createCompilationGraphKey } from "../utils/compilationGraphKey";
+import { saveCompilationState } from "../utils/compilationStateStorage";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
+import { createGeneratedArtifactStub } from "./compiler/helpers";
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
@@ -44,33 +47,46 @@ vi.mock("@mysten/dapp-kit", () => ({
 }));
 
 vi.mock("../components/Header", () => ({
-  default: (props: { activeView?: string; onViewChange?: (view: "visual" | "move") => void }) => {
+  default: (props: { activeView?: string; onViewChange?: (view: "visual" | "move" | "deploy" | "authorize") => void }) => {
     headerSpy(props);
     return (
-      <button
-        type="button"
-        onClick={() => {
-          props.onViewChange?.("move");
-        }}
-      >
-        Header Slot
-      </button>
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            props.onViewChange?.("move");
+          }}
+        >
+          Header Move Slot
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            props.onViewChange?.("deploy");
+          }}
+        >
+          Header Deploy Slot
+        </button>
+      </div>
     );
   },
 }));
 
 vi.mock("../components/Footer", () => ({
-  default: (props: { onSelectDiagnostic?: (nodeId: string) => void }) => {
+  default: (props: { onSelectDiagnostic?: (nodeId: string) => void; transientStatusMessage?: { text: string } | null }) => {
     footerSpy(props);
     return (
-      <button
-        type="button"
-        onClick={() => {
-          props.onSelectDiagnostic?.("node_1");
-        }}
-      >
-        Footer Slot
-      </button>
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            props.onSelectDiagnostic?.("node_1");
+          }}
+        >
+          Footer Slot
+        </button>
+        {props.transientStatusMessage ? <span>{props.transientStatusMessage.text}</span> : null}
+      </div>
     );
   },
 }));
@@ -140,12 +156,62 @@ describe("App", () => {
     );
   });
 
-  it("restores the primary view from local storage", () => {
+  it("renders the deployment target selector in the visual workspace and persists changes", async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Target network/server" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "testnet:utopia" }));
+
+    expect(JSON.parse(window.localStorage.getItem(UI_STATE_STORAGE_KEY) ?? "{}")).toMatchObject({
+      selectedDeploymentTarget: "testnet:utopia",
+    });
+  });
+
+  it("falls back from persisted move to visual until the compiled workflow is ready", () => {
     window.localStorage.setItem(
       UI_STATE_STORAGE_KEY,
       JSON.stringify({
         version: 1,
         activeView: "move",
+        selectedDeploymentTarget: "local",
+        isSidebarOpen: true,
+        isContractPanelOpen: true,
+      }),
+    );
+
+    render(<App />);
+
+    expect(headerSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        activeView: "visual",
+      }),
+    );
+  });
+
+  it("restores the persisted move view when a matching compilation snapshot exists", () => {
+    const artifact = createGeneratedArtifactStub({
+      moduleName: "starter_contract",
+      moveSource: "module builder_extensions::starter_contract {}",
+      bytecodeModules: [new Uint8Array([1, 2, 3])],
+    });
+
+    saveCompilationState(window.localStorage, {
+      version: 1,
+      graphKey: createCompilationGraphKey(defaultContractFlow.nodes, defaultContractFlow.edges, "Starter Contract"),
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([1, 2, 3])],
+        artifact,
+      },
+      diagnostics: [],
+      moveSourceCode: artifact.moveSource,
+    });
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "move",
+        selectedDeploymentTarget: "local",
         isSidebarOpen: true,
         isContractPanelOpen: true,
       }),
@@ -158,15 +224,63 @@ describe("App", () => {
         activeView: "move",
       }),
     );
+    expect(screen.getByText("Move Source Slot")).toBeInTheDocument();
+  });
+
+  it("lets Move reopen from visual while the matching cached build is available", () => {
+    const artifact = createGeneratedArtifactStub({
+      moduleName: "starter_contract",
+      moveSource: "module builder_extensions::starter_contract {}",
+      bytecodeModules: [new Uint8Array([1, 2, 3])],
+    });
+
+    saveCompilationState(window.localStorage, {
+      version: 1,
+      graphKey: createCompilationGraphKey(defaultContractFlow.nodes, defaultContractFlow.edges, "Starter Contract"),
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([1, 2, 3])],
+        artifact,
+      },
+      diagnostics: [],
+      moveSourceCode: artifact.moveSource,
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
+
+    expect(screen.getByText("Move Source Slot")).toBeInTheDocument();
+  });
+
+  it("falls back from authorize to visual when no valid deployment state exists", () => {
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "authorize",
+        selectedDeploymentTarget: "local",
+        isSidebarOpen: true,
+        isContractPanelOpen: true,
+      }),
+    );
+
+    render(<App />);
+
+    expect(headerSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        activeView: "visual",
+      }),
+    );
   });
 
   it("persists the primary view when the header switches tabs", () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Header Slot" }));
+    fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
 
     expect(JSON.parse(window.localStorage.getItem(UI_STATE_STORAGE_KEY) ?? "{}")).toMatchObject({
-      activeView: "move",
+      activeView: "visual",
     });
   });
 
