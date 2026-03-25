@@ -440,7 +440,21 @@ That split matches the current practical constraints better than trying to force
 ## 11. Open Questions
 
 1. Can the bundled WASM builder compile a pinned revision of `evefrontier/world-contracts` if tests are excluded and the toolchain version matches exactly?
+
+   **Answered:** Yes. `@zktx.io/sui-move-builder` is specifically architected for this. Its `resolve()` entry point accepts `rootSource` (git URL + rev), processes `Move.lock` V4 via `loadFromLockfile`, and produces compiler-ready dependency graphs through a three-layer pipeline (DependencyGraph → ResolvedGraph → CompilationDependencies). No upstream changes are required.
+
 2. Does the builder support enough `Move.lock` semantics in-browser for `contracts/world/Move.lock` to be reused directly without a server-side preprocessing step?
+
+   **Answered:** Yes. The builder has full `Move.lock` V4 support: `lockfileGenerator.ts` generates V4 TOML, `lockfileMigration.ts` migrates legacy V3 lockfiles, and `resolver.ts` implements `loadFromLockfile` as the single source of truth when a lockfile exists. It also handles local-to-git dependency conversion for mono-repo subdirectories, which is exactly the pattern needed for `world-contracts/contracts/world`.
+
 3. Is bytecode-only dependency linking planned soon enough to justify waiting for it rather than building a source-resolved path?
+
+   **Open.** The builder's current architecture supports source-resolved compilation, which is sufficient for the deploy-grade path. Bytecode-only linking remains a future optimisation but does not block implementation.
+
 4. Should Frontier Flow persist a full `ResolvedWorldReference` per target in local storage, or refresh it from a maintained manifest service?
+
+   **Partially answered.** Each deployment target maps to a specific world-contracts tag: `testnet:stillness` → `v0.0.18`, `testnet:utopia` → `v0.0.21`. These are managed by CCP and update infrequently. Pinning version tags in source (similar to the current `PackageReferenceBundle` approach) is sufficient for remote targets. For `local`, the user may deploy arbitrary versions, so the deploy UX must prompt for or detect the deployed world version.
+
 5. Should deploy-grade compilation be considered part of the trust boundary for the application and therefore require attestation or reproducibility metadata?
+
+   **Open.** Deferred to security review during implementation.
