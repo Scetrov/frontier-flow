@@ -102,7 +102,7 @@ describe("DeployWorkflowView", () => {
     expect(screen.getByRole("button", { name: "Deploy local" })).toBeVisible();
     expect(screen.getByText("Ready to deploy")).toBeVisible();
     expect(screen.getByText("available local validator")).toBeVisible();
-    expect(screen.getByText("Wallet balance: 2.5 SUI")).toBeVisible();
+    expect(screen.getByText("Balance check is skipped for local deployment")).toBeVisible();
     expect(screen.queryByText("Current blockers")).not.toBeInTheDocument();
     expect(screen.getByText("No deployment attempt has been recorded for this graph revision yet.")).toBeVisible();
   });

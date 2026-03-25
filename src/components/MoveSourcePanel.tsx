@@ -62,6 +62,32 @@ function getArtifactFiles(sourceCode: string | null, status: CompilationStatus):
   return Array.from(files.values());
 }
 
+function getDeploymentMetadata(status: CompilationStatus): {
+  readonly badges: readonly string[];
+  readonly details: readonly string[];
+} {
+  const artifact = status.state === "compiled" || status.state === "error"
+    ? status.artifact ?? null
+    : null;
+  const deploymentStatus = artifact?.deploymentStatus;
+
+  if (deploymentStatus === undefined) {
+    return { badges: [], details: [] };
+  }
+
+  const badges = deploymentStatus.targetId === undefined
+    ? []
+    : [deploymentStatus.targetId];
+  const details = Array.from(new Set([
+    ...deploymentStatus.blockedReasons,
+    deploymentStatus.nextActionSummary,
+    deploymentStatus.packageId,
+    deploymentStatus.confirmationReference,
+  ].filter((value): value is string => typeof value === "string" && value.length > 0)));
+
+  return { badges, details };
+}
+
 function getDefaultFilePath(files: readonly VirtualArtifactFile[], status: CompilationStatus, sourceCode: string | null): string | null {
   const artifact = status.state === "compiled" || status.state === "error"
     ? status.artifact ?? null
@@ -141,6 +167,7 @@ function MoveSourceContent({
 
 function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps) {
   const files = useMemo(() => getArtifactFiles(sourceCode, status), [sourceCode, status]);
+  const deploymentMetadata = useMemo(() => getDeploymentMetadata(status), [status]);
   const defaultFilePath = useMemo(() => getDefaultFilePath(files, status, sourceCode), [files, sourceCode, status]);
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(defaultFilePath);
   const [copyLabel, setCopyLabel] = useState("Copy");
@@ -187,7 +214,7 @@ function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps
         <div>
           <p className="ff-move-source__eyebrow">Move</p>
           <h2 className="ff-move-source__title">Generated source</h2>
-          <p className="ff-move-source__copy">You can view the generated source in this tab to help diagnose problems, move on to Deploy to deploy to the server.</p>
+          <p className="ff-move-source__copy">Inspect the generated Move package in this tab to diagnose issues before switching to Deploy.</p>
         </div>
         <div className="ff-move-source__actions" role="group" aria-label="Move source actions">
           <button
@@ -210,6 +237,16 @@ function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps
       </header>
 
       <div className="ff-move-source__body">
+        {deploymentMetadata.badges.length > 0 || deploymentMetadata.details.length > 0 ? (
+          <div className="ff-move-source__meta" aria-label="Move source metadata">
+            {deploymentMetadata.badges.map((badge) => (
+              <span className="ff-move-source__badge" key={badge}>{badge}</span>
+            ))}
+            {deploymentMetadata.details.map((detail) => (
+              <span className="ff-move-source__filename" key={detail}>{detail}</span>
+            ))}
+          </div>
+        ) : null}
         <p className="ff-move-source__learn-banner">
           Learn how to extend this code using{" "}
           <a className="ff-move-source__learn-link" href="https://evefrontier.space/move/" rel="noreferrer" target="_blank">

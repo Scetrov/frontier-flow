@@ -253,6 +253,7 @@ interface DeploymentDerivedState {
 
 interface DeploymentStore {
   readonly deploymentStatus: DeploymentStatus | null;
+  readonly hasExplicitTargetSelection: boolean;
   readonly isDeploying: boolean;
   readonly localChainIdRef: LocalChainIdRef;
   readonly latestAttempt: DeploymentAttempt | null;
@@ -263,7 +264,7 @@ interface DeploymentStore {
   readonly setLatestAttempt: Dispatch<SetStateAction<DeploymentAttempt | null>>;
   readonly setProgress: Dispatch<SetStateAction<DeploymentProgress | null>>;
   readonly setReviewHistory: ReviewHistorySetter;
-  readonly setSelectedTarget: Dispatch<SetStateAction<DeploymentTargetId>>;
+  readonly setSelectedTarget: (target: DeploymentTargetId) => void;
   readonly setStatusMessage: Dispatch<SetStateAction<DeploymentStatusMessage | null>>;
   readonly stateSetters: DeploymentStateSetters;
   readonly statusMessage: DeploymentStatusMessage | null;
@@ -334,18 +335,23 @@ function createValidationPreviewDeploymentStatus(input: {
 
 function getResolvedDeploymentStatus(input: {
   readonly deploymentStatus: DeploymentStatus | null;
+  readonly hasExplicitTargetSelection: boolean;
   readonly selectedTarget: DeploymentTargetId;
   readonly status: CompilationStatus;
   readonly validation: DeploymentValidationResult;
 }): DeploymentStatus | null {
   const artifact = getArtifactFromStatus(input.status);
-  const existingStatus = input.deploymentStatus;
+  const existingStatus = input.deploymentStatus ?? artifact?.deploymentStatus ?? null;
 
   if (artifact?.artifactId === undefined) {
     return existingStatus;
   }
 
-  if (existingStatus !== null && existingStatus.artifactId === artifact.artifactId && existingStatus.targetId === input.selectedTarget) {
+  if (
+    existingStatus !== null
+    && existingStatus.artifactId === artifact.artifactId
+    && (!input.hasExplicitTargetSelection || existingStatus.targetId === input.selectedTarget)
+  ) {
     return existingStatus;
   }
 
@@ -359,6 +365,7 @@ function getResolvedDeploymentStatus(input: {
 
 function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore {
   const [selectedTarget, setSelectedTarget] = useState<DeploymentTargetId>(initialTarget);
+  const [hasExplicitTargetSelection, setHasExplicitTargetSelection] = useState(initialTarget !== DEFAULT_DEPLOYMENT_TARGET);
   const [latestAttempt, setLatestAttempt] = useState<DeploymentAttempt | null>(null);
   const [, setReviewHistory] = useState<readonly DeploymentReviewEntry[]>([]);
   const [progress, setProgress] = useState<DeploymentProgress | null>(null);
@@ -367,6 +374,10 @@ function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore 
   const [isDeploying, setIsDeploying] = useState(false);
   const timerIdsRef = useRef<number[]>([]);
   const localChainIdRef = useRef<string | null>(null);
+  const handleSelectedTargetChange = useCallback((target: DeploymentTargetId) => {
+    setHasExplicitTargetSelection(true);
+    setSelectedTarget(target);
+  }, []);
   const stateSetters = useMemo<DeploymentStateSetters>(() => ({
     setDeploymentStatus,
     setIsDeploying,
@@ -378,6 +389,7 @@ function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore 
 
   return {
     deploymentStatus,
+    hasExplicitTargetSelection,
     isDeploying,
     localChainIdRef,
     latestAttempt,
@@ -388,7 +400,7 @@ function useDeploymentStore(initialTarget: DeploymentTargetId): DeploymentStore 
     setLatestAttempt,
     setProgress,
     setReviewHistory,
-    setSelectedTarget,
+    setSelectedTarget: handleSelectedTargetChange,
     setStatusMessage,
     stateSetters,
     statusMessage,
@@ -1343,6 +1355,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
   const walletReadiness = useWalletReadiness();
   const {
     deploymentStatus,
+    hasExplicitTargetSelection,
     isDeploying,
     localChainIdRef,
     latestAttempt,
@@ -1363,10 +1376,11 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
   });
   const resolvedDeploymentStatus = useMemo(() => getResolvedDeploymentStatus({
     deploymentStatus,
+    hasExplicitTargetSelection,
     selectedTarget,
     status,
     validation: derivedState.validation,
-  }), [deploymentStatus, derivedState.validation, selectedTarget, status]);
+  }), [deploymentStatus, derivedState.validation, hasExplicitTargetSelection, selectedTarget, status]);
 
   const clearStageTimers = useCallback(() => {
     for (const timerId of timerIdsRef.current) {

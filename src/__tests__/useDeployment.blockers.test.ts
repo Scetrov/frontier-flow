@@ -197,23 +197,15 @@ describe("useDeployment blocker handling", () => {
     expect(result.current.latestAttempt?.errorCode).toBe("local-target-unavailable");
   });
 
-  it("blocks local deployment when a wallet is not connected", async () => {
+  it("allows local deployment previews without a connected wallet", () => {
     const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
     const { result } = renderHook(() => useDeployment({
       initialTarget: "local",
       status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
     }));
 
-    expect(result.current.blockerReasons).toContain(
-      "Connect a Sui-compatible wallet before deploying to local.",
-    );
-
-    await act(async () => {
-      await result.current.startDeployment();
-    });
-
-    expect(result.current.latestAttempt?.outcome).toBe("blocked");
-    expect(result.current.latestAttempt?.errorCode).toBe("wallet-required");
+    expect(result.current.canDeploy).toBe(true);
+    expect(result.current.blockerReasons).toEqual([]);
   });
 
   it("updates deployment status previews when the selected target changes before deployment", () => {

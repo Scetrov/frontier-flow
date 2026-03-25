@@ -31,7 +31,7 @@ describe("MoveSourcePanel", () => {
 
     expect(screen.getByLabelText("Move source view")).toBeInTheDocument();
     expect(screen.getByText("Generated source")).toBeVisible();
-    expect(screen.getByText("You can view the generated source in this tab to help diagnose problems, move on to Deploy to deploy to the server.")).toBeVisible();
+    expect(screen.getByText("Inspect the generated Move package in this tab to diagnose issues before switching to Deploy.")).toBeVisible();
     expect(screen.getByText(/Learn how to extend this code using/i)).toBeVisible();
     expect(screen.getByRole("link", { name: "Learn Move on Sui" })).toHaveAttribute("href", "https://evefrontier.space/move/");
     expect(screen.getByRole("tab", { name: artifact.sourceFilePath })).toHaveAttribute("aria-selected", "true");
@@ -90,10 +90,10 @@ describe("MoveSourcePanel", () => {
     );
 
     expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/Provide the target turret package and extension registration details to continue deployment/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Provide the target turret package and extension registration details to continue deployment/i)).toBeVisible();
   });
 
-  it("does not render the previous header chips", () => {
+  it("renders deployment metadata without restoring the old compiled-status chip", () => {
     const { container } = render(
       <MoveSourcePanel
         sourceCode={compiledArtifact.moveSource}
@@ -101,9 +101,31 @@ describe("MoveSourcePanel", () => {
       />,
     );
 
-    expect(container.querySelector(".ff-move-source__badge")).toBeNull();
-    expect(container.querySelector(".ff-move-source__meta")).toBeNull();
+    expect(container.querySelector(".ff-move-source__meta")).not.toBeNull();
+    expect(screen.getByText("Provide the target turret package and extension registration details to continue deployment.")).toBeVisible();
     expect(screen.queryAllByText("Compiled")).toHaveLength(0);
+  });
+
+  it("surfaces deployment metadata for successful deployments in the Move tab", () => {
+    const artifact = createGeneratedArtifactStub({
+      deploymentStatus: createDeploymentStatus("deployed", {
+        targetId: "testnet:stillness",
+        packageId: "0xabc123",
+        confirmationReference: "0xdigest123",
+        nextActionSummary: "Deployment completed for testnet:stillness. Package ID: 0xabc123.",
+      }),
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={artifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }}
+      />,
+    );
+
+    expect(screen.getByText("testnet:stillness")).toBeVisible();
+    expect(screen.getByText("0xabc123")).toBeVisible();
+    expect(screen.getByText("0xdigest123")).toBeVisible();
   });
 
   it("does not render deployment review content for ready deployment state", () => {
@@ -123,7 +145,7 @@ describe("MoveSourcePanel", () => {
 
     expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
     expect(screen.queryByText("Target: testnet:stillness")).not.toBeInTheDocument();
-    expect(screen.queryByText("Ready to deploy the generated artifact to the selected turret.")).not.toBeInTheDocument();
+    expect(screen.getByText("Ready to deploy the generated artifact to the selected turret.")).toBeVisible();
   });
 
   it("invokes rebuild when the Move tab rebuild button is pressed", () => {
