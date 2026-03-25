@@ -91,7 +91,8 @@ export function prepareArtifactManifestForTarget(
 }
 
 function pushLine(lines: string[], sourceMap: SourceMapEntry[], code: string, nodeId: string | null): void {
-  lines.push(code);
+  const shouldAnnotate = nodeId !== null && code.trim() !== "";
+  lines.push(shouldAnnotate ? `${code} // @ff-node:${nodeId}` : code);
   if (nodeId !== null) {
     sourceMap.push({
       line: lines.length,

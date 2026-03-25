@@ -3,7 +3,7 @@ title: Frontier Flow - Solution Design
 version: 1.0.0
 status: draft
 created: 2026-02-22
-updated: 2026-03-21
+updated: 2026-03-25
 author: Scetrov
 description: Low-level technical implementation details and code references for Frontier Flow.
 ---
@@ -722,7 +722,7 @@ The current graph-to-Move path lives entirely inside `src/compiler/` and runs in
 2. `validateGraph()` rejects unsupported node types, missing required inputs, socket mismatches, disconnected entry paths, and unresolved ordering before emission starts.
 3. `collectSanitizationDiagnostics()` and `sanitizeGraph()` enforce Move-safe identifiers while still blocking module or node names that cannot be recovered safely.
 4. `emitMove()` produces the generated package artifact (`Move.toml`, `sources/<module>.move`, and source map) with stable section ordering for preview and compile.
-5. `compileMove()` submits the artifact files to `@zktx.io/sui-move-builder/lite`, decodes returned bytecode modules, and maps compiler output back through the generated source map.
+5. `compileMove()` checksum-verifies the bundled `sui_move_wasm_bg.wasm`, initializes `@zktx.io/sui-move-builder/lite` with the verified asset URL, submits the artifact files, decodes returned bytecode modules, and maps compiler output back through the generated source map.
 
 `compilePipeline()` is the single orchestration boundary. It returns one result object consumed by auto-compile, manual build, footer diagnostics, and the Move preview.
 
@@ -870,13 +870,14 @@ let target = radar::scan_closest(); // @ff-node:dnd_3_1708642800000
 let tribe = directory::get_tribe(target); // @ff-node:dnd_5_1708642800001
 ```
 
-These annotations are stripped during production builds but are preserved during development and testing to power the **Compiler Error → Node Mapping** pipeline (see §5.4.1).
+These annotations are emitted into the generated Move source that the preview panel and compiler both consume, keeping the human-readable artifact and the compiler traceability path aligned (see §5.4.1).
 
 ### 5.4.1 Compiler Error → Node Mapping
 
 The compiler wrapper and error parser now operate on the generated artifact rather than a placeholder source string:
 
 - `src/compiler/moveCompiler.ts` passes the emitted `Move.toml` plus `sources/<module>.move` to the WASM compiler.
+- Before initialization, `src/compiler/moveCompiler.ts` fetches the bundled `sui_move_wasm_bg.wasm`, hashes it with SHA-256, and rejects compilation unless the digest matches the pinned known-good checksum `710212f879fef4feb0bf6932a8ecece1323ca3b675b07691df927977492105a0`.
 - Successful builds attach decoded bytecode modules and dependency names back onto the artifact so downstream consumers can treat the artifact as the single source of truth.
 - `src/compiler/errorParser.ts` converts raw compiler text into structured diagnostics with `stage = "compilation"`, grouping compiler header lines with following `sources/...:line:column` location lines so warnings do not become duplicate error diagnostics.
 - Fallback compiler messages without line information still surface as actionable diagnostics instead of being dropped.
@@ -1419,10 +1420,10 @@ A structured error summary is simultaneously rendered in the Testing Panel, disp
 The CI pipeline integrates automated audits to maintain the WCAG 2.1 Level AA mandate:
 
 - **Lint-time (ESLint):** `eslint-plugin-jsx-a11y` catches missing ARIA roles, unlabelled inputs, and invalid interactive element semantics during development.
-- **E2E (Axe-core):** The Playwright testing suite includes a11y audit steps using `@axe-core/playwright`. Audits run across the primary UI states:
-  - Default graph (initial state)
-  - Code Preview Modal (open)
-  - Testing Panel (open)
+- **E2E (Axe-core):** The Playwright testing suite includes a11y audit steps using `@axe-core/playwright`. The enforced audit surfaces currently cover:
+  - Default editor shell after the auto-compile cycle settles
+  - Generated Move source view
+  - Deployment status popup and generated artifact review flows
 - **Manual Checklist:** Developers perform a manual "Keyboard Only" run of the [Core User Flows](./USER-FLOWS.md) before merging UI changes.
 
 ---

@@ -39,13 +39,17 @@ function createNodeIdsByType(graph: IRGraph): ReadonlyMap<string, string> {
 }
 
 function pushLine(builder: TemplateBuilder, code: string, nodeType?: string): void {
-  builder.lines.push(code);
+  const reactFlowNodeId = nodeType === undefined
+    ? undefined
+    : builder.nodeIdsByType.get(nodeType);
+  const shouldAnnotate = reactFlowNodeId !== undefined && code.trim() !== "";
+
+  builder.lines.push(shouldAnnotate ? `${code} // @ff-node:${reactFlowNodeId}` : code);
 
   if (nodeType === undefined) {
     return;
   }
 
-  const reactFlowNodeId = builder.nodeIdsByType.get(nodeType);
   if (reactFlowNodeId === undefined) {
     return;
   }

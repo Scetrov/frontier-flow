@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { expectNoAccessibilityViolations } from "./fixtures/accessibility";
 import { getCompilationStatusButton, openDeployWorkflow, selectDeploymentTarget } from "./fixtures/workflow";
 
 test("shows signing-stage cancellation details in the status popup", async ({ page }) => {
@@ -28,6 +29,7 @@ test("shows signing-stage cancellation details in the status popup", async ({ pa
   await expect(deploymentDetails.getByText("Stage: signing", { exact: true })).toBeVisible();
   await expect(deploymentDetails.getByText("Severity: warning", { exact: true })).toBeVisible();
   await expect(deploymentDetails.getByText(/Approve the wallet signing request to continue deployment/i)).toBeVisible();
+  await expectNoAccessibilityViolations(page);
 });
 
 test("preserves the earlier blocked attempt after a later successful deployment", async ({ page }) => {

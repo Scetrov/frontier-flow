@@ -181,9 +181,9 @@ function Header({
             <p className="ff-header__eyebrow font-heading text-[0.65rem] uppercase tracking-[0.32em] text-[var(--brand-orange)]">
               EVE Frontier
             </p>
-            <p className="ff-header__title truncate font-heading text-lg uppercase tracking-[0.14em] text-[var(--cream-white)] sm:text-xl">
+            <h1 className="ff-header__title truncate font-heading text-lg uppercase tracking-[0.14em] text-[var(--cream-white)] sm:text-xl">
               Frontier Flow
-            </p>
+            </h1>
           </div>
         </div>
 

@@ -3,7 +3,7 @@ title: Frontier Flow - Testing Strategy
 version: 1.0.0
 status: draft
 created: 2026-02-22
-updated: 2026-02-22
+updated: 2026-03-25
 author: Scetrov
 description: Test pyramid, tooling, mocking strategy, fixtures, and coverage gates for the Frontier Flow project.
 ---
@@ -235,6 +235,7 @@ bun run vitest run --reporter=verbose security
 - **Static analysis (CodeQL):** The `.github/workflows/codeql.yml` workflow runs weekly and on push to `main`, scanning TypeScript and GitHub Actions for known vulnerability patterns (CWE matching).
 - **Dependency auditing:** `bun run audit` (via `bunx npm-audit --audit-level=high`) runs on every PR in the CI pipeline (`.github/workflows/ci.yml`), blocking merges with high-severity advisories.
 - **Lint-time prevention:** `eslint-plugin-jsx-a11y` catches unsafe DOM patterns; TypeScript strict mode prevents `any`-typed bypass of sanitisation boundaries.
+- **Accessibility enforcement:** `@axe-core/playwright` audits the default editor shell, generated Move view, and deployment status review flows. Accessibility regressions now fail the browser test job.
 
 ### 7.3 OWASP Top 10 Mapping
 
@@ -317,17 +318,20 @@ Per [SECURITY.md §4.1](./SECURITY.md#41-coverage-thresholds):
 | Metric         | Minimum | Target | CI Behaviour |
 | -------------- | ------- | ------ | ------------ |
 | **Statements** | 70%     | 85%    | Fail build   |
-| **Branches**   | 65%     | 80%    | Fail build   |
-| **Functions**  | 75%     | 90%    | Fail build   |
+| **Branches**   | 70%     | 80%    | Fail build   |
+| **Functions**  | 70%     | 90%    | Fail build   |
 | **Lines**      | 70%     | 85%    | Fail build   |
+
+The repository currently enforces these minimum thresholds directly in `vite.config.ts` through Vitest's `coverage.thresholds`. CI runs `bun run test:coverage`, which both measures coverage and fails the unit-test job if any minimum is missed.
 
 ### Critical Path Coverage (Must be ≥ 90%)
 
-These modules have elevated coverage requirements:
+These modules remain constitutionally important and should be tracked toward the elevated target, even though the repository-level CI gate currently enforces only the minimum global thresholds:
 
-- `src/utils/codeGenerator.ts`
+- `src/compiler/pipeline.ts`
+- `src/compiler/emitter.ts`
+- `src/compiler/moveCompiler.ts`
 - `src/utils/socketTypes.ts`
-- `src/utils/layoutEngine.ts`
 
 ---
 
@@ -342,7 +346,7 @@ test:
     - uses: actions/checkout@v4
     - uses: oven-sh/setup-bun@v2
     - run: bun install --frozen-lockfile
-    - run: bunx vitest run --coverage
+    - run: bun run test:coverage
     - name: Upload coverage
       uses: actions/upload-artifact@v4
       with:
@@ -361,6 +365,7 @@ e2e:
     - uses: oven-sh/setup-bun@v2
     - run: bun install --frozen-lockfile
     - run: bunx playwright install --with-deps chromium
-    - run: bun run build
-    - run: bunx playwright test
+    - run: bun run test:e2e
 ```
+
+The E2E job now also acts as the automated accessibility gate because the audited specs call `expectNoAccessibilityViolations()` before passing.

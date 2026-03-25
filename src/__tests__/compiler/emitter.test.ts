@@ -9,6 +9,10 @@ import expectedMinimalArtifact from "../../__fixtures__/move/graph-to-move-minim
 
 import { createFlowNode } from "./helpers";
 
+function stripNodeAnnotations(code: string): string {
+  return code.replace(/\s+\/\/ @ff-node:[A-Za-z0-9_-]+$/gm, "");
+}
+
 describe("emitMove", () => {
   it("emits the expected default-flow Move artifact", () => {
     const flow = createDefaultContractFlow();
@@ -16,10 +20,15 @@ describe("emitMove", () => {
 
     const emitted = emitMove(graph);
 
-    expect(emitted.code.trim()).toBe(expectedDefaultTurret.trim());
+    expect(stripNodeAnnotations(emitted.code).trim()).toBe(expectedDefaultTurret.trim());
     expect(emitted.artifact.moveSource).toBe(emitted.code);
     expect(emitted.artifact.sourceFilePath).toBe("sources/starter_contract.move");
     expect(emitted.sourceMap.map((entry) => entry.line)).toEqual([...emitted.sourceMap.map((entry) => entry.line)].sort((left, right) => left - right));
+    expect(emitted.code).toContain("// @ff-node:");
+    for (const entry of emitted.sourceMap) {
+      const emittedLine = emitted.code.split("\n")[entry.line - 1];
+      expect(emittedLine).toContain(`// @ff-node:${entry.reactFlowNodeId}`);
+    }
   });
 
   it("emits the expected minimal proximity artifact", () => {
@@ -29,7 +38,7 @@ describe("emitMove", () => {
 
     const emitted = emitMove(graph);
 
-    expect(emitted.code.trim()).toBe(expectedMinimalArtifact.trim());
+    expect(stripNodeAnnotations(emitted.code).trim()).toBe(expectedMinimalArtifact.trim());
     expect(emitted.moveToml).toContain('name = "graph_to_move_minimal"');
     expect(emitted.moveToml).toContain('world = { local = "deps/world" }');
     expect(emitted.artifact.sourceFiles).toEqual(

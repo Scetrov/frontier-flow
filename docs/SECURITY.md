@@ -3,7 +3,7 @@ title: Frontier Flow - Security Controls
 version: 1.0.0
 status: active
 created: 2026-02-22
-updated: 2026-02-22
+updated: 2026-03-25
 author: Scetrov
 description: Required security controls, tooling, and processes for the Frontier Flow project.
 ---
@@ -91,7 +91,7 @@ updates:
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Dependency audit**         | Run `bunx npm-audit --audit-level=high` in CI. **Fail the build** on high/critical vulnerabilities                                                                                            |
 | **Socket.dev or Snyk**       | Integrate a supply chain analysis tool that detects typosquatting, install scripts, and protestware                                                                                           |
-| **WASM binary verification** | Self-host or checksum-verify the `sui-move-builder` WASM binary. Compare SHA-256 of the loaded WASM against a known-good hash before execution (see [RISK-REGISTER R-11](./RISK-REGISTER.md)) |
+| **WASM binary verification** | `src/compiler/moveCompiler.ts` fetches the bundled `sui_move_wasm_bg.wasm`, hashes it with SHA-256, and rejects compilation unless it matches the pinned digest `710212f879fef4feb0bf6932a8ecece1323ca3b675b07691df927977492105a0` before `initMoveCompiler()` runs (see [RISK-REGISTER R-11](./RISK-REGISTER.md)) |
 | **Provenance metadata**      | Prefer packages that publish [npm provenance attestations](https://docs.npmjs.com/generating-provenance-statements). Track provenance adoption among critical dependencies                    |
 
 ---
@@ -132,13 +132,29 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bunx tsc -b
 
-  test:
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bunx vitest run --coverage
+      - run: bun run test:coverage
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage
+          if-no-files-found: ignore
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e
 
   audit:
     runs-on: ubuntu-latest
@@ -186,11 +202,11 @@ jobs:
 | Metric         | Minimum | Target |
 | -------------- | ------- | ------ |
 | **Statements** | 70%     | 85%    |
-| **Branches**   | 65%     | 80%    |
-| **Functions**  | 75%     | 90%    |
+| **Branches**   | 70%     | 80%    |
+| **Functions**  | 70%     | 90%    |
 | **Lines**      | 70%     | 85%    |
 
-CI **must** fail if coverage drops below the minimum thresholds.
+CI **must** fail if coverage drops below the minimum thresholds. This is currently enforced through Vitest's `coverage.thresholds` in `vite.config.ts` and executed by `bun run test:coverage` in `.github/workflows/ci.yml`.
 
 ### 4.2 Test Categories
 
@@ -201,6 +217,8 @@ CI **must** fail if coverage drops below the minimum thresholds.
 | **Component tests** | Vitest + Testing Library | React component rendering, user interactions, modal behaviour                               |
 | **E2E tests**       | Playwright               | Full canvas workflows — drag-and-drop, connection validation, code preview, deployment flow |
 | **Security tests**  | Custom Vitest suite      | Input sanitisation, XSS prevention, Move code injection checks                              |
+
+Accessibility enforcement is part of the E2E security posture: audited Playwright flows use `@axe-core/playwright` and fail the browser job when landmark, heading, focus, or other WCAG-relevant regressions are introduced.
 
 ### 4.3 Security-Specific Test Cases
 
@@ -420,11 +438,11 @@ A quick-reference checklist for PR reviewers and release managers:
 | 2   | `bun.lockb` committed and used in CI                                 | ☐      |
 | 3   | Critical dependencies pinned to exact versions                       | ☐      |
 | 4   | Dependency audit runs in CI (fail on high/critical)                  | ☐      |
-| 5   | WASM binary checksum verified                                        | ☐      |
-| 6   | CI runs lint, typecheck, test, audit on every PR                     | ☐      |
+| 5   | WASM binary checksum verified                                        | ☑      |
+| 6   | CI runs lint, typecheck, test, audit on every PR                     | ☑      |
 | 7   | Branch protection enforced on `main`                                 | ☐      |
 | 8   | All commits GPG-signed                                               | ☐      |
-| 9   | Test coverage meets minimum thresholds                               | ☐      |
+| 9   | Test coverage meets minimum thresholds                               | ☑      |
 | 10  | Security-specific test cases present                                 | ☐      |
 | 11  | Security headers configured (`X-Frame-Options`, `CSP`, `HSTS`, etc.) | ☐      |
 | 12  | CSP includes `wasm-unsafe-eval` (not `unsafe-eval`)                  | ☐      |

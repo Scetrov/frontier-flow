@@ -3,6 +3,10 @@ import { parseCompilerOutput } from "./errorParser";
 import { createStandaloneWorldShimPackageFiles } from "./worldShim";
 import type { CompileResult, GeneratedContractArtifact } from "./types";
 
+interface MoveCompilerInitOptions {
+  readonly wasm?: string | URL;
+}
+
 interface BuildSuccessResult {
   readonly modules: readonly string[];
   readonly dependencies?: readonly string[];
@@ -16,7 +20,7 @@ interface BuildErrorResult {
 type BuildResult = BuildSuccessResult | BuildErrorResult;
 
 interface MoveCompilerModule {
-  initMoveCompiler(): Promise<void>;
+  initMoveCompiler(options?: MoveCompilerInitOptions): Promise<void>;
   buildMovePackage(input: {
     readonly files: Readonly<Record<string, string>>;
     readonly silenceWarnings: boolean;
@@ -25,26 +29,39 @@ interface MoveCompilerModule {
 }
 
 type MoveCompilerLoader = () => Promise<MoveCompilerModule>;
+type MoveCompilerIntegrityVerifier = () => Promise<void>;
+
+const MOVE_COMPILER_WASM_SHA256 = "710212f879fef4feb0bf6932a8ecece1323ca3b675b07691df927977492105a0";
+const moveCompilerWasmUrl = new URL("../../node_modules/@zktx.io/sui-move-builder/dist/lite/sui_move_wasm_bg.wasm", import.meta.url).href;
 
 let compilerModulePromise: Promise<MoveCompilerModule> | null = null;
 let initialisationPromise: Promise<void> | null = null;
+let integrityPromise: Promise<void> | null = null;
 let worldShimModuleSetPromise: Promise<ReadonlySet<string>> | null = null;
 let compilerModuleLoader: MoveCompilerLoader = () => import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
+let moveCompilerIntegrityVerifier: MoveCompilerIntegrityVerifier = verifyBundledMoveCompilerIntegrity;
 
 function resetCompilerState(): void {
   compilerModulePromise = null;
   initialisationPromise = null;
+  integrityPromise = null;
   worldShimModuleSetPromise = null;
 }
 
 export function resetMoveCompilerStateForTests(): void {
   resetCompilerState();
   compilerModuleLoader = () => import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
+  moveCompilerIntegrityVerifier = async () => {};
 }
 
 export function setMoveCompilerLoaderForTests(loader: MoveCompilerLoader): void {
   resetCompilerState();
   compilerModuleLoader = loader;
+}
+
+export function setMoveCompilerIntegrityVerifierForTests(verifier: MoveCompilerIntegrityVerifier): void {
+  resetCompilerState();
+  moveCompilerIntegrityVerifier = verifier;
 }
 
 function getMockCompilerSearchParams(): URLSearchParams | null {
@@ -134,6 +151,36 @@ function decodeBase64(value: string): Uint8Array {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
+function toHexDigest(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer), (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+async function verifyBundledMoveCompilerIntegrity(): Promise<void> {
+  const response = await fetch(moveCompilerWasmUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch bundled Move compiler WASM for verification: ${String(response.status)} ${response.statusText}`.trim());
+  }
+
+  const buffer = await response.arrayBuffer();
+  const digestBuffer = await globalThis.crypto.subtle.digest("SHA-256", buffer);
+  const digest = toHexDigest(digestBuffer);
+
+  if (digest !== MOVE_COMPILER_WASM_SHA256) {
+    throw new Error(`Bundled Move compiler checksum mismatch: expected ${MOVE_COMPILER_WASM_SHA256}, received ${digest}`);
+  }
+}
+
+async function ensureMoveCompilerIntegrity(): Promise<void> {
+  if (integrityPromise === null) {
+    integrityPromise = moveCompilerIntegrityVerifier().catch((error: unknown) => {
+      integrityPromise = null;
+      throw error;
+    });
+  }
+
+  await integrityPromise;
+}
+
 async function loadCompilerModule(): Promise<MoveCompilerModule> {
   if (compilerModulePromise === null) {
     compilerModulePromise = compilerModuleLoader().catch((error: unknown) => {
@@ -146,9 +193,10 @@ async function loadCompilerModule(): Promise<MoveCompilerModule> {
 }
 
 async function ensureCompilerInitialised(): Promise<MoveCompilerModule> {
+  await ensureMoveCompilerIntegrity();
   const compilerModule = await loadCompilerModule();
   if (initialisationPromise === null) {
-    initialisationPromise = compilerModule.initMoveCompiler().catch((error: unknown) => {
+    initialisationPromise = compilerModule.initMoveCompiler({ wasm: moveCompilerWasmUrl }).catch((error: unknown) => {
       resetCompilerState();
       throw error;
     });

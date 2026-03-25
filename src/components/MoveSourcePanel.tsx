@@ -147,7 +147,14 @@ function MoveSourceContent({
   }
 
   return (
-    <div className="ff-move-source__syntax" role="presentation">
+    <div
+      aria-multiline="true"
+      aria-label={`${selectedFile.path} source viewer`}
+      aria-readonly="true"
+      className="ff-move-source__syntax"
+      role="textbox"
+      tabIndex={0}
+    >
       <ol aria-hidden="true" className="ff-move-source__gutter">
         {displayedLines.map((_, index) => (
           <li className="ff-move-source__line-number" key={index}>

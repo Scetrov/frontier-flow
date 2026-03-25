@@ -24,6 +24,7 @@
     "release:patch": "bunx standard-version --release-as patch",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:real-wasm": "bun run ./scripts/real-wasm-integration.ts",
     "typecheck": "tsc -b",
@@ -48,6 +49,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.18",

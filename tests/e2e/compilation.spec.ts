@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { CONTRACT_LIBRARY_STORAGE_KEY } from "../../src/utils/contractStorage";
+import { expectNoAccessibilityViolations } from "./fixtures/accessibility";
 import { getCompilationStatusButton } from "./fixtures/workflow";
 import { referenceGraphFixtures, type GraphFixtureEdge, type GraphFixtureNode } from "./referenceGraphFixtures";
 
@@ -80,6 +81,22 @@ test("auto-compiles after idle and unlocks the workflow", async ({ page, isMobil
   await expect(page.getByText("Generated source")).toBeVisible();
   await expect(page.getByText("starter_contract.move")).toBeVisible();
   await expect(page.getByText(/module builder_extensions::starter_contract/i)).toBeVisible();
+});
+
+test("default editor state passes automated accessibility auditing", async ({ page }) => {
+  await prepareCompilationPageWithQuery(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120");
+
+  await expect(getCompilationStatusButton(page)).toContainText("Compiled");
+  await expectNoAccessibilityViolations(page);
+});
+
+test("generated source view passes automated accessibility auditing", async ({ page }) => {
+  await prepareCompilationPageWithQuery(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120");
+
+  await expect(getCompilationStatusButton(page)).toContainText("Compiled");
+  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await expect(page.getByText("Generated source")).toBeVisible();
+  await expectNoAccessibilityViolations(page);
 });
 
 test("reference graph matrix compiles multiple supported saved contracts through the same workflow", async ({ page, isMobile }) => {

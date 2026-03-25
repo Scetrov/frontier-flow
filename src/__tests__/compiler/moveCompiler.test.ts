@@ -20,6 +20,7 @@ vi.mock("@zktx.io/sui-move-builder/lite", () => ({
 import {
   compileMove,
   resetMoveCompilerStateForTests,
+  setMoveCompilerIntegrityVerifierForTests,
   setMoveCompilerLoaderForTests,
 } from "../../compiler/moveCompiler";
 import { createStandaloneWorldShimPackageFiles } from "../../compiler/worldShim";
@@ -247,6 +248,24 @@ describe("compileMove", () => {
     expect(secondResult.success).toBe(true);
     expect(mockInitMoveCompiler).toHaveBeenCalledTimes(2);
     expect(mockBuildMovePackage).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when the bundled WASM integrity verification fails", async () => {
+    const artifact = createArtifact();
+    setMoveCompilerIntegrityVerifierForTests(() => Promise.reject(new Error("Bundled Move compiler checksum mismatch")));
+
+    const result = await compileMove(artifact);
+
+    expect(result.success).toBe(false);
+    expect(mockInitMoveCompiler).not.toHaveBeenCalled();
+    expect(mockBuildMovePackage).not.toHaveBeenCalled();
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rawMessage: "Bundled Move compiler checksum mismatch",
+        }),
+      ]),
+    );
   });
 
   it("passes bundled dependency source files to the WASM package builder", async () => {

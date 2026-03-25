@@ -25,6 +25,10 @@ import { createFlowNode } from "./helpers";
 import type { FlowEdge, FlowNode } from "../../types/nodes";
 import { compileMove } from "../../compiler/moveCompiler";
 
+function stripNodeAnnotations(code: string): string {
+  return code.replace(/\s+\/\/ @ff-node:[A-Za-z0-9_-]+$/gm, "");
+}
+
 function createFlowFromFixture(fixture: GraphFixture): { readonly nodes: FlowNode[]; readonly edges: FlowEdge[] } {
   return {
     nodes: fixture.nodes.map((node) => createFlowNode(node.id, node.type, node.position)),
@@ -68,7 +72,7 @@ describe("compilePipeline", () => {
     });
 
     expect(result.status.state).toBe("compiled");
-    expect(result.code?.trim()).toBe(expectedDefaultTurret.trim());
+    expect(stripNodeAnnotations(result.code ?? "").trim()).toBe(expectedDefaultTurret.trim());
   });
 
   it.each(referenceGraphCases)("compiles the $name reference graph into the expected artifact", async ({ fixture, expectedMove }) => {
@@ -80,8 +84,8 @@ describe("compilePipeline", () => {
     });
 
     expect(result.status.state).toBe("compiled");
-    expect(result.code?.trim()).toBe(expectedMove.trim());
-    expect(result.artifact?.moveSource.trim()).toBe(expectedMove.trim());
+    expect(stripNodeAnnotations(result.code ?? "").trim()).toBe(expectedMove.trim());
+    expect(stripNodeAnnotations(result.artifact?.moveSource ?? "").trim()).toBe(expectedMove.trim());
     expect(result.artifact?.sourceFilePath).toBe(`sources/${fixture.moduleName}.move`);
   });
 

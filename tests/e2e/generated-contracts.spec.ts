@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { expectNoAccessibilityViolations } from "./fixtures/accessibility";
 import { getCompilationStatusButton } from "./fixtures/workflow";
 import { openAuthorizationReadinessPage } from "./fixtures/authorizationReadiness";
 import { referenceGraphFixtures } from "./referenceGraphFixtures";
@@ -20,4 +21,5 @@ test("preview and build consume the same generated artifact", async ({ page, isM
   await expect(page.getByText(`${referenceFixture.expectedModuleName}.move`)).toBeVisible();
   await expect(page.getByText(new RegExp(`module builder_extensions::${referenceFixture.expectedModuleName}`, "i"))).toBeVisible();
   await expect(page.locator(".ff-move-source__filename").filter({ hasText: /Select a deployment target and validate the target prerequisites before deploying\./i })).toBeVisible();
+  await expectNoAccessibilityViolations(page);
 });
