@@ -91,6 +91,44 @@ interface StandardAppLayoutProps {
   } | null;
 }
 
+interface TransientStatusMessage {
+  readonly tone: "error" | "info" | "success";
+  readonly text: string;
+}
+
+interface StandardAppController {
+  readonly authorizeDeploymentState: StoredDeploymentState | null;
+  readonly deployment: ReturnType<typeof useDeployment>;
+  readonly diagnostics: readonly CompilerDiagnostic[];
+  readonly displayStatus: CompilationStatus;
+  readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
+  readonly isCompiling: boolean;
+  readonly isCompiledWorkflowReady: boolean;
+  readonly moveSourceCode: string | null;
+  readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
+  readonly onMoveRebuild: () => Promise<void>;
+  readonly onSelectDiagnostic: (nodeId: string) => void;
+  readonly remediationNotices: readonly RemediationNotice[];
+  readonly resolvedActiveView: PrimaryView;
+  readonly selectedDeploymentTarget: DeploymentTargetId;
+  readonly setActiveView: (view: PrimaryView) => void;
+  readonly setRemediationNotices: (notices: readonly RemediationNotice[]) => void;
+  readonly transientStatusMessage: TransientStatusMessage | null;
+}
+
+interface EffectiveCompilationState {
+  readonly diagnostics: readonly CompilerDiagnostic[];
+  readonly moveSourceCode: string | null;
+  readonly status: CompilationStatus;
+}
+
+interface MoveRebuildStateSetters {
+  readonly setCompilationStatus: (status: CompilationStatus) => void;
+  readonly setDiagnostics: (diagnostics: readonly CompilerDiagnostic[]) => void;
+  readonly setMoveSourceCode: (code: string | null) => void;
+  readonly setTransientStatusMessage: (message: TransientStatusMessage) => void;
+}
+
 function getBrowserStorage(): Storage | undefined {
   return typeof window === "undefined" ? undefined : window.localStorage;
 }
@@ -412,69 +450,10 @@ function createFallbackDiagnostics(error: unknown): readonly CompilerDiagnostic[
   ];
 }
 
-function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
-  const initialAppState = useMemo(() => getInitialAppState(), []);
-  const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>(initialAppState.compilationSnapshot?.status ?? { state: "idle" });
-  const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>(initialAppState.compilationSnapshot?.diagnostics ?? []);
-  const [remediationNotices, setRemediationNotices] = useState<readonly RemediationNotice[]>([]);
-  const [focusedDiagnosticSelection, setFocusedDiagnosticSelection] = useState<FocusedDiagnosticSelection | null>(null);
-  const [activeView, setActiveView] = useState<PrimaryView>(initialAppState.activeView);
-  const [moveSourceCode, setMoveSourceCode] = useState<string | null>(initialAppState.compilationSnapshot?.moveSourceCode ?? null);
-  const [persistedCompilationSnapshot, setPersistedCompilationSnapshot] = useState<PersistedCompilationState | null>(initialAppState.compilationSnapshot);
-  const [transientStatusMessage, setTransientStatusMessage] = useState<{
-    readonly tone: "error" | "info" | "success";
-    readonly text: string;
-  } | null>(null);
-  const currentContractGraphKey = getCurrentContractGraphKey();
-  const restoredCompilationSnapshot = persistedCompilationSnapshot !== null
-    && persistedCompilationSnapshot.graphKey === currentContractGraphKey
-    ? persistedCompilationSnapshot
-    : null;
-  const effectiveCompilationState = useMemo(() => {
-    if (compilationStatus.state === "compiling" || hasCompiledWorkflowAccess(compilationStatus)) {
-      return { diagnostics, moveSourceCode, status: compilationStatus };
-    }
-
-    if (restoredCompilationSnapshot !== null) {
-      return {
-        diagnostics: restoredCompilationSnapshot.diagnostics,
-        moveSourceCode: restoredCompilationSnapshot.moveSourceCode,
-        status: restoredCompilationSnapshot.status,
-      };
-    }
-
-    return { diagnostics, moveSourceCode, status: compilationStatus };
-  }, [compilationStatus, diagnostics, moveSourceCode, restoredCompilationSnapshot]);
-  const deployment = useDeployment({
-    initialTarget: initialAppState.selectedDeploymentTarget,
-    status: effectiveCompilationState.status,
-  });
-  const persistedDeploymentState = getValidatedDeploymentState(deployment.selectedTarget);
-  const displayStatus = useMemo(
-    () => mergeDeploymentStatus(effectiveCompilationState.status, deployment.deploymentStatus),
-    [deployment.deploymentStatus, effectiveCompilationState.status],
-  );
-  const authorizeDeploymentState = useMemo(
-    () => persistedDeploymentState ?? getLiveDeploymentState(deployment.deploymentStatus, deployment.latestAttempt),
-    [deployment.deploymentStatus, deployment.latestAttempt, persistedDeploymentState],
-  );
-  const isCompiledWorkflowReady = hasCompiledWorkflowAccess(effectiveCompilationState.status);
-  const resolvedActiveView = useMemo(
-    () => resolveActiveView({ activeView, authorizeDeploymentState, canAccessCompiledWorkflow: isCompiledWorkflowReady }),
-    [activeView, authorizeDeploymentState, isCompiledWorkflowReady],
-  );
-  const isCompiling = compilationStatus.state === "compiling";
-
-  useEffect(() => {
-    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, { activeView: resolvedActiveView });
-  }, [resolvedActiveView]);
-
-  useEffect(() => {
-    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, {
-      selectedDeploymentTarget: deployment.selectedTarget,
-    });
-  }, [deployment.selectedTarget]);
-
+function useTransientStatusMessageTimeout(
+  transientStatusMessage: TransientStatusMessage | null,
+  setTransientStatusMessage: (message: TransientStatusMessage | null | ((current: TransientStatusMessage | null) => TransientStatusMessage | null)) => void,
+): void {
   useEffect(() => {
     if (transientStatusMessage === null || transientStatusMessage.tone === "info") {
       return undefined;
@@ -487,23 +466,17 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [transientStatusMessage]);
+  }, [setTransientStatusMessage, transientStatusMessage]);
+}
 
-  const handleCompilationStateChange = useMemo(
-    () => createCompilationStateChangeHandler(setPersistedCompilationSnapshot, setCompilationStatus, setDiagnostics, setMoveSourceCode),
-    [],
-  );
-
-  const handleSelectDiagnostic = useCallback((nodeId: string) => {
-    setFocusedDiagnosticSelection((currentSelection) => ({
-      nodeId,
-      requestKey: (currentSelection?.requestKey ?? 0) + 1,
-    }));
-  }, []);
-
-  const handleMoveRebuild = useCallback(async () => {
+function useMoveRebuildHandler(
+  handleCompilationStateChange: AppMainContentProps["onCompilationStateChange"],
+  stateSetters: MoveRebuildStateSetters,
+): () => Promise<void> {
+  return useCallback(async () => {
     const activeContract = getCurrentActiveContract();
     const moduleName = getCurrentDraftContractName() ?? activeContract.name;
+    const { setCompilationStatus, setDiagnostics, setMoveSourceCode, setTransientStatusMessage } = stateSetters;
 
     setTransientStatusMessage({ tone: "info", text: "Rebuilding..." });
     setCompilationStatus({ state: "compiling" });
@@ -528,27 +501,166 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       handleCompilationStateChange({ state: "error", diagnostics: fallbackDiagnostics }, fallbackDiagnostics, null, null);
       setTransientStatusMessage({ tone: "error", text: "Rebuild failed" });
     }
-  }, [handleCompilationStateChange]);
+  }, [handleCompilationStateChange, stateSetters]);
+}
+
+function useEffectiveCompilationState(
+  compilationStatus: CompilationStatus,
+  diagnostics: readonly CompilerDiagnostic[],
+  moveSourceCode: string | null,
+  persistedCompilationSnapshot: PersistedCompilationState | null,
+): EffectiveCompilationState {
+  const currentContractGraphKey = getCurrentContractGraphKey();
+  const restoredCompilationSnapshot = persistedCompilationSnapshot !== null
+    && persistedCompilationSnapshot.graphKey === currentContractGraphKey
+    ? persistedCompilationSnapshot
+    : null;
+
+  return useMemo(() => {
+    if (compilationStatus.state === "compiling" || hasCompiledWorkflowAccess(compilationStatus)) {
+      return { diagnostics, moveSourceCode, status: compilationStatus };
+    }
+
+    if (restoredCompilationSnapshot !== null) {
+      return {
+        diagnostics: restoredCompilationSnapshot.diagnostics,
+        moveSourceCode: restoredCompilationSnapshot.moveSourceCode,
+        status: restoredCompilationSnapshot.status,
+      };
+    }
+
+    return { diagnostics, moveSourceCode, status: compilationStatus };
+  }, [compilationStatus, diagnostics, moveSourceCode, restoredCompilationSnapshot]);
+}
+
+function useStandardAppController(initialAppState: InitialAppState): StandardAppController {
+  const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>(initialAppState.compilationSnapshot?.status ?? { state: "idle" });
+  const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>(initialAppState.compilationSnapshot?.diagnostics ?? []);
+  const [remediationNotices, setRemediationNotices] = useState<readonly RemediationNotice[]>([]);
+  const [focusedDiagnosticSelection, setFocusedDiagnosticSelection] = useState<FocusedDiagnosticSelection | null>(null);
+  const [activeView, setActiveView] = useState<PrimaryView>(initialAppState.activeView);
+  const [moveSourceCode, setMoveSourceCode] = useState<string | null>(initialAppState.compilationSnapshot?.moveSourceCode ?? null);
+  const [persistedCompilationSnapshot, setPersistedCompilationSnapshot] = useState<PersistedCompilationState | null>(initialAppState.compilationSnapshot);
+  const [transientStatusMessage, setTransientStatusMessage] = useState<TransientStatusMessage | null>(null);
+  const effectiveCompilationState = useEffectiveCompilationState(
+    compilationStatus,
+    diagnostics,
+    moveSourceCode,
+    persistedCompilationSnapshot,
+  );
+  const deployment = useDeployment({
+    initialTarget: initialAppState.selectedDeploymentTarget,
+    status: effectiveCompilationState.status,
+  });
+  const persistedDeploymentState = getValidatedDeploymentState(deployment.selectedTarget);
+  const displayStatus = useMemo(
+    () => mergeDeploymentStatus(effectiveCompilationState.status, deployment.deploymentStatus),
+    [deployment.deploymentStatus, effectiveCompilationState.status],
+  );
+  const authorizeDeploymentState = useMemo(
+    () => persistedDeploymentState ?? getLiveDeploymentState(deployment.deploymentStatus, deployment.latestAttempt),
+    [deployment.deploymentStatus, deployment.latestAttempt, persistedDeploymentState],
+  );
+  const isCompiledWorkflowReady = hasCompiledWorkflowAccess(effectiveCompilationState.status);
+  const resolvedActiveView = useMemo(
+    () => resolveActiveView({ activeView, authorizeDeploymentState, canAccessCompiledWorkflow: isCompiledWorkflowReady }),
+    [activeView, authorizeDeploymentState, isCompiledWorkflowReady],
+  );
+
+  useEffect(() => {
+    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, { activeView: resolvedActiveView });
+  }, [resolvedActiveView]);
+
+  useEffect(() => {
+    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, {
+      selectedDeploymentTarget: deployment.selectedTarget,
+    });
+  }, [deployment.selectedTarget]);
+
+  useTransientStatusMessageTimeout(transientStatusMessage, setTransientStatusMessage);
+
+  const handleCompilationStateChange = useMemo(
+    () => createCompilationStateChangeHandler(setPersistedCompilationSnapshot, setCompilationStatus, setDiagnostics, setMoveSourceCode),
+    [],
+  );
+  const handleSelectDiagnostic = useCallback((nodeId: string) => {
+    setFocusedDiagnosticSelection((currentSelection) => ({
+      nodeId,
+      requestKey: (currentSelection?.requestKey ?? 0) + 1,
+    }));
+  }, []);
+  const handleMoveRebuild = useMoveRebuildHandler(
+    handleCompilationStateChange,
+    {
+      setCompilationStatus,
+      setDiagnostics,
+      setMoveSourceCode,
+      setTransientStatusMessage,
+    },
+  );
+
+  return {
+    authorizeDeploymentState,
+    deployment,
+    diagnostics: effectiveCompilationState.diagnostics,
+    displayStatus,
+    focusedDiagnosticSelection,
+    isCompiling: compilationStatus.state === "compiling",
+    isCompiledWorkflowReady,
+    moveSourceCode: effectiveCompilationState.moveSourceCode,
+    onCompilationStateChange: handleCompilationStateChange,
+    onMoveRebuild: handleMoveRebuild,
+    onSelectDiagnostic: handleSelectDiagnostic,
+    remediationNotices,
+    resolvedActiveView,
+    selectedDeploymentTarget: deployment.selectedTarget,
+    setActiveView,
+    setRemediationNotices,
+    transientStatusMessage,
+  };
+}
+
+function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
+  const initialAppState = useMemo(() => getInitialAppState(), []);
+  const {
+    authorizeDeploymentState,
+    deployment,
+    diagnostics,
+    displayStatus,
+    focusedDiagnosticSelection,
+    isCompiling,
+    isCompiledWorkflowReady,
+    moveSourceCode,
+    onCompilationStateChange,
+    onMoveRebuild,
+    onSelectDiagnostic,
+    remediationNotices,
+    resolvedActiveView,
+    selectedDeploymentTarget,
+    setActiveView,
+    setRemediationNotices,
+    transientStatusMessage,
+  } = useStandardAppController(initialAppState);
 
   return (
     <StandardAppLayout
       activeView={resolvedActiveView}
       authorizeDeploymentState={authorizeDeploymentState}
       deployment={deployment}
-      diagnostics={effectiveCompilationState.diagnostics}
+      diagnostics={diagnostics}
       displayStatus={displayStatus}
       focusedDiagnosticSelection={focusedDiagnosticSelection}
       isCompiling={isCompiling}
       isCompiledWorkflowReady={isCompiledWorkflowReady}
       isKitchenSinkRoute={isKitchenSinkRoute}
-      moveSourceCode={effectiveCompilationState.moveSourceCode}
-      onMoveRebuild={handleMoveRebuild}
-      onCompilationStateChange={handleCompilationStateChange}
+      moveSourceCode={moveSourceCode}
+      onMoveRebuild={onMoveRebuild}
+      onCompilationStateChange={onCompilationStateChange}
       onRemediationNoticesChange={setRemediationNotices}
-      onSelectDiagnostic={handleSelectDiagnostic}
+      onSelectDiagnostic={onSelectDiagnostic}
       onViewChange={setActiveView}
       remediationNotices={remediationNotices}
-      selectedDeploymentTarget={deployment.selectedTarget}
+      selectedDeploymentTarget={selectedDeploymentTarget}
       transientStatusMessage={transientStatusMessage}
     />
   );

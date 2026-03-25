@@ -26,6 +26,15 @@ interface MoveSourcePanelProps {
   readonly status: CompilationStatus;
 }
 
+interface MoveSourceSelection {
+  readonly displayedLines: readonly string[];
+  readonly files: readonly VirtualArtifactFile[];
+  readonly highlightedSource: string;
+  readonly selectedFile: VirtualArtifactFile | null;
+  readonly selectedFilePath: string | null;
+  readonly setSelectedFilePath: (path: string) => void;
+}
+
 function getEmptyMessage(status: CompilationStatus): string {
   switch (status.state) {
     case "compiling":
@@ -126,6 +135,129 @@ function getFileTabLabelParts(path: string): FileTabLabelParts {
   };
 }
 
+function useCopyLabel(): readonly [string, () => void] {
+  const [copyLabel, setCopyLabel] = useState("Copy");
+
+  useEffect(() => {
+    if (copyLabel !== "Copied") {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCopyLabel("Copy");
+    }, 1_500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [copyLabel]);
+
+  return [copyLabel, () => { setCopyLabel("Copied"); }] as const;
+}
+
+function useMoveSourceSelection(sourceCode: string | null, status: CompilationStatus): MoveSourceSelection {
+  const files = useMemo(() => getArtifactFiles(sourceCode, status), [sourceCode, status]);
+  const defaultFilePath = useMemo(() => getDefaultFilePath(files, status, sourceCode), [files, sourceCode, status]);
+  const [selectedFilePath, setSelectedFilePathState] = useState<string | null>(defaultFilePath);
+
+  const resolvedSelectedFilePath = selectedFilePath !== null && files.some((file) => file.path === selectedFilePath)
+    ? selectedFilePath
+    : defaultFilePath;
+  const selectedFile = useMemo(
+    () => files.find((file) => file.path === resolvedSelectedFilePath) ?? null,
+    [files, resolvedSelectedFilePath],
+  );
+  const displayedLines = selectedFile?.content.split("\n") ?? [];
+  const highlightedSource = selectedFile === null ? "" : highlightSource(selectedFile.content, selectedFile.language);
+
+  return {
+    displayedLines,
+    files,
+    highlightedSource,
+    selectedFile,
+    selectedFilePath: resolvedSelectedFilePath,
+    setSelectedFilePath: setSelectedFilePathState,
+  };
+}
+
+function MoveSourceActions({
+  copyLabel,
+  isCompiling,
+  onCopy,
+  onRebuild,
+  selectedFile,
+}: {
+  readonly copyLabel: string;
+  readonly isCompiling: boolean;
+  readonly onCopy: () => void;
+  readonly onRebuild?: () => void | Promise<void>;
+  readonly selectedFile: VirtualArtifactFile | null;
+}) {
+  return (
+    <div className="ff-move-source__actions" role="group" aria-label="Move source actions">
+      <button
+        className="ff-move-source__action"
+        disabled={selectedFile === null}
+        onClick={onCopy}
+        type="button"
+      >
+        {copyLabel}
+      </button>
+      <button
+        className="ff-move-source__action"
+        disabled={isCompiling}
+        onClick={() => { void onRebuild?.(); }}
+        type="button"
+      >
+        {isCompiling ? "Rebuilding..." : "Rebuild"}
+      </button>
+    </div>
+  );
+}
+
+function MoveSourceTabs({
+  files,
+  onSelectFile,
+  selectedFilePath,
+}: {
+  readonly files: readonly VirtualArtifactFile[];
+  readonly onSelectFile: (path: string) => void;
+  readonly selectedFilePath: string | null;
+}) {
+  if (files.length === 0) {
+    return null;
+  }
+
+  return (
+    <div aria-label="Generated package files" className="ff-move-source__tabs" role="tablist">
+      {files.map((file) => {
+        const isSelected = file.path === selectedFilePath;
+        const labelParts = getFileTabLabelParts(file.path);
+
+        return (
+          <button
+            aria-controls={`move-source-panel-${file.path}`}
+            aria-selected={isSelected}
+            className="ff-move-source__tab"
+            id={`move-source-tab-${file.path}`}
+            key={file.path}
+            onClick={() => {
+              onSelectFile(file.path);
+            }}
+            role="tab"
+            type="button"
+          >
+            {labelParts.directory !== null ? (
+              <span className="ff-move-source__tab-path">{labelParts.directory}</span>
+            ) : null}
+            <span className="ff-move-source__tab-filename">{labelParts.filename}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function MoveSourceContent({
   displayedLines,
   highlightedSource,
@@ -173,38 +305,10 @@ function MoveSourceContent({
 }
 
 function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps) {
-  const files = useMemo(() => getArtifactFiles(sourceCode, status), [sourceCode, status]);
   const deploymentMetadata = useMemo(() => getDeploymentMetadata(status), [status]);
-  const defaultFilePath = useMemo(() => getDefaultFilePath(files, status, sourceCode), [files, sourceCode, status]);
-  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(defaultFilePath);
-  const [copyLabel, setCopyLabel] = useState("Copy");
   const isCompiling = status.state === "compiling";
-  const rebuildLabel = isCompiling ? "Rebuilding..." : "Rebuild";
-
-  const resolvedSelectedFilePath = selectedFilePath !== null && files.some((file) => file.path === selectedFilePath)
-    ? selectedFilePath
-    : defaultFilePath;
-
-  const selectedFile = useMemo(
-    () => files.find((file) => file.path === resolvedSelectedFilePath) ?? null,
-    [files, resolvedSelectedFilePath],
-  );
-  const displayedLines = selectedFile?.content.split("\n") ?? [];
-  const highlightedSource = selectedFile === null ? "" : highlightSource(selectedFile.content, selectedFile.language);
-
-  useEffect(() => {
-    if (copyLabel !== "Copied") {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setCopyLabel("Copy");
-    }, 1_500);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [copyLabel]);
+  const { displayedLines, files, highlightedSource, selectedFile, selectedFilePath, setSelectedFilePath } = useMoveSourceSelection(sourceCode, status);
+  const [copyLabel, setCopiedLabel] = useCopyLabel();
 
   async function handleCopy(): Promise<void> {
     if (selectedFile === null) {
@@ -212,7 +316,7 @@ function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps
     }
 
     await navigator.clipboard.writeText(selectedFile.content);
-    setCopyLabel("Copied");
+    setCopiedLabel();
   }
 
   return (
@@ -223,24 +327,13 @@ function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps
           <h2 className="ff-move-source__title">Generated source</h2>
           <p className="ff-move-source__copy">Inspect the generated Move package in this tab to diagnose issues before switching to Deploy.</p>
         </div>
-        <div className="ff-move-source__actions" role="group" aria-label="Move source actions">
-          <button
-            className="ff-move-source__action"
-            disabled={selectedFile === null}
-            onClick={() => { void handleCopy(); }}
-            type="button"
-          >
-            {copyLabel}
-          </button>
-          <button
-            className="ff-move-source__action"
-            disabled={isCompiling}
-            onClick={() => { void onRebuild?.(); }}
-            type="button"
-          >
-            {rebuildLabel}
-          </button>
-        </div>
+        <MoveSourceActions
+          copyLabel={copyLabel}
+          isCompiling={isCompiling}
+          onCopy={() => { void handleCopy(); }}
+          onRebuild={onRebuild}
+          selectedFile={selectedFile}
+        />
       </header>
 
       <div className="ff-move-source__body">
@@ -260,34 +353,7 @@ function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps
             Learn Move on Sui
           </a>
         </p>
-        {files.length > 0 ? (
-          <div aria-label="Generated package files" className="ff-move-source__tabs" role="tablist">
-            {files.map((file) => {
-              const isSelected = file.path === selectedFile?.path;
-              const labelParts = getFileTabLabelParts(file.path);
-
-              return (
-                <button
-                  aria-controls={`move-source-panel-${file.path}`}
-                  aria-selected={isSelected}
-                  className="ff-move-source__tab"
-                  id={`move-source-tab-${file.path}`}
-                  key={file.path}
-                  onClick={() => {
-                    setSelectedFilePath(file.path);
-                  }}
-                  role="tab"
-                  type="button"
-                >
-                  {labelParts.directory !== null ? (
-                    <span className="ff-move-source__tab-path">{labelParts.directory}</span>
-                  ) : null}
-                  <span className="ff-move-source__tab-filename">{labelParts.filename}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
+        <MoveSourceTabs files={files} onSelectFile={setSelectedFilePath} selectedFilePath={selectedFilePath} />
         <div
           aria-labelledby={selectedFile === null ? undefined : `move-source-tab-${selectedFile.path}`}
           className="ff-move-source__panel"
