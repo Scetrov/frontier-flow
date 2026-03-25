@@ -97,6 +97,9 @@ The application models game automation logic (e.g., EVE Frontier mechanics) wher
 > [!NOTE]
 > These packages are specified in the design but not yet added to `package.json`.
 
+> [!IMPORTANT]
+> **Compilation Modes (ADR-009):** `@zktx.io/sui-move-builder/lite` is used for **authoring-time** in-browser compilation with the local `world` shim for rapid feedback. For **deploy-grade** remote deployment against live `world` packages, ADR-009 establishes a separate real dependency-resolution path using upstream artifacts and lockfiles. If the WASM builder cannot resolve the upstream `world` revision, a server-assisted compilation fallback is the accepted direction. See [ADR-009](./ADR/ADR-009-deploy-grade-dependency-resolution.md).
+
 | Package              | Version | Purpose                                 |
 | -------------------- | ------- | --------------------------------------- |
 | `idb-keyval`         | latest  | Promise-based IndexedDB for caching     |
@@ -653,7 +656,7 @@ See [SOLUTION-DESIGN.md §5.3.2](./SOLUTION-DESIGN.md#532-phase-35-ast-pruning--
 1. **Wallet Connection:** Uses Sui `dapp-kit` to connect user wallets without security trimming. Displays abbreviated addresses/SNS and SUI balances.
 2. **Network Support:** Multi-network selection (localnet, devnet, testnet, mainnet).
 3. **Local Faucet:** Integrated button to request tokens on localnet if the current balance is 0.
-4. **Move Compilation:** Leverages `@zktx.io/sui-move-builder/lite` to compile generated Move code entirely in-browser (WASM).
+4. **Move Compilation:** Leverages `@zktx.io/sui-move-builder/lite` to compile generated Move code entirely in-browser (WASM) for **authoring-time** feedback. Deploy-grade compilation for remote targets uses a separate real dependency-resolution path (see [ADR-009](./ADR/ADR-009-deploy-grade-dependency-resolution.md)).
 5. **Transaction Submittal:** Generates the contract publishing transaction using compiled bytecode and dependencies, prompting the user for approval.
 6. **Toast Notifications:** Displays compilation progress and success/failure results via UI toasters.
 7. **Package Upgrades:** Enables upgrading previously deployed Sui packages in-place, preserving on-chain state while replacing the bytecode. Critical for iterating on Smart Assembly logic (e.g., updating a turret's friend-or-foe target list) without redeploying an entirely new object.

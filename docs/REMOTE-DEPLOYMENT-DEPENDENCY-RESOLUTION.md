@@ -15,6 +15,8 @@ tags:
 description: Reference design for resolving published world dependencies during Frontier Flow remote deployment.
 ---
 
+> **Status Update:** This document’s analysis resulted in [ADR-009: Separate Authoring Compilation from Deploy-Grade Dependency Resolution](./ADR/ADR-009-deploy-grade-dependency-resolution.md), which has been **accepted**. The recommended direction (§10) is now the approved architecture.
+
 ## Table of Contents
 
 1. [Purpose](#1-purpose)
@@ -415,6 +417,8 @@ Tradeoffs:
 ---
 
 ## 10. Recommended Direction
+
+The following approach has been formalised as [ADR-009](./ADR/ADR-009-deploy-grade-dependency-resolution.md) and is now the accepted architecture.
 
 The lowest-risk near-term path is:
 

@@ -20,6 +20,8 @@ We will use `@zktx.io/sui-move-builder/lite` for in-browser WASM compilation as 
 
 Accepted.
 
+**Refinement:** ADR-009 narrows the scope of this decision to **authoring-time** compilation. Browser-only WASM compilation remains the standard for in-editor feedback and preview, but is no longer the only acceptable path for deploy-grade remote deployment. See [ADR-009: Separate Authoring Compilation from Deploy-Grade Dependency Resolution](ADR-009-deploy-grade-dependency-resolution.md).
+
 ## Consequences
 
 The application remains a fully serverless static SPA that can be deployed to Netlify without any backend infrastructure. User-authored smart contract code never leaves the browser, which eliminates an entire class of privacy and data security concerns. Compilation latency is minimal because there is no network round-trip.

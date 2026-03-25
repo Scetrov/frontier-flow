@@ -111,6 +111,8 @@ Graph-to-Move specific regression coverage additionally verifies that:
 - Multiline compiler diagnostics that emit a severity header followed by a `sources/...:line:column` line resolve to a single mapped warning or error instead of duplicate diagnostics.
 - Footer and preview tests treat compile status and deployment status as separate UI channels with independent assertions.
 
+> **Deploy-grade testing (ADR-009):** The tests above cover **authoring-time** compilation with the browser WASM compiler and local `world` shim. ADR-009 introduces a separate **deploy-grade** compilation path with real dependency resolution. Additional test scenarios for deploy-grade compilation (`Move.lock` parsing, `rootGit` metadata handling, `resolvedDependencies` generation, and dependency-resolution failure surfacing) will be added as that path is implemented.
+
 ### 4.2 Layout Engine
 
 | Test Case              | Assertion                          |

@@ -714,6 +714,8 @@ const initialEdges: Edge[] = [
 
 Transforming a visual React Flow graph into a valid, safe, and functional Sui Move smart contract requires a robust compilation pipeline. Because the exact low-level Move semantics and CCP APIs are subject to change, our architecture is heavily modularized into a **Compilation Pipeline**.
 
+> **Two-mode compilation (ADR-009):** The pipeline described in this section covers **authoring-time compilation** — the browser-based WASM path using the local `world` shim defined in `src/compiler/worldShim.ts`. For **deploy-grade compilation** against live published `world` packages, Frontier Flow uses a separate real dependency-resolution path that requires upstream `Move.lock`, derived `rootGit` metadata, and generated `resolvedDependencies`. See [ADR-009](./ADR/ADR-009-deploy-grade-dependency-resolution.md) and [Remote Deployment Dependency Resolution](./REMOTE-DEPLOYMENT-DEPENDENCY-RESOLUTION.md).
+
 ### 5.1 Compilation Pipeline Overview
 
 The current graph-to-Move path lives entirely inside `src/compiler/` and runs in five deterministic stages plus a WASM compile handoff:
@@ -1069,6 +1071,8 @@ public fun get_target_priority_list(
 ### 5.7 Deployment & Wallet Integration
 
 Deployment is handled as a session-scoped lifecycle adjacent to compilation rather than as a network switch inside the wallet UI. The current implementation keeps compilation and deployment separate, then merges the latest deployment status back into the compiled artifact so the footer and Move preview can review it consistently.
+
+> **Deploy-grade compilation (ADR-009):** Remote deployment against published targets (Stillness, Utopia) requires deploy-grade compilation with real dependency resolution — not the local shim used during authoring. The deploy-grade path uses upstream `world` package artifacts (`Move.toml`, `Move.lock`, source files) from the pinned repository revision, derives `rootGit` metadata, and invokes the builder's dependency-resolution phase. If the browser WASM toolchain cannot resolve the upstream `world` revision, a server-assisted compilation fallback is the accepted architectural direction. See [ADR-009](./ADR/ADR-009-deploy-grade-dependency-resolution.md).
 
 **Wallet State Ownership:**
 Wallet connectivity is still supplied by `@mysten/dapp-kit` at the application root, but deployment readiness is derived in `useDeployment()` from three inputs:

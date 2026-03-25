@@ -97,6 +97,7 @@ Our application strictly adheres to the core aesthetic and theming principles ou
 - **Node Graph Engine:** `@xyflow/react` (React Flow v12)
 - **Styling:** Tailwind CSS v4 + PostCSS + CSS variables.
 - **State Management:** Local React Hooks + `ReactFlowProvider` contexts.
+- **Compilation:** Two-mode architecture (ADR-003, ADR-009): (1) **authoring-time** in-browser WASM compilation via `@zktx.io/sui-move-builder/lite` with local `world` shim for rapid feedback; (2) **deploy-grade** real dependency-resolution compilation for remote deployment against live `world` packages, with server-assisted fallback if needed.
 
 ---
 

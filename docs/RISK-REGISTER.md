@@ -220,6 +220,8 @@ flowchart TD
 | **Owner**       | Lead Developer                                                                                                                                                                                                               |
 | **Status**      | Open — Toast notification system designed, not yet implemented                                                                                                                                                               |
 
+**Note (ADR-009):** R-07 applies to **authoring-time** compilation. For deploy-grade compilation against published `world` packages, ADR-009 establishes a separate real dependency-resolution path that may employ server-assisted compilation as a fallback if browser WASM proves insufficient.
+
 ---
 
 #### R-08 — UpgradeCap Loss Causes Bricked Contract
@@ -399,13 +401,28 @@ flowchart TD
 
 ---
 
+#### R-23 — Deploy-Grade Dependency Resolution Failure
+
+| Field           | Detail                                                                                                                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Category**    | Blockchain / Deployment                                                                                                                                                                                                                                                                                             |
+| **Description** | Deploy-grade compilation against live `world` packages may fail due to incompatible `Move.lock`, missing upstream artifacts, stale pinned source revisions, or a mismatch between compiled bytecode and declared on-chain dependencies. This is distinct from authoring-time WASM compiler failures (R-07).             |
+| **Likelihood**  | High (3)                                                                                                                                                                                                                                                                                                            |
+| **Impact**      | High (3)                                                                                                                                                                                                                                                                                                            |
+| **Risk Level**  | 🔴 **9 — High**                                                                                                                                                                                                                                                                                                       |
+| **Mitigation**  | ADR-009 separates authoring and deploy-grade compilation. Pin upstream `world` source revisions deterministically (`scripts/fetch-world-contracts.ts`). Surface dependency-resolution failures explicitly in the deploy UX. Fallback to server-assisted compilation if browser WASM cannot resolve the upstream graph. |
+| **Owner**       | Lead Developer                                                                                                                                                                                                                                                                                                      |
+| **Status**      | Open — ADR-009 accepted; implementation pending                                                                                                                                                                                                                                                                    |
+
+---
+
 ## 4. Risk Summary Dashboard
 
 ### By Risk Level
 
 | Level         | Count | Risk IDs                                                         |
 | ------------- | ----- | ---------------------------------------------------------------- |
-| 🔴 **High**   | 11    | R-01, R-02, R-03, R-04, R-07, R-08, R-09, R-10, R-12, R-16, R-22 |
+| 🔴 **High**   | 12    | R-01, R-02, R-03, R-04, R-07, R-08, R-09, R-10, R-12, R-16, R-22, R-23 |
 | 🟡 **Medium** | 5     | R-05, R-06, R-11, R-14, R-17                                     |
 | 🟢 **Low**    | 3     | R-13, R-15, R-18                                                 |
 
@@ -415,7 +432,7 @@ flowchart TD
 | --------------------------- | ----- | ------------ |
 | Architecture & Design       | 3     | 🔴 High      |
 | Security                    | 3     | 🔴 High      |
-| Blockchain & Deployment     | 4     | 🔴 High      |
+| Blockchain & Deployment     | 5     | 🔴 High      |
 | Dependencies & Supply Chain | 3     | 🔴 High      |
 | Operational & UX            | 4     | 🔴 High      |
 | Integration                 | 1     | 🔴 High      |
