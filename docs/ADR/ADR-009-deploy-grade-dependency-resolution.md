@@ -58,7 +58,12 @@ This ADR refines ADR 3 rather than replacing it wholesale:
 
 ## Status
 
-Proposed.
+Accepted.
+
+## Related Documents
+
+- [ADR-003: In-Browser WASM Compilation via sui-move-builder](ADR-003-wasm-compiler.md) — refined, not replaced, by this ADR
+- [Remote Deployment Dependency Resolution](../REMOTE-DEPLOYMENT-DEPENDENCY-RESOLUTION.md) — detailed analysis motivating this decision
 
 ## Consequences
 
