@@ -188,11 +188,6 @@ function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps
           <p className="ff-move-source__eyebrow">Move</p>
           <h2 className="ff-move-source__title">Generated source</h2>
           <p className="ff-move-source__copy">You can view the generated source in this tab to help diagnose problems, move on to Deploy to deploy to the server.</p>
-          {selectedFile !== null ? (
-            <div className="ff-move-source__meta">
-              <span className="ff-move-source__filename">{selectedFile.path}</span>
-            </div>
-          ) : null}
         </div>
         <div className="ff-move-source__actions" role="group" aria-label="Move source actions">
           <button

@@ -1715,27 +1715,6 @@ button,
   white-space: nowrap;
 }
 
-.ff-move-source__tab-path {
-  color: rgba(168, 182, 194, 0.42);
-  font-size: 0.56rem;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-  margin-bottom: 0.18rem;
-  text-transform: none;
-}
-
-.ff-move-source__tab-filename {
-  color: inherit;
-  font-size: 0.66rem;
-  line-height: 1.2;
-}
-
-.ff-move-source__tab[aria-selected="true"] {
-  border-bottom-color: var(--brand-orange);
-  background: rgba(36, 16, 10, 0.82);
-  color: var(--cream-white);
-}
-
 .ff-move-source__tab[aria-selected="true"] .ff-move-source__tab-path {
   color: rgba(255, 208, 191, 0.52);
 }

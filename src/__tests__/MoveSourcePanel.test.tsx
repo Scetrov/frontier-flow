@@ -102,6 +102,7 @@ describe("MoveSourcePanel", () => {
     );
 
     expect(container.querySelector(".ff-move-source__badge")).toBeNull();
+    expect(container.querySelector(".ff-move-source__meta")).toBeNull();
     expect(screen.queryAllByText("Compiled")).toHaveLength(0);
   });
 
