@@ -14,6 +14,54 @@ const deploymentState: StoredDeploymentState = {
 };
 
 describe("turretQueries", () => {
+  function createTurretFetchFn() {
+    return vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: {
+                    character_id: "0x1234",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                address: "0xownercap",
+                contents: {
+                  json: {
+                    authorized_object_id: "0x111",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          object: {
+            asMoveObject: {
+              contents: {
+                json: {
+                  metadata: { name: "Perimeter Lancer" },
+                },
+              },
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+  }
+
   it("returns the published GraphQL endpoint for remote targets", () => {
     expect(getTurretGraphQlEndpoint("local")).toBeNull();
     expect(getTurretGraphQlEndpoint("testnet:stillness")).toBe("https://graphql.testnet.sui.io/graphql");
@@ -213,5 +261,46 @@ describe("turretQueries", () => {
       fetchFn,
       signal: abortController.signal,
     })).resolves.toEqual([]);
+  });
+
+  it("only overlays mock authorization state when the mock environment is enabled", async () => {
+    window.history.replaceState({}, "", "/");
+
+    window.localStorage.setItem("frontier-flow:mock-authorizations", JSON.stringify({
+      deployments: {
+        "testnet:stillness:0xfeedface:starter_contract": ["0x111"],
+      },
+    }));
+
+    await expect(fetchTurrets({
+      walletAddress: "0x9999",
+      deploymentState,
+      fetchFn: createTurretFetchFn(),
+    })).resolves.toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Perimeter Lancer",
+        currentExtension: null,
+      },
+    ]);
+
+    window.history.replaceState({}, "", "/?ff_mock_authorize_delay_ms=1");
+
+    await expect(fetchTurrets({
+      walletAddress: "0x9999",
+      deploymentState,
+      fetchFn: createTurretFetchFn(),
+    })).resolves.toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Perimeter Lancer",
+        currentExtension: {
+          packageId: "0xfeedface",
+          moduleName: "starter_contract",
+          typeName: "0xfeedface::starter_contract::TurretAuth",
+          isCurrentDeployment: true,
+        },
+      },
+    ]);
   });
 });

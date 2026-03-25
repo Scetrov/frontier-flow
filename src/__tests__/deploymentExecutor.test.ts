@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { DeploymentExecutionRequest } from "../deployment/executor";
 import { getDeploymentTarget } from "../data/deploymentTargets";
 import { createDeploymentExecutor } from "../deployment/executor";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
@@ -96,5 +97,29 @@ describe("deployment executor error sanitization", () => {
 
     expect(result.outcome).toBe("failed");
     expect(result.stage).toBe("submitting");
+  });
+
+  it("uses wallet signing based on the target publish mechanism instead of published-reference requirements", async () => {
+    const publishLocal = () => Promise.resolve({ packageId: "0xabc", transactionDigest: "0xdigest" });
+    const publishRemote = () => Promise.resolve({ packageId: "0xdef", transactionDigest: "0xremote" });
+    const confirm = () => Promise.resolve({ confirmed: true, confirmationReference: "0xdigest", finalStage: "confirming" as const });
+    const publishLocalSpy = vi.fn(publishLocal);
+    const publishRemoteSpy = vi.fn(publishRemote);
+    const executor = createDeploymentExecutor({ confirm, publishLocal: publishLocalSpy, publishRemote: publishRemoteSpy });
+    const request: DeploymentExecutionRequest = {
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      references: null,
+      target: {
+        ...getDeploymentTarget("local"),
+        requiresPublishedPackageRefs: true,
+      },
+    };
+
+    const result = await executor(request);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(result.confirmationReference).toBe("0xdigest");
+    expect(publishLocalSpy).toHaveBeenCalledTimes(1);
+    expect(publishRemoteSpy).not.toHaveBeenCalled();
   });
 });

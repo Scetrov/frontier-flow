@@ -1271,11 +1271,11 @@ function FlowEditorView({
           aria-label="Node editor canvas"
           className="ff-canvas__flow"
           defaultEdgeOptions={{ animated: true }}
-          edges={edges as FlowEdge[]}
+          edges={[...edges]}
           fitView={true}
           isValidConnection={validateConnection}
           nodeTypes={flowNodeTypes}
-          nodes={renderedNodes as FlowNode[]}
+          nodes={[...renderedNodes]}
           onConnect={handleConnect}
           onDragOver={handleDragOver}
           onDrop={handleDrop}

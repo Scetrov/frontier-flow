@@ -1,7 +1,7 @@
 import { getPackageReferenceBundle } from "../data/packageReferences";
 import type { StoredDeploymentState, TurretExtensionInfo, TurretInfo } from "../types/authorization";
 import { fetchAuthorizationCharacterId } from "./authorizationTransaction";
-import { overlayMockAuthorizedTurrets } from "./authorizationMocking";
+import { getAuthorizationMockEnvironment, overlayMockAuthorizedTurrets } from "./authorizationMocking";
 
 interface GraphQlError {
   readonly message?: string;
@@ -114,7 +114,11 @@ export function parseTurretResponse(response: unknown, deploymentState: StoredDe
  */
 export async function fetchTurrets(input: FetchTurretsInput): Promise<readonly TurretInfo[]> {
   const remoteTargetId = getRemoteDeploymentTargetId(input.deploymentState.targetId);
-  const endpoint = TESTNET_GRAPHQL_ENDPOINT;
+  const endpoint = getTurretGraphQlEndpoint(input.deploymentState.targetId);
+
+  if (endpoint === null) {
+    throw new Error("Turret authorization is only available for published testnet deployments.");
+  }
 
   const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
   const bundle = getPackageReferenceBundle(remoteTargetId);
@@ -160,7 +164,11 @@ export async function fetchTurrets(input: FetchTurretsInput): Promise<readonly T
     turretId,
   })));
 
-  return overlayMockAuthorizedTurrets(turrets.filter(isNonNullable), input.deploymentState);
+  const resolvedTurrets = turrets.filter(isNonNullable);
+
+  return getAuthorizationMockEnvironment().enabled
+    ? overlayMockAuthorizedTurrets(resolvedTurrets, input.deploymentState)
+    : resolvedTurrets;
 }
 
 async function loadTurretInfo(input: {
@@ -184,11 +192,16 @@ async function loadTurretInfo(input: {
     return null;
   }
 
-  return {
-    objectId: input.turretId,
-    displayName: extractTurretDisplayName(content),
-    currentExtension: extractTurretExtension(content, input.deploymentState),
-  } satisfies TurretInfo;
+  return parseTurretResponse({
+    address: {
+      objects: {
+        nodes: [{
+          address: input.turretId,
+          contents: { json: content },
+        }],
+      },
+    },
+  }, input.deploymentState)[0] ?? null;
 }
 
 async function postGraphQl<TData>(input: {

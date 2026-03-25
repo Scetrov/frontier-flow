@@ -1,4 +1,5 @@
 import logoUrl from "../../assets/favicon@32px.png";
+import type { DeploymentTargetId } from "../compiler/types";
 import WalletStatus from "./WalletStatus";
 
 export type PrimaryView = "visual" | "move" | "deploy" | "authorize";
@@ -9,14 +10,14 @@ interface HeaderProps {
   readonly canAccessMove?: boolean;
   readonly hasAuthorizeAccess?: boolean;
   readonly isCompiling?: boolean;
-  readonly onDetectedDeploymentTarget?: (targetId: "testnet:stillness" | "testnet:utopia") => void;
+  readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
   readonly onViewChange?: (view: PrimaryView) => void;
-  readonly selectedDeploymentTarget?: "local" | "testnet:stillness" | "testnet:utopia";
+  readonly selectedDeploymentTarget?: DeploymentTargetId;
 }
 
 interface HeaderActionsProps {
-  readonly onDetectedDeploymentTarget?: (targetId: "testnet:stillness" | "testnet:utopia") => void;
-  readonly selectedDeploymentTarget: "local" | "testnet:stillness" | "testnet:utopia";
+  readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
+  readonly selectedDeploymentTarget: DeploymentTargetId;
 }
 
 interface NavigationButtonProps {

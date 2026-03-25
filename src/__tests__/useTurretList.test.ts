@@ -93,8 +93,11 @@ describe("useTurretList", () => {
 
     expect(result.current.status).toBe("error");
 
+    act(() => {
+      result.current.refresh();
+    });
+
     await act(async () => {
-      await result.current.refresh();
       await Promise.resolve();
       await Promise.resolve();
     });

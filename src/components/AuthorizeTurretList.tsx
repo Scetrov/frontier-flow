@@ -17,11 +17,13 @@ function AuthorizeTurretList({ onSelectionChange, turrets }: AuthorizeTurretList
     () => turrets.filter((turret) => !turret.currentExtension?.isCurrentDeployment).map((turret) => turret.objectId),
     [turrets],
   );
+  const selectableTurretIdSet = useMemo(() => new Set(selectableTurretIds), [selectableTurretIds]);
   const actionableSelectedIds = useMemo(
-    () => selectedIds.filter((objectId) => selectableTurretIds.includes(objectId)),
-    [selectableTurretIds, selectedIds],
+    () => selectedIds.filter((objectId) => selectableTurretIdSet.has(objectId)),
+    [selectableTurretIdSet, selectedIds],
   );
-  const allSelectableChecked = selectableTurretIds.length > 0 && selectableTurretIds.every((objectId) => actionableSelectedIds.includes(objectId));
+  const actionableSelectedIdSet = useMemo(() => new Set(actionableSelectedIds), [actionableSelectedIds]);
+  const allSelectableChecked = selectableTurretIds.length > 0 && selectableTurretIds.every((objectId) => actionableSelectedIdSet.has(objectId));
 
   useEffect(() => {
     onSelectionChange?.(actionableSelectedIds);
@@ -51,7 +53,7 @@ function AuthorizeTurretList({ onSelectionChange, turrets }: AuthorizeTurretList
       <div className="ff-authorize-list__items">
         {turrets.map((turret) => {
           const disabled = turret.currentExtension?.isCurrentDeployment ?? false;
-          const checked = disabled || actionableSelectedIds.includes(turret.objectId);
+          const checked = disabled || actionableSelectedIdSet.has(turret.objectId);
 
           return (
             <AuthorizeTurretItem

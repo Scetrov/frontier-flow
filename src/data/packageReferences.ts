@@ -5,6 +5,9 @@ const LAST_VERIFIED_ON = "2026-03-21";
 export const PUBLISHED_WORLD_PACKAGE_MANIFEST_URL = "https://raw.githubusercontent.com/evefrontier/world-contracts/refs/heads/main/contracts/world/Published.toml";
 export const WORLD_PACKAGE_OVERRIDE_STORAGE_KEY = "frontier-flow:world-package-overrides";
 
+let cachedBundleMap: ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> | null = null;
+let cachedOverrideSnapshot: string | null | undefined;
+
 type RemoteDeploymentTargetId = Exclude<PackageReferenceBundle["targetId"], "local">;
 
 interface StoredWorldPackageOverrides {
@@ -95,6 +98,10 @@ function getStoredWorldPackageOverrides(storage: Storage | undefined): StoredWor
   }
 }
 
+function getStoredWorldPackageOverridesSnapshot(storage: Storage | undefined): string | null {
+  return storage?.getItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY) ?? null;
+}
+
 function saveStoredWorldPackageOverrides(storage: Storage | undefined, overrides: StoredWorldPackageOverrides): void {
   storage?.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify(overrides));
 }
@@ -131,7 +138,22 @@ function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): read
 }
 
 function createPackageReferenceBundleMap(storage = getBrowserStorage()): ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> {
-  return new Map(getResolvedPackageReferenceBundles(storage).map((bundle) => [bundle.targetId, bundle]));
+  const overrideSnapshot = getStoredWorldPackageOverridesSnapshot(storage);
+
+  if (cachedBundleMap !== null && cachedOverrideSnapshot === overrideSnapshot) {
+    return cachedBundleMap;
+  }
+
+  cachedOverrideSnapshot = overrideSnapshot;
+  cachedBundleMap = new Map(getResolvedPackageReferenceBundles(storage).map((bundle) => [bundle.targetId, bundle]));
+
+  return cachedBundleMap;
+}
+
+export function shouldRefreshPublishedWorldPackageManifest(storage = getBrowserStorage()): boolean {
+  const storedOverrides = getStoredWorldPackageOverrides(storage);
+
+  return storedOverrides?.lastVerifiedOn !== getCurrentIsoDate();
 }
 
 /**

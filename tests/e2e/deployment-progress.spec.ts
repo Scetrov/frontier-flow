@@ -25,7 +25,7 @@ for (const scenario of [
     await selectDeploymentTarget(page, scenario.target);
     await page.getByRole("button", { name: `Deploy ${scenario.target}` }).click();
 
-    const modal = page.locator(".ff-deployment-modal__panel");
+    const modal = page.getByRole("dialog", { name: /Deployment in progress|Deployed/ });
     await expect(modal).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__copy", { hasText: `Target: ${scenario.target}` })).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__stage-label", { hasText: "Validating" })).toBeVisible();

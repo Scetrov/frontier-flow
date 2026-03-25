@@ -270,4 +270,47 @@ describe("WalletStatus", () => {
     expect(await screen.findByText("Capsuleer One")).toBeVisible();
     expect(onDetectedDeploymentTarget).toHaveBeenCalledWith("testnet:utopia");
   });
+
+  it("does not block character resolution on the manifest refresh", async () => {
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
+      data: { totalBalance: "3000000000" },
+    }));
+    mockRefreshPublishedWorldPackageManifest.mockImplementation(() => new Promise(() => undefined));
+    mockFetchCharacterIdentityForWalletAcrossTargets.mockResolvedValue({
+      characterName: "Capsuleer One",
+      targetId: "testnet:stillness",
+    } satisfies ResolvedWalletCharacterIdentity);
+
+    render(<WalletStatus selectedDeploymentTarget="local" />);
+
+    expect(await screen.findByText("Capsuleer One")).toBeVisible();
+  });
+
+  it("skips the manifest refresh when package references were already verified today", async () => {
+    window.localStorage.setItem("frontier-flow:world-package-overrides", JSON.stringify({
+      version: 1,
+      lastVerifiedOn: new Date().toISOString().slice(0, 10),
+      source: "https://example.test/Published.toml",
+      worldPackageIds: {
+        "testnet:stillness": "0xbbb",
+      },
+    }));
+
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
+      data: { totalBalance: "3000000000" },
+    }));
+    mockFetchCharacterIdentityForWalletAcrossTargets.mockResolvedValue({
+      characterName: "Capsuleer One",
+      targetId: "testnet:stillness",
+    } satisfies ResolvedWalletCharacterIdentity);
+
+    render(<WalletStatus selectedDeploymentTarget="local" />);
+
+    expect(await screen.findByText("Capsuleer One")).toBeVisible();
+    expect(mockRefreshPublishedWorldPackageManifest).not.toHaveBeenCalled();
+  });
 });

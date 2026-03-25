@@ -179,7 +179,7 @@ function findOwnerCapId(nodes: readonly AuthorizationLookupNode[], turretObjectI
       "objectId",
     ]);
 
-    if (turretId === turretObjectId) {
+    if (turretId !== null && turretId.toLowerCase() === turretObjectId.toLowerCase()) {
       return node.address;
     }
   }

@@ -134,7 +134,7 @@ function useAuthorizeViewSelection(input: {
 
     if (hasCompletedBatch) {
       clearSelection();
-      void turretList.refresh();
+      turretList.refresh();
     }
   }, [authorization, clearSelection, turretList]);
 
@@ -280,7 +280,7 @@ function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
                   deploymentState={deploymentState}
                   errorMessage={turretList.errorMessage}
                   onRetry={() => {
-                    void turretList.refresh();
+                    turretList.refresh();
                   }}
                   status={turretList.status}
                 />

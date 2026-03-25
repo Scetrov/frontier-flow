@@ -4,8 +4,10 @@ import {
   PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
   WORLD_PACKAGE_OVERRIDE_STORAGE_KEY,
   getPackageReferenceBundle,
+  getPackageReferenceBundleMap,
   parsePublishedWorldPackageManifest,
   refreshPublishedWorldPackageManifest,
+  shouldRefreshPublishedWorldPackageManifest,
 } from "../data/packageReferences";
 
 describe("packageReferences", () => {
@@ -61,5 +63,41 @@ original-id = "0xddd"
     });
     expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe("0xbbb");
     expect(getPackageReferenceBundle("testnet:utopia").worldPackageId).toBe("0xddd");
+  });
+
+  it("reuses the cached bundle map until stored overrides change", async () => {
+    const initialMap = getPackageReferenceBundleMap();
+
+    expect(getPackageReferenceBundleMap()).toBe(initialMap);
+
+    await refreshPublishedWorldPackageManifest({
+      fetchFn: () => Promise.resolve(new Response(`
+[published.testnet_stillness]
+published-at = "0xaaa"
+original-id = "0xbbb"
+
+[published.testnet_utopia]
+published-at = "0xccc"
+original-id = "0xddd"
+`, { status: 200, headers: { "content-type": "text/plain" } })),
+      storage: window.localStorage,
+    });
+
+    const refreshedMap = getPackageReferenceBundleMap();
+    expect(refreshedMap).not.toBe(initialMap);
+    expect(refreshedMap.get("testnet:stillness")?.worldPackageId).toBe("0xbbb");
+  });
+
+  it("skips manifest refresh when overrides were already verified today", () => {
+    window.localStorage.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      lastVerifiedOn: new Date().toISOString().slice(0, 10),
+      source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
+      worldPackageIds: {
+        "testnet:stillness": "0xbbb",
+      },
+    }));
+
+    expect(shouldRefreshPublishedWorldPackageManifest(window.localStorage)).toBe(false);
   });
 });

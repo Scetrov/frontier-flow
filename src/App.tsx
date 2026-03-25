@@ -32,8 +32,7 @@ const IconPreviewPage = lazy(() => import("./components/IconPreviewPage"));
 interface InitialAppState {
   readonly activeView: PrimaryView;
   readonly compilationSnapshot: PersistedCompilationState | null;
-  readonly deploymentState: StoredDeploymentState | null;
-  readonly selectedDeploymentTarget: "local" | "testnet:stillness" | "testnet:utopia";
+  readonly selectedDeploymentTarget: DeploymentTargetId;
 }
 
 interface FocusedDiagnosticSelection {
@@ -135,7 +134,6 @@ function getInitialAppState(): InitialAppState {
   return {
     activeView: uiState.activeView === "authorize" && nextDeploymentState === null ? "visual" : uiState.activeView,
     compilationSnapshot: nextCompilationSnapshot,
-    deploymentState: nextDeploymentState,
     selectedDeploymentTarget: uiState.selectedDeploymentTarget,
   };
 }
@@ -246,12 +244,16 @@ function getLiveDeploymentState(
     return null;
   }
 
+  if (latestAttempt.confirmationReference === undefined) {
+    return null;
+  }
+
   return {
     version: 1,
     packageId: latestAttempt.packageId,
     moduleName: latestAttempt.moduleName,
     targetId: latestAttempt.targetId,
-    transactionDigest: latestAttempt.confirmationReference ?? latestAttempt.packageId,
+    transactionDigest: latestAttempt.confirmationReference,
     deployedAt: new Date(latestAttempt.endedAt ?? latestAttempt.startedAt).toISOString(),
     contractName: loadActiveContractName(getBrowserStorage()) ?? latestAttempt.moduleName,
   };

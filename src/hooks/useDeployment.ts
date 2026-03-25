@@ -1261,6 +1261,7 @@ function getPersistedDeploymentSnapshot(
   if (
     deploymentStatus?.status !== "deployed"
     || latestAttempt?.outcome !== "succeeded"
+    || latestAttempt.confirmationReference === undefined
     || latestAttempt.packageId === undefined
     || latestAttempt.moduleName === undefined
   ) {
@@ -1272,7 +1273,7 @@ function getPersistedDeploymentSnapshot(
     packageId: latestAttempt.packageId,
     moduleName: latestAttempt.moduleName,
     targetId: latestAttempt.targetId,
-    transactionDigest: latestAttempt.confirmationReference ?? latestAttempt.packageId,
+    transactionDigest: latestAttempt.confirmationReference,
     deployedAt: new Date(latestAttempt.endedAt ?? latestAttempt.startedAt).toISOString(),
     contractName: loadActiveContractName(window.localStorage) ?? latestAttempt.moduleName,
   };

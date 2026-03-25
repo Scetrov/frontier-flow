@@ -12,8 +12,8 @@
         "/usr/bin/chromium",
         "--ozone-platform-hint=auto",
         "--ignore-default-chrome-arg=--disable-extensions",
-        "--chromeArg=--disable-extensions-except=/home/scetrov/source/sui-test-wallet/dist",
-        "--chromeArg=--load-extension=/home/scetrov/source/sui-test-wallet/dist"
+        "--chromeArg=--disable-extensions-except=${workspaceFolder}/../sui-test-wallet/dist",
+        "--chromeArg=--load-extension=${workspaceFolder}/../sui-test-wallet/dist"
       ]
     }
   }

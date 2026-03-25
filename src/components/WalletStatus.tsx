@@ -8,7 +8,7 @@ import {
 } from "@mysten/dapp-kit";
 
 import type { DeploymentTargetId } from "../compiler/types";
-import { refreshPublishedWorldPackageManifest } from "../data/packageReferences";
+import { refreshPublishedWorldPackageManifest, shouldRefreshPublishedWorldPackageManifest } from "../data/packageReferences";
 import { useTargetBalance } from "../hooks/useTargetBalance";
 import { formatAddress } from "../utils/formatAddress";
 import { fetchCharacterIdentityForWalletAcrossTargets } from "../utils/characterProfile";
@@ -157,11 +157,15 @@ function useResolvedCharacterName(
     const walletAddress = account.address;
     const targetId = selectedDeploymentTarget;
 
-    void refreshPublishedWorldPackageManifest().catch(() => undefined).then(async () => fetchCharacterIdentityForWalletAcrossTargets({
+    if (shouldRefreshPublishedWorldPackageManifest()) {
+      void refreshPublishedWorldPackageManifest().catch(() => undefined);
+    }
+
+    void fetchCharacterIdentityForWalletAcrossTargets({
       walletAddress,
       preferredTargetId: targetId,
       signal: controller.signal,
-    })).then((resolvedIdentity) => {
+    }).then((resolvedIdentity) => {
       if (!controller.signal.aborted) {
         setCharacterNameState({
           targetId: resolvedIdentity?.targetId ?? targetId,

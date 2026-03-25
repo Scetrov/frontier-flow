@@ -22,7 +22,7 @@ export interface UseTurretListResult {
   readonly status: TurretListStatus;
   readonly turrets: readonly TurretInfo[];
   readonly errorMessage: string | null;
-  readonly refresh: () => Promise<void>;
+  readonly refresh: () => void;
 }
 
 /**
@@ -90,7 +90,7 @@ export function useTurretList({ deploymentState, walletAddress, fetchTurretsFn =
         status: "idle",
         turrets: [],
         errorMessage: null,
-        refresh: () => Promise.resolve(),
+        refresh: () => {},
       };
     }
 
@@ -99,7 +99,7 @@ export function useTurretList({ deploymentState, walletAddress, fetchTurretsFn =
         status: "error",
         turrets: [],
         errorMessage: "Connect a Sui wallet to load owned turrets.",
-        refresh: () => Promise.resolve(),
+        refresh: () => {},
       };
     }
 
@@ -108,7 +108,7 @@ export function useTurretList({ deploymentState, walletAddress, fetchTurretsFn =
         status: "loading",
         turrets: [],
         errorMessage: null,
-        refresh: () => Promise.resolve(),
+        refresh: () => {},
       };
     }
 
@@ -116,7 +116,7 @@ export function useTurretList({ deploymentState, walletAddress, fetchTurretsFn =
       status: queryState.status,
       turrets: queryState.turrets,
       errorMessage: queryState.errorMessage,
-      refresh: () => Promise.resolve(),
+      refresh: () => {},
     };
   }, [deploymentState, queryState, requestKey, walletAddress]);
 
@@ -124,7 +124,6 @@ export function useTurretList({ deploymentState, walletAddress, fetchTurretsFn =
     ...result,
     refresh: () => {
       setRefreshToken((value) => value + 1);
-      return Promise.resolve();
     },
   };
 }
