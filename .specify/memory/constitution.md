@@ -1,14 +1,23 @@
 <!--
   Sync Impact Report
   ===================
-  Version change: N/A → 1.0.0
-  Modified principles: N/A (initial population)
+  Version change: 1.0.0 → 1.1.0
+  Bump rationale: MINOR — materially expanded existing principles
+    (I, IV, V, VII) and added new Principle IX from ADR findings.
+  Modified principles:
+    - I. Type Safety Above All → added strict type-checked linting
+      (ADR-006)
+    - IV. Predictable Code Generation → added IR-based pipeline
+      architecture, source-map traceability, phase isolation
+      (ADR-005)
+    - V. Security by Default → added WASM supply chain integrity
+      (ADR-003)
+    - VII. Accessibility & Inclusion → added automated axe-core
+      auditing in CI (ADR-007)
   Added sections:
-    - Core Principles (7 principles derived from docs/CONSTITUTION.md)
-    - Architecture & Design Standards
-    - Development Workflow & Guardrails
-    - Governance
-  Removed sections: N/A
+    - IX. Artifact Integrity & Lifecycle Separation (ADR-008,
+      ADR-009)
+  Removed sections: none
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ no changes needed
       (Constitution Check section uses generic gate reference)
@@ -16,8 +25,10 @@
       (standard sections, no constitution-specific refs)
     - .specify/templates/tasks-template.md ✅ no changes needed
       (user-story organisation, no constitution-specific refs)
-    - .specify/templates/commands/*.md ✅ N/A (directory empty)
-  Follow-up TODOs: none
+  Follow-up TODOs:
+    - ADR-009 is status "Proposed"; Principle IX deploy-grade
+      clauses should be revisited when ADR-009 is formally
+      accepted or rejected.
 -->
 
 # Frontier Flow Constitution
@@ -33,6 +44,11 @@
 - Complex state machines MUST use discriminated unions.
 - Favour immutable data and pure functions.
 - Prefer readable, explicit solutions over clever shortcuts.
+- Linting MUST use the `strictTypeChecked` preset from
+  `typescript-eslint`, enforcing `no-floating-promises`,
+  `no-misused-promises`, and `strict-boolean-expressions`.
+  Rationale: unhandled promise rejections and implicit boolean
+  coercions cause silent runtime failures (ADR-006).
 
 ### II. Visual Feedback is Paramount
 
@@ -62,6 +78,20 @@
 - Code generation MUST be fully decoupled from UI components.
 - The generator MUST validate all graph inputs to block
   injection attacks in generated smart contracts.
+- Code generation MUST follow a multi-phase pipeline with a
+  normalised Intermediate Representation (IR) as the stable
+  interface between phases. Each phase (graph→IR, validation,
+  sanitisation, optimisation, emission) MUST be independently
+  unit-testable (ADR-005).
+- Input sanitisation MUST be a discrete, mandatory pipeline
+  phase that cannot be bypassed by changes to the emitter.
+  User-supplied values MUST be validated against a strict
+  alphanumeric allowlist before reaching code emission
+  (ADR-005).
+- The emitter MUST annotate generated Move source lines with
+  `@ff-node:` comments mapping back to originating canvas node
+  IDs, enabling compiler error traceability from Move
+  diagnostics to canvas nodes (ADR-005).
 
 ### V. Security by Default
 
@@ -74,6 +104,11 @@
   error handling; no deep nesting.
 - Surface user-facing errors via predefined notification
   patterns or Error Boundaries.
+- Third-party WASM binaries (e.g., the Move compiler) MUST be
+  pinned to an exact version and verified against a known-good
+  checksum before execution. Rationale: a compromised WASM
+  package could inject malicious bytecode into compiled modules
+  (ADR-003, Risk R-11).
 
 ### VI. Test-First Quality
 
@@ -97,6 +132,10 @@
   regions) to describe graph states to assistive technologies.
 - Focusable elements MUST have a distinct, high-contrast
   `:focus-visible` state with a logical tab order.
+- JSX MUST be linted with `eslint-plugin-jsx-a11y` to catch
+  accessibility regressions at author time (ADR-006).
+- Playwright E2E tests MUST include `axe-core` accessibility
+  audits to enforce a11y compliance in CI (ADR-007).
 
 ### VIII. Durability & Maintainability
 
@@ -105,12 +144,38 @@
 - State must be durable across sessions within the same browser
   instance; use IndexedDB or localStorage for persistence.
 
+### IX. Artifact Integrity & Lifecycle Separation
+
+- Compilation status and deployment status MUST be modelled as
+  separate lifecycle channels on the generated artifact. UI
+  surfaces MUST NOT collapse deployment readiness into compile
+  success (ADR-008).
+- The `GeneratedContractArtifact` MUST be the single source of
+  truth for compile readiness and deployment state. UI
+  components may derive labels but MUST NOT maintain independent
+  lifecycle state (ADR-008).
+- Authoring-time compilation (fast in-browser feedback) and
+  deploy-grade compilation (bytecode valid against live target
+  dependency graphs) MUST be treated as distinct concerns.
+  Deploy-grade compilation MUST NOT rely on local shim packages
+  as the sole dependency resolution mechanism (ADR-009,
+  status: Proposed).
+- Build artifact provenance MUST be explicit: upstream
+  checked-in artifacts (e.g., `Move.toml`, `Move.lock`),
+  derived builder inputs (e.g., `rootGit`), and generated
+  resolution outputs (e.g., `resolvedDependencies`) MUST be
+  distinguishable in the compilation pipeline (ADR-009,
+  status: Proposed).
+
 ## Architecture & Design Standards
 
 - **Runtime**: React 19, TypeScript 5.9 (strict), ES Modules.
 - **Build**: Vite (Rolldown fork), Bun (`bun dev`, `bun run
-build`, `bun run lint`, `bun run test`).
+  build`, `bun run lint`, `bun run test`).
 - **Graph Engine**: `@xyflow/react` (React Flow v12).
+  React Flow usage SHOULD be abstracted behind wrapper hooks
+  to contain the migration surface for future major version
+  upgrades (ADR-001).
 - **Styling**: Tailwind CSS v4, PostCSS, CSS variables.
   Usage-based tokens (e.g., `--bg-primary`, `--text-primary`).
 - **Design Language**: Sci-fi industrial aesthetic (EVE
@@ -122,13 +187,17 @@ build`, `bun run lint`, `bun run test`).
   Canvas state via React Flow hooks. Code generation decoupled
   (`utils/codeGenerator.ts`). Layout abstracted
   (`utils/layoutEngine.ts`).
-- **Performance**: Lazy-load heavy dependencies. Debounce
-  high-frequency events to prevent render thrashing.
+- **Performance**: Lazy-load heavy dependencies (including
+  WASM bundles). Debounce high-frequency events to prevent
+  render thrashing.
 - **State Management**: Local React Hooks +
   `ReactFlowProvider` contexts. No global state library unless
-  justified via ADR.
+  justified via ADR (ADR-002).
 - **Blockchain**: `@mysten/sui`, `@mysten/dapp-kit`,
   `@zktx.io/sui-move-builder` (WASM).
+- **Linting**: ESLint 10 flat config with
+  `strictTypeChecked`, `eslint-plugin-jsx-a11y`,
+  `ecmaVersion: "latest"` (ADR-006).
 
 ## Development Workflow & Guardrails
 
@@ -178,4 +247,4 @@ build`, `bun run lint`, `bun run test`).
 
 - Use prettier to format markdown files and ensure there are no warnings.
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-22 | **Last Amended**: 2026-03-12
+**Version**: 1.1.0 | **Ratified**: 2026-02-22 | **Last Amended**: 2026-03-25
