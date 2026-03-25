@@ -3,7 +3,7 @@ title: Frontier Flow - API Contracts & Data Dictionary
 version: 1.0.0
 status: draft
 created: 2026-02-22
-updated: 2026-03-20
+updated: 2026-03-25
 author: Scetrov
 description: Data shapes, interface contracts, and the IR specification for the Frontier Flow code generation pipeline.
 ---
@@ -477,6 +477,10 @@ module builder_extensions::turret_logic {
     }
 }
 ```
+
+Deployment readiness requirement: after publish confirmation, the package must expose `[packageId]::[moduleName]::TurretAuth` via RPC normalization before Frontier Flow persists the deployment snapshot or starts turret authorization. This matches the world-contracts typed-witness flow where `world::turret::authorize_extension<Auth>` stores `type_name::with_defining_ids<Auth>()`, and the extension package is later resolved from that exact witness type.
+
+Remote publish compilation requirement: for published targets, deployment bytecode must be compiled against a generated `deps/world/Published.toml` entry for the selected world package instead of relying on an unpublished local shim plus a manually appended dependency ID. The generated extension package must keep `builder_extensions = "0x0"` for its own address, but it must not redeclare `world = "0x0"` in the root package manifest when compiling the remote publish artifact.
 
 ---
 

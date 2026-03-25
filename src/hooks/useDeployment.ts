@@ -672,11 +672,19 @@ function getExecutionOutcomeSeverity(outcome: DeploymentExecutionResult["outcome
   }
 }
 
+function shouldSurfaceFailureMessageDirectly(result: DeploymentExecutionResult): boolean {
+  return result.outcome === "failed" && result.stage === "preparing";
+}
+
 function getExecutionOutcomeNextAction(result: DeploymentExecutionResult): string {
   switch (result.outcome) {
     case "cancelled":
       return "Approve the wallet signing request to continue deployment.";
     case "failed":
+      if (shouldSurfaceFailureMessageDirectly(result)) {
+        return result.message;
+      }
+
       return "Review the wallet and RPC error details, then retry deployment once the target is healthy.";
     case "unresolved":
       return "Retry confirmation or redeploy after checking the target network and transaction digest.";

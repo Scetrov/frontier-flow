@@ -42,6 +42,10 @@ function getModalTitle(latestAttempt: DeploymentAttempt | null, progress: Deploy
   }
 }
 
+function shouldSurfaceFailureMessageDirectly(latestAttempt: DeploymentAttempt | null): latestAttempt is DeploymentAttempt {
+  return latestAttempt !== null && latestAttempt.outcome === "failed" && latestAttempt.currentStage === "preparing";
+}
+
 function getTerminalRemediation(latestAttempt: DeploymentAttempt | null): string | null {
   if (latestAttempt === null) {
     return null;
@@ -51,6 +55,10 @@ function getTerminalRemediation(latestAttempt: DeploymentAttempt | null): string
     case "cancelled":
       return "Approve the wallet signing request to continue deployment.";
     case "failed":
+      if (shouldSurfaceFailureMessageDirectly(latestAttempt)) {
+        return latestAttempt.message;
+      }
+
       return "Review the wallet and RPC error details, then retry deployment once the target is healthy.";
     case "unresolved":
       return "Retry confirmation or redeploy after checking the target network and transaction digest.";

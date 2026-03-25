@@ -1,10 +1,14 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import MoveSourcePanel from "../components/MoveSourcePanel";
 import { createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
 
 const compiledArtifact = createGeneratedArtifactStub();
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("MoveSourcePanel", () => {
   it("renders read-only Move source without altering the generated formatting", () => {
@@ -13,11 +17,15 @@ describe("MoveSourcePanel", () => {
         let compiled = true;
     }
 }`;
+    const artifact = createGeneratedArtifactStub({
+      moveSource: sourceCode,
+      sourceFiles: [{ path: "sources/starter_contract.move", content: sourceCode }],
+    });
 
     const { container } = render(
       <MoveSourcePanel
         sourceCode={sourceCode}
-        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }}
       />,
     );
 
@@ -26,10 +34,35 @@ describe("MoveSourcePanel", () => {
     expect(screen.getByText("You can view the generated source in this tab to help diagnose problems, move on to Deploy to deploy to the server.")).toBeVisible();
     expect(screen.getByText(/Learn how to extend this code using/i)).toBeVisible();
     expect(screen.getByRole("link", { name: "Learn Move on Sui" })).toHaveAttribute("href", "https://evefrontier.space/move/");
+    expect(screen.getByRole("tab", { name: artifact.sourceFilePath })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "/Move.toml" })).toBeVisible();
     expect(screen.getByText(/module builder_extensions::starter_contract/)).toBeVisible();
-    expect(screen.getByLabelText("Generated Move source code").textContent).toBe(sourceCode);
+    expect(screen.getByLabelText(`${artifact.sourceFilePath} contents`).textContent).toBe(sourceCode);
     expect(container.querySelector(".hljs-keyword")).not.toBeNull();
     expect(screen.getByRole("region", { name: "Move source view" })).toBeInTheDocument();
+  });
+
+  it("lets the user inspect root Move.toml and additional virtual files", () => {
+    const artifact = createGeneratedArtifactStub({
+      moveToml: "[package]\nname = \"starter_contract\"\n",
+      sourceFiles: [
+        { path: "sources/starter_contract.move", content: "module builder_extensions::starter_contract {}" },
+        { path: "Move.lock", content: "[move]\nversion = 4\n" },
+      ],
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={artifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "/Move.toml" }));
+    expect(screen.getByLabelText("Move.toml contents").textContent).toContain("name = \"starter_contract\"");
+
+    fireEvent.click(screen.getByRole("tab", { name: "/Move.lock" }));
+    expect(screen.getByLabelText("Move.lock contents").textContent).toContain("version = 4");
   });
 
   it("shows an empty state when no source is available", () => {
@@ -61,14 +94,14 @@ describe("MoveSourcePanel", () => {
   });
 
   it("does not render the previous header chips", () => {
-    render(
+    const { container } = render(
       <MoveSourcePanel
         sourceCode={compiledArtifact.moveSource}
         status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
       />,
     );
 
-    expect(screen.queryByText("starter_contract.move")).not.toBeInTheDocument();
+    expect(container.querySelector(".ff-move-source__badge")).toBeNull();
     expect(screen.queryAllByText("Compiled")).toHaveLength(0);
   });
 
@@ -90,5 +123,80 @@ describe("MoveSourcePanel", () => {
     expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
     expect(screen.queryByText("Target: testnet:stillness")).not.toBeInTheDocument();
     expect(screen.queryByText("Ready to deploy the generated artifact to the selected turret.")).not.toBeInTheDocument();
+  });
+
+  it("invokes rebuild when the Move tab rebuild button is pressed", () => {
+    const handleRebuild = vi.fn();
+
+    render(
+      <MoveSourcePanel
+        onRebuild={handleRebuild}
+        sourceCode={compiledArtifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Rebuild" }));
+
+    expect(handleRebuild).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows rebuilding feedback while compilation is in progress", () => {
+    render(
+      <MoveSourcePanel
+        sourceCode={compiledArtifact.moveSource}
+        status={{ state: "compiling" }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Rebuilding..." })).toBeDisabled();
+  });
+
+  it("copies generated source and updates the action label", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText,
+      },
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={compiledArtifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(compiledArtifact.moveSource);
+    });
+    expect(screen.getByRole("button", { name: "Copied" })).toBeInTheDocument();
+  });
+
+  it("copies the selected virtual file contents", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText,
+      },
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={compiledArtifact.moveSource}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact: compiledArtifact }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "/Move.toml" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(compiledArtifact.moveToml);
+    });
   });
 });

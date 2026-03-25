@@ -94,6 +94,32 @@ describe("CompilationStatus deployment blocker details", () => {
     expect(screen.getByText("Review the wallet and RPC error details, then retry deployment once the target is healthy.")).toBeVisible();
   });
 
+  it("renders preparation-stage failure details for remote compiler blockers", () => {
+    const artifact = createGeneratedArtifactStub({
+      deploymentStatus: createDeploymentStatus("blocked", {
+        outcome: "failed",
+        headline: "Deployment failed",
+        targetId: "testnet:stillness",
+        stage: "preparing",
+        severity: "error",
+        blockedReasons: [],
+        nextActionSummary: "Remote deployment cannot resolve the published world dependency in the browser Move compiler.",
+      }),
+    });
+
+    render(
+      <CompilationStatus
+        diagnostics={[]}
+        status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Deployment Blocked/i }));
+
+    expect(screen.getByText("Stage: preparing")).toBeVisible();
+    expect(screen.getByText("Remote deployment cannot resolve the published world dependency in the browser Move compiler.")).toBeVisible();
+  });
+
   it("renders unresolved deployment guidance with confirmation evidence retained", () => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("blocked", {

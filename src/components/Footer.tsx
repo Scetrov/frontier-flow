@@ -13,19 +13,43 @@ interface FooterProps {
   readonly diagnostics?: readonly CompilerDiagnostic[];
   readonly remediationNotices?: readonly RemediationNotice[];
   readonly onSelectDiagnostic?: (nodeId: string) => void;
+  readonly transientStatusMessage?: {
+    readonly tone: "error" | "info" | "success";
+    readonly text: string;
+  } | null;
 }
 
-function Footer({ deploymentStatus = null, status = { state: "idle" }, diagnostics = [], remediationNotices = [], onSelectDiagnostic }: FooterProps) {
+function Footer({
+  deploymentStatus = null,
+  status = { state: "idle" },
+  diagnostics = [],
+  remediationNotices = [],
+  onSelectDiagnostic,
+  transientStatusMessage = null,
+}: FooterProps) {
   const remediationDiagnostics = remediationNoticesToDiagnostics(remediationNotices);
   const mergedDiagnostics = remediationDiagnostics.length > 0
     ? [...remediationDiagnostics, ...diagnostics]
     : diagnostics;
+  const transientStatusClassName = transientStatusMessage === null
+    ? null
+    : transientStatusMessage.tone === "success"
+      ? "text-[rgba(137,223,168,0.96)]"
+      : transientStatusMessage.tone === "error"
+        ? "text-[var(--brand-orange)]"
+        : "text-[var(--text-secondary)]";
+
   return (
     <footer className="border-t border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.94)] px-4 py-3 sm:px-6">
       <div className="flex flex-col gap-2 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="font-heading text-[0.7rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">v{__APP_VERSION__}</span>
           <CompilationStatus deploymentStatus={deploymentStatus} diagnostics={mergedDiagnostics} onSelectDiagnostic={onSelectDiagnostic} status={status} />
+          {transientStatusMessage !== null && transientStatusClassName !== null ? (
+            <span aria-live="polite" className={`font-heading text-[0.68rem] uppercase tracking-[0.18em] ${transientStatusClassName}`}>
+              {transientStatusMessage.text}
+            </span>
+          ) : null}
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <a

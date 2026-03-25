@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 
 import { getDeploymentTarget } from "../data/deploymentTargets";
 import type { DeploymentConfirmationRequest, DeploymentConfirmationResult } from "../deployment/confirmation";
-import { confirmPublishedPackage } from "../deployment/confirmation";
+import { confirmPublishedPackage, confirmPublishedPackageWithClient } from "../deployment/confirmation";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
 
 function createRequest(signal?: AbortSignal): DeploymentConfirmationRequest {
@@ -78,5 +79,63 @@ describe("confirmPublishedPackage", () => {
     controller.abort();
 
     await expect(confirmationPromise).rejects.toThrow("Deployment confirmation was aborted.");
+  });
+
+  it("waits for the published TurretAuth witness to become queryable before confirming success", async () => {
+    const getNormalizedMoveStruct = vi.fn()
+      .mockRejectedValueOnce(new Error("No struct was found with struct name TurretAuth"))
+      .mockResolvedValueOnce({});
+    const client = {
+      waitForTransaction: vi.fn(() => Promise.resolve({
+        digest: "0xdigest",
+        effects: { status: { status: "success" } },
+        objectChanges: [{ type: "published", packageId: "0xabc123" }],
+      })),
+      getNormalizedMoveStruct,
+    } as unknown as SuiJsonRpcClient;
+
+    const confirmationPromise = confirmPublishedPackageWithClient(createRequest(), client);
+
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    await expect(confirmationPromise).resolves.toEqual({
+      confirmed: true,
+      confirmationReference: "0xdigest",
+      packageId: "0xabc123",
+      finalStage: "confirming",
+    });
+    expect(getNormalizedMoveStruct).toHaveBeenCalledTimes(2);
+    expect(getNormalizedMoveStruct).toHaveBeenNthCalledWith(1, {
+      package: "0xabc123",
+      module: "starter_contract",
+      struct: "TurretAuth",
+      signal: undefined,
+    });
+  });
+
+  it("returns unresolved confirmation when the published TurretAuth witness never becomes queryable", async () => {
+    const getNormalizedMoveStruct = vi.fn(() => Promise.reject(new Error("No struct was found with struct name TurretAuth")));
+    const client = {
+      waitForTransaction: vi.fn(() => Promise.resolve({
+        digest: "0xdigest",
+        effects: { status: { status: "success" } },
+        objectChanges: [{ type: "published", packageId: "0xabc123" }],
+      })),
+      getNormalizedMoveStruct,
+    } as unknown as SuiJsonRpcClient;
+
+    const confirmationPromise = confirmPublishedPackageWithClient(createRequest(), client);
+
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    await expect(confirmationPromise).resolves.toEqual({
+      confirmed: false,
+      confirmationReference: "0xdigest",
+      packageId: "0xabc123",
+      finalStage: "confirming",
+    });
+    expect(getNormalizedMoveStruct).toHaveBeenCalled();
   });
 });

@@ -20,6 +20,7 @@ type SuiClient = ReturnType<typeof useSuiClientHook>;
 type Wallets = ReturnType<typeof useWalletsHook>;
 
 const {
+  mockCompileMove,
   mockSignTransaction,
   mockUseCurrentAccount,
   mockUseCurrentWallet,
@@ -27,6 +28,7 @@ const {
   mockUseSuiClient,
   mockUseWallets,
 } = vi.hoisted(() => ({
+  mockCompileMove: vi.fn(),
   mockSignTransaction: vi.fn<typeof signTransactionFunction>(),
   mockUseCurrentAccount: vi.fn<() => CurrentAccount>(),
   mockUseCurrentWallet: vi.fn<() => CurrentWallet>(),
@@ -59,6 +61,10 @@ vi.mock("@mysten/wallet-standard", () => ({
   signTransaction: mockSignTransaction,
 }));
 
+vi.mock("../compiler/moveCompiler", () => ({
+  compileMove: mockCompileMove,
+}));
+
 beforeEach(() => {
   vi.useFakeTimers();
   window.localStorage.clear();
@@ -74,6 +80,7 @@ beforeEach(() => {
   mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
   mockUseSuiClient.mockReturnValue({
     executeTransactionBlock: vi.fn(() => Promise.resolve({ digest: "0xdigest" })),
+    getNormalizedMoveStruct: vi.fn(() => Promise.resolve({})),
     waitForTransaction: vi.fn(() => Promise.resolve({
       digest: "0xdigest",
       effects: { status: { status: "success" } },
@@ -82,6 +89,34 @@ beforeEach(() => {
   } as unknown as SuiClient);
   mockUseWallets.mockReturnValue([availableWallet]);
   mockSignTransaction.mockResolvedValue({ bytes: "dGVzdA==", signature: "0xsig" });
+  mockCompileMove.mockImplementation((artifact: { bytecodeModules: readonly Uint8Array[]; dependencies: readonly string[] }) => Promise.resolve({
+    success: true,
+    modules: artifact.bytecodeModules.length > 0
+      ? artifact.bytecodeModules
+      : [new Uint8Array([1, 2, 3])],
+    dependencies: artifact.dependencies.length > 0
+      ? artifact.dependencies
+      : [
+          "0x0000000000000000000000000000000000000000000000000000000000000001",
+          "0x0000000000000000000000000000000000000000000000000000000000000002",
+          "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+        ],
+    errors: null,
+    warnings: [],
+    artifact: {
+      ...artifact,
+      bytecodeModules: artifact.bytecodeModules.length > 0
+        ? artifact.bytecodeModules
+        : [new Uint8Array([1, 2, 3])],
+      dependencies: artifact.dependencies.length > 0
+        ? artifact.dependencies
+        : [
+            "0x0000000000000000000000000000000000000000000000000000000000000001",
+            "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+          ],
+    },
+  }));
   window.history.replaceState({}, "", "/?ff_mock_deploy_stage_delay_ms=0");
 });
 
@@ -188,6 +223,7 @@ describe("useDeployment success path", () => {
     });
     mockUseSuiClient.mockReturnValue({
       executeTransactionBlock,
+      getNormalizedMoveStruct: vi.fn(() => Promise.resolve({})),
       waitForTransaction,
     } as unknown as SuiClient);
     window.history.replaceState({}, "", "/");

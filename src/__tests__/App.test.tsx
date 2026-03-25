@@ -73,17 +73,20 @@ vi.mock("../components/Header", () => ({
 }));
 
 vi.mock("../components/Footer", () => ({
-  default: (props: { onSelectDiagnostic?: (nodeId: string) => void }) => {
+  default: (props: { onSelectDiagnostic?: (nodeId: string) => void; transientStatusMessage?: { text: string } | null }) => {
     footerSpy(props);
     return (
-      <button
-        type="button"
-        onClick={() => {
-          props.onSelectDiagnostic?.("node_1");
-        }}
-      >
-        Footer Slot
-      </button>
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            props.onSelectDiagnostic?.("node_1");
+          }}
+        >
+          Footer Slot
+        </button>
+        {props.transientStatusMessage ? <span>{props.transientStatusMessage.text}</span> : null}
+      </div>
     );
   },
 }));

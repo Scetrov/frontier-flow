@@ -51,6 +51,7 @@ function createConnectedWallet(): CurrentWallet {
 function createSuiClient(overrides: Partial<SuiClient> = {}): SuiClient {
   return {
     executeTransactionBlock: vi.fn(() => Promise.resolve({ digest: "0xdigest" })),
+    getNormalizedMoveStruct: vi.fn(() => Promise.resolve({})),
     queryEvents: vi.fn(() => Promise.resolve({ data: [], hasNextPage: false, nextCursor: null })),
     waitForTransaction: vi.fn(() => Promise.resolve({
       digest: "0xdigest",
@@ -125,6 +126,83 @@ describe("useAuthorization", () => {
       errorMessage: null,
     }]);
     expect(result.current.progress?.completedAt).not.toBeNull();
+  });
+
+  it("waits for the deployed witness type to become queryable before signing", async () => {
+    const getNormalizedMoveStruct = vi.fn()
+      .mockRejectedValueOnce(new Error("TypeNotFound"))
+      .mockResolvedValueOnce({});
+    const signTransactionFn = vi.fn<typeof signTransactionFunction>(() => Promise.resolve({
+      bytes: "dGVzdA==",
+      signature: "0xsig",
+    }));
+
+    const { result } = renderHook(() => useAuthorization({
+      deploymentState,
+      walletAccount: createConnectedAccount(),
+      currentWallet: createConnectedWallet(),
+      suiClient: createSuiClient({ getNormalizedMoveStruct }),
+      buildTransactionFn: vi.fn(() => createTransaction()),
+      confirmationTimeoutMs: 200,
+      eventPollingIntervalMs: 100,
+      fetchCharacterIdFn: vi.fn(() => Promise.resolve("0xcharacter")),
+      fetchOwnerCapFn: vi.fn(() => Promise.resolve("0xownercap")),
+      queryAuthorizationEventFn: vi.fn(() => Promise.resolve(true)),
+      signTransactionFn,
+    }));
+
+    await act(async () => {
+      const authorizationPromise = result.current.startAuthorization(["0x1111"]);
+      await vi.advanceTimersByTimeAsync(100);
+      await authorizationPromise;
+    });
+
+    expect(getNormalizedMoveStruct).toHaveBeenCalledTimes(2);
+    expect(getNormalizedMoveStruct).toHaveBeenNthCalledWith(1, {
+      package: deploymentState.packageId,
+      module: deploymentState.moduleName,
+      struct: "TurretAuth",
+    });
+    expect(signTransactionFn).toHaveBeenCalledTimes(1);
+    expect(result.current.progress?.targets[0]?.status).toBe("confirmed");
+  });
+
+  it("fails a turret with a propagation error when the witness type never becomes queryable", async () => {
+    const getNormalizedMoveStruct = vi.fn(() => Promise.reject(new Error("TypeNotFound")));
+    const signTransactionFn = vi.fn<typeof signTransactionFunction>(() => Promise.resolve({
+      bytes: "dGVzdA==",
+      signature: "0xsig",
+    }));
+
+    const { result } = renderHook(() => useAuthorization({
+      deploymentState,
+      walletAccount: createConnectedAccount(),
+      currentWallet: createConnectedWallet(),
+      suiClient: createSuiClient({ getNormalizedMoveStruct }),
+      buildTransactionFn: vi.fn(() => createTransaction()),
+      confirmationTimeoutMs: 200,
+      eventPollingIntervalMs: 100,
+      fetchCharacterIdFn: vi.fn(() => Promise.resolve("0xcharacter")),
+      fetchOwnerCapFn: vi.fn(() => Promise.resolve("0xownercap")),
+      queryAuthorizationEventFn: vi.fn(() => Promise.resolve(true)),
+      signTransactionFn,
+    }));
+
+    await act(async () => {
+      const authorizationPromise = result.current.startAuthorization(["0x1111"]);
+      await vi.advanceTimersByTimeAsync(250);
+      await authorizationPromise;
+    });
+
+    expect(signTransactionFn).not.toHaveBeenCalled();
+    expect(result.current.progress?.targets).toEqual([{
+      turretObjectId: "0x1111",
+      ownerCapId: "0xownercap",
+      status: "failed",
+      confirmationPhase: null,
+      transactionDigest: null,
+      errorMessage: `The deployed extension package is not queryable yet for ${deploymentState.packageId}::${deploymentState.moduleName}::TurretAuth. Wait for testnet propagation and retry authorization, or redeploy if this package is stale. Last RPC error: TypeNotFound`,
+    }]);
   });
 
   it("moves a turret into warning when the event is not observed before timeout", async () => {

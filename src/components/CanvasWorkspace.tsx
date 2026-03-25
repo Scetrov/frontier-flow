@@ -665,6 +665,15 @@ function useContractManager({
       saveContractLibrary(typeof window === "undefined" ? undefined : window.localStorage, withActiveContractSnapshot(contractLibrary, nodes, edges));
     }
   }, [contractLibrary, edges, mode, nodes]);
+  useEffect(() => {
+    if (mode !== "persistent") {
+      return;
+    }
+
+    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, {
+      currentDraftContractName: draftContractName,
+    });
+  }, [draftContractName, mode]);
   return { activeContract, activeContractDescription, activeRemediationNotices, contractLibrary, draftContractName, handleCreateContractCopy, handleDeleteContract, handleSaveAsContract, handleSelectContract, setContractRemediationNotices, setDraftContractName };
 }
 

@@ -86,7 +86,7 @@ export function prepareArtifactManifestForTarget(
 
   return {
     moveToml: createMoveToml(moduleName),
-    dependencies,
+    dependencies: [...new Set(dependencies)],
   };
 }
 

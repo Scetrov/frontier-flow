@@ -6,6 +6,7 @@ export type StoredDeploymentTarget = "local" | "testnet:stillness" | "testnet:ut
 export interface UiState {
   readonly version: 1;
   readonly activeView: StoredPrimaryView;
+  readonly currentDraftContractName: string | null;
   readonly selectedDeploymentTarget: StoredDeploymentTarget;
   readonly isSidebarOpen: boolean;
   readonly isContractPanelOpen: boolean;
@@ -57,6 +58,7 @@ function createDefaultUiState(): UiState {
   return {
     version: 1,
     activeView: "visual",
+    currentDraftContractName: null,
     selectedDeploymentTarget: "local",
     isSidebarOpen: isDesktop,
     isContractPanelOpen: isDesktop,
@@ -73,6 +75,7 @@ function parseUiState(parsedValue: unknown): UiState {
   return {
     version: 1,
     activeView: isStoredPrimaryView(parsedValue.activeView) ? parsedValue.activeView : defaults.activeView,
+    currentDraftContractName: typeof parsedValue.currentDraftContractName === "string" ? parsedValue.currentDraftContractName : defaults.currentDraftContractName,
     selectedDeploymentTarget: isStoredDeploymentTarget(parsedValue.selectedDeploymentTarget)
       ? parsedValue.selectedDeploymentTarget
       : defaults.selectedDeploymentTarget,

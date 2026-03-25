@@ -29,6 +29,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "visual",
+      currentDraftContractName: null,
       selectedDeploymentTarget: "local",
       isSidebarOpen: true,
       isContractPanelOpen: true,
@@ -41,6 +42,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "visual",
+      currentDraftContractName: null,
       selectedDeploymentTarget: "local",
       isSidebarOpen: true,
       isContractPanelOpen: true,
@@ -53,6 +55,7 @@ describe("uiStateStorage", () => {
       JSON.stringify({
         version: 1,
         activeView: "move",
+        currentDraftContractName: "starter_contract_v2",
         selectedDeploymentTarget: "testnet:stillness",
         isSidebarOpen: false,
         isContractPanelOpen: false,
@@ -62,6 +65,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "move",
+      currentDraftContractName: "starter_contract_v2",
       selectedDeploymentTarget: "testnet:stillness",
       isSidebarOpen: false,
       isContractPanelOpen: false,
@@ -74,6 +78,7 @@ describe("uiStateStorage", () => {
       JSON.stringify({
         version: 1,
         activeView: "authorize",
+        currentDraftContractName: "authorize_ready_contract",
         selectedDeploymentTarget: "testnet:utopia",
         isSidebarOpen: true,
         isContractPanelOpen: false,
@@ -83,6 +88,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "authorize",
+      currentDraftContractName: "authorize_ready_contract",
       selectedDeploymentTarget: "testnet:utopia",
       isSidebarOpen: true,
       isContractPanelOpen: false,
@@ -95,6 +101,7 @@ describe("uiStateStorage", () => {
       JSON.stringify({
         version: 1,
         activeView: "deploy",
+        currentDraftContractName: "deploy_ready_contract",
         selectedDeploymentTarget: "testnet:stillness",
         isSidebarOpen: true,
         isContractPanelOpen: false,
@@ -104,6 +111,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "deploy",
+      currentDraftContractName: "deploy_ready_contract",
       selectedDeploymentTarget: "testnet:stillness",
       isSidebarOpen: true,
       isContractPanelOpen: false,
@@ -116,6 +124,7 @@ describe("uiStateStorage", () => {
       JSON.stringify({
         version: 1,
         activeView: "visual",
+        currentDraftContractName: "starter_contract",
         selectedDeploymentTarget: "local",
         isSidebarOpen: true,
         isContractPanelOpen: false,
@@ -125,6 +134,7 @@ describe("uiStateStorage", () => {
     expect(mergeUiState(window.localStorage, { activeView: "move" })).toEqual({
       version: 1,
       activeView: "move",
+      currentDraftContractName: "starter_contract",
       selectedDeploymentTarget: "local",
       isSidebarOpen: true,
       isContractPanelOpen: false,
@@ -137,6 +147,7 @@ describe("uiStateStorage", () => {
       JSON.stringify({
         version: 1,
         activeView: "visual",
+        currentDraftContractName: "starter_contract",
         selectedDeploymentTarget: "testnet:utopia",
         isSidebarOpen: true,
         isContractPanelOpen: true,
@@ -148,7 +159,19 @@ describe("uiStateStorage", () => {
     expect(mergeUiState(window.localStorage, { selectedDeploymentTarget: "testnet:stillness" })).toEqual({
       version: 1,
       activeView: "visual",
+      currentDraftContractName: "starter_contract",
       selectedDeploymentTarget: "testnet:stillness",
+      isSidebarOpen: true,
+      isContractPanelOpen: true,
+    });
+  });
+
+  it("merges the live draft contract name without disturbing the rest of the UI state", () => {
+    expect(mergeUiState(window.localStorage, { currentDraftContractName: "turret_priority_v3" })).toEqual({
+      version: 1,
+      activeView: "visual",
+      currentDraftContractName: "turret_priority_v3",
+      selectedDeploymentTarget: "local",
       isSidebarOpen: true,
       isContractPanelOpen: true,
     });
@@ -171,6 +194,7 @@ describe("uiStateStorage", () => {
     expect(loadUiState(window.localStorage)).toEqual({
       version: 1,
       activeView: "visual",
+      currentDraftContractName: null,
       selectedDeploymentTarget: "local",
       isSidebarOpen: false,
       isContractPanelOpen: false,

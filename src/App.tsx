@@ -48,6 +48,7 @@ interface AppMainContentProps {
   readonly displayStatus: CompilationStatus;
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
   readonly moveSourceCode: string | null;
+  readonly onMoveRebuild: () => Promise<void>;
   readonly onCompilationStateChange: (
     status: CompilationStatus,
     nextDiagnostics: readonly CompilerDiagnostic[],
@@ -78,12 +79,17 @@ interface StandardAppLayoutProps {
   readonly isCompiledWorkflowReady: boolean;
   readonly isKitchenSinkRoute: boolean;
   readonly moveSourceCode: string | null;
+  readonly onMoveRebuild: () => Promise<void>;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
   readonly onSelectDiagnostic: (nodeId: string) => void;
   readonly onViewChange: (view: PrimaryView) => void;
   readonly remediationNotices: readonly RemediationNotice[];
   readonly selectedDeploymentTarget: DeploymentTargetId;
+  readonly transientStatusMessage: {
+    readonly tone: "error" | "info" | "success";
+    readonly text: string;
+  } | null;
 }
 
 function getBrowserStorage(): Storage | undefined {
@@ -96,6 +102,17 @@ function getCurrentContractGraphKey(storage = getBrowserStorage()): string {
   const activeContract = contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName) ?? fallbackContract;
 
   return createCompilationGraphKey(activeContract.nodes, activeContract.edges, activeContract.name);
+}
+
+function getCurrentActiveContract(storage = getBrowserStorage()) {
+  const fallbackContract = createNamedFlowContract(defaultContractName, defaultContractFlow.nodes, defaultContractFlow.edges);
+  const contractLibrary = loadContractLibrary(storage, fallbackContract, seededExampleContracts);
+
+  return contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName) ?? fallbackContract;
+}
+
+function getCurrentDraftContractName(storage = getBrowserStorage()): string | null {
+  return loadUiState(storage).currentDraftContractName;
 }
 
 function getInitialAppState(): InitialAppState {
@@ -173,10 +190,10 @@ function VisualWorkspaceView({
   );
 }
 
-function MoveSourceView({ displayStatus, moveSourceCode }: Pick<AppMainContentProps, "displayStatus" | "moveSourceCode">) {
+function MoveSourceView({ displayStatus, moveSourceCode, onMoveRebuild }: Pick<AppMainContentProps, "displayStatus" | "moveSourceCode" | "onMoveRebuild">) {
   return (
     <section aria-label="Move source view" className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
-      <MoveSourcePanel sourceCode={moveSourceCode} status={displayStatus} />
+      <MoveSourcePanel onRebuild={onMoveRebuild} sourceCode={moveSourceCode} status={displayStatus} />
     </section>
   );
 }
@@ -188,6 +205,7 @@ function AppMainContent({
   displayStatus,
   focusedDiagnosticSelection,
   moveSourceCode,
+  onMoveRebuild,
   onCompilationStateChange,
   onRemediationNoticesChange,
   onSelectedDeploymentTargetChange,
@@ -213,7 +231,7 @@ function AppMainContent({
     return <AuthorizeView deploymentState={authorizeDeploymentState} />;
   }
 
-  return <MoveSourceView displayStatus={displayStatus} moveSourceCode={moveSourceCode} />;
+  return <MoveSourceView displayStatus={displayStatus} moveSourceCode={moveSourceCode} onMoveRebuild={onMoveRebuild} />;
 }
 
 function getLiveDeploymentState(
@@ -279,12 +297,14 @@ function StandardAppLayout({
   isCompiledWorkflowReady,
   isKitchenSinkRoute,
   moveSourceCode,
+  onMoveRebuild,
   onCompilationStateChange,
   onRemediationNoticesChange,
   onSelectDiagnostic,
   onViewChange,
   remediationNotices,
   selectedDeploymentTarget,
+  transientStatusMessage,
 }: StandardAppLayoutProps) {
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -314,6 +334,7 @@ function StandardAppLayout({
             displayStatus={displayStatus}
             focusedDiagnosticSelection={focusedDiagnosticSelection}
             moveSourceCode={moveSourceCode}
+            onMoveRebuild={onMoveRebuild}
             onCompilationStateChange={onCompilationStateChange}
             onRemediationNoticesChange={onRemediationNoticesChange}
             onSelectedDeploymentTargetChange={deployment.setSelectedTarget}
@@ -327,6 +348,7 @@ function StandardAppLayout({
         onSelectDiagnostic={onSelectDiagnostic}
         remediationNotices={remediationNotices}
         status={displayStatus}
+        transientStatusMessage={transientStatusMessage}
       />
       {deployment.isProgressModalOpen ? (
         <DeploymentProgressModal
@@ -372,6 +394,21 @@ function createCompilationStateChangeHandler(
   };
 }
 
+function createFallbackDiagnostics(error: unknown): readonly CompilerDiagnostic[] {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+
+  return [
+    {
+      severity: "error",
+      rawMessage,
+      line: null,
+      reactFlowNodeId: null,
+      socketId: null,
+      userMessage: rawMessage,
+    },
+  ];
+}
+
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
   const initialAppState = useMemo(() => getInitialAppState(), []);
   const [compilationStatus, setCompilationStatus] = useState<CompilationStatus>(initialAppState.compilationSnapshot?.status ?? { state: "idle" });
@@ -381,13 +418,17 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
   const [activeView, setActiveView] = useState<PrimaryView>(initialAppState.activeView);
   const [moveSourceCode, setMoveSourceCode] = useState<string | null>(initialAppState.compilationSnapshot?.moveSourceCode ?? null);
   const [persistedCompilationSnapshot, setPersistedCompilationSnapshot] = useState<PersistedCompilationState | null>(initialAppState.compilationSnapshot);
+  const [transientStatusMessage, setTransientStatusMessage] = useState<{
+    readonly tone: "error" | "info" | "success";
+    readonly text: string;
+  } | null>(null);
   const currentContractGraphKey = getCurrentContractGraphKey();
   const restoredCompilationSnapshot = persistedCompilationSnapshot !== null
     && persistedCompilationSnapshot.graphKey === currentContractGraphKey
     ? persistedCompilationSnapshot
     : null;
   const effectiveCompilationState = useMemo(() => {
-    if (hasCompiledWorkflowAccess(compilationStatus)) {
+    if (compilationStatus.state === "compiling" || hasCompiledWorkflowAccess(compilationStatus)) {
       return { diagnostics, moveSourceCode, status: compilationStatus };
     }
 
@@ -431,6 +472,20 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     });
   }, [deployment.selectedTarget]);
 
+  useEffect(() => {
+    if (transientStatusMessage === null || transientStatusMessage.tone === "info") {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setTransientStatusMessage((currentMessage) => currentMessage === transientStatusMessage ? null : currentMessage);
+    }, 2_500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [transientStatusMessage]);
+
   const handleCompilationStateChange = useMemo(
     () => createCompilationStateChangeHandler(setPersistedCompilationSnapshot, setCompilationStatus, setDiagnostics, setMoveSourceCode),
     [],
@@ -442,6 +497,35 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       requestKey: (currentSelection?.requestKey ?? 0) + 1,
     }));
   }, []);
+
+  const handleMoveRebuild = useCallback(async () => {
+    const activeContract = getCurrentActiveContract();
+    const moduleName = getCurrentDraftContractName() ?? activeContract.name;
+
+    setTransientStatusMessage({ tone: "info", text: "Rebuilding..." });
+    setCompilationStatus({ state: "compiling" });
+    setDiagnostics([]);
+    setMoveSourceCode(null);
+
+    try {
+      const { compilePipeline } = await import("./compiler/pipeline");
+      const result = await compilePipeline({
+        nodes: activeContract.nodes,
+        edges: activeContract.edges,
+        moduleName,
+      });
+
+      handleCompilationStateChange(result.status, result.diagnostics, result.code, result.artifact?.moveSource ?? null);
+      setTransientStatusMessage({
+        tone: result.status.state === "compiled" ? "success" : "error",
+        text: result.status.state === "compiled" ? "Rebuild success" : "Rebuild failed",
+      });
+    } catch (error: unknown) {
+      const fallbackDiagnostics = createFallbackDiagnostics(error);
+      handleCompilationStateChange({ state: "error", diagnostics: fallbackDiagnostics }, fallbackDiagnostics, null, null);
+      setTransientStatusMessage({ tone: "error", text: "Rebuild failed" });
+    }
+  }, [handleCompilationStateChange]);
 
   return (
     <StandardAppLayout
@@ -455,12 +539,14 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       isCompiledWorkflowReady={isCompiledWorkflowReady}
       isKitchenSinkRoute={isKitchenSinkRoute}
       moveSourceCode={effectiveCompilationState.moveSourceCode}
+      onMoveRebuild={handleMoveRebuild}
       onCompilationStateChange={handleCompilationStateChange}
       onRemediationNoticesChange={setRemediationNotices}
       onSelectDiagnostic={handleSelectDiagnostic}
       onViewChange={setActiveView}
       remediationNotices={remediationNotices}
       selectedDeploymentTarget={deployment.selectedTarget}
+      transientStatusMessage={transientStatusMessage}
     />
   );
 }

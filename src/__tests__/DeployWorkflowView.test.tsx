@@ -1,8 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DeployWorkflowView from "../components/DeployWorkflowView";
 import type { DeploymentState } from "../compiler/types";
+
+type TargetBalanceQuery = ReturnType<typeof import("../hooks/useTargetBalance").useTargetBalance>;
+
+const mockUseTargetBalance = vi.fn<(...args: [string | null, import("../compiler/types").DeploymentTargetId]) => TargetBalanceQuery>();
 
 vi.mock("@mysten/dapp-kit", () => ({
   useCurrentAccount: () => ({ address: "0xabc" }),
@@ -10,20 +14,18 @@ vi.mock("@mysten/dapp-kit", () => ({
   useWallets: () => ([{ name: "Vault" }]),
 }));
 
-const mockUseTargetBalance = vi.fn((owner: string | null, target: DeploymentState["selectedTarget"]) => {
-  void owner;
-  void target;
+vi.mock("../hooks/useTargetBalance", () => ({
+  useTargetBalance: (...args: Parameters<typeof import("../hooks/useTargetBalance").useTargetBalance>) => mockUseTargetBalance(...args),
+}));
 
+function createBalanceQuery(overrides: Partial<TargetBalanceQuery> = {}): TargetBalanceQuery {
   return {
-    data: { totalBalance: "2500000000" },
+    data: undefined,
     isError: false,
     isPending: false,
-  };
-});
-
-vi.mock("../hooks/useTargetBalance", () => ({
-  useTargetBalance: (...args: [string | null, DeploymentState["selectedTarget"]]) => mockUseTargetBalance(...args),
-}));
+    ...overrides,
+  } as TargetBalanceQuery;
+}
 
 function createDeploymentState(overrides: Partial<DeploymentState> = {}): DeploymentState {
   return {
@@ -60,46 +62,48 @@ function createDeploymentState(overrides: Partial<DeploymentState> = {}): Deploy
   };
 }
 
+function renderDeployWorkflowView(deployment: DeploymentState) {
+  return render(<DeployWorkflowView deployment={deployment} />);
+}
+
 describe("DeployWorkflowView", () => {
-  it("renders deployment checks and the deploy control in a single checklist", () => {
-    render(<DeployWorkflowView deployment={createDeploymentState()} />);
+  beforeEach(() => {
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
+      data: { totalBalance: "2500000000" },
+    }));
+  });
+
+  it("renders blocking prerequisites, informational checks, and the deploy control", () => {
+    renderDeployWorkflowView(createDeploymentState());
 
     expect(screen.getByRole("heading", { name: "Pre-flight deployment checks" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Deployment checks" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Deploy testnet:stillness" })).toBeVisible();
     expect(screen.getByText("current compiled bytecode artifact")).toBeVisible();
     expect(screen.getByText("connected Sui wallet for testnet:stillness")).toBeVisible();
     expect(screen.getByText("Connect a Sui-compatible wallet before deploying to testnet:stillness.")).toBeVisible();
+    expect(screen.getByText("Review blockers before deploying")).toBeVisible();
     expect(screen.getByText("Wallet balance: 2.5 SUI")).toBeVisible();
-    expect(screen.queryByRole("heading", { name: "Informational checks" })).not.toBeInTheDocument();
     expect(screen.getByText("Deployment blocked")).toBeVisible();
     expect(screen.getByText("Resolve the wallet connection before retrying deployment.")).toBeVisible();
-    expect(mockUseTargetBalance).toHaveBeenCalledWith("0xabc", "testnet:stillness");
   });
 
-  it("shows local deployment wallet and balance checks because local signing still requires funds", () => {
-    render(
-      <DeployWorkflowView
-        deployment={createDeploymentState({
-          selectedTarget: "local",
-          blockerReasons: [],
-          requiredInputs: [
-            "current compiled bytecode artifact",
-            "connected Sui wallet for local",
-            "available local validator",
-          ],
-          resolvedInputs: [
-            "current compiled bytecode artifact",
-            "connected Sui wallet for local",
-            "available local validator",
-          ],
-          statusMessage: null,
-        })}
-      />,
+  it("shows the local target as ready when blockers are cleared", () => {
+    renderDeployWorkflowView(
+      createDeploymentState({
+        selectedTarget: "local",
+        canDeploy: true,
+        blockerReasons: [],
+        requiredInputs: ["current compiled bytecode artifact", "available local validator"],
+        resolvedInputs: ["current compiled bytecode artifact", "available local validator"],
+        statusMessage: null,
+      }),
     );
 
+    expect(screen.getByRole("button", { name: "Deploy local" })).toBeVisible();
+    expect(screen.getByText("Ready to deploy")).toBeVisible();
+    expect(screen.getByText("available local validator")).toBeVisible();
     expect(screen.getByText("Wallet balance: 2.5 SUI")).toBeVisible();
-    expect(screen.queryByText("All blocking deployment prerequisites are currently satisfied for local.")).not.toBeInTheDocument();
-    expect(mockUseTargetBalance).toHaveBeenCalledWith("0xabc", "local");
+    expect(screen.queryByText("Current blockers")).not.toBeInTheDocument();
+    expect(screen.getByText("No deployment attempt has been recorded for this graph revision yet.")).toBeVisible();
   });
 });
