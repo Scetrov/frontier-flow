@@ -1,10 +1,11 @@
-import {
+import type {
+  BuildProgressEvent,
   buildMovePackage,
-  type BuildProgressEvent,
   getSuiMoveVersion,
   initMoveCompiler,
   resolveDependencies,
 } from "@zktx.io/sui-move-builder/lite";
+import { loadMoveBuilderLite } from "./moveBuilderLite";
 import type {
   CachedDependencyResolution,
   DeployCompileProgressEvent,
@@ -90,10 +91,10 @@ function createFileMap(request: DeployGradeCompileRequest): Record<string, strin
 
 function getCompilerDependencies(dependencies: DeployGradeCompilerDependencies) {
   return {
-    init: dependencies.initMoveCompiler ?? initMoveCompiler,
-    resolve: dependencies.resolveDependencies ?? resolveDependencies,
-    build: dependencies.buildMovePackage ?? buildMovePackage,
-    getVersion: dependencies.getSuiMoveVersion ?? getSuiMoveVersion,
+    init: dependencies.initMoveCompiler,
+    resolve: dependencies.resolveDependencies,
+    build: dependencies.buildMovePackage,
+    getVersion: dependencies.getSuiMoveVersion,
     now: dependencies.now ?? Date.now,
   };
 }
@@ -262,13 +263,18 @@ export async function compileForDeployment(
   dependencies: DeployGradeCompilerDependencies = {},
 ): Promise<DeployGradeCompileResult> {
   const { init, resolve, build, getVersion, now } = getCompilerDependencies(dependencies);
+  const compilerModule = await loadMoveBuilderLite();
+  const initCompiler = init ?? compilerModule.initMoveCompiler;
+  const resolveCompilerDependencies = resolve ?? compilerModule.resolveDependencies;
+  const buildCompilerPackage = build ?? compilerModule.buildMovePackage;
+  const getCompilerVersion = getVersion ?? compilerModule.getSuiMoveVersion;
   const files = createFileMap(request);
   const cacheKey = getResolutionCacheKey(request.target.targetId, request.worldSource.sourceVersionTag);
   const rootGit = createRootGit(request.worldSource.sourceVersionTag);
 
-  await init();
-  const resolvedDependencies = await resolveDeployDependencies({ request, files, rootGit, cacheKey, resolve, now });
-  const buildResult = await buildDeployArtifact({ request, files, rootGit, resolvedDependencies, build });
+  await initCompiler();
+  const resolvedDependencies = await resolveDeployDependencies({ request, files, rootGit, cacheKey, resolve: resolveCompilerDependencies, now });
+  const buildResult = await buildDeployArtifact({ request, files, rootGit, resolvedDependencies, build: buildCompilerPackage });
 
   return {
     modules: buildResult.modules.map((moduleBytes) => decodeBase64(moduleBytes)),
@@ -277,7 +283,7 @@ export async function compileForDeployment(
     resolvedDependencies,
     targetId: request.target.targetId,
     sourceVersionTag: request.worldSource.sourceVersionTag,
-    builderToolchainVersion: await getVersion(),
+    builderToolchainVersion: await getCompilerVersion(),
     compiledAt: now(),
   };
 }

@@ -1,4 +1,5 @@
 import { attachArtifactDiagnostics, attachCompiledArtifactResult } from "./generators/shared";
+import { loadMoveBuilderLite, resetMoveBuilderLiteForTests } from "./moveBuilderLite";
 import { parseCompilerOutput } from "./errorParser";
 import { createStandaloneWorldShimPackageFiles } from "./worldShim";
 import type {
@@ -56,7 +57,7 @@ let compilerModulePromise: Promise<MoveCompilerModule> | null = null;
 let initialisationPromise: Promise<void> | null = null;
 let integrityPromise: Promise<void> | null = null;
 let worldShimModuleSetPromise: Promise<ReadonlySet<string>> | null = null;
-let compilerModuleLoader: MoveCompilerLoader = () => import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
+let compilerModuleLoader: MoveCompilerLoader = () => loadMoveBuilderLite() as Promise<MoveCompilerModule>;
 let moveCompilerIntegrityVerifier: MoveCompilerIntegrityVerifier = verifyBundledMoveCompilerIntegrity;
 
 function resetCompilerState(): void {
@@ -68,7 +69,8 @@ function resetCompilerState(): void {
 
 export function resetMoveCompilerStateForTests(): void {
   resetCompilerState();
-  compilerModuleLoader = () => import("@zktx.io/sui-move-builder/lite") as Promise<MoveCompilerModule>;
+  resetMoveBuilderLiteForTests();
+  compilerModuleLoader = () => loadMoveBuilderLite() as Promise<MoveCompilerModule>;
   moveCompilerIntegrityVerifier = async () => {};
 }
 

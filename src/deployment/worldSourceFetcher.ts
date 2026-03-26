@@ -1,4 +1,5 @@
-import { fetchPackageFromGitHub } from "@zktx.io/sui-move-builder/lite";
+import type { fetchPackageFromGitHub } from "@zktx.io/sui-move-builder/lite";
+import { loadMoveBuilderLite } from "../compiler/moveBuilderLite";
 import type { FetchWorldSourceRequest, FetchWorldSourceResult } from "../compiler/types";
 
 export const WORLD_CONTRACTS_REPOSITORY_URL = "https://github.com/evefrontier/world-contracts";
@@ -73,7 +74,7 @@ export async function fetchWorldSource(
     return cachedResult;
   }
 
-  const fetchPackage = dependencies.fetchPackage ?? fetchPackageFromGitHub;
+  const fetchPackage = dependencies.fetchPackage ?? (await loadMoveBuilderLite()).fetchPackageFromGitHub;
 
   try {
     const files = await withAbort(fetchPackage(createPackageUrl(request)), request.signal, request.versionTag);
