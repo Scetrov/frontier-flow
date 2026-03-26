@@ -20,3 +20,4 @@ tmp.*
 Thumbs.db
 .vscode/
 .idea/
+.org.chromium.Chromium.*

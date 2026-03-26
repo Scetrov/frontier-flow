@@ -18,6 +18,8 @@ This skill automates verification of the repository's developer checks, collects
 
 ## Files
 
+Relative to repository root:
+
 - `.github/skills/verify-and-remediate.md`
 - `.github/skills/verify-and-remediate.sh`
 - `.github/skills/verify-and-remediate.ps1`
