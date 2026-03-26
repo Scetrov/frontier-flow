@@ -107,6 +107,42 @@ describe("publishToRemoteTarget", () => {
     expect(commands.map((command: { $kind: string }) => command.$kind)).toEqual(["Publish", "TransferObjects"]);
   });
 
+  it("publishes deploy-grade compile results directly without re-running shim compilation", async () => {
+    const execute = vi.fn(() => Promise.resolve({ digest: "0xdeploygrade" }));
+    compileMoveMock.mockReset();
+
+    await publishToRemoteTarget({
+      compileResult: {
+        modules: [new Uint8Array([1, 2, 3])],
+        dependencies: [
+          "0x0000000000000000000000000000000000000000000000000000000000000003",
+          "0x0000000000000000000000000000000000000000000000000000000000000004",
+        ],
+        digest: [1, 2, 3],
+        resolvedDependencies: {
+          files: "{}",
+          dependencies: "{}",
+          lockfileDependencies: "{}",
+        },
+        targetId: "testnet:stillness",
+        sourceVersionTag: "v0.0.18",
+        builderToolchainVersion: "1.67.1",
+        compiledAt: 1,
+      },
+      ownerAddress: "0x1234",
+      target: getDeploymentTarget("testnet:stillness"),
+      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      execute,
+    });
+
+    expect(compileMoveMock).not.toHaveBeenCalled();
+    const [transaction] = execute.mock.calls[0] as unknown as [{ getData: () => { commands: Array<{ $kind: string; Publish?: { dependencies: string[] } }> } }];
+    expect(transaction.getData().commands[0]?.Publish?.dependencies).toEqual([
+      "0x0000000000000000000000000000000000000000000000000000000000000003",
+      "0x0000000000000000000000000000000000000000000000000000000000000004",
+    ]);
+  });
+
   it("fails early when the connected wallet address is missing", async () => {
     compileMoveMock.mockReset();
     await expect(() => publishToRemoteTarget({

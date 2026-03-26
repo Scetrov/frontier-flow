@@ -1,0 +1,168 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  DeployGradeCompileRequest,
+  FetchWorldSourceResult,
+  ResolvedDependencies,
+} from "../../compiler/types";
+import { compileForDeployment, resetDeployGradeCompilerStateForTests } from "../../compiler/deployGradeCompiler";
+import { createGeneratedArtifactStub, createPackageReferenceBundle } from "../compiler/helpers";
+
+function toBase64(bytes: readonly number[]): string {
+  return btoa(String.fromCharCode(...bytes));
+}
+
+function createWorldSource(versionTag = "v0.0.18"): FetchWorldSourceResult {
+  return {
+    files: {
+      "Move.toml": "[package]\nname = \"world\"\n",
+    },
+    sourceVersionTag: versionTag,
+    fetchedAt: 1,
+  };
+}
+
+function createRequest(overrides: Partial<DeployGradeCompileRequest> = {}): DeployGradeCompileRequest {
+  const artifact = createGeneratedArtifactStub({
+    moveToml: [
+      "[package]",
+      'name = "starter_contract"',
+      'edition = "2024.beta"',
+      "",
+      "[addresses]",
+      'builder_extensions = "0x0"',
+      'world = "0x0"',
+      "",
+      "[dependencies]",
+      'world = { local = "deps/world" }',
+      "",
+    ].join("\n"),
+    sourceFiles: [
+      { path: "sources/starter_contract.move", content: "module builder_extensions::starter_contract {}" },
+      { path: "deps/world/Move.toml", content: "[package]\nname = \"world\"\n" },
+    ],
+  });
+
+  return {
+    artifact,
+    worldSource: createWorldSource(),
+    target: createPackageReferenceBundle("testnet:stillness"),
+    ...overrides,
+  };
+}
+
+describe("deployGradeCompiler", () => {
+  beforeEach(() => {
+    resetDeployGradeCompilerStateForTests();
+  });
+
+  it("derives rootGit from target metadata and rewrites Move.toml for git world dependencies", async () => {
+    const resolvedDependencies: ResolvedDependencies = {
+      files: "{}",
+      dependencies: "{}",
+      lockfileDependencies: "{}",
+    };
+    const resolveDependencies = vi.fn((input: {
+      readonly files: Record<string, string>;
+      readonly rootGit?: { readonly git: string; readonly rev: string; readonly subdir?: string };
+    }) => Promise.resolve().then(() => {
+      expect(input.rootGit).toEqual({
+        git: "https://github.com/evefrontier/world-contracts.git",
+        rev: "v0.0.18",
+        subdir: "contracts/world",
+      });
+      expect(input.files["Move.toml"]).toContain('world = { git = "https://github.com/evefrontier/world-contracts.git", rev = "v0.0.18", subdir = "contracts/world" }');
+      expect(input.files["Move.toml"]).not.toContain('world = "0x0"');
+      expect(input.files["Move.toml"]).not.toContain('world = { local = "deps/world" }');
+      expect(input.files).not.toHaveProperty("deps/world/Move.toml");
+      return resolvedDependencies;
+    }));
+    const buildMovePackage = vi.fn((input: {
+      readonly resolvedDependencies?: ResolvedDependencies;
+    }) => Promise.resolve().then(() => {
+      expect(input.resolvedDependencies).toBe(resolvedDependencies);
+      return {
+        modules: [toBase64([1, 2, 3])],
+        dependencies: ["0x1", "0x2"],
+        digest: [9, 8, 7],
+      };
+    }));
+
+    const result = await compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies,
+      buildMovePackage,
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      now: () => 42,
+    });
+
+    expect(result).toMatchObject({
+      dependencies: ["0x1", "0x2"],
+      digest: [9, 8, 7],
+      targetId: "testnet:stillness",
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
+      compiledAt: 42,
+    });
+    expect(Array.from(result.modules[0] ?? [])).toEqual([1, 2, 3]);
+    expect(resolveDependencies).toHaveBeenCalledTimes(1);
+    expect(buildMovePackage).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses cached resolution snapshots for repeated compilations on the same target and version", async () => {
+    const resolvedDependencies: ResolvedDependencies = {
+      files: "{}",
+      dependencies: "{}",
+      lockfileDependencies: "{}",
+    };
+    const resolveDependencies = vi.fn(() => Promise.resolve(resolvedDependencies));
+    const buildMovePackage = vi.fn(() => Promise.resolve({
+      modules: [toBase64([4, 5, 6])],
+      dependencies: ["0x3"],
+      digest: [1, 2, 3],
+    }));
+    const request = createRequest();
+    const dependencies = {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies,
+      buildMovePackage,
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      now: () => 99,
+    };
+
+    await compileForDeployment(request, dependencies);
+    await compileForDeployment(request, dependencies);
+
+    expect(resolveDependencies).toHaveBeenCalledTimes(1);
+    expect(buildMovePackage).toHaveBeenCalledTimes(2);
+  });
+
+  it("classifies dependency resolution failures with a deploy-grade error type", async () => {
+    await expect(compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies: vi.fn(() => Promise.reject(new Error("Network fetch failed while resolving GitHub dependency graph"))),
+      buildMovePackage: vi.fn(),
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+    })).rejects.toMatchObject({
+      name: "DependencyResolutionError",
+      userMessage: "Dependency resolution could not reach the upstream world package.",
+    });
+  });
+
+  it("classifies linkage failures from buildMovePackage as deploy compilation errors", async () => {
+    await expect(compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies: vi.fn(() => Promise.resolve({
+        files: "{}",
+        dependencies: "{}",
+        lockfileDependencies: "{}",
+      })),
+      buildMovePackage: vi.fn(() => Promise.resolve({
+        error: "address with no value",
+      })),
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+    })).rejects.toMatchObject({
+      name: "DeployCompilationError",
+      userMessage: "Deploy-grade compilation failed because dependency linking did not match the live world package.",
+    });
+  });
+});

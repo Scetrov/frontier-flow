@@ -63,6 +63,21 @@ original-id = "0xddd"
     });
     expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe("0xbbb");
     expect(getPackageReferenceBundle("testnet:utopia").worldPackageId).toBe("0xddd");
+    expect(getPackageReferenceBundle("testnet:stillness").sourceVersionTag).toBe("v0.0.18");
+    expect(getPackageReferenceBundle("testnet:utopia").toolchainVersion).toBe("1.68.0");
+  });
+
+  it("exposes deploy-grade source metadata for each supported target", () => {
+    expect(getPackageReferenceBundle("testnet:stillness")).toMatchObject({
+      originalWorldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+      sourceVersionTag: "v0.0.18",
+      toolchainVersion: "1.67.1",
+    });
+    expect(getPackageReferenceBundle("testnet:utopia")).toMatchObject({
+      originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
+      sourceVersionTag: "v0.0.21",
+      toolchainVersion: "1.68.0",
+    });
   });
 
   it("reuses the cached bundle map until stored overrides change", async () => {

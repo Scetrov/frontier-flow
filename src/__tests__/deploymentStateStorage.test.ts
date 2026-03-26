@@ -19,6 +19,8 @@ describe("deploymentStateStorage", () => {
       transactionDigest: "0xdigest",
       deployedAt: "2026-03-23T00:00:00.000Z",
       contractName: "Starter Contract",
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
     };
 
     saveDeploymentState(window.localStorage, state);
@@ -30,6 +32,30 @@ describe("deploymentStateStorage", () => {
     window.localStorage.setItem(DEPLOYMENT_STATE_STORAGE_KEY, "{broken-json");
 
     expect(loadDeploymentState(window.localStorage)).toBeNull();
+  });
+
+  it("loads legacy schema version 1 snapshots without deploy-grade metadata", () => {
+    window.localStorage.setItem(DEPLOYMENT_STATE_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      packageId: "0xabc",
+      moduleName: "starter_contract",
+      targetId: "testnet:stillness",
+      transactionDigest: "0xdigest",
+      deployedAt: "2026-03-23T00:00:00.000Z",
+      contractName: "Starter Contract",
+    }));
+
+    expect(loadDeploymentState(window.localStorage)).toEqual({
+      version: 1,
+      packageId: "0xabc",
+      moduleName: "starter_contract",
+      targetId: "testnet:stillness",
+      transactionDigest: "0xdigest",
+      deployedAt: "2026-03-23T00:00:00.000Z",
+      contractName: "Starter Contract",
+      sourceVersionTag: undefined,
+      builderToolchainVersion: undefined,
+    });
   });
 
   it("returns null for an unsupported schema version", () => {
@@ -47,6 +73,8 @@ describe("deploymentStateStorage", () => {
       transactionDigest: "0xdigest",
       deployedAt: "2026-03-23T00:00:00.000Z",
       contractName: "Starter Contract",
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
     };
 
     expect(validateDeploymentState(state, { contractName: "Starter Contract", targetId: "testnet:stillness" })).toBe(true);

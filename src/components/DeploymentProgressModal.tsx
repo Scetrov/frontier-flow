@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import type { DeploymentAttempt, DeploymentProgress, DeploymentStage } from "../compiler/types";
+import type { DeploymentAttempt, DeploymentProgress, DeploymentStage, DeploymentTargetId } from "../compiler/types";
 
 interface DeploymentProgressModalProps {
   readonly latestAttempt: DeploymentAttempt | null;
@@ -11,10 +11,35 @@ interface DeploymentProgressModalProps {
 const STAGE_LABELS: Record<DeploymentStage, string> = {
   validating: "Validating",
   preparing: "Preparing",
+  "fetch-world-source": "Fetch World Source",
+  "resolve-dependencies": "Resolve Dependencies",
+  "deploy-grade-compile": "Deploy-Grade Compile",
   signing: "Signing",
   submitting: "Submitting",
   confirming: "Confirming",
 };
+
+const LOCAL_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "preparing",
+  "signing",
+  "submitting",
+  "confirming",
+];
+
+const REMOTE_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "fetch-world-source",
+  "resolve-dependencies",
+  "deploy-grade-compile",
+  "signing",
+  "submitting",
+  "confirming",
+];
+
+function getDeploymentStageSequence(targetId: DeploymentTargetId): readonly DeploymentStage[] {
+  return targetId === "local" ? LOCAL_DEPLOYMENT_STAGE_SEQUENCE : REMOTE_DEPLOYMENT_STAGE_SEQUENCE;
+}
 
 function isTerminalAttempt(
   latestAttempt: DeploymentAttempt | null,
@@ -43,7 +68,14 @@ function getModalTitle(latestAttempt: DeploymentAttempt | null, progress: Deploy
 }
 
 function shouldSurfaceFailureMessageDirectly(latestAttempt: DeploymentAttempt | null): latestAttempt is DeploymentAttempt {
-  return latestAttempt !== null && latestAttempt.outcome === "failed" && latestAttempt.currentStage === "preparing";
+  return latestAttempt !== null
+    && latestAttempt.outcome === "failed"
+    && (
+      latestAttempt.currentStage === "preparing"
+      || latestAttempt.currentStage === "fetch-world-source"
+      || latestAttempt.currentStage === "resolve-dependencies"
+      || latestAttempt.currentStage === "deploy-grade-compile"
+    );
 }
 
 function getTerminalRemediation(latestAttempt: DeploymentAttempt | null): string | null {
@@ -209,9 +241,11 @@ function DeploymentStageList({
   readonly latestAttempt: DeploymentAttempt | null;
   readonly progress: DeploymentProgress;
 }) {
+  const stageSequence = getDeploymentStageSequence(progress.targetId);
+
   return (
     <ol className="ff-deployment-modal__stages">
-      {(Object.keys(STAGE_LABELS) as DeploymentStage[]).map((stage) => {
+      {stageSequence.map((stage) => {
         const state = getStageState(stage, progress, latestAttempt);
         const stateLabel = state === "complete" ? "Complete" : state === "active" ? "Active" : "Pending";
 

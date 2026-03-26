@@ -21,6 +21,8 @@ type Wallets = ReturnType<typeof useWalletsHook>;
 
 const {
   mockCompileMove,
+  mockCompileForDeployment,
+  mockFetchWorldSource,
   mockSignTransaction,
   mockUseCurrentAccount,
   mockUseCurrentWallet,
@@ -29,6 +31,8 @@ const {
   mockUseWallets,
 } = vi.hoisted(() => ({
   mockCompileMove: vi.fn(),
+  mockCompileForDeployment: vi.fn(),
+  mockFetchWorldSource: vi.fn(),
   mockSignTransaction: vi.fn<typeof signTransactionFunction>(),
   mockUseCurrentAccount: vi.fn<() => CurrentAccount>(),
   mockUseCurrentWallet: vi.fn<() => CurrentWallet>(),
@@ -65,6 +69,14 @@ vi.mock("../compiler/moveCompiler", () => ({
   compileMove: mockCompileMove,
 }));
 
+vi.mock("../deployment/worldSourceFetcher", () => ({
+  fetchWorldSource: mockFetchWorldSource,
+}));
+
+vi.mock("../compiler/deployGradeCompiler", () => ({
+  compileForDeployment: mockCompileForDeployment,
+}));
+
 beforeEach(() => {
   vi.useFakeTimers();
   window.localStorage.clear();
@@ -89,6 +101,28 @@ beforeEach(() => {
   } as unknown as SuiClient);
   mockUseWallets.mockReturnValue([availableWallet]);
   mockSignTransaction.mockResolvedValue({ bytes: "dGVzdA==", signature: "0xsig" });
+  mockFetchWorldSource.mockResolvedValue({
+    repository: "scetrov/world-contracts",
+    versionTag: "v0.0.18",
+    files: {
+      "Move.toml": "[package]\nname = \"world\"\n",
+      "sources/world.move": "module world::world {}",
+    },
+    fetchedAt: "2026-03-22T12:00:00.000Z",
+  });
+  mockCompileForDeployment.mockResolvedValue({
+    targetId: "testnet:stillness",
+    modules: [new Uint8Array([1, 2, 3])],
+    dependencies: [
+      "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "0x0000000000000000000000000000000000000000000000000000000000000002",
+      "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+    ],
+    packageDigest: "digest-123",
+    sourceVersionTag: "v0.0.18",
+    builderToolchainVersion: "1.67.1",
+    compiledAt: "2026-03-22T12:00:00.500Z",
+  });
   mockCompileMove.mockImplementation((artifact: { bytecodeModules: readonly Uint8Array[]; dependencies: readonly string[] }) => Promise.resolve({
     success: true,
     modules: artifact.bytecodeModules.length > 0
@@ -172,6 +206,8 @@ describe("useDeployment success path", () => {
       transactionDigest: result.current.latestAttempt?.confirmationReference,
       deployedAt: new Date(result.current.latestAttempt?.endedAt ?? 0).toISOString(),
       contractName: artifact.moduleName,
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
     });
   });
 
@@ -246,7 +282,9 @@ describe("useDeployment success path", () => {
       await Promise.resolve();
     });
 
-    expect(mockSignTransaction).toHaveBeenCalledTimes(1);
+    expect(mockFetchWorldSource).toHaveBeenCalledTimes(1);
+    expect(mockCompileForDeployment).toHaveBeenCalledTimes(1);
+    expect(result.current.latestAttempt?.outcome).toBe("succeeded");
     expect(result.current.latestAttempt?.startedAt).toBe(Date.parse("2026-03-22T12:00:00.000Z"));
     expect(result.current.latestAttempt?.endedAt).toBe(Date.parse("2026-03-22T12:00:02.000Z"));
   });
@@ -257,7 +295,7 @@ describe("useDeployment success path", () => {
       bytecodeModules: [new Uint8Array([1, 2, 3])],
     });
     const recompiledArtifact = createGeneratedArtifactStub({
-      moduleName: "renamed_contract",
+      moduleName: "starter_contract",
       bytecodeModules: [new Uint8Array([4, 5, 6])],
     });
 
@@ -285,5 +323,111 @@ describe("useDeployment success path", () => {
     rerender({ artifact: recompiledArtifact });
 
     expect(loadDeploymentState(window.localStorage)).toEqual(persistedSnapshot);
+  });
+
+  it("preserves a valid persisted deployment snapshot on mount", () => {
+    window.localStorage.setItem("frontier-flow:deployment", JSON.stringify({
+      version: 1,
+      packageId: "0xabc",
+      moduleName: "starter_contract",
+      targetId: "testnet:stillness",
+      transactionDigest: "0xdigest",
+      deployedAt: "2026-03-23T00:00:00.000Z",
+      contractName: "starter_contract",
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
+    }));
+
+    const artifact = createGeneratedArtifactStub({
+      moduleName: "starter_contract",
+      bytecodeModules: [new Uint8Array([1, 2, 3])],
+    });
+
+    renderHook(() => useDeployment({
+      initialTarget: "testnet:stillness",
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([1, 2, 3])],
+        artifact,
+      },
+    }));
+
+    expect(loadDeploymentState(window.localStorage)).toEqual({
+      version: 1,
+      packageId: "0xabc",
+      moduleName: "starter_contract",
+      targetId: "testnet:stillness",
+      transactionDigest: "0xdigest",
+      deployedAt: "2026-03-23T00:00:00.000Z",
+      contractName: "starter_contract",
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
+    });
+  });
+
+  it("clears a persisted deployment snapshot when the compiled module changes", () => {
+    window.localStorage.setItem("frontier-flow:deployment", JSON.stringify({
+      version: 1,
+      packageId: "0xabc",
+      moduleName: "starter_contract",
+      targetId: "testnet:stillness",
+      transactionDigest: "0xdigest",
+      deployedAt: "2026-03-23T00:00:00.000Z",
+      contractName: "Starter Contract",
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
+    }));
+
+    const artifact = createGeneratedArtifactStub({
+      moduleName: "renamed_contract",
+      bytecodeModules: [new Uint8Array([1, 2, 3])],
+    });
+
+    renderHook(() => useDeployment({
+      initialTarget: "testnet:stillness",
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([1, 2, 3])],
+        artifact,
+      },
+    }));
+
+    expect(loadDeploymentState(window.localStorage)).toBeNull();
+  });
+
+  it("clears a persisted deployment snapshot when the selected target changes", () => {
+    window.localStorage.setItem("frontier-flow:deployment", JSON.stringify({
+      version: 1,
+      packageId: "0xabc",
+      moduleName: "starter_contract",
+      targetId: "testnet:stillness",
+      transactionDigest: "0xdigest",
+      deployedAt: "2026-03-23T00:00:00.000Z",
+      contractName: "Starter Contract",
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
+    }));
+
+    const artifact = createGeneratedArtifactStub({
+      moduleName: "starter_contract",
+      bytecodeModules: [new Uint8Array([1, 2, 3])],
+    });
+
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "testnet:stillness",
+      status: {
+        state: "compiled",
+        bytecode: [new Uint8Array([1, 2, 3])],
+        artifact,
+      },
+    }));
+
+    expect(loadDeploymentState(window.localStorage)?.targetId).toBe("testnet:stillness");
+
+    act(() => {
+      result.current.setSelectedTarget("testnet:utopia");
+    });
+
+    expect(loadDeploymentState(window.localStorage)).toBeNull();
   });
 });

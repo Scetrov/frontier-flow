@@ -272,7 +272,7 @@ describe("useDeployment blocker handling", () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(100);
+      vi.advanceTimersByTime(150);
     });
 
     expect(result.current.latestAttempt?.outcome).toBe("failed");
@@ -299,7 +299,7 @@ describe("useDeployment blocker handling", () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(100);
+      vi.advanceTimersByTime(150);
     });
 
     expect(result.current.latestAttempt?.outcome).toBe("unresolved");

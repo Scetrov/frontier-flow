@@ -1,10 +1,14 @@
 import type {
   DeploymentAttemptOutcome,
+  DeployGradeCompileResult,
   DeploymentStage,
   DeploymentTarget,
+  FetchWorldSourceResult,
   GeneratedContractArtifact,
   PackageReferenceBundle,
 } from "../compiler/types";
+import { compileForDeployment } from "../compiler/deployGradeCompiler";
+import { fetchWorldSource } from "./worldSourceFetcher";
 import { confirmPublishedPackage, type DeploymentConfirmationRequest, type DeploymentConfirmationResult } from "./confirmation";
 import { publishToLocalValidator, type LocalPublishResult } from "./publishLocal";
 import { publishToRemoteTarget, type RemotePublishExecutionRequest, type RemotePublishResult } from "./publishRemote";
@@ -27,12 +31,25 @@ export interface DeploymentExecutionResult {
   readonly packageId?: string;
   readonly confirmationReference?: string;
   readonly stage: DeploymentStage;
+  readonly sourceVersionTag?: string;
+  readonly builderToolchainVersion?: string;
   readonly message: string;
   readonly errorCode?: string;
 }
 
 export interface DeploymentExecutorDependencies {
+  readonly compileForDeployment: (request: {
+    readonly artifact: GeneratedContractArtifact;
+    readonly references: PackageReferenceBundle;
+    readonly worldSource: FetchWorldSourceResult;
+    readonly signal?: AbortSignal;
+    readonly onProgress?: (message: string, stage: DeploymentStage) => void;
+  }) => Promise<DeployGradeCompileResult>;
   readonly confirm: (request: DeploymentConfirmationRequest) => Promise<DeploymentConfirmationResult>;
+  readonly fetchWorldSource: (request: {
+    readonly references: PackageReferenceBundle;
+    readonly signal?: AbortSignal;
+  }) => ReturnType<typeof fetchWorldSource>;
   readonly publishLocal: (request: {
     readonly artifact: GeneratedContractArtifact;
     readonly target: DeploymentTarget;
@@ -40,7 +57,8 @@ export interface DeploymentExecutorDependencies {
     readonly signal?: AbortSignal;
   }) => Promise<LocalPublishResult>;
   readonly publishRemote: (request: {
-    readonly artifact: GeneratedContractArtifact;
+    readonly artifact?: GeneratedContractArtifact;
+    readonly compileResult?: DeployGradeCompileResult;
     readonly ownerAddress: string;
     readonly onSubmitting?: () => void;
     readonly target: DeploymentTarget;
@@ -51,7 +69,40 @@ export interface DeploymentExecutorDependencies {
 }
 
 const DEFAULT_EXECUTOR_DEPENDENCIES: DeploymentExecutorDependencies = {
+  compileForDeployment: ({ artifact, references, worldSource, signal, onProgress }) => compileForDeployment({
+    artifact,
+    worldSource,
+    target: references,
+    signal,
+    onProgress: (event) => {
+      switch (event.phase) {
+        case "fetching-source":
+          onProgress?.("Fetching the upstream world package source.", "preparing");
+          break;
+        case "resolving-dependencies":
+          onProgress?.(
+            event.total > 0
+              ? `Resolving live world dependencies (${String(event.current)}/${String(event.total)}).`
+              : "Resolving live world dependencies.",
+            "preparing",
+          );
+          break;
+        case "compiling":
+          onProgress?.("Compiling against the live world dependency graph.", "preparing");
+          break;
+        case "complete":
+          onProgress?.("Deploy-grade compilation completed.", "preparing");
+          break;
+      }
+    },
+  }),
   confirm: (request) => confirmPublishedPackage(request, () => Promise.resolve(null)),
+  fetchWorldSource: ({ references, signal }) => fetchWorldSource({
+    repositoryUrl: "https://github.com/evefrontier/world-contracts",
+    versionTag: references.sourceVersionTag,
+    subdirectory: "contracts/world",
+    signal,
+  }),
   publishLocal: publishToLocalValidator,
   publishRemote: publishToRemoteTarget,
 };
@@ -95,7 +146,13 @@ function classifyExecutionError(error: unknown, fallbackStage: DeploymentStage):
     outcome: "failed",
     stage: fallbackStage,
     message,
-    errorCode: fallbackStage === "confirming" ? "confirmation-failed" : "deployment-executor-error",
+    errorCode: fallbackStage === "confirming"
+      ? "confirmation-failed"
+      : fallbackStage === "resolve-dependencies"
+        ? "resolution-failed"
+        : fallbackStage === "deploy-grade-compile"
+          ? "compile-failed"
+          : "deployment-executor-error",
   };
 }
 
@@ -115,16 +172,39 @@ export function createDeploymentExecutor(
 
     try {
       onProgress?.({ message: "Validating deployment prerequisites.", stage: "validating" });
-      currentStage = "preparing";
-      onProgress?.({ message: "Preparing deployment payload.", stage: "preparing" });
+      currentStage = request.target.supportsWalletSigning ? "fetch-world-source" : "preparing";
+      onProgress?.({
+        message: request.target.supportsWalletSigning
+          ? "Fetching the upstream world package source."
+          : "Preparing deployment payload.",
+        stage: currentStage,
+      });
 
       const publishResult = await (async (): Promise<LocalPublishResult | RemotePublishResult | DeploymentExecutionResult> => {
         try {
           if (request.target.supportsWalletSigning) {
+            const worldSource = await resolvedDependencies.fetchWorldSource({
+              references: request.references as PackageReferenceBundle,
+              signal: request.signal,
+            });
+
+            const compileResult = await resolvedDependencies.compileForDeployment({
+              artifact: request.artifact,
+              references: request.references as PackageReferenceBundle,
+              worldSource,
+              signal: request.signal,
+              onProgress: (message, stage) => {
+                currentStage = stage;
+                onProgress?.({ message, stage });
+              },
+            });
             currentStage = "signing";
             onProgress?.({ message: "Waiting for wallet signing approval.", stage: "signing" });
             return await resolvedDependencies.publishRemote({
-              artifact: request.artifact,
+              compileResult: {
+                ...compileResult,
+                sourceVersionTag: worldSource.sourceVersionTag,
+              },
               ownerAddress: request.ownerAddress ?? "",
               onSubmitting: () => {
                 currentStage = "submitting";
@@ -154,6 +234,11 @@ export function createDeploymentExecutor(
         return publishResult;
       }
 
+      const publishMetadata = {
+        sourceVersionTag: "sourceVersionTag" in publishResult ? publishResult.sourceVersionTag : undefined,
+        builderToolchainVersion: "builderToolchainVersion" in publishResult ? publishResult.builderToolchainVersion : undefined,
+      };
+
       currentStage = "confirming";
       onProgress?.({ message: "Confirming deployment transaction.", stage: "confirming" });
 
@@ -176,6 +261,7 @@ export function createDeploymentExecutor(
           ...confirmation,
           packageId: publishResult.packageId,
           confirmationReference: publishResult.transactionDigest,
+          ...publishMetadata,
         };
       }
 
@@ -195,6 +281,7 @@ export function createDeploymentExecutor(
         packageId: confirmation.packageId,
         confirmationReference: confirmation.confirmationReference,
         stage: confirmation.finalStage,
+        ...publishMetadata,
         message: `Deployment completed for ${request.target.label}.`,
       };
     } catch (error: unknown) {

@@ -1,10 +1,16 @@
 import { Transaction } from "@mysten/sui/transactions";
 import { compileMove } from "../compiler/moveCompiler";
 import { prepareArtifactManifestForTarget } from "../compiler/emitter";
-import type { DeploymentTarget, GeneratedContractArtifact, PackageReferenceBundle } from "../compiler/types";
+import type {
+  DeploymentTarget,
+  DeployGradeCompileResult,
+  GeneratedContractArtifact,
+  PackageReferenceBundle,
+} from "../compiler/types";
 
 export interface RemotePublishRequest {
-  readonly artifact: GeneratedContractArtifact;
+  readonly artifact?: GeneratedContractArtifact;
+  readonly compileResult?: DeployGradeCompileResult;
   readonly ownerAddress: string;
   readonly onSubmitting?: () => void;
   readonly target: DeploymentTarget;
@@ -21,6 +27,8 @@ export interface RemotePublishExecutionRequest {
 export interface RemotePublishResult {
   readonly packageId?: string;
   readonly transactionDigest?: string;
+  readonly sourceVersionTag?: string;
+  readonly builderToolchainVersion?: string;
 }
 
 const TESTNET_CHAIN_ID = "4c78adac";
@@ -116,16 +124,20 @@ export async function publishToRemoteTarget(request: RemotePublishRequest): Prom
     throw new Error(`A connected wallet address is required before deploying to ${request.target.label}.`);
   }
 
-  const compiledArtifact = await compileArtifactForRemotePublish(request.artifact, request.references);
-  const manifest = prepareArtifactManifestForTarget(
-    compiledArtifact.moduleName,
-    request.target.id,
-    compiledArtifact.dependencies,
-  );
+  const compiledArtifact = request.compileResult === undefined
+    ? await compileArtifactForRemotePublish(request.artifact ?? (() => { throw new Error("A compiled artifact is required for remote publishing."); })(), request.references)
+    : null;
+  const modules = request.compileResult?.modules ?? compiledArtifact?.bytecodeModules ?? [];
+  const dependencies = request.compileResult?.dependencies
+    ?? prepareArtifactManifestForTarget(
+      compiledArtifact?.moduleName ?? request.artifact?.moduleName ?? "unknown-module",
+      request.target.id,
+      compiledArtifact?.dependencies ?? [],
+    ).dependencies;
   const transaction = new Transaction();
   const [upgradeCap] = transaction.publish({
-    modules: compiledArtifact.bytecodeModules.map((module) => Array.from(module)),
-    dependencies: Array.from(manifest.dependencies),
+    modules: modules.map((module) => Array.from(module)),
+    dependencies: Array.from(dependencies),
   });
   transaction.transferObjects([upgradeCap], request.ownerAddress);
 
@@ -134,6 +146,8 @@ export async function publishToRemoteTarget(request: RemotePublishRequest): Prom
     signal: request.signal,
   });
   return {
+    builderToolchainVersion: request.compileResult?.builderToolchainVersion,
+    sourceVersionTag: request.compileResult?.sourceVersionTag,
     transactionDigest: result.digest,
   };
 }

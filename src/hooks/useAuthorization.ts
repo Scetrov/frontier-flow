@@ -6,6 +6,8 @@ import { signTransaction } from "@mysten/wallet-standard";
 
 import {
   AUTHORIZATION_CONFIRMATION_TIMEOUT_MS,
+  type AuthorizationBatchResult,
+  type AuthorizationBatchSummary,
   type AuthorizationProgressState,
   type AuthorizationTarget,
   type StoredDeploymentState,
@@ -53,12 +55,15 @@ interface UseAuthorizationOptions {
 }
 
 export interface UseAuthorizationResult {
+  readonly abortAuthorization: () => void;
   readonly cancelAuthorization: () => void;
   readonly dismissProgress: () => void;
   readonly isAuthorizing: boolean;
   readonly progress: AuthorizationProgressState | null;
+  readonly results: readonly AuthorizationBatchResult[];
   readonly retryEventConfirmation: (turretObjectId: string) => Promise<void>;
   readonly startAuthorization: (turretObjectIds: readonly string[]) => Promise<void>;
+  readonly summary: AuthorizationBatchSummary;
 }
 
 const AUTHORIZATION_EVENT_POLL_INTERVAL_MS = 1_000;
@@ -172,17 +177,59 @@ export function useAuthorization({
   };
 
   return {
+    abortAuthorization: cancelAuthorization,
     cancelAuthorization,
     dismissProgress,
     isAuthorizing,
     progress,
+    results: getAuthorizationBatchResults(progress),
     retryEventConfirmation: async (turretObjectId) => {
       await retryAuthorizationEventConfirmation(turretObjectId, dependencies, refs);
     },
     startAuthorization: async (turretObjectIds) => {
       await startAuthorizationBatch(turretObjectIds, dependencies, refs);
     },
+    summary: getAuthorizationBatchSummary(progress),
   };
+}
+
+function getAuthorizationBatchSummary(progress: AuthorizationProgressState | null): AuthorizationBatchSummary {
+  if (progress === null) {
+    return {
+      confirmed: 0,
+      failed: 0,
+      pending: 0,
+      warnings: 0,
+      total: 0,
+    };
+  }
+
+  return progress.targets.reduce<AuthorizationBatchSummary>((summary, target) => ({
+    confirmed: summary.confirmed + (target.status === "confirmed" ? 1 : 0),
+    failed: summary.failed + (target.status === "failed" ? 1 : 0),
+    pending: summary.pending + (target.status === "pending" || target.status === "submitting" || target.status === "confirming" ? 1 : 0),
+    warnings: summary.warnings + (target.status === "warning" ? 1 : 0),
+    total: summary.total + 1,
+  }), {
+    confirmed: 0,
+    failed: 0,
+    pending: 0,
+    warnings: 0,
+    total: 0,
+  });
+}
+
+function getAuthorizationBatchResults(progress: AuthorizationProgressState | null): readonly AuthorizationBatchResult[] {
+  if (progress === null || progress.completedAt === null) {
+    return [];
+  }
+
+  return progress.targets.map((target) => ({
+    turretObjectId: target.turretObjectId,
+    status: target.status,
+    transactionDigest: target.transactionDigest,
+    errorMessage: target.errorMessage,
+  }));
 }
 
 function useReconnectProgressEffect(input: {

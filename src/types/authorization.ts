@@ -10,6 +10,23 @@ export interface StoredDeploymentState {
   readonly transactionDigest: string;
   readonly deployedAt: string;
   readonly contractName: string;
+  readonly sourceVersionTag?: string;
+  readonly builderToolchainVersion?: string;
+}
+
+export interface AuthorizationBatchSummary {
+  readonly confirmed: number;
+  readonly failed: number;
+  readonly pending: number;
+  readonly warnings: number;
+  readonly total: number;
+}
+
+export interface AuthorizationBatchResult {
+  readonly turretObjectId: string;
+  readonly status: AuthorizationTurretStatus;
+  readonly transactionDigest: string | null;
+  readonly errorMessage: string | null;
 }
 
 export interface TurretExtensionInfo {

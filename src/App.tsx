@@ -294,6 +294,8 @@ function getLiveDeploymentState(
     transactionDigest: latestAttempt.confirmationReference,
     deployedAt: new Date(latestAttempt.endedAt ?? latestAttempt.startedAt).toISOString(),
     contractName: loadActiveContractName(getBrowserStorage()) ?? latestAttempt.moduleName,
+    sourceVersionTag: latestAttempt.sourceVersionTag,
+    builderToolchainVersion: latestAttempt.builderToolchainVersion,
   };
 }
 

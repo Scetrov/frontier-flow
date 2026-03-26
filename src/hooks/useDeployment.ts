@@ -26,7 +26,7 @@ import {
   getDeploymentEnvironmentFlags,
   type DeploymentValidationResult,
 } from "../utils/deploymentValidation";
-import { clearDeploymentState, loadActiveContractName, saveDeploymentState } from "../utils/deploymentStateStorage";
+import { clearDeploymentState, loadActiveContractName, loadDeploymentState, saveDeploymentState, validateDeploymentState } from "../utils/deploymentStateStorage";
 import type { StoredDeploymentState } from "../types/authorization";
 
 interface UseDeploymentOptions {
@@ -34,9 +34,19 @@ interface UseDeploymentOptions {
   readonly status: CompilationStatus;
 }
 
-const DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+const LOCAL_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
   "validating",
   "preparing",
+  "signing",
+  "submitting",
+  "confirming",
+];
+
+const REMOTE_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "fetch-world-source",
+  "resolve-dependencies",
+  "deploy-grade-compile",
   "signing",
   "submitting",
   "confirming",
@@ -45,10 +55,17 @@ const DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
 const ACTIVE_STAGE_MESSAGE: Record<DeploymentStage, string> = {
   validating: "Validating deployment prerequisites.",
   preparing: "Preparing deployment payload.",
+  "fetch-world-source": "Fetching the upstream world package source.",
+  "resolve-dependencies": "Resolving live world dependencies.",
+  "deploy-grade-compile": "Compiling against the live world dependency graph.",
   signing: "Waiting for wallet signing approval.",
   submitting: "Submitting deployment transaction.",
   confirming: "Confirming deployment transaction.",
 };
+
+function getDeploymentStageSequence(targetId: DeploymentTargetId): readonly DeploymentStage[] {
+  return targetId === "local" ? LOCAL_DEPLOYMENT_STAGE_SEQUENCE : REMOTE_DEPLOYMENT_STAGE_SEQUENCE;
+}
 
 function getArtifactFromStatus(status: CompilationStatus): GeneratedContractArtifact | null {
   return status.state === "compiled" || status.state === "error"
@@ -202,6 +219,12 @@ function getStageMessage(stage: DeploymentStage, targetLabel: string): string {
       return `${ACTIVE_STAGE_MESSAGE.validating} Target: ${targetLabel}.`;
     case "preparing":
       return `${ACTIVE_STAGE_MESSAGE.preparing} Target: ${targetLabel}.`;
+    case "fetch-world-source":
+      return `${ACTIVE_STAGE_MESSAGE["fetch-world-source"]} Target: ${targetLabel}.`;
+    case "resolve-dependencies":
+      return `${ACTIVE_STAGE_MESSAGE["resolve-dependencies"]} Target: ${targetLabel}.`;
+    case "deploy-grade-compile":
+      return `${ACTIVE_STAGE_MESSAGE["deploy-grade-compile"]} Target: ${targetLabel}.`;
     case "signing":
       return `${ACTIVE_STAGE_MESSAGE.signing} Target: ${targetLabel}.`;
     case "submitting":
@@ -237,6 +260,7 @@ interface DeploymentOutcome {
 }
 
 interface DeploymentProgressUpdate {
+  readonly activeMessage?: string;
   readonly attemptId: string;
   readonly stage: DeploymentStage;
   readonly stageIndex: number;
@@ -500,14 +524,15 @@ function updateDeploymentProgress(
   setProgress: Dispatch<SetStateAction<DeploymentProgress | null>>,
   input: DeploymentProgressUpdate,
 ): void {
+  const stageSequence = getDeploymentStageSequence(input.targetId);
   setProgress((current) => createProgressSnapshot(current, {
     attemptId: input.attemptId,
     targetId: input.targetId,
     stage: input.stage,
     stageIndex: input.stageIndex,
-    stageCount: DEPLOYMENT_STAGE_SEQUENCE.length,
-    completedStages: DEPLOYMENT_STAGE_SEQUENCE.slice(0, input.stageIndex),
-    activeMessage: getStageMessage(input.stage, input.targetLabel),
+    stageCount: stageSequence.length,
+    completedStages: stageSequence.slice(0, input.stageIndex),
+    activeMessage: input.activeMessage ?? getStageMessage(input.stage, input.targetLabel),
   }));
 }
 
@@ -520,6 +545,7 @@ function createBlockedOutcome(input: {
   readonly moduleName?: string;
   readonly targetId: DeploymentTargetId;
 }): DeploymentOutcome {
+  const stageSequence = getDeploymentStageSequence(input.targetId);
   const attempt: DeploymentAttempt = {
     attemptId: input.attemptId,
     artifactId: input.artifactId,
@@ -550,7 +576,7 @@ function createBlockedOutcome(input: {
       targetId: input.targetId,
       stage: "validating",
       stageIndex: 0,
-      stageCount: DEPLOYMENT_STAGE_SEQUENCE.length,
+      stageCount: stageSequence.length,
       completedStages: [],
       activeMessage: input.blockerMessage,
       dismissedByUser: false,
@@ -566,6 +592,8 @@ function createCancelledOutcome(input: {
   readonly targetId: DeploymentTargetId;
   readonly targetLabel: string;
 }): DeploymentOutcome {
+  const stageSequence = getDeploymentStageSequence(input.targetId);
+  const signingStageIndex = stageSequence.indexOf("signing");
   const message = `Deployment was cancelled because wallet approval was rejected for ${input.targetLabel}.`;
   const attempt: DeploymentAttempt = {
     attemptId: input.attemptId,
@@ -596,9 +624,9 @@ function createCancelledOutcome(input: {
       attemptId: input.attemptId,
       targetId: input.targetId,
       stage: "signing",
-      stageIndex: 2,
-      stageCount: DEPLOYMENT_STAGE_SEQUENCE.length,
-      completedStages: ["validating", "preparing"],
+      stageIndex: signingStageIndex,
+      stageCount: stageSequence.length,
+      completedStages: signingStageIndex <= 0 ? [] : stageSequence.slice(0, signingStageIndex),
       activeMessage: message,
       dismissedByUser: false,
     },
@@ -609,12 +637,15 @@ function createCancelledOutcome(input: {
 function createSuccessOutcome(input: {
   readonly artifactId: string;
   readonly attemptId: string;
+  readonly builderToolchainVersion?: string;
   readonly confirmationReference?: string;
   readonly moduleName: string;
   readonly packageId: string;
+  readonly sourceVersionTag?: string;
   readonly targetId: DeploymentTargetId;
   readonly targetLabel: string;
 }): DeploymentOutcome {
+  const stageSequence = getDeploymentStageSequence(input.targetId);
   const message = `Deployment completed for ${input.targetLabel}. Package ID: ${input.packageId}.`;
   const attempt: DeploymentAttempt = {
     attemptId: input.attemptId,
@@ -627,6 +658,8 @@ function createSuccessOutcome(input: {
     currentStage: "confirming",
     packageId: input.packageId,
     confirmationReference: input.confirmationReference,
+    sourceVersionTag: input.sourceVersionTag,
+    builderToolchainVersion: input.builderToolchainVersion,
     message,
   };
   const statusMessage: DeploymentStatusMessage = {
@@ -648,9 +681,9 @@ function createSuccessOutcome(input: {
       attemptId: input.attemptId,
       targetId: input.targetId,
       stage: "confirming",
-      stageIndex: DEPLOYMENT_STAGE_SEQUENCE.length - 1,
-      stageCount: DEPLOYMENT_STAGE_SEQUENCE.length,
-      completedStages: DEPLOYMENT_STAGE_SEQUENCE.slice(0, DEPLOYMENT_STAGE_SEQUENCE.length - 1),
+      stageIndex: stageSequence.length - 1,
+      stageCount: stageSequence.length,
+      completedStages: stageSequence.slice(0, stageSequence.length - 1),
       activeMessage: message,
       dismissedByUser: false,
     },
@@ -685,7 +718,11 @@ function getExecutionOutcomeSeverity(outcome: DeploymentExecutionResult["outcome
 }
 
 function shouldSurfaceFailureMessageDirectly(result: DeploymentExecutionResult): boolean {
-  return result.outcome === "failed" && result.stage === "preparing";
+  return result.outcome === "failed"
+    && (result.stage === "preparing"
+      || result.stage === "fetch-world-source"
+      || result.stage === "resolve-dependencies"
+      || result.stage === "deploy-grade-compile");
 }
 
 function getExecutionOutcomeNextAction(result: DeploymentExecutionResult): string {
@@ -707,9 +744,10 @@ function getExecutionOutcomeNextAction(result: DeploymentExecutionResult): strin
   }
 }
 
-function getStageIndex(stage: DeploymentStage): number {
-  const stageIndex = DEPLOYMENT_STAGE_SEQUENCE.indexOf(stage);
-  return stageIndex === -1 ? DEPLOYMENT_STAGE_SEQUENCE.length - 1 : stageIndex;
+function getStageIndex(targetId: DeploymentTargetId, stage: DeploymentStage): number {
+  const stageSequence = getDeploymentStageSequence(targetId);
+  const stageIndex = stageSequence.indexOf(stage);
+  return stageIndex === -1 ? stageSequence.length - 1 : stageIndex;
 }
 
 function createExecutionOutcome(input: {
@@ -720,10 +758,11 @@ function createExecutionOutcome(input: {
   readonly startedAt: number;
   readonly targetId: DeploymentTargetId;
 }): DeploymentOutcome {
+  const stageSequence = getDeploymentStageSequence(input.targetId);
   const headline = getExecutionOutcomeHeadline(input.result.outcome);
   const severity = getExecutionOutcomeSeverity(input.result.outcome);
   const nextActionMessage = getExecutionOutcomeNextAction(input.result);
-  const stageIndex = getStageIndex(input.result.stage);
+  const stageIndex = getStageIndex(input.targetId, input.result.stage);
 
   return {
     attempt: {
@@ -737,6 +776,8 @@ function createExecutionOutcome(input: {
       currentStage: input.result.stage,
       packageId: input.result.packageId,
       confirmationReference: input.result.confirmationReference,
+      sourceVersionTag: input.result.sourceVersionTag,
+      builderToolchainVersion: input.result.builderToolchainVersion,
       message: input.result.message,
       errorCode: input.result.errorCode,
     },
@@ -745,8 +786,8 @@ function createExecutionOutcome(input: {
       targetId: input.targetId,
       stage: input.result.stage,
       stageIndex,
-      stageCount: DEPLOYMENT_STAGE_SEQUENCE.length,
-      completedStages: stageIndex <= 0 ? [] : DEPLOYMENT_STAGE_SEQUENCE.slice(0, stageIndex),
+      stageCount: stageSequence.length,
+      completedStages: stageIndex <= 0 ? [] : stageSequence.slice(0, stageIndex),
       activeMessage: input.result.message,
       dismissedByUser: false,
     },
@@ -889,11 +930,13 @@ function scheduleRejectedSigningDeployment(input: {
   readonly validation: DeploymentValidationResult;
 }): void {
   scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs, () => {
+    const stageSequence = getDeploymentStageSequence(input.selectedTarget);
+    const initialStage = stageSequence[1] ?? "preparing";
     updateDeploymentProgress(input.stateSetters.setProgress, {
       attemptId: input.attemptId,
       targetId: input.selectedTarget,
-      stage: "preparing",
-      stageIndex: 1,
+      stage: initialStage,
+      stageIndex: stageSequence.indexOf(initialStage),
       targetLabel: input.targetLabel,
     });
   });
@@ -920,11 +963,12 @@ function scheduleFailedSubmissionDeployment(input: {
   readonly timerIdsRef: TimerIdsRef;
   readonly validation: DeploymentValidationResult;
 }): void {
-  const scheduledStages: Array<{ readonly delayMultiplier: number; readonly stage: DeploymentStage; readonly stageIndex: number }> = [
-    { delayMultiplier: 1, stage: "preparing", stageIndex: 1 },
-    { delayMultiplier: 2, stage: "signing", stageIndex: 2 },
-    { delayMultiplier: 3, stage: "submitting", stageIndex: 3 },
-  ];
+  const stageSequence = getDeploymentStageSequence(input.selectedTarget);
+  const scheduledStages = stageSequence.slice(1, stageSequence.indexOf("submitting") + 1).map((stage, index) => ({
+    delayMultiplier: index + 1,
+    stage,
+    stageIndex: stageSequence.indexOf(stage),
+  }));
 
   for (const scheduledStage of scheduledStages) {
     scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * scheduledStage.delayMultiplier, () => {
@@ -938,7 +982,7 @@ function scheduleFailedSubmissionDeployment(input: {
     });
   }
 
-  scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * 4, () => {
+  scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * (scheduledStages.length + 1), () => {
     applyDeploymentOutcome(input.stateSetters, createExecutionOutcome({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
@@ -968,11 +1012,12 @@ function scheduleUnresolvedConfirmationDeployment(input: {
   readonly timerIdsRef: TimerIdsRef;
   readonly validation: DeploymentValidationResult;
 }): void {
-  const scheduledStages: Array<{ readonly delayMultiplier: number; readonly stage: DeploymentStage; readonly stageIndex: number }> = [
-    { delayMultiplier: 1, stage: "preparing", stageIndex: 1 },
-    { delayMultiplier: 2, stage: "signing", stageIndex: 2 },
-    { delayMultiplier: 3, stage: "submitting", stageIndex: 3 },
-  ];
+  const stageSequence = getDeploymentStageSequence(input.selectedTarget);
+  const scheduledStages = stageSequence.slice(1, stageSequence.indexOf("submitting") + 1).map((stage, index) => ({
+    delayMultiplier: index + 1,
+    stage,
+    stageIndex: stageSequence.indexOf(stage),
+  }));
 
   for (const scheduledStage of scheduledStages) {
     scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * scheduledStage.delayMultiplier, () => {
@@ -986,7 +1031,7 @@ function scheduleUnresolvedConfirmationDeployment(input: {
     });
   }
 
-  scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * 4, () => {
+  scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * (scheduledStages.length + 1), () => {
     applyDeploymentOutcome(input.stateSetters, createExecutionOutcome({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
@@ -1018,11 +1063,12 @@ function scheduleSuccessfulDeployment(input: {
   readonly timerIdsRef: TimerIdsRef;
   readonly validation: DeploymentValidationResult;
 }): void {
-  const scheduledStages: Array<{ readonly delayMultiplier: number; readonly stage: DeploymentStage; readonly stageIndex: number }> = [
-    { delayMultiplier: 1, stage: "preparing", stageIndex: 1 },
-    { delayMultiplier: 2, stage: "signing", stageIndex: 2 },
-    { delayMultiplier: 3, stage: "submitting", stageIndex: 3 },
-  ];
+  const stageSequence = getDeploymentStageSequence(input.selectedTarget);
+  const scheduledStages = stageSequence.slice(1, stageSequence.indexOf("submitting") + 1).map((stage, index) => ({
+    delayMultiplier: index + 1,
+    stage,
+    stageIndex: stageSequence.indexOf(stage),
+  }));
 
   for (const scheduledStage of scheduledStages) {
     scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * scheduledStage.delayMultiplier, () => {
@@ -1036,13 +1082,15 @@ function scheduleSuccessfulDeployment(input: {
     });
   }
 
-  scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * 4, () => {
+  scheduleStageUpdate(input.timerIdsRef, input.stageDelayMs * (scheduledStages.length + 1), () => {
     applyDeploymentOutcome(input.stateSetters, createSuccessOutcome({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
+      builderToolchainVersion: input.selectedTarget === "local" ? undefined : resolvePackageReferenceBundle(input.selectedTarget)?.toolchainVersion,
       confirmationReference: input.confirmationReference,
       moduleName: input.moduleName,
       packageId: input.packageId,
+      sourceVersionTag: input.selectedTarget === "local" ? undefined : resolvePackageReferenceBundle(input.selectedTarget)?.sourceVersionTag,
       targetId: input.selectedTarget,
       targetLabel: input.targetLabel,
     }), input.validation);
@@ -1103,8 +1151,9 @@ function createRemotePublishHandler(input: {
   readonly currentWallet: ReturnType<typeof useCurrentWallet>;
   readonly suiClient: ReturnType<typeof useSuiClient>;
 }) {
-  return ({ artifact, ownerAddress, onSubmitting, target, references, signal }: Parameters<typeof publishToRemoteTarget>[0]) => publishToRemoteTarget({
+  return ({ artifact, compileResult, ownerAddress, onSubmitting, target, references, signal }: Parameters<typeof publishToRemoteTarget>[0]) => publishToRemoteTarget({
     artifact,
+    compileResult,
     ownerAddress,
     onSubmitting,
     target,
@@ -1197,10 +1246,11 @@ function startRealDeployment(input: {
     target,
   }, (progressUpdate) => {
     updateDeploymentProgress(input.stateSetters.setProgress, {
+      activeMessage: progressUpdate.message,
       attemptId,
       targetId: input.selectedTarget,
       stage: progressUpdate.stage,
-      stageIndex: getStageIndex(progressUpdate.stage),
+      stageIndex: getStageIndex(input.selectedTarget, progressUpdate.stage),
       targetLabel: target.label,
     });
   }).then((result) => {
@@ -1254,6 +1304,33 @@ function usePersistedDeploymentSnapshot(
   }, [deploymentStatus, latestAttempt]);
 }
 
+function usePersistedDeploymentSnapshotValidation(
+  selectedTarget: DeploymentTargetId,
+  status: CompilationStatus,
+): void {
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const persistedState = loadDeploymentState(window.localStorage);
+    if (persistedState === null) {
+      return;
+    }
+
+    const artifact = getArtifactFromStatus(status);
+    const isValid = validateDeploymentState(persistedState, {
+      contractName: loadActiveContractName(window.localStorage),
+      targetId: selectedTarget,
+      moduleName: artifact?.moduleName,
+    });
+
+    if (!isValid) {
+      clearDeploymentState(window.localStorage);
+    }
+  }, [selectedTarget, status]);
+}
+
 function getPersistedDeploymentSnapshot(
   deploymentStatus: DeploymentState["deploymentStatus"],
   latestAttempt: DeploymentState["latestAttempt"],
@@ -1276,6 +1353,8 @@ function getPersistedDeploymentSnapshot(
     transactionDigest: latestAttempt.confirmationReference,
     deployedAt: new Date(latestAttempt.endedAt ?? latestAttempt.startedAt).toISOString(),
     contractName: loadActiveContractName(window.localStorage) ?? latestAttempt.moduleName,
+    sourceVersionTag: latestAttempt.sourceVersionTag,
+    builderToolchainVersion: latestAttempt.builderToolchainVersion,
   };
 }
 
@@ -1393,6 +1472,7 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
 
   useEffect(() => clearStageTimers, [clearStageTimers]);
   usePersistedDeploymentSnapshot(deploymentStatus, latestAttempt);
+  usePersistedDeploymentSnapshotValidation(selectedTarget, status);
 
   const startDeployment = useCallback((): Promise<void> => {
     return beginDeploymentAttempt({

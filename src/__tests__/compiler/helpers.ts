@@ -176,8 +176,11 @@ export function createPackageReferenceBundle(
     targetId,
     environmentLabel: overrides.environmentLabel ?? (targetId === "testnet:stillness" ? "Stillness" : "Utopia"),
     worldPackageId: overrides.worldPackageId ?? "0x1",
+    originalWorldPackageId: overrides.originalWorldPackageId ?? overrides.worldPackageId ?? "0x1",
     objectRegistryId: overrides.objectRegistryId ?? "0x2",
     serverAddressRegistryId: overrides.serverAddressRegistryId ?? "0x3",
+    sourceVersionTag: overrides.sourceVersionTag ?? (targetId === "testnet:stillness" ? "v0.0.18" : "v0.0.21"),
+    toolchainVersion: overrides.toolchainVersion ?? (targetId === "testnet:stillness" ? "1.67.1" : "1.68.0"),
     source: overrides.source ?? "test",
     lastVerifiedOn: overrides.lastVerifiedOn ?? "2026-03-21",
   };

@@ -43,16 +43,18 @@ export function createDeploymentAttemptFixture(
 export function createDeploymentProgressFixture(
   overrides: Partial<DeploymentProgress> = {},
 ): DeploymentProgress {
+  const targetId = overrides.targetId ?? DEFAULT_TARGET_ID;
+  const stageSequence = getDeploymentStageSequence(targetId);
   const stageIndex = overrides.stageIndex ?? 0;
-  const stageCount = overrides.stageCount ?? DEPLOYMENT_STAGE_SEQUENCE.length;
+  const stageCount = overrides.stageCount ?? stageSequence.length;
 
   return {
     attemptId: overrides.attemptId ?? DEFAULT_DEPLOYMENT_ATTEMPT_ID,
-    targetId: overrides.targetId ?? DEFAULT_TARGET_ID,
+    targetId,
     stage: overrides.stage ?? "validating",
     stageIndex,
     stageCount,
-    completedStages: overrides.completedStages ?? DEPLOYMENT_STAGE_SEQUENCE.slice(0, stageIndex),
+    completedStages: overrides.completedStages ?? stageSequence.slice(0, stageIndex),
     activeMessage: overrides.activeMessage ?? "Validating deployment prerequisites.",
     dismissedByUser: overrides.dismissedByUser ?? false,
   };
@@ -139,8 +141,11 @@ export function createPackageReferenceBundleFixture(
     targetId,
     environmentLabel: overrides.environmentLabel ?? (targetId === "testnet:stillness" ? "Stillness" : "Utopia"),
     worldPackageId: overrides.worldPackageId ?? "0x1",
+    originalWorldPackageId: overrides.originalWorldPackageId ?? overrides.worldPackageId ?? "0x1",
     objectRegistryId: overrides.objectRegistryId ?? "0x2",
     serverAddressRegistryId: overrides.serverAddressRegistryId ?? "0x3",
+    sourceVersionTag: overrides.sourceVersionTag ?? (targetId === "testnet:stillness" ? "v0.0.18" : "v0.0.21"),
+    toolchainVersion: overrides.toolchainVersion ?? (targetId === "testnet:stillness" ? "1.67.1" : "1.68.0"),
     source: overrides.source ?? "test",
     lastVerifiedOn: overrides.lastVerifiedOn ?? "2026-03-21",
   };
@@ -156,3 +161,17 @@ export const DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
   "submitting",
   "confirming",
 ];
+
+export const REMOTE_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "fetch-world-source",
+  "resolve-dependencies",
+  "deploy-grade-compile",
+  "signing",
+  "submitting",
+  "confirming",
+];
+
+export function getDeploymentStageSequence(targetId: DeploymentTargetId): readonly DeploymentStage[] {
+  return targetId === "local" ? DEPLOYMENT_STAGE_SEQUENCE : REMOTE_DEPLOYMENT_STAGE_SEQUENCE;
+}

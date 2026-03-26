@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildAuthorizeTurretTransaction,
   fetchOwnerCap,
+  getAuthorizationWitnessType,
+  isDeploymentAlreadyAuthorized,
 } from "../utils/authorizationTransaction";
 import type { StoredDeploymentState } from "../types/authorization";
 
@@ -32,6 +34,28 @@ describe("authorizationTransaction", () => {
     expect(commands[1]?.function).toBe("authorize_extension");
     expect(commands[2]?.function).toBe("return_owner_cap");
     expect(commands[1]?.typeArguments).toEqual(["0xfeedface::starter_contract::TurretAuth"]);
+  });
+
+  it("derives the deployed authorization witness type from persisted deployment state", () => {
+    expect(getAuthorizationWitnessType(deploymentState)).toBe("0xfeedface::starter_contract::TurretAuth");
+    expect(isDeploymentAlreadyAuthorized({
+      deploymentState,
+      currentExtensionType: "0xfeedface::starter_contract::TurretAuth",
+    })).toBe(true);
+    expect(isDeploymentAlreadyAuthorized({
+      deploymentState,
+      currentExtensionType: "0xfeedface::other_module::TurretAuth",
+    })).toBe(false);
+  });
+
+  it("rejects building an authorization transaction when the turret already uses the deployed extension", () => {
+    expect(() => buildAuthorizeTurretTransaction({
+      deploymentState,
+      characterId: "0x1234",
+      currentExtensionType: "0xfeedface::starter_contract::TurretAuth",
+      ownerCapId: "0x4567",
+      turretObjectId: "0x89ab",
+    })).toThrow("The selected turret is already authorized for this deployed extension.");
   });
 
   it("rejects malformed turret ids before building the transaction", () => {

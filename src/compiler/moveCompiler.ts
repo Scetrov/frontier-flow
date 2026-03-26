@@ -1,7 +1,12 @@
 import { attachArtifactDiagnostics, attachCompiledArtifactResult } from "./generators/shared";
 import { parseCompilerOutput } from "./errorParser";
 import { createStandaloneWorldShimPackageFiles } from "./worldShim";
-import type { CompileResult, GeneratedContractArtifact } from "./types";
+import type {
+  CompileResult,
+  DeployCompileProgressEvent,
+  GeneratedContractArtifact,
+  ResolvedDependencies,
+} from "./types";
 
 interface MoveCompilerInitOptions {
   readonly wasm?: string | URL;
@@ -19,13 +24,26 @@ interface BuildErrorResult {
 
 type BuildResult = BuildSuccessResult | BuildErrorResult;
 
+interface BuildRootGit {
+  readonly git: string;
+  readonly rev: string;
+  readonly subdir?: string;
+}
+
+type BuildProgressHandler = (event: DeployCompileProgressEvent) => void;
+
+interface BuildInput {
+  readonly files: Readonly<Record<string, string>>;
+  readonly silenceWarnings: boolean;
+  readonly network: string;
+  readonly rootGit?: BuildRootGit;
+  readonly resolvedDependencies?: ResolvedDependencies;
+  readonly onProgress?: BuildProgressHandler;
+}
+
 interface MoveCompilerModule {
   initMoveCompiler(options?: MoveCompilerInitOptions): Promise<void>;
-  buildMovePackage(input: {
-    readonly files: Readonly<Record<string, string>>;
-    readonly silenceWarnings: boolean;
-    readonly network: string;
-  }): Promise<BuildResult>;
+  buildMovePackage(input: BuildInput): Promise<BuildResult>;
 }
 
 type MoveCompilerLoader = () => Promise<MoveCompilerModule>;

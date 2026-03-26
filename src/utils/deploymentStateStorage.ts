@@ -111,6 +111,8 @@ function parseStoredDeploymentState(value: unknown): StoredDeploymentState | nul
     transactionDigest: value.transactionDigest,
     deployedAt: value.deployedAt,
     contractName: sanitizeContractName(value.contractName),
+    sourceVersionTag: typeof value.sourceVersionTag === "string" ? value.sourceVersionTag : undefined,
+    builderToolchainVersion: typeof value.builderToolchainVersion === "string" ? value.builderToolchainVersion : undefined,
   };
 }
 

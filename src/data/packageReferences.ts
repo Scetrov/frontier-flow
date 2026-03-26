@@ -25,8 +25,11 @@ export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
     targetId: "testnet:stillness",
     environmentLabel: "Stillness",
     worldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+    originalWorldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
     objectRegistryId: "0x454a9aa3d37e1d08d3c9181239c1b683781e4087fbbbd48c935d54b6736fd05c",
     serverAddressRegistryId: "0xeb97b81668699672b1147c28dacb3d595534c48f4e177d3d80337dbde464f05f",
+    sourceVersionTag: "v0.0.18",
+    toolchainVersion: "1.67.1",
     source: RESOURCE_SOURCE,
     lastVerifiedOn: LAST_VERIFIED_ON,
   },
@@ -34,8 +37,11 @@ export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
     targetId: "testnet:utopia",
     environmentLabel: "Utopia",
     worldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
+    originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
     objectRegistryId: "0xc2b969a72046c47e24991d69472afb2216af9e91caf802684514f39706d7dc57",
     serverAddressRegistryId: "0x9a9f2f7d1b8cf100feb532223aa6c38451edb05406323af5054f9d974555708b",
+    sourceVersionTag: "v0.0.21",
+    toolchainVersion: "1.68.0",
     source: RESOURCE_SOURCE,
     lastVerifiedOn: LAST_VERIFIED_ON,
   },
@@ -228,7 +234,10 @@ export function hasValidPackageReferenceBundleShape(bundle: PackageReferenceBund
   return bundle.environmentLabel.length > 0
     && bundle.source.length > 0
     && bundle.lastVerifiedOn.length > 0
+    && bundle.sourceVersionTag.length > 0
+    && bundle.toolchainVersion.length > 0
     && bundle.worldPackageId.startsWith("0x")
+    && bundle.originalWorldPackageId.startsWith("0x")
     && bundle.objectRegistryId.startsWith("0x")
     && bundle.serverAddressRegistryId.startsWith("0x");
 }
