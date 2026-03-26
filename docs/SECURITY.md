@@ -87,13 +87,13 @@ updates:
 
 ### 2.3 Supply Chain Hardening
 
-| Control                      | Implementation                                                                                                                                                                                |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Dependency audit**         | Run `bunx npm-audit --audit-level=high` in CI. **Fail the build** on high/critical vulnerabilities                                                                                            |
-| **Socket.dev or Snyk**       | Integrate a supply chain analysis tool that detects typosquatting, install scripts, and protestware                                                                                           |
-| **WASM binary verification** | `src/compiler/moveCompiler.ts` fetches the bundled `sui_move_wasm_bg.wasm`, hashes it with SHA-256, and rejects compilation unless it matches the pinned digest `710212f879fef4feb0bf6932a8ecece1323ca3b675b07691df927977492105a0` before `initMoveCompiler()` runs (see [RISK-REGISTER R-11](./RISK-REGISTER.md)) |
+| Control                      | Implementation                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dependency audit**         | Run `bunx npm-audit --audit-level=high` in CI. **Fail the build** on high/critical vulnerabilities                                                                                                                                                                                                                               |
+| **Socket.dev or Snyk**       | Integrate a supply chain analysis tool that detects typosquatting, install scripts, and protestware                                                                                                                                                                                                                              |
+| **WASM binary verification** | `src/compiler/moveCompiler.ts` fetches the bundled `sui_move_wasm_bg.wasm`, hashes it with SHA-256, and rejects compilation unless it matches the pinned digest `710212f879fef4feb0bf6932a8ecece1323ca3b675b07691df927977492105a0` before `initMoveCompiler()` runs (see [RISK-REGISTER R-11](./RISK-REGISTER.md))               |
 | **Deploy-grade compilation** | WASM binary verification applies to authoring-time compilation. ADR-009 introduces a deploy-grade path that may use server-assisted compilation for dependency resolution, which would introduce separate supply-chain considerations for server components (see [ADR-009](./ADR/ADR-009-deploy-grade-dependency-resolution.md)) |
-| **Provenance metadata**      | Prefer packages that publish [npm provenance attestations](https://docs.npmjs.com/generating-provenance-statements). Track provenance adoption among critical dependencies                    |
+| **Provenance metadata**      | Prefer packages that publish [npm provenance attestations](https://docs.npmjs.com/generating-provenance-statements). Track provenance adoption among critical dependencies                                                                                                                                                       |
 
 ---
 
@@ -187,12 +187,12 @@ jobs:
 
 ### 3.3 Netlify Deployment Security
 
-| Control                   | Detail                                                                                                                                                |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Build command**         | `bun install --frozen-lockfile && bun run build` (deterministic installs)                                                                             |
-| **Environment variables** | `GITHUB_CLIENT_SECRET` stored in Netlify environment, **never** in repository                                                                         |
-| **Deploy previews**       | Limited to trusted contributors. Preview URLs must not expose production secrets                                                                      |
-| **Function security**     | Netlify serverless function for OAuth token exchange must validate `Origin` / `Referer`, enforce strict CORS, and never return raw error stack traces |
+| Control                   | Detail                                                                                                                                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Build command**         | `bun run build` (Netlify build runs `bun run build`; deterministic installs rely on the committed `bun.lockb` and CI/Netlify using `bun install --frozen-lockfile`) |
+| **Environment variables** | `GITHUB_CLIENT_SECRET` stored in Netlify environment, **never** in repository                                                                                       |
+| **Deploy previews**       | Limited to trusted contributors. Preview URLs must not expose production secrets                                                                                    |
+| **Function security**     | Netlify serverless function for OAuth token exchange must validate `Origin` / `Referer`, enforce strict CORS, and never return raw error stack traces               |
 
 ---
 

@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
+/* eslint-disable max-lines-per-function */
+
 import {
   loadLocalEnvironmentConfig,
   saveLocalEnvironmentConfig,
@@ -121,10 +123,13 @@ function getInputClassName(hasError: boolean): string {
 }
 
 function LocalEnvironmentField({ error, label, onBlur, onChange, value }: LocalEnvironmentFieldProps) {
+  const id = useId();
+
   return (
-    <label className="ff-local-environment-modal__field">
+    <label className="ff-local-environment-modal__field" htmlFor={id}>
       <span className="ff-local-environment-modal__label">{label}</span>
       <input
+        id={id}
         className={getInputClassName(error !== undefined)}
         onBlur={onBlur}
         onChange={(event) => {
@@ -138,6 +143,7 @@ function LocalEnvironmentField({ error, label, onBlur, onChange, value }: LocalE
   );
 }
 
+// eslint-disable-next-line max-lines-per-function
 function LocalEnvironmentSettingsPanel({
   closeButtonRef,
   draft,

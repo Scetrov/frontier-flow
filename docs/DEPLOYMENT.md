@@ -55,12 +55,11 @@ flowchart TB
 
 ```toml
 [build]
-  command = "bun install --frozen-lockfile && bun run build"
+  command = "bun run build"
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "24"
-  BUN_VERSION = "latest"
+  BUN_VERSION = "1.3.6"
 
 # SPA routing: all paths serve index.html
 [[redirects]]
@@ -129,10 +128,10 @@ cp .env.example .env
 
 Available environment variables:
 
-| Variable                | Default | Purpose                                         |
-| ----------------------- | ------- | ----------------------------------------------- |
+| Variable                | Default | Purpose                                           |
+| ----------------------- | ------- | ------------------------------------------------- |
 | `VITE_BASE_PATH`        | `/`     | Base URL path (overridden by GitHub Pages deploy) |
-| `VITE_GITHUB_CLIENT_ID` | —       | GitHub OAuth app client ID (future)              |
+| `VITE_GITHUB_CLIENT_ID` | —       | GitHub OAuth app client ID (future)               |
 
 The `VITE_BASE_PATH` variable is used in `vite.config.ts` to set the `base` option. It is only overridden in the `deploy-pages.yml` GitHub Actions workflow for GitHub Pages subpath deployments.
 
@@ -284,12 +283,12 @@ The Localnet settings modal exposes a `Use ephemeral keypair` checkbox.
 
 ### 9.3 Summary Table
 
-| Target mode | Connected wallet required | Wallet popup expected | Signer source |
-| ----------- | ------------------------- | --------------------- | ------------- |
-| Localnet with `Use ephemeral keypair` enabled | No | No | Temporary faucet-funded keypair created by Frontier Flow |
-| Localnet with `Use ephemeral keypair` disabled | Yes | Yes | Connected browser wallet |
-| `testnet:stillness` | Yes | Yes | Connected browser wallet |
-| `testnet:utopia` | Yes | Yes | Connected browser wallet |
+| Target mode                                    | Connected wallet required | Wallet popup expected | Signer source                                            |
+| ---------------------------------------------- | ------------------------- | --------------------- | -------------------------------------------------------- |
+| Localnet with `Use ephemeral keypair` enabled  | No                        | No                    | Temporary faucet-funded keypair created by Frontier Flow |
+| Localnet with `Use ephemeral keypair` disabled | Yes                       | Yes                   | Connected browser wallet                                 |
+| `testnet:stillness`                            | Yes                       | Yes                   | Connected browser wallet                                 |
+| `testnet:utopia`                               | Yes                       | Yes                   | Connected browser wallet                                 |
 
 ## 7. Rollback Procedure
 

@@ -202,6 +202,7 @@ export function getLocalDeploymentEnvironmentLabel(config = loadLocalEnvironment
   return `Localnet ${getLocalWorldPackageLabelFragment(config.worldPackageId)}`;
 }
 
+// eslint-disable-next-line complexity
 export function loadLocalEnvironmentConfig(storage = getBrowserStorage()): LocalEnvironmentConfig {
   const defaults = createDefaultLocalEnvironmentConfig();
   const storedConfig = readStoredLocalEnvironment(storage);
@@ -252,6 +253,7 @@ export function saveLocalEnvironmentConfig(
   return nextConfig;
 }
 
+// eslint-disable-next-line complexity
 export async function validateWorldPackageViaGraphQl(input: {
   readonly fetchFn?: typeof fetch;
   readonly graphQlUrl: string;
