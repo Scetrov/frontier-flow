@@ -23,6 +23,7 @@ const {
   mockCompileMove,
   mockCompileForDeployment,
   mockFetchWorldSource,
+  mockGetProjectCachedDependencyResolution,
   mockSignTransaction,
   mockUseCurrentAccount,
   mockUseCurrentWallet,
@@ -33,6 +34,7 @@ const {
   mockCompileMove: vi.fn(),
   mockCompileForDeployment: vi.fn(),
   mockFetchWorldSource: vi.fn(),
+  mockGetProjectCachedDependencyResolution: vi.fn(),
   mockSignTransaction: vi.fn<typeof signTransactionFunction>(),
   mockUseCurrentAccount: vi.fn<() => CurrentAccount>(),
   mockUseCurrentWallet: vi.fn<() => CurrentWallet>(),
@@ -77,9 +79,15 @@ vi.mock("../compiler/deployGradeCompiler", () => ({
   compileForDeployment: mockCompileForDeployment,
 }));
 
+vi.mock("../deployment/dependencySnapshotLoader", () => ({
+  getProjectCachedDependencyResolution: mockGetProjectCachedDependencyResolution,
+  createWorldSourceFromCachedResolution: vi.fn(),
+}));
+
 beforeEach(() => {
   vi.useFakeTimers();
   window.localStorage.clear();
+  mockGetProjectCachedDependencyResolution.mockResolvedValue(null);
   mockUseCurrentAccount.mockReturnValue({
     address: "0x1234",
     chains: [],

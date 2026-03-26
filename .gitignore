@@ -14,6 +14,8 @@ node-compile-cache/
 playwright-transform-cache*/
 bunx-*/
 tmp.*
+.deploy-grade-resolution-cache-*.json
+.resolved-deps-cache.json
 .DS_Store
 Thumbs.db
 .vscode/

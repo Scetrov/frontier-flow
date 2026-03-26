@@ -22,8 +22,7 @@ const WORLD_CONTRACTS_SUBDIRECTORY = "contracts/world";
 const RESOLVED_WORLD_PACKAGE_NAME = "world";
 const RESOLVED_WORLD_TEST_PREFIX_PATTERN = /^dependencies\/world\/tests\//i;
 const RESOLVED_WORLD_ACCESS_CONTROL_PATH_PATTERN = /^dependencies\/world\/sources\/access\/access_control\.move$/i;
-const RESOLVED_WORLD_PUBLISHED_TOML_PATTERN = /^dependencies\/world\/published\.toml$/i;
-const RESOLVED_WORLD_MOVE_TOML_PATTERN = /^dependencies\/world\/Move\.toml$/i;
+
 const UNSUPPORTED_CHARACTER_TRANSFER_CHECK = /let is_character =[\s\S]*?assert!\(!is_character, ECharacterTransfer\);/;
 const COMPATIBLE_CHARACTER_TRANSFER_CHECK = [
   "let is_character = false;",
@@ -57,14 +56,6 @@ interface ResolveDeployDependenciesOptions {
   readonly cacheKey: string;
   readonly resolve: ResolveDependenciesFn;
   readonly now: () => number;
-}
-
-interface BuildDeployArtifactOptions {
-  readonly request: DeployGradeCompileRequest;
-  readonly files: Record<string, string>;
-  readonly rootGit: { readonly git: string; readonly rev: string; readonly subdir: string };
-  readonly resolvedDependencies: ResolvedDependencies;
-  readonly build: BuildMovePackageFn;
 }
 
 const resolutionCache = new Map<string, CachedDependencyResolution>();
@@ -107,54 +98,77 @@ function createFileMap(request: DeployGradeCompileRequest): Record<string, strin
   return files;
 }
 
-function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies): ResolvedDependencies {
-  let dependencyPackages: unknown;
+function sanitizeWorldDependencyFiles(files: Record<string, string>): {
+  readonly files: Record<string, string>;
+  readonly changed: boolean;
+} {
+  const nextFiles: Record<string, string> = {};
+  let changed = false;
 
-  try {
-    dependencyPackages = JSON.parse(resolvedDependencies.dependencies);
-  } catch {
-    return resolvedDependencies;
+  for (const [filePath, fileContent] of Object.entries(files)) {
+    if (RESOLVED_WORLD_TEST_PREFIX_PATTERN.test(filePath)) {
+      changed = true;
+      continue;
+    }
+
+    nextFiles[filePath] = fileContent;
   }
 
-  if (!Array.isArray(dependencyPackages)) {
+  const accessControlPath = Object.keys(nextFiles).find((filePath) => RESOLVED_WORLD_ACCESS_CONTROL_PATH_PATTERN.test(filePath));
+  const accessControlSource = accessControlPath === undefined ? undefined : nextFiles[accessControlPath];
+  if (
+    accessControlPath !== undefined
+    && typeof accessControlSource === "string"
+    && UNSUPPORTED_CHARACTER_TRANSFER_CHECK.test(accessControlSource)
+  ) {
+    nextFiles[accessControlPath] = accessControlSource.replace(
+      UNSUPPORTED_CHARACTER_TRANSFER_CHECK,
+      COMPATIBLE_CHARACTER_TRANSFER_CHECK,
+    );
+    changed = true;
+  }
+
+  return { files: nextFiles, changed };
+}
+
+function parseResolvedDependencyPackages(resolvedDependencies: ResolvedDependencies): unknown[] | null {
+  try {
+    const dependencyPackages: unknown = JSON.parse(resolvedDependencies.dependencies);
+    return Array.isArray(dependencyPackages) ? dependencyPackages : null;
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies): ResolvedDependencies {
+  const dependencyPackages = parseResolvedDependencyPackages(resolvedDependencies);
+  if (dependencyPackages === null) {
     return resolvedDependencies;
   }
 
   let changed = false;
-  const sanitizedDependencyPackages = dependencyPackages.map((dependencyPackage) => {
+  const sanitizedDependencyPackages: unknown[] = [];
+
+  for (const dependencyPackage of dependencyPackages) {
     if (typeof dependencyPackage !== "object" || dependencyPackage === null) {
-      return dependencyPackage;
+      sanitizedDependencyPackages.push(dependencyPackage);
+      continue;
     }
 
     const snapshot = dependencyPackage as ResolvedDependencyPackageSnapshot;
     if (snapshot.name?.toLowerCase() !== RESOLVED_WORLD_PACKAGE_NAME || snapshot.files === undefined) {
-      return dependencyPackage;
+      sanitizedDependencyPackages.push(dependencyPackage);
+      continue;
     }
 
-    const nextFiles = { ...snapshot.files };
+    const sanitizedSnapshot = sanitizeWorldDependencyFiles(snapshot.files);
+    changed ||= sanitizedSnapshot.changed;
 
-    for (const filePath of Object.keys(nextFiles)) {
-      if (RESOLVED_WORLD_TEST_PREFIX_PATTERN.test(filePath)) {
-        delete nextFiles[filePath];
-        changed = true;
-      }
-    }
-
-    const accessControlPath = Object.keys(nextFiles).find((filePath) => RESOLVED_WORLD_ACCESS_CONTROL_PATH_PATTERN.test(filePath));
-    const accessControlSource = accessControlPath === undefined ? undefined : nextFiles[accessControlPath];
-    if (typeof accessControlSource === "string" && accessControlPath !== undefined && UNSUPPORTED_CHARACTER_TRANSFER_CHECK.test(accessControlSource)) {
-      nextFiles[accessControlPath] = accessControlSource.replace(
-        UNSUPPORTED_CHARACTER_TRANSFER_CHECK,
-        COMPATIBLE_CHARACTER_TRANSFER_CHECK,
-      );
-      changed = true;
-    }
-
-    return {
+    sanitizedDependencyPackages.push({
       ...dependencyPackage,
-      files: nextFiles,
-    };
-  });
+      files: sanitizedSnapshot.files,
+    });
+  }
 
   if (!changed) {
     return resolvedDependencies;
@@ -163,116 +177,6 @@ function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies
   return {
     ...resolvedDependencies,
     dependencies: JSON.stringify(sanitizedDependencyPackages),
-  };
-}
-
-function patchWorldPublishedAddress(
-  resolvedDependencies: ResolvedDependencies,
-  worldPackageId: string,
-): ResolvedDependencies {
-  let dependencyPackages: unknown;
-
-  try {
-    dependencyPackages = JSON.parse(resolvedDependencies.dependencies);
-  } catch {
-    return resolvedDependencies;
-  }
-
-  if (!Array.isArray(dependencyPackages)) {
-    return resolvedDependencies;
-  }
-
-  let changed = false;
-  const patchedPackages = dependencyPackages.map((dependencyPackage) => {
-    if (typeof dependencyPackage !== "object" || dependencyPackage === null) {
-      return dependencyPackage;
-    }
-
-    const snapshot = dependencyPackage as ResolvedDependencyPackageSnapshot;
-    if (snapshot.name?.toLowerCase() !== RESOLVED_WORLD_PACKAGE_NAME || snapshot.files === undefined) {
-      return dependencyPackage;
-    }
-
-    const nextFiles = { ...snapshot.files };
-    let packageChanged = false;
-
-    // Patch Published.toml if present
-    const publishedTomlPath = Object.keys(nextFiles).find((filePath) =>
-      RESOLVED_WORLD_PUBLISHED_TOML_PATTERN.test(filePath),
-    );
-
-    if (publishedTomlPath !== undefined) {
-      const existingContent = nextFiles[publishedTomlPath];
-      if (typeof existingContent === "string") {
-        const patched = existingContent
-          .replace(/(published-at\s*=\s*")[^"]+(")/g, (_, before, after) => `${before}${worldPackageId}${after}`)
-          .replace(/(original-id\s*=\s*")[^"]+(")/g, (_, before, after) => `${before}${worldPackageId}${after}`);
-
-        if (patched !== existingContent) {
-          nextFiles[publishedTomlPath] = patched;
-          packageChanged = true;
-        }
-      }
-    }
-
-    // Patch Move.toml: add published-at and update world/World addresses
-    const moveTomlPath = Object.keys(nextFiles).find((filePath) =>
-      RESOLVED_WORLD_MOVE_TOML_PATTERN.test(filePath),
-    );
-
-    if (moveTomlPath !== undefined) {
-      const moveTomlContent = nextFiles[moveTomlPath];
-      if (typeof moveTomlContent === "string") {
-        let patchedMoveToml = moveTomlContent;
-
-        // Add published-at to [package] section if not present
-        if (!/published-at\s*=/.test(patchedMoveToml)) {
-          patchedMoveToml = patchedMoveToml.replace(
-            /(\[package\][^\[]*?)((?=\n\[)|\n*$)/s,
-            (_, packageSection, rest) => `${packageSection.trimEnd()}\npublished-at = "${worldPackageId}"\n${rest}`,
-          );
-        } else {
-          patchedMoveToml = patchedMoveToml.replace(
-            /(published-at\s*=\s*")[^"]+(")/,
-            `$1${worldPackageId}$2`,
-          );
-        }
-
-        // Update world and World address entries to the actual on-chain address
-        patchedMoveToml = patchedMoveToml.replace(
-          /^(world\s*=\s*")0x0+(")/m,
-          `$1${worldPackageId}$2`,
-        );
-        patchedMoveToml = patchedMoveToml.replace(
-          /^(World\s*=\s*")0x0+(")/m,
-          `$1${worldPackageId}$2`,
-        );
-
-        if (patchedMoveToml !== moveTomlContent) {
-          nextFiles[moveTomlPath] = patchedMoveToml;
-          packageChanged = true;
-        }
-      }
-    }
-
-    if (!packageChanged) {
-      return dependencyPackage;
-    }
-
-    changed = true;
-    return {
-      ...dependencyPackage,
-      files: nextFiles,
-    };
-  });
-
-  if (!changed) {
-    return resolvedDependencies;
-  }
-
-  return {
-    ...resolvedDependencies,
-    dependencies: JSON.stringify(patchedPackages),
   };
 }
 
@@ -301,6 +205,248 @@ function rewriteMoveTomlForDeployGrade(moveToml: string, sourceVersionTag: strin
   }
 
   return `${withoutWorldAddress.trimEnd()}\nworld = { git = "${WORLD_CONTRACTS_GIT_URL}", rev = "${sourceVersionTag}", subdir = "${WORLD_CONTRACTS_SUBDIRECTORY}" }\n`;
+}
+
+function isAddressesSectionHeader(line: string): boolean {
+  return /^\[addresses\]$/i.test(line.trim());
+}
+
+function isSectionHeader(line: string): boolean {
+  return /^\[/.test(line.trim());
+}
+
+function ensureMoveTomlAddress(result: string[], worldPackageId: string, worldAddressSet: boolean): boolean {
+  if (worldAddressSet) {
+    return true;
+  }
+
+  const addrIdx = result.findIndex((line) => isAddressesSectionHeader(line));
+  if (addrIdx !== -1) {
+    result.splice(addrIdx + 1, 0, `world = "${worldPackageId}"`);
+    return true;
+  }
+
+  return false;
+}
+
+function ensureMoveTomlDependency(result: string[], worldDependencySet: boolean): boolean {
+  if (worldDependencySet) {
+    return true;
+  }
+
+  const depIdx = result.findIndex((line) => /^\[dependencies\]/i.test(line.trim()));
+  if (depIdx !== -1) {
+    result.splice(depIdx + 1, 0, 'world = { local = "deps/world" }');
+    return true;
+  }
+
+  return false;
+}
+
+function rewriteMoveTomlForLocalWorldDependency(moveToml: string, worldPackageId: string): string {
+  const lines = moveToml.split("\n");
+  const result: string[] = [];
+  let inAddresses = false;
+  let worldAddressSet = false;
+  let worldDependencySet = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (isAddressesSectionHeader(trimmed)) {
+      inAddresses = true;
+      result.push(line);
+      continue;
+    }
+
+    if (isSectionHeader(trimmed) && !isAddressesSectionHeader(trimmed)) {
+      if (inAddresses && !worldAddressSet) {
+        result.push(`world = "${worldPackageId}"`);
+        worldAddressSet = true;
+      }
+      inAddresses = false;
+    }
+
+    if (inAddresses && /^\s*world\s*=\s*"[^"]*"\s*$/.test(line)) {
+      result.push(`world = "${worldPackageId}"`);
+      worldAddressSet = true;
+      continue;
+    }
+
+    if (/^\s*world\s*=\s*\{.*\}\s*$/.test(line)) {
+      result.push('world = { local = "deps/world" }');
+      worldDependencySet = true;
+      continue;
+    }
+
+    result.push(line);
+  }
+
+  ensureMoveTomlAddress(result, worldPackageId, worldAddressSet);
+  ensureMoveTomlDependency(result, worldDependencySet);
+
+  return result.join("\n");
+}
+
+function extractWorldFilesFromSnapshot(
+  snapshot: ResolvedDependencyPackageSnapshot,
+  worldPackageId: string,
+): Record<string, string> {
+  const worldFiles: Record<string, string> = {};
+  const resolvedName = snapshot.name ?? "World";
+  const prefix = `dependencies/${resolvedName}/`;
+
+  for (const [filePath, content] of Object.entries(snapshot.files ?? {})) {
+    if (!filePath.startsWith(prefix)) {
+      continue;
+    }
+
+    const relativePath = filePath.slice(prefix.length);
+    if (/^tests\//.test(relativePath)) {
+      continue;
+    }
+
+    if (relativePath === "Move.toml") {
+      worldFiles[`deps/world/${relativePath}`] = createWorldDepMoveToml(worldPackageId);
+      continue;
+    }
+
+    const source = /access_control\.move$/i.test(relativePath) && UNSUPPORTED_CHARACTER_TRANSFER_CHECK.test(content)
+      ? content.replace(UNSUPPORTED_CHARACTER_TRANSFER_CHECK, COMPATIBLE_CHARACTER_TRANSFER_CHECK)
+      : content;
+
+    worldFiles[`deps/world/${relativePath}`] = source;
+  }
+
+  if (!("deps/world/Move.toml" in worldFiles)) {
+    worldFiles["deps/world/Move.toml"] = createWorldDepMoveToml(worldPackageId);
+  }
+
+  return worldFiles;
+}
+
+function extractWorldSourceFromResolvedDependencies(
+  resolvedDependencies: ResolvedDependencies,
+  worldPackageId: string,
+): Record<string, string> {
+  let dependencyPackages: unknown;
+  try {
+    dependencyPackages = JSON.parse(resolvedDependencies.dependencies);
+  } catch {
+    return {};
+  }
+
+  if (!Array.isArray(dependencyPackages)) {
+    return {};
+  }
+
+  for (const pkg of dependencyPackages) {
+    const snapshot = pkg as ResolvedDependencyPackageSnapshot;
+    if (snapshot.name?.toLowerCase() !== RESOLVED_WORLD_PACKAGE_NAME || snapshot.files === undefined) {
+      continue;
+    }
+
+    return extractWorldFilesFromSnapshot(snapshot, worldPackageId);
+  }
+
+  return {};
+}
+
+function createWorldDepMoveToml(worldPackageId: string): string {
+  return [
+    "[package]",
+    'name = "world"',
+    'edition = "2024.beta"',
+    `published-at = "${worldPackageId}"`,
+    "",
+    "[addresses]",
+    `world = "${worldPackageId}"`,
+    "",
+  ].join("\n");
+}
+
+function createLocalWorldFileMap(
+  request: DeployGradeCompileRequest,
+  worldSourceFiles: Record<string, string>,
+): Record<string, string> {
+  const files: Record<string, string> = {
+    "Move.toml": rewriteMoveTomlForLocalWorldDependency(request.artifact.moveToml, request.target.worldPackageId),
+  };
+
+  for (const file of request.artifact.sourceFiles ?? [{ path: request.artifact.sourceFilePath, content: request.artifact.moveSource }]) {
+    if (file.path.startsWith("deps/world/")) {
+      continue;
+    }
+    files[file.path] = file.content;
+  }
+
+  for (const [path, content] of Object.entries(worldSourceFiles)) {
+    files[path] = content;
+  }
+
+  return files;
+}
+
+async function buildExtensionWithLocalWorld(
+  request: DeployGradeCompileRequest,
+  files: Record<string, string>,
+  buildCompilerPackage: BuildMovePackageFn,
+): Promise<BuildSuccessResult> {
+  request.onProgress?.({ phase: "compiling" });
+
+  let buildResult: BuildSuccessResult | BuildErrorResult;
+  try {
+    buildResult = await buildCompilerPackage({
+      files,
+      wasm: moveBuilderLiteWasmUrl,
+      network: "testnet",
+      silenceWarnings: false,
+      onProgress: (event) => {
+        const mapped = toDeployProgress(event);
+        if (mapped !== null) {
+          request.onProgress?.(mapped);
+        }
+      },
+    }) as BuildSuccessResult | BuildErrorResult;
+  } catch (error) {
+    throw classifyCompilationError(error);
+  }
+
+  if ("error" in buildResult) {
+    throw classifyCompilationError(new Error(buildResult.error));
+  }
+
+  return buildResult;
+}
+
+function createWorldOnlyFileMap(localFiles: Record<string, string>): Record<string, string> {
+  const worldOnlyFiles: Record<string, string> = {};
+
+  for (const [path, content] of Object.entries(localFiles)) {
+    if (path.startsWith("deps/world/")) {
+      worldOnlyFiles[path.replace("deps/world/", "")] = content;
+    }
+  }
+
+  return worldOnlyFiles;
+}
+
+async function detectWorldModuleSet(
+  worldOnlyFiles: Record<string, string>,
+  buildCompilerPackage: BuildMovePackageFn,
+): Promise<ReadonlySet<string> | null> {
+  try {
+    const worldOnlyResult = await buildCompilerPackage({
+      files: worldOnlyFiles,
+      wasm: moveBuilderLiteWasmUrl,
+      network: "testnet",
+      silenceWarnings: true,
+    }) as BuildSuccessResult | BuildErrorResult;
+
+    return "modules" in worldOnlyResult ? new Set(worldOnlyResult.modules) : null;
+  } catch {
+    return null;
+  }
 }
 
 function toDeployProgress(event: BuildProgressEvent): DeployCompileProgressEvent | null {
@@ -407,40 +553,6 @@ async function resolveDeployDependencies(
   }
 }
 
-async function buildDeployArtifact(
-  options: BuildDeployArtifactOptions,
-): Promise<BuildSuccessResult> {
-  const { request, files, rootGit, resolvedDependencies, build } = options;
-  request.onProgress?.({ phase: "compiling" });
-
-  let buildResult: BuildSuccessResult | BuildErrorResult;
-  try {
-    buildResult = await build({
-      files,
-      wasm: moveBuilderLiteWasmUrl,
-      rootGit,
-      network: "testnet",
-      silenceWarnings: false,
-      resolvedDependencies,
-      onProgress: (event) => {
-        const mapped = toDeployProgress(event);
-        if (mapped !== null) {
-          request.onProgress?.(mapped);
-        }
-      },
-    }) as BuildSuccessResult | BuildErrorResult;
-  } catch (error) {
-    throw classifyCompilationError(error);
-  }
-
-  if ("error" in buildResult) {
-    throw classifyCompilationError(new Error(buildResult.error));
-  }
-
-  request.onProgress?.({ phase: "complete" });
-  return buildResult;
-}
-
 /**
  * Reset the cached dependency-resolution snapshot for tests.
  */
@@ -461,21 +573,36 @@ export async function compileForDeployment(
   const resolveCompilerDependencies = resolve ?? compilerModule.resolveDependencies;
   const buildCompilerPackage = build ?? compilerModule.buildMovePackage;
   const getCompilerVersion = getVersion ?? compilerModule.getSuiMoveVersion;
-  const files = createFileMap(request);
   const cacheKey = getResolutionCacheKey(request.target.targetId, request.worldSource.sourceVersionTag);
   const rootGit = createRootGit(request.worldSource.sourceVersionTag);
 
   await verifyIntegrity();
   await initCompiler({ wasm: moveBuilderLiteWasmUrl });
-  const resolvedDependencies = await resolveDeployDependencies({ request, files, rootGit, cacheKey, resolve: resolveCompilerDependencies, now });
-  const patchedDependencies = patchWorldPublishedAddress(resolvedDependencies, request.target.worldPackageId);
-  const buildResult = await buildDeployArtifact({ request, files, rootGit, resolvedDependencies: patchedDependencies, build: buildCompilerPackage });
+
+  // Step 1: Resolve dependencies to obtain world source files
+  const gitFiles = createFileMap(request);
+  const resolvedDependencies = await resolveDeployDependencies({ request, files: gitFiles, rootGit, cacheKey, resolve: resolveCompilerDependencies, now });
+  const sanitizedDependencies = sanitizeResolvedDependencies(resolvedDependencies);
+
+  // Step 2: Extract world source from resolved deps and create local file map
+  const worldSourceFiles = extractWorldSourceFromResolvedDependencies(sanitizedDependencies, request.target.worldPackageId);
+  const localFiles = createLocalWorldFileMap(request, worldSourceFiles);
+
+  const buildResult = await buildExtensionWithLocalWorld(request, localFiles, buildCompilerPackage);
+  const worldOnlyFiles = createWorldOnlyFileMap(localFiles);
+  const worldModuleSet = await detectWorldModuleSet(worldOnlyFiles, buildCompilerPackage);
+
+  const extensionModules = worldModuleSet !== null
+    ? buildResult.modules.filter((m) => !worldModuleSet.has(m))
+    : buildResult.modules;
+
+  request.onProgress?.({ phase: "complete" });
 
   return {
-    modules: buildResult.modules.map((moduleBytes) => decodeBase64(moduleBytes)),
+    modules: extensionModules.map((moduleBytes) => decodeBase64(moduleBytes)),
     dependencies: buildResult.dependencies,
     digest: buildResult.digest,
-    resolvedDependencies,
+    resolvedDependencies: sanitizedDependencies,
     targetId: request.target.targetId,
     sourceVersionTag: request.worldSource.sourceVersionTag,
     builderToolchainVersion: await getCompilerVersion({ wasm: moveBuilderLiteWasmUrl }),

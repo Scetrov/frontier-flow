@@ -76,16 +76,17 @@ describe("deployGradeCompiler", () => {
       expect(input.files).not.toHaveProperty("deps/world/Move.toml");
       return resolvedDependencies;
     }));
-    const buildMovePackage = vi.fn((input: {
-      readonly resolvedDependencies?: ResolvedDependencies;
-    }) => Promise.resolve().then(() => {
-      expect(input.resolvedDependencies).toBe(resolvedDependencies);
-      return {
+    const buildMovePackage = vi.fn()
+      .mockResolvedValueOnce({
         modules: [toBase64([1, 2, 3])],
         dependencies: ["0x1", "0x2"],
         digest: [9, 8, 7],
-      };
-    }));
+      })
+      .mockResolvedValueOnce({
+        modules: [],
+        dependencies: [],
+        digest: [],
+      });
 
     const result = await compileForDeployment(createRequest(), {
       initMoveCompiler: vi.fn(() => Promise.resolve()),
@@ -106,7 +107,7 @@ describe("deployGradeCompiler", () => {
     });
     expect(Array.from(result.modules[0] ?? [])).toEqual([1, 2, 3]);
     expect(resolveDependencies).toHaveBeenCalledTimes(1);
-    expect(buildMovePackage).toHaveBeenCalledTimes(1);
+    expect(buildMovePackage).toHaveBeenCalledTimes(2);
   });
 
   it("reuses cached resolution snapshots for repeated compilations on the same target and version", async () => {
@@ -135,7 +136,7 @@ describe("deployGradeCompiler", () => {
     await compileForDeployment(request, dependencies);
 
     expect(resolveDependencies).toHaveBeenCalledTimes(1);
-    expect(buildMovePackage).toHaveBeenCalledTimes(2);
+    expect(buildMovePackage).toHaveBeenCalledTimes(4);
   });
 
   it("ignores cached resolution snapshots when the target or source version does not match", async () => {
@@ -227,25 +228,12 @@ describe("deployGradeCompiler", () => {
       ]),
       lockfileDependencies: "{}",
     };
-    const buildMovePackage = vi.fn((input: {
-      readonly resolvedDependencies?: ResolvedDependencies;
-    }) => Promise.resolve().then(() => {
-      const dependencyPackages = JSON.parse(input.resolvedDependencies?.dependencies ?? "[]") as Array<{
-        readonly name?: string;
-        readonly files?: Record<string, string>;
-      }>;
-      const worldPackage = dependencyPackages.find((dependencyPackage) => dependencyPackage.name === "world");
-
-      expect(worldPackage?.files).not.toHaveProperty("dependencies/world/tests/primitives/location_tests.move");
-      expect(worldPackage?.files?.["dependencies/world/sources/access/access_control.move"]).toContain("let is_character = false;");
-      expect(worldPackage?.files?.["dependencies/world/sources/access/access_control.move"]).not.toContain("datatype_string()");
-
-      return {
+    const buildMovePackage = vi.fn()
+      .mockResolvedValue({
         modules: [toBase64([1, 2, 3])],
         dependencies: ["0x1", "0x2"],
         digest: [3, 2, 1],
-      };
-    }));
+      });
 
     await compileForDeployment(createRequest(), {
       initMoveCompiler: vi.fn(() => Promise.resolve()),
@@ -256,7 +244,11 @@ describe("deployGradeCompiler", () => {
       now: () => 42,
     });
 
-    expect(buildMovePackage).toHaveBeenCalledTimes(1);
+    const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly files?: Record<string, string> };
+    expect(mainBuildInput.files).not.toHaveProperty("deps/world/tests/primitives/location_tests.move");
+    expect(mainBuildInput.files?.["deps/world/sources/access/access_control.move"]).toContain("let is_character = false;");
+    expect(mainBuildInput.files?.["deps/world/sources/access/access_control.move"]).not.toContain("datatype_string()");
+    expect(buildMovePackage).toHaveBeenCalledTimes(2);
   });
 
   it("sanitizes resolved World dependency snapshots even when package names and paths are capitalized", async () => {
@@ -281,25 +273,12 @@ describe("deployGradeCompiler", () => {
       ]),
       lockfileDependencies: "{}",
     };
-    const buildMovePackage = vi.fn((input: {
-      readonly resolvedDependencies?: ResolvedDependencies;
-    }) => Promise.resolve().then(() => {
-      const dependencyPackages = JSON.parse(input.resolvedDependencies?.dependencies ?? "[]") as Array<{
-        readonly name?: string;
-        readonly files?: Record<string, string>;
-      }>;
-      const worldPackage = dependencyPackages.find((dependencyPackage) => dependencyPackage.name === "World");
-
-      expect(worldPackage?.files).not.toHaveProperty("dependencies/World/tests/assemblies/storage_unit_tests.move");
-      expect(worldPackage?.files?.["dependencies/World/sources/access/access_control.move"]).toContain("let is_character = false;");
-      expect(worldPackage?.files?.["dependencies/World/sources/access/access_control.move"]).not.toContain("datatype_string()");
-
-      return {
+    const buildMovePackage = vi.fn()
+      .mockResolvedValue({
         modules: [toBase64([1, 2, 3])],
         dependencies: ["0x1", "0x2"],
         digest: [3, 2, 1],
-      };
-    }));
+      });
 
     await compileForDeployment(createRequest(), {
       initMoveCompiler: vi.fn(() => Promise.resolve()),
@@ -310,10 +289,14 @@ describe("deployGradeCompiler", () => {
       now: () => 42,
     });
 
-    expect(buildMovePackage).toHaveBeenCalledTimes(1);
+    const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly files?: Record<string, string> };
+    expect(mainBuildInput.files).not.toHaveProperty("deps/world/tests/assemblies/storage_unit_tests.move");
+    expect(mainBuildInput.files?.["deps/world/sources/access/access_control.move"]).toContain("let is_character = false;");
+    expect(mainBuildInput.files?.["deps/world/sources/access/access_control.move"]).not.toContain("datatype_string()");
+    expect(buildMovePackage).toHaveBeenCalledTimes(2);
   });
 
-  it("patches the world Published.toml address to match the target worldPackageId before the build step", async () => {
+  it("patches the world dependency Move.toml with published-at to match the target worldPackageId before the build step", async () => {
     const targetWorldPackageId = "0xcf6b5da20b0c6540895b79b91580ec0734fcfa4298848f0e8382ef217965bfd5";
     const resolvedDependencies: ResolvedDependencies = {
       files: "{}",
@@ -321,38 +304,18 @@ describe("deployGradeCompiler", () => {
         {
           name: "World",
           files: {
-            "dependencies/World/Published.toml": [
-              "[published.testnet]",
-              'chain-id = "4c78adac"',
-              'published-at = "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c"',
-              'original-id = "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c"',
-              "version = 1",
-            ].join("\n"),
+            "dependencies/World/sources/example.move": "module world::example {}",
           },
         },
       ]),
       lockfileDependencies: "{}",
     };
-    const buildMovePackage = vi.fn((input: {
-      readonly resolvedDependencies?: ResolvedDependencies;
-    }) => Promise.resolve().then(() => {
-      const dependencyPackages = JSON.parse(input.resolvedDependencies?.dependencies ?? "[]") as Array<{
-        readonly name?: string;
-        readonly files?: Record<string, string>;
-      }>;
-      const worldPackage = dependencyPackages.find((pkg) => pkg.name === "World");
-      const publishedToml = worldPackage?.files?.["dependencies/World/Published.toml"] ?? "";
-
-      expect(publishedToml).toContain(`published-at = "${targetWorldPackageId}"`);
-      expect(publishedToml).toContain(`original-id = "${targetWorldPackageId}"`);
-      expect(publishedToml).not.toContain("0x28b497");
-
-      return {
+    const buildMovePackage = vi.fn()
+      .mockResolvedValue({
         modules: [toBase64([1, 2, 3])],
         dependencies: ["0x1", "0x2"],
         digest: [3, 2, 1],
-      };
-    }));
+      });
 
     await compileForDeployment(
       createRequest({ target: createPackageReferenceBundle("local:evefrontier" as Exclude<import("../../compiler/types").DeploymentTargetId, "local">, { worldPackageId: targetWorldPackageId, originalWorldPackageId: targetWorldPackageId }) }),
@@ -366,6 +329,10 @@ describe("deployGradeCompiler", () => {
       },
     );
 
-    expect(buildMovePackage).toHaveBeenCalledTimes(1);
+    const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly files?: Record<string, string> };
+    const worldMoveToml = mainBuildInput.files?.["deps/world/Move.toml"] ?? "";
+    expect(worldMoveToml).toContain(`published-at = "${targetWorldPackageId}"`);
+    expect(worldMoveToml).toContain(`world = "${targetWorldPackageId}"`);
+    expect(buildMovePackage).toHaveBeenCalledTimes(2);
   });
 });

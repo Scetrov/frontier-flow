@@ -1,0 +1,18 @@
+{
+  "snapshots": [
+    {
+      "sourceVersionTag": "v0.0.18",
+      "repositoryUrl": "https://github.com/evefrontier/world-contracts.git",
+      "subdirectory": "contracts/world",
+      "outputPath": "public/deploy-grade-resolution-snapshots/v0.0.18.json",
+      "targets": ["local:evefrontier", "testnet:stillness"]
+    },
+    {
+      "sourceVersionTag": "v0.0.21",
+      "repositoryUrl": "https://github.com/evefrontier/world-contracts.git",
+      "subdirectory": "contracts/world",
+      "outputPath": "public/deploy-grade-resolution-snapshots/v0.0.21.json",
+      "targets": ["testnet:utopia"]
+    }
+  ]
+}

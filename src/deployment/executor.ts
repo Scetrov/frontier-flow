@@ -1,4 +1,5 @@
 import type {
+  CachedDependencyResolution,
   DeploymentAttemptOutcome,
   DeployGradeCompileResult,
   DeploymentStage,
@@ -8,6 +9,7 @@ import type {
   PackageReferenceBundle,
 } from "../compiler/types";
 import { compileForDeployment } from "../compiler/deployGradeCompiler";
+import { createWorldSourceFromCachedResolution, getProjectCachedDependencyResolution } from "./dependencySnapshotLoader";
 import { fetchWorldSource } from "./worldSourceFetcher";
 import { confirmPublishedPackage, type DeploymentConfirmationRequest, type DeploymentConfirmationResult } from "./confirmation";
 import { publishToLocalValidator, type LocalPublishResult } from "./publishLocal";
@@ -40,6 +42,7 @@ export interface DeploymentExecutionResult {
 export interface DeploymentExecutorDependencies {
   readonly compileForDeployment: (request: {
     readonly artifact: GeneratedContractArtifact;
+    readonly cachedResolution?: CachedDependencyResolution;
     readonly references: PackageReferenceBundle;
     readonly worldSource: FetchWorldSourceResult;
     readonly signal?: AbortSignal;
@@ -50,6 +53,9 @@ export interface DeploymentExecutorDependencies {
     readonly references: PackageReferenceBundle;
     readonly signal?: AbortSignal;
   }) => ReturnType<typeof fetchWorldSource>;
+  readonly loadCachedResolution: (request: {
+    readonly references: PackageReferenceBundle;
+  }) => Promise<CachedDependencyResolution | null>;
   readonly publishLocal: (request: {
     readonly artifact: GeneratedContractArtifact;
     readonly target: DeploymentTarget;
@@ -77,8 +83,9 @@ interface PublishStepContext {
 }
 
 const DEFAULT_EXECUTOR_DEPENDENCIES: DeploymentExecutorDependencies = {
-  compileForDeployment: ({ artifact, references, worldSource, signal, onProgress }) => compileForDeployment({
+  compileForDeployment: ({ artifact, cachedResolution, references, worldSource, signal, onProgress }) => compileForDeployment({
     artifact,
+    cachedResolution,
     worldSource,
     target: references,
     signal,
@@ -111,6 +118,7 @@ const DEFAULT_EXECUTOR_DEPENDENCIES: DeploymentExecutorDependencies = {
     subdirectory: "contracts/world",
     signal,
   }),
+  loadCachedResolution: ({ references }) => getProjectCachedDependencyResolution(references),
   publishLocal: publishToLocalValidator,
   publishRemote: publishToRemoteTarget,
 };
@@ -202,9 +210,14 @@ async function executeRemotePublish(
   onProgress?: (progress: DeploymentExecutionProgress) => void,
 ): Promise<RemotePublishResult> {
   const references = request.references as PackageReferenceBundle;
-  const worldSource = await dependencies.fetchWorldSource({ references, signal: request.signal });
+  const cachedResolution = await dependencies.loadCachedResolution({ references });
+  const worldSource = cachedResolution === null
+    ? await dependencies.fetchWorldSource({ references, signal: request.signal })
+    : createWorldSourceFromCachedResolution(cachedResolution);
+
   const compileResult = await dependencies.compileForDeployment({
     artifact: request.artifact,
+    cachedResolution: cachedResolution ?? undefined,
     references,
     worldSource,
     signal: request.signal,

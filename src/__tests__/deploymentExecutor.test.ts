@@ -3,12 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import type { FetchWorldSourceResult } from "../compiler/types";
 import type { DeploymentExecutionRequest, DeploymentExecutorDependencies } from "../deployment/executor";
 import { getDeploymentTarget } from "../data/deploymentTargets";
+import { resetProjectDependencySnapshotCacheForTests } from "../deployment/dependencySnapshotLoader";
 import { createDeploymentExecutor } from "../deployment/executor";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
 import { createPackageReferenceBundleFixture } from "./deployment/testFactories";
 
 function createRemoteCompileDependencies() {
   return {
+    loadCachedResolution: vi.fn(() => Promise.resolve(null)),
     fetchWorldSource: vi.fn(() => Promise.resolve({
       files: {},
       sourceVersionTag: "v0.0.18",
@@ -32,6 +34,10 @@ function createRemoteCompileDependencies() {
 }
 
 describe("deployment executor error sanitization", () => {
+  afterEach(() => {
+    resetProjectDependencySnapshotCacheForTests();
+  });
+
   it("redacts authorization tokens from surfaced remote publish failures", async () => {
     const remoteCompileDependencies = createRemoteCompileDependencies();
     const executor = createDeploymentExecutor({
@@ -162,8 +168,10 @@ describe("deployment executor error sanitization", () => {
       sourceVersionTag: "v0.0.18",
       fetchedAt: 1,
     };
+    const loadCachedResolution = vi.fn(() => Promise.resolve(null));
     const fetchWorldSource = vi.fn(() => Promise.resolve(fetchedWorldSource));
     const compileForDeploymentImpl: DeploymentExecutorDependencies["compileForDeployment"] = (input) => Promise.resolve().then(() => {
+      expect(input.cachedResolution).toBeUndefined();
       expect(input.worldSource).toBe(fetchedWorldSource);
       return {
         modules: [new Uint8Array([1, 2, 3])],
@@ -183,7 +191,7 @@ describe("deployment executor error sanitization", () => {
     const compileForDeployment = vi.fn(compileForDeploymentImpl);
     const publishRemote = vi.fn(() => Promise.resolve({ transactionDigest: "0xremote" }));
     const confirm = vi.fn(() => Promise.resolve({ confirmed: true, confirmationReference: "0xremote", finalStage: "confirming" as const }));
-    const executor = createDeploymentExecutor({ fetchWorldSource, compileForDeployment, publishRemote, confirm });
+    const executor = createDeploymentExecutor({ loadCachedResolution, fetchWorldSource, compileForDeployment, publishRemote, confirm });
 
     const result = await executor({
       artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
@@ -193,9 +201,65 @@ describe("deployment executor error sanitization", () => {
     });
 
     expect(result.outcome).toBe("succeeded");
+    expect(loadCachedResolution).toHaveBeenCalledTimes(1);
     expect(fetchWorldSource).toHaveBeenCalledTimes(1);
     expect(compileForDeployment).toHaveBeenCalledTimes(1);
     expect(publishRemote).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the bundled dependency snapshot before falling back to GitHub", async () => {
+    const cachedResolution = {
+      targetId: "testnet:stillness" as const,
+      sourceVersionTag: "v0.0.18",
+      resolvedDependencies: {
+        files: "{}",
+        dependencies: "{}",
+        lockfileDependencies: "{}",
+      },
+      resolvedAt: 7,
+    };
+    const loadCachedResolution = vi.fn(() => Promise.resolve(cachedResolution));
+    const fetchWorldSource = vi.fn(() => Promise.resolve({
+      files: { "Move.toml": "[package]\nname=\"world\"\n" },
+      sourceVersionTag: "v0.0.18",
+      fetchedAt: 1,
+    }));
+    const compileForDeployment = vi.fn((input: Parameters<DeploymentExecutorDependencies["compileForDeployment"]>[0]) => Promise.resolve({
+      modules: [new Uint8Array([1, 2, 3])],
+      dependencies: ["0x1"],
+      digest: [1, 2, 3],
+      resolvedDependencies: input.cachedResolution?.resolvedDependencies ?? {
+        files: "{}",
+        dependencies: "{}",
+        lockfileDependencies: "{}",
+      },
+      targetId: "testnet:stillness" as const,
+      sourceVersionTag: input.worldSource.sourceVersionTag,
+      builderToolchainVersion: "1.67.1",
+      compiledAt: 2,
+    }));
+    const publishRemote = vi.fn(() => Promise.resolve({ transactionDigest: "0xremote" }));
+    const confirm = vi.fn(() => Promise.resolve({ confirmed: true, confirmationReference: "0xremote", finalStage: "confirming" as const }));
+    const executor = createDeploymentExecutor({ loadCachedResolution, fetchWorldSource, compileForDeployment, publishRemote, confirm });
+
+    const result = await executor({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      ownerAddress: "0x1234",
+      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      target: getDeploymentTarget("testnet:stillness"),
+    });
+
+    expect(result.outcome).toBe("succeeded");
+    expect(loadCachedResolution).toHaveBeenCalledTimes(1);
+    expect(fetchWorldSource).not.toHaveBeenCalled();
+    expect(compileForDeployment).toHaveBeenCalledWith(expect.objectContaining({
+      cachedResolution,
+      worldSource: {
+        files: {},
+        sourceVersionTag: "v0.0.18",
+        fetchedAt: 7,
+      },
+    }));
   });
 
   it("preserves deploy-grade failure staging instead of collapsing it to submitting", async () => {
@@ -205,6 +269,7 @@ describe("deployment executor error sanitization", () => {
       fetchedAt: 1,
     };
     const executor = createDeploymentExecutor({
+      loadCachedResolution: vi.fn(() => Promise.resolve(null)),
       fetchWorldSource: vi.fn(() => Promise.resolve(fetchedWorldSource)),
       compileForDeployment: ({ onProgress }) => Promise.resolve().then(() => {
         onProgress?.("Resolving live world dependencies.", "resolve-dependencies");

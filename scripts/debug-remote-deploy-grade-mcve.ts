@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import type { Transaction } from "@mysten/sui/transactions";
 
@@ -258,17 +259,49 @@ async function main(): Promise<void> {
   if (options.rpcUrlOverride !== null) {
     console.log(`rpc url override: ${options.rpcUrlOverride}`);
   }
+  // Load cached resolution from disk to avoid GitHub rate limits
+  const RESOLUTION_CACHE_FILE = `.deploy-grade-resolution-cache-${options.targetId.replace(/:/g, "-")}.json`;
+  type CachedResolution = import("../src/compiler/types").CachedDependencyResolution;
+  let cachedResolution: CachedResolution | undefined;
+
+  if (existsSync(RESOLUTION_CACHE_FILE)) {
+    const cached = JSON.parse(readFileSync(RESOLUTION_CACHE_FILE, "utf-8")) as CachedResolution;
+    if (cached.sourceVersionTag === references.sourceVersionTag) {
+      console.log(`using cached resolution from ${RESOLUTION_CACHE_FILE}`);
+      cachedResolution = cached;
+    } else {
+      console.log(`cached resolution version mismatch (${cached.sourceVersionTag} !== ${references.sourceVersionTag}), re-resolving`);
+    }
+  }
 
   const worldSource = await fetchWorldSource({
     repositoryUrl: WORLD_CONTRACTS_REPOSITORY_URL,
     versionTag: references.sourceVersionTag,
     subdirectory: "contracts/world",
   });
+  console.log(`world source fetched: ${worldSource.sourceVersionTag} (${Object.keys(worldSource.files).length} files)`);
+
   const deployGradeResult = await compileForDeployment({
     artifact,
     worldSource,
     target: references,
+    cachedResolution,
+    onProgress: (event) => {
+      console.log(`deploy progress: ${event.phase} ${event.current !== undefined ? `${String(event.current)}/${String(event.total)}` : ""}`);
+    },
   });
+
+  // Save the resolved dependencies to disk for reuse
+  if (deployGradeResult.resolvedDependencies) {
+    const toCache: CachedResolution = {
+      targetId: references.targetId as Exclude<typeof references.targetId, "local">,
+      sourceVersionTag: references.sourceVersionTag,
+      resolvedDependencies: deployGradeResult.resolvedDependencies,
+      resolvedAt: Date.now(),
+    };
+    writeFileSync(RESOLUTION_CACHE_FILE, JSON.stringify(toCache, null, 2));
+    console.log(`saved resolution cache to ${RESOLUTION_CACHE_FILE}`);
+  }
 
   // Debug: inspect resolved dependency structure
   if (deployGradeResult.resolvedDependencies) {
@@ -280,16 +313,14 @@ async function main(): Promise<void> {
       const publishedToml = fileKeys.find((k) => /published\.toml/i.test(k));
       const moveToml = fileKeys.find((k) => /move\.toml/i.test(k));
       console.log(`  package: ${p.name ?? "?"} id=${p.id ?? "?"} files=${String(fileKeys.length)}`);
-      console.log(`    all keys: ${fileKeys.join(", ")}`);
+      if (p.name?.toLowerCase() === "world") {
+        console.log(`    file keys: ${fileKeys.join(", ")}`);
+      }
       if (publishedToml !== undefined && p.files !== undefined) {
-        console.log(`    Published.toml path: ${publishedToml}`);
-        console.log(`    Published.toml content:\n${p.files[publishedToml]}`);
-      } else if (p.name?.toLowerCase() === "world") {
-        console.log("    NO Published.toml found in World package");
+        console.log(`    Published.toml: ${p.files[publishedToml]?.substring(0, 200)}`);
       }
       if (moveToml !== undefined && p.files !== undefined) {
-        console.log(`    Move.toml path: ${moveToml}`);
-        console.log(`    Move.toml content:\n${p.files[moveToml]}`);
+        console.log(`    Move.toml:\n${p.files[moveToml]}`);
       }
     }
     console.log("--- end resolved dependency packages ---\n");
