@@ -14,6 +14,6 @@ export async function selectDeploymentTarget(page: Page, target: "local" | "test
   await page.locator("header").getByRole("button", { name: "Visual", exact: true }).click();
   await expect(page.getByRole("button", { name: "Target network/server" })).toBeVisible();
   await page.getByRole("button", { name: "Target network/server" }).click();
-  await page.getByRole("menuitemradio", { name: target }).click();
+  await page.getByRole("menuitemradio", { name: target, exact: true }).click();
   await openDeployWorkflow(page);
 }
