@@ -92,6 +92,7 @@ describe("deployGradeCompiler", () => {
       resolveDependencies,
       buildMovePackage,
       getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 42,
     });
 
@@ -126,6 +127,7 @@ describe("deployGradeCompiler", () => {
       resolveDependencies,
       buildMovePackage,
       getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 99,
     };
 
@@ -136,12 +138,48 @@ describe("deployGradeCompiler", () => {
     expect(buildMovePackage).toHaveBeenCalledTimes(2);
   });
 
+  it("ignores cached resolution snapshots when the target or source version does not match", async () => {
+    const resolveDependencies = vi.fn(() => Promise.resolve({
+      files: "{resolved:true}",
+      dependencies: "{}",
+      lockfileDependencies: "{}",
+    }));
+    const buildMovePackage = vi.fn(() => Promise.resolve({
+      modules: [toBase64([7, 8, 9])],
+      dependencies: ["0x4"],
+      digest: [4, 5, 6],
+    }));
+
+    await compileForDeployment(createRequest({
+      cachedResolution: {
+        targetId: "testnet:utopia",
+        sourceVersionTag: "v0.0.21",
+        resolvedDependencies: {
+          files: "{stale:true}",
+          dependencies: "{}",
+          lockfileDependencies: "{}",
+        },
+        resolvedAt: 1,
+      },
+    }), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies,
+      buildMovePackage,
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+      now: () => 99,
+    });
+
+    expect(resolveDependencies).toHaveBeenCalledTimes(1);
+  });
+
   it("classifies dependency resolution failures with a deploy-grade error type", async () => {
     await expect(compileForDeployment(createRequest(), {
       initMoveCompiler: vi.fn(() => Promise.resolve()),
       resolveDependencies: vi.fn(() => Promise.reject(new Error("Network fetch failed while resolving GitHub dependency graph"))),
       buildMovePackage: vi.fn(),
       getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
     })).rejects.toMatchObject({
       name: "DependencyResolutionError",
       userMessage: "Dependency resolution could not reach the upstream world package.",
@@ -160,6 +198,7 @@ describe("deployGradeCompiler", () => {
         error: "address with no value",
       })),
       getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
     })).rejects.toMatchObject({
       name: "DeployCompilationError",
       userMessage: "Deploy-grade compilation failed because dependency linking did not match the live world package.",

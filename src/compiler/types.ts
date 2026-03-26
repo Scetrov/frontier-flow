@@ -121,17 +121,6 @@ export interface DeployGradeCompileResult {
   readonly compiledAt: number;
 }
 
-export interface PersistedDeploymentState {
-  readonly version: 1;
-  readonly packageId: string;
-  readonly moduleName: string;
-  readonly targetId: DeploymentTargetId;
-  readonly transactionDigest: string;
-  readonly deployedAt: number;
-  readonly sourceVersionTag?: string;
-  readonly builderToolchainVersion?: string;
-}
-
 export interface TurretAuthorizationState {
   readonly turretId: string;
   readonly status: "pending" | "submitting" | "confirming" | "confirmed" | "failed";

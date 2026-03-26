@@ -197,4 +197,30 @@ describe("deployment executor error sanitization", () => {
     expect(compileForDeployment).toHaveBeenCalledTimes(1);
     expect(publishRemote).toHaveBeenCalledTimes(1);
   });
+
+  it("preserves deploy-grade failure staging instead of collapsing it to submitting", async () => {
+    const fetchedWorldSource: FetchWorldSourceResult = {
+      files: { "Move.toml": "[package]\nname=\"world\"\n" },
+      sourceVersionTag: "v0.0.18",
+      fetchedAt: 1,
+    };
+    const executor = createDeploymentExecutor({
+      fetchWorldSource: vi.fn(() => Promise.resolve(fetchedWorldSource)),
+      compileForDeployment: ({ onProgress }) => Promise.resolve().then(() => {
+        onProgress?.("Resolving live world dependencies.", "resolve-dependencies");
+        throw new Error("Dependency graph resolution failed");
+      }),
+    });
+
+    const result = await executor({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      ownerAddress: "0x1234",
+      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      target: getDeploymentTarget("testnet:stillness"),
+    });
+
+    expect(result.outcome).toBe("failed");
+    expect(result.stage).toBe("resolve-dependencies");
+    expect(result.errorCode).toBe("resolution-failed");
+  });
 });

@@ -10,7 +10,7 @@ describe("worldSourceFetcher", () => {
     resetWorldSourceFetcherCacheForTests();
   });
 
-  it("caches fetched world sources by version tag", async () => {
+  it("caches fetched world sources by repository, version tag, and subdirectory", async () => {
     const fetchPackage = vi.fn(() => Promise.resolve({
       "Move.toml": "[package]\nname = \"world\"\n",
     }));
@@ -39,6 +39,33 @@ describe("worldSourceFetcher", () => {
       sourceVersionTag: "v0.0.18",
       fetchedAt: 123,
     });
+  });
+
+  it("does not reuse cached world sources across different subdirectories", async () => {
+    const fetchPackage = vi.fn((url: string) => Promise.resolve({
+      "source-url.txt": url,
+    }));
+
+    const first = await fetchWorldSource({
+      repositoryUrl: "https://github.com/evefrontier/world-contracts",
+      versionTag: "v0.0.18",
+      subdirectory: "contracts/world",
+    }, {
+      fetchPackage,
+      now: () => 123,
+    });
+    const second = await fetchWorldSource({
+      repositoryUrl: "https://github.com/evefrontier/world-contracts",
+      versionTag: "v0.0.18",
+      subdirectory: "contracts/alternate-world",
+    }, {
+      fetchPackage,
+      now: () => 456,
+    });
+
+    expect(fetchPackage).toHaveBeenCalledTimes(2);
+    expect(first).not.toBe(second);
+    expect(second.files["source-url.txt"]).toContain("contracts/alternate-world");
   });
 
   it("rejects with AbortError when the caller aborts the fetch", async () => {

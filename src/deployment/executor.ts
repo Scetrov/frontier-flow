@@ -85,21 +85,21 @@ const DEFAULT_EXECUTOR_DEPENDENCIES: DeploymentExecutorDependencies = {
     onProgress: (event) => {
       switch (event.phase) {
         case "fetching-source":
-          onProgress?.("Fetching the upstream world package source.", "preparing");
+          onProgress?.("Fetching the upstream world package source.", "fetch-world-source");
           break;
         case "resolving-dependencies":
           onProgress?.(
             event.total > 0
               ? `Resolving live world dependencies (${String(event.current)}/${String(event.total)}).`
               : "Resolving live world dependencies.",
-            "preparing",
+            "resolve-dependencies",
           );
           break;
         case "compiling":
-          onProgress?.("Compiling against the live world dependency graph.", "preparing");
+          onProgress?.("Compiling against the live world dependency graph.", "deploy-grade-compile");
           break;
         case "complete":
-          onProgress?.("Deploy-grade compilation completed.", "preparing");
+          onProgress?.("Deploy-grade compilation completed.", "deploy-grade-compile");
           break;
       }
     },
@@ -260,7 +260,7 @@ async function executePublishStep(
 
     return await executeLocalPublish(request, dependencies, setStage, onProgress);
   } catch (error: unknown) {
-    return classifyExecutionError(error, getStage() === "signing" ? "signing" : "submitting");
+    return classifyExecutionError(error, getStage());
   }
 }
 

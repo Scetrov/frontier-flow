@@ -1,11 +1,10 @@
-import type { fetchPackageFromGitHub } from "@zktx.io/sui-move-builder/lite";
-import { loadMoveBuilderLite } from "../compiler/moveBuilderLite";
+import { loadMoveBuilderLite, type FetchPackageFromGitHubFn } from "../compiler/moveBuilderLite";
 import type { FetchWorldSourceRequest, FetchWorldSourceResult } from "../compiler/types";
 
 export const WORLD_CONTRACTS_REPOSITORY_URL = "https://github.com/evefrontier/world-contracts";
 
 interface WorldSourceFetcherDependencies {
-  readonly fetchPackage?: typeof fetchPackageFromGitHub;
+  readonly fetchPackage?: FetchPackageFromGitHubFn;
   readonly now?: () => number;
 }
 
@@ -69,7 +68,8 @@ export async function fetchWorldSource(
   request: FetchWorldSourceRequest,
   dependencies: WorldSourceFetcherDependencies = {},
 ): Promise<FetchWorldSourceResult> {
-  const cachedResult = worldSourceCache.get(request.versionTag);
+  const cacheKey = createPackageUrl(request);
+  const cachedResult = worldSourceCache.get(cacheKey);
   if (cachedResult !== undefined) {
     return cachedResult;
   }
@@ -84,7 +84,7 @@ export async function fetchWorldSource(
       fetchedAt: dependencies.now?.() ?? Date.now(),
     };
 
-    worldSourceCache.set(request.versionTag, result);
+    worldSourceCache.set(cacheKey, result);
     return result;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {

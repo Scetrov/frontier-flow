@@ -102,13 +102,12 @@ beforeEach(() => {
   mockUseWallets.mockReturnValue([availableWallet]);
   mockSignTransaction.mockResolvedValue({ bytes: "dGVzdA==", signature: "0xsig" });
   mockFetchWorldSource.mockResolvedValue({
-    repository: "scetrov/world-contracts",
-    versionTag: "v0.0.18",
     files: {
       "Move.toml": "[package]\nname = \"world\"\n",
       "sources/world.move": "module world::world {}",
     },
-    fetchedAt: "2026-03-22T12:00:00.000Z",
+    sourceVersionTag: "v0.0.18",
+    fetchedAt: new Date("2026-03-22T12:00:00.000Z").getTime(),
   });
   mockCompileForDeployment.mockResolvedValue({
     targetId: "testnet:stillness",
@@ -118,10 +117,15 @@ beforeEach(() => {
       "0x0000000000000000000000000000000000000000000000000000000000000002",
       "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
     ],
-    packageDigest: "digest-123",
+    digest: [1, 2, 3],
+    resolvedDependencies: {
+      files: "{}",
+      dependencies: "{}",
+      lockfileDependencies: "{}",
+    },
     sourceVersionTag: "v0.0.18",
     builderToolchainVersion: "1.67.1",
-    compiledAt: "2026-03-22T12:00:00.500Z",
+    compiledAt: new Date("2026-03-22T12:00:00.500Z").getTime(),
   });
   mockCompileMove.mockImplementation((artifact: { bytecodeModules: readonly Uint8Array[]; dependencies: readonly string[] }) => Promise.resolve({
     success: true,

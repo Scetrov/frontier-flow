@@ -1,11 +1,13 @@
-import type {
-  BuildProgressEvent,
-  buildMovePackage,
-  getSuiMoveVersion,
-  initMoveCompiler,
-  resolveDependencies,
-} from "@zktx.io/sui-move-builder/lite";
-import { loadMoveBuilderLite } from "./moveBuilderLite";
+import type { BuildProgressEvent } from "@zktx.io/sui-move-builder/lite";
+import {
+  loadMoveBuilderLite,
+  moveBuilderLiteWasmUrl,
+  type BuildMovePackageFn,
+  type GetSuiMoveVersionFn,
+  type InitMoveCompilerFn,
+  type ResolveDependenciesFn,
+  verifyMoveBuilderLiteIntegrity,
+} from "./moveBuilderLite";
 import type {
   CachedDependencyResolution,
   DeployCompileProgressEvent,
@@ -30,11 +32,12 @@ interface BuildErrorResult {
 }
 
 interface DeployGradeCompilerDependencies {
-  readonly buildMovePackage?: typeof buildMovePackage;
-  readonly getSuiMoveVersion?: typeof getSuiMoveVersion;
-  readonly initMoveCompiler?: typeof initMoveCompiler;
+  readonly buildMovePackage?: BuildMovePackageFn;
+  readonly getSuiMoveVersion?: GetSuiMoveVersionFn;
+  readonly initMoveCompiler?: InitMoveCompilerFn;
   readonly now?: () => number;
-  readonly resolveDependencies?: typeof resolveDependencies;
+  readonly resolveDependencies?: ResolveDependenciesFn;
+  readonly verifyMoveCompilerIntegrity?: () => Promise<void>;
 }
 
 interface ResolveDeployDependenciesOptions {
@@ -42,7 +45,7 @@ interface ResolveDeployDependenciesOptions {
   readonly files: Record<string, string>;
   readonly rootGit: { readonly git: string; readonly rev: string; readonly subdir: string };
   readonly cacheKey: string;
-  readonly resolve: typeof resolveDependencies;
+  readonly resolve: ResolveDependenciesFn;
   readonly now: () => number;
 }
 
@@ -51,7 +54,7 @@ interface BuildDeployArtifactOptions {
   readonly files: Record<string, string>;
   readonly rootGit: { readonly git: string; readonly rev: string; readonly subdir: string };
   readonly resolvedDependencies: ResolvedDependencies;
-  readonly build: typeof buildMovePackage;
+  readonly build: BuildMovePackageFn;
 }
 
 const resolutionCache = new Map<string, CachedDependencyResolution>();
@@ -96,6 +99,7 @@ function getCompilerDependencies(dependencies: DeployGradeCompilerDependencies) 
     build: dependencies.buildMovePackage,
     getVersion: dependencies.getSuiMoveVersion,
     now: dependencies.now ?? Date.now,
+    verifyIntegrity: dependencies.verifyMoveCompilerIntegrity ?? verifyMoveBuilderLiteIntegrity,
   };
 }
 
@@ -183,7 +187,10 @@ async function resolveDeployDependencies(
 ): Promise<ResolvedDependencies> {
   const { request, files, rootGit, cacheKey, resolve, now } = options;
   const cachedResolution = request.cachedResolution ?? resolutionCache.get(cacheKey);
-  if (cachedResolution !== undefined) {
+  const isValidCachedResolution = cachedResolution !== undefined
+    && cachedResolution.targetId === request.target.targetId
+    && cachedResolution.sourceVersionTag === request.worldSource.sourceVersionTag;
+  if (isValidCachedResolution) {
     return cachedResolution.resolvedDependencies;
   }
 
@@ -192,6 +199,7 @@ async function resolveDeployDependencies(
   try {
     const resolvedDependencies = await resolve({
       files,
+      wasm: moveBuilderLiteWasmUrl,
       rootGit,
       network: "testnet",
       silenceWarnings: false,
@@ -225,6 +233,7 @@ async function buildDeployArtifact(
   try {
     buildResult = await build({
       files,
+      wasm: moveBuilderLiteWasmUrl,
       rootGit,
       network: "testnet",
       silenceWarnings: false,
@@ -262,7 +271,7 @@ export async function compileForDeployment(
   request: DeployGradeCompileRequest,
   dependencies: DeployGradeCompilerDependencies = {},
 ): Promise<DeployGradeCompileResult> {
-  const { init, resolve, build, getVersion, now } = getCompilerDependencies(dependencies);
+  const { init, resolve, build, getVersion, now, verifyIntegrity } = getCompilerDependencies(dependencies);
   const compilerModule = await loadMoveBuilderLite();
   const initCompiler = init ?? compilerModule.initMoveCompiler;
   const resolveCompilerDependencies = resolve ?? compilerModule.resolveDependencies;
@@ -272,7 +281,8 @@ export async function compileForDeployment(
   const cacheKey = getResolutionCacheKey(request.target.targetId, request.worldSource.sourceVersionTag);
   const rootGit = createRootGit(request.worldSource.sourceVersionTag);
 
-  await initCompiler();
+  await verifyIntegrity();
+  await initCompiler({ wasm: moveBuilderLiteWasmUrl });
   const resolvedDependencies = await resolveDeployDependencies({ request, files, rootGit, cacheKey, resolve: resolveCompilerDependencies, now });
   const buildResult = await buildDeployArtifact({ request, files, rootGit, resolvedDependencies, build: buildCompilerPackage });
 
@@ -283,7 +293,7 @@ export async function compileForDeployment(
     resolvedDependencies,
     targetId: request.target.targetId,
     sourceVersionTag: request.worldSource.sourceVersionTag,
-    builderToolchainVersion: await getCompilerVersion(),
+    builderToolchainVersion: await getCompilerVersion({ wasm: moveBuilderLiteWasmUrl }),
     compiledAt: now(),
   };
 }
