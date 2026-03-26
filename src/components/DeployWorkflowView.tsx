@@ -1,10 +1,13 @@
 import {
   useCurrentAccount,
   useCurrentWallet,
+  useSuiClient,
 } from "@mysten/dapp-kit";
+import { useEffect, useState } from "react";
 
 import type { DeploymentState } from "../compiler/types";
 import { getDeploymentTarget } from "../data/deploymentTargets";
+import { getPackageReferenceBundle, verifyPublishedWorldPackageExists } from "../data/packageReferences";
 import { useTargetBalance } from "../hooks/useTargetBalance";
 import { ConservativeDeployIcon } from "./HeaderActionIcons";
 
@@ -123,9 +126,11 @@ function toChecklistState(tone: "neutral" | "positive" | "warning"): "blocked" |
   }
 }
 
+// eslint-disable-next-line complexity
 function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
   const account = useCurrentAccount();
   const currentWallet = useCurrentWallet();
+  const suiClient = useSuiClient();
   const target = getDeploymentTarget(deployment.selectedTarget);
   const balanceQuery = useTargetBalance(account?.address ?? null, deployment.selectedTarget);
   const balanceState = getBalanceState({
@@ -136,6 +141,50 @@ function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
     totalBalance: balanceQuery.data?.totalBalance ?? null,
   });
   const resolvedInputs = new Set(deployment.resolvedInputs);
+  const [worldCheckState, setWorldCheckState] = useState<"pending" | "ready" | "blocked" | "skipped">("pending");
+  const [worldDetail, setWorldDetail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function runCheck() {
+      // Skip for local deployments
+      if (deployment.selectedTarget === "local") {
+        if (!cancelled) {
+          setWorldCheckState("skipped");
+          setWorldDetail("Skipped for local deployment");
+        }
+        return;
+      }
+
+      try {
+        setWorldCheckState("pending");
+        const exists = await verifyPublishedWorldPackageExists(deployment.selectedTarget, suiClient, controller.signal);
+        if (cancelled) return;
+        const bundle = getPackageReferenceBundle(deployment.selectedTarget);
+        setWorldDetail(bundle.worldPackageId);
+        setWorldCheckState(exists ? "ready" : "blocked");
+      } catch {
+        if (!cancelled) {
+          setWorldCheckState("blocked");
+          try {
+            const bundle = getPackageReferenceBundle(deployment.selectedTarget);
+            setWorldDetail(bundle.worldPackageId);
+          } catch {
+            setWorldDetail(null);
+          }
+        }
+      }
+    }
+
+    void runCheck();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [deployment.selectedTarget, suiClient]);
 
   return (
     <section className="space-y-4 border border-[var(--ui-border-dark)] bg-[rgba(20,10,10,0.78)] p-5">
@@ -164,6 +213,12 @@ function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
           detail={balanceState.label}
           label="SUI token balance"
           state={toChecklistState(balanceState.tone)}
+        />
+
+        <ChecklistItem
+          detail={worldDetail ?? (worldCheckState === "pending" ? "Checking published world package" : undefined)}
+          label="Published world package exists"
+          state={worldCheckState === "ready" ? "ready" : worldCheckState === "blocked" ? "blocked" : "info"}
         />
       </ul>
 

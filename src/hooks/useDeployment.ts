@@ -18,6 +18,7 @@ import type {
 } from "../compiler/types";
 import { DEFAULT_DEPLOYMENT_TARGET, getDeploymentStageSequence, getDeploymentTarget } from "../data/deploymentTargets";
 import { resolvePackageReferenceBundle } from "../utils/deploymentValidation";
+import { verifyPublishedWorldPackageExists } from "../data/packageReferences";
 import { confirmPublishedPackageWithClient } from "../deployment/confirmation";
 import { createDeploymentExecutor, type DeploymentExecutionResult } from "../deployment/executor";
 import { publishToRemoteTarget } from "../deployment/publishRemote";
@@ -1172,7 +1173,8 @@ function createRemotePublishHandler(input: {
   });
 }
 
-function startRealDeployment(input: {
+// eslint-disable-next-line max-lines-per-function, complexity
+async function startRealDeployment(input: {
   readonly account: ReturnType<typeof useCurrentAccount>;
   readonly currentWallet: ReturnType<typeof useCurrentWallet>;
   readonly derivedValidation: DeploymentValidationResult;
@@ -1182,7 +1184,7 @@ function startRealDeployment(input: {
   readonly stateSetters: DeploymentStateSetters;
   readonly status: CompilationStatus;
   readonly suiClient: ReturnType<typeof useSuiClient>;
-}): void {
+}): Promise<void> {
   const artifact = getArtifactFromStatus(input.status);
   const attemptId = createAttemptId();
 
@@ -1199,6 +1201,35 @@ function startRealDeployment(input: {
   }
 
   const target = getDeploymentTarget(input.selectedTarget);
+  // Verify the published world package exists on the selected target when applicable.
+  if (target.networkFamily !== "local" && target.requiresPublishedPackageRefs) {
+    try {
+      const exists = await verifyPublishedWorldPackageExists(input.selectedTarget, input.suiClient);
+      if (!exists) {
+        applyBlockedDeploymentOutcome({
+          artifactId: artifact.artifactId,
+          attemptId,
+          moduleName: artifact.moduleName,
+          selectedTarget: input.selectedTarget,
+          stateSetters: { ...input.stateSetters, localChainIdRef: input.localChainIdRef },
+          validation: {
+            blockers: [{
+              code: "invalid-package-references",
+              stage: "validating",
+              message: `The target ${target.label} does not contain the required world package.`,
+              remediation: `Refresh the maintained package reference data for ${target.label} before retrying deployment.`,
+            }],
+            requiredInputs: [],
+            resolvedInputs: [],
+          },
+        });
+
+        return;
+      }
+    } catch {
+      // On verification error (network issues), continue optimistically.
+    }
+  }
   const attemptStartedAt = Date.now();
   resetDeploymentState(input.stateSetters);
   input.setIsDeploying(true);
@@ -1361,7 +1392,7 @@ function beginDeploymentAttempt(input: {
     return Promise.resolve();
   }
 
-  startRealDeployment({
+  void startRealDeployment({
     account: input.account,
     currentWallet: input.currentWallet,
     derivedValidation: input.derivedValidation,

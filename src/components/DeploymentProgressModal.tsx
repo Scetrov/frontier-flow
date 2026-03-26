@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import type { DeploymentAttempt, DeploymentProgress, DeploymentStage } from "../compiler/types";
 import { getDeploymentStageSequence, getDeploymentTarget } from "../data/deploymentTargets";
+import { getPackageReferenceBundle } from "../data/packageReferences";
 
 interface DeploymentProgressModalProps {
   readonly latestAttempt: DeploymentAttempt | null;
@@ -242,6 +243,7 @@ function DeploymentStageList({
   );
 }
 
+// eslint-disable-next-line complexity
 function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: DeploymentProgressModalProps) {
   const dismissButtonRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
@@ -256,6 +258,8 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
   const progressPercent = getProgressPercent(progress);
   const terminalRemediation = getTerminalRemediation(terminalAttempt);
   const targetLabel = getDeploymentTarget(progress.targetId).label;
+  const packageBundle = getPackageReferenceBundle(progress.targetId);
+  const worldPackageId = packageBundle.worldPackageId;
 
   return (
     <div className="ff-deployment-modal" role="presentation">
@@ -272,7 +276,7 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
           <div>
             <p className="ff-deployment-modal__eyebrow">Deployment</p>
             <h2 className="ff-deployment-modal__title" id="deployment-progress-title">{title}</h2>
-            <p className="ff-deployment-modal__copy">Target: {targetLabel}</p>
+            <p className="ff-deployment-modal__copy">Target: {targetLabel}{worldPackageId ? ` (${worldPackageId})` : ""}</p>
           </div>
           <button className="ff-header__button" onClick={onDismiss} ref={dismissButtonRef} type="button">
             Dismiss

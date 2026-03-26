@@ -8,10 +8,12 @@ import { getLocalDeploymentTargetLabel } from "../data/localEnvironment";
 type TargetBalanceQuery = ReturnType<typeof import("../hooks/useTargetBalance").useTargetBalance>;
 
 const mockUseTargetBalance = vi.fn<(...args: [string | null, import("../compiler/types").DeploymentTargetId]) => TargetBalanceQuery>();
+const mockGetObject = vi.fn<() => Promise<unknown>>();
 
 vi.mock("@mysten/dapp-kit", () => ({
   useCurrentAccount: () => ({ address: "0xabc" }),
   useCurrentWallet: () => ({ isConnected: true }),
+  useSuiClient: () => ({ getObject: mockGetObject }),
   useWallets: () => ([{ name: "Vault" }]),
 }));
 
@@ -69,12 +71,14 @@ function renderDeployWorkflowView(deployment: DeploymentState) {
 
 describe("DeployWorkflowView", () => {
   beforeEach(() => {
+    mockGetObject.mockReset();
+    mockGetObject.mockResolvedValue({});
     mockUseTargetBalance.mockReturnValue(createBalanceQuery({
       data: { totalBalance: "2500000000" },
     }));
   });
 
-  it("renders blocking prerequisites, informational checks, and the deploy control", () => {
+  it("renders blocking prerequisites, informational checks, and the deploy control", async () => {
     renderDeployWorkflowView(createDeploymentState());
 
     expect(screen.getByRole("heading", { name: "Pre-flight deployment checks" })).toBeVisible();
@@ -84,11 +88,12 @@ describe("DeployWorkflowView", () => {
     expect(screen.getByText("Connect a Sui-compatible wallet before deploying to testnet:stillness.")).toBeVisible();
     expect(screen.getByText("Review blockers before deploying")).toBeVisible();
     expect(screen.getByText("Wallet balance: 2.5 SUI")).toBeVisible();
+    expect(await screen.findByText("0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c")).toBeVisible();
     expect(screen.getByText("Deployment blocked")).toBeVisible();
     expect(screen.getByText("Resolve the wallet connection before retrying deployment.")).toBeVisible();
   });
 
-  it("renders multiline deployment diagnostics in a preserved code block", () => {
+  it("renders multiline deployment diagnostics in a preserved code block", async () => {
     const details = [
       "Deployment failed.",
       "error[E04023]: invalid method call",
@@ -108,13 +113,14 @@ describe("DeployWorkflowView", () => {
     }));
 
     const detailsBlock = screen.getByLabelText("Deployment status details");
+    expect(await screen.findByText("0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c")).toBeVisible();
 
     expect(detailsBlock.tagName).toBe("PRE");
     expect(detailsBlock.textContent).toBe(details);
     expect(detailsBlock.textContent).toContain("error[E04023]: invalid method call");
   });
 
-  it("shows the local target as ready when blockers are cleared", () => {
+  it("shows the local target as ready when blockers are cleared", async () => {
     const localTargetLabel = getLocalDeploymentTargetLabel();
 
     renderDeployWorkflowView(
@@ -140,6 +146,7 @@ describe("DeployWorkflowView", () => {
     expect(screen.getByText("Ready to deploy")).toBeVisible();
     expect(screen.getByText("available local validator")).toBeVisible();
     expect(screen.getByText("Balance check is skipped for local deployment")).toBeVisible();
+    expect(await screen.findByText("Skipped for local deployment")).toBeVisible();
     expect(screen.queryByText("Current blockers")).not.toBeInTheDocument();
     expect(screen.getByText("No deployment attempt has been recorded for this graph revision yet.")).toBeVisible();
   });

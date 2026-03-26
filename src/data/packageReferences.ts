@@ -10,7 +10,7 @@ import {
 } from "./localEnvironment";
 
 const RESOURCE_SOURCE = "https://docs.evefrontier.com/tools/resources";
-const LAST_VERIFIED_ON = "2026-03-21";
+const LAST_VERIFIED_ON = "2026-03-26";
 export const PUBLISHED_WORLD_PACKAGE_MANIFEST_URL = "https://raw.githubusercontent.com/evefrontier/world-contracts/refs/heads/main/contracts/world/Published.toml";
 export const WORLD_PACKAGE_OVERRIDE_STORAGE_KEY = "frontier-flow:world-package-overrides";
 
@@ -58,7 +58,7 @@ export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
   {
     targetId: "testnet:utopia",
     environmentLabel: "Utopia",
-    worldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
+    worldPackageId: "0x07e6b810c2dff6df56ea7fbad9ff32f4d84cbee53e496267515887b712924bd1",
     originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
     objectRegistryId: "0xc2b969a72046c47e24991d69472afb2216af9e91caf802684514f39706d7dc57",
     serverAddressRegistryId: "0x9a9f2f7d1b8cf100feb532223aa6c38451edb05406323af5054f9d974555708b",
@@ -266,6 +266,25 @@ export function getPackageReferenceBundle(targetId: PackageReferenceBundle["targ
   }
 
   return bundle;
+}
+
+export async function verifyPublishedWorldPackageExists(
+  targetId: PackageReferenceBundle["targetId"],
+  client: { getObject?: (args: { id: string; signal?: AbortSignal }) => Promise<unknown> },
+  signal?: AbortSignal,
+): Promise<boolean> {
+  try {
+    const bundle = getPackageReferenceBundle(targetId);
+    if (typeof client.getObject !== "function") {
+      // If the provided client does not implement getObject, assume existence.
+      return true;
+    }
+
+    await client.getObject({ id: bundle.worldPackageId, signal });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

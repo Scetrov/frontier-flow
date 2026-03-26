@@ -143,7 +143,6 @@ function LocalEnvironmentField({ error, label, onBlur, onChange, value }: LocalE
   );
 }
 
-// eslint-disable-next-line max-lines-per-function
 function LocalEnvironmentSettingsPanel({
   closeButtonRef,
   draft,

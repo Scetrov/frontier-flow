@@ -24,7 +24,7 @@ describe("DeploymentProgressModal", () => {
 
     expect(screen.getByRole("dialog", { name: "Deployment in progress" })).toBeVisible();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "29");
-    expect(screen.getByText("Target: testnet:stillness")).toBeVisible();
+    expect(screen.getByText("Target: testnet:stillness (0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c)")).toBeVisible();
     expect(document.querySelector(".ff-deployment-modal__message")?.textContent).toBe("Fetching the upstream world package source. Target: testnet:stillness.");
     expect(screen.getByText("Fetch World Source")).toBeVisible();
     expect(screen.getByText("Active")).toBeVisible();
@@ -61,7 +61,7 @@ describe("DeploymentProgressModal", () => {
     );
 
     expect(screen.getByRole("dialog", { name: "Deployed" })).toBeVisible();
-  expect(screen.getByText(`Deployment completed for ${localTargetLabel}. Package ID: 0xabc.`)).toBeVisible();
+    expect(screen.getByText(`Deployment completed for ${localTargetLabel}. Package ID: 0xabc.`)).toBeVisible();
     expect(screen.getByText("Package ID: 0xabc")).toBeVisible();
     expect(screen.getByText("Transaction Digest: 0xdigest42")).toBeVisible();
     expect(screen.getAllByText("Complete")).toHaveLength(6);
@@ -158,7 +158,7 @@ describe("DeploymentProgressModal", () => {
     );
 
     expect(screen.getByRole("dialog", { name: "Deployed" })).toBeVisible();
-    expect(screen.getByText("Target: testnet:stillness")).toBeVisible();
+    expect(screen.getByText("Target: testnet:stillness (0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c)")).toBeVisible();
     expect(screen.getByText("Package ID: 0xdef")).toBeVisible();
     expect(screen.getByText("Transaction Digest: 0xconfirm99")).toBeVisible();
     expect(screen.getAllByText("Complete")).toHaveLength(7);
@@ -277,7 +277,7 @@ describe("DeploymentProgressModal", () => {
       />,
     );
 
-    expect(screen.getByText(`Target: ${getLocalDeploymentTargetLabel()}`)).toBeVisible();
+    expect(screen.getByText(`Target: ${getLocalDeploymentTargetLabel()} (0xcf6b5da20b0c6540895b79b91580ec0734fcfa4298848f0e8382ef217965bfd5)`)).toBeVisible();
     expect(screen.getByText("Deploy-Grade Compile")).toBeVisible();
     expect(screen.queryByText("Signing")).not.toBeInTheDocument();
   });

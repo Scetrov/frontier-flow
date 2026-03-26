@@ -177,7 +177,6 @@ function TargetSelectorTrigger({ buttonRef, menuId, menuOpen, onCloseMenu, onOpe
 /**
  * Fixed-width deployment target selector anchored inside the Visual workspace.
  */
-// eslint-disable-next-line max-lines-per-function
 function VisualDeploymentTargetSelector({ onTargetChange, selectedTarget }: VisualDeploymentTargetSelectorProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [localSettingsOpen, setLocalSettingsOpen] = useState(false);
