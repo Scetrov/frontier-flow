@@ -102,7 +102,7 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 
 ### Scenario: User selects a deployment target and launches deployment
 
-**Preconditions:** A valid graph has been built; the header deploy control is visible; a Sui wallet is available for published targets.
+**Preconditions:** A valid graph has been built; the header deploy control is visible; a Sui wallet is available for published targets and for localnet deployments when ephemeral signing is disabled.
 
 | Step | User Action | System Response | Acceptance Criteria |
 | ---- | ----------- | --------------- | ------------------- |
@@ -116,6 +116,18 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 | 8 | Dismiss the modal while deployment is still running | Deployment continues | Closing the modal does not cancel the active attempt |
 | 9 | Open the footer deployment popup after completion | Latest deployment result is shown | Popup includes target, severity, stage, and resulting package ID |
 | 10 | Switch to the Move view | Deployment metadata is mirrored there | Move panel shows the same target-aware summary as the footer review surface |
+
+### Scenario: User changes Localnet signing mode
+
+**Preconditions:** The deployment target menu is visible and the Localnet option is available.
+
+| Step | User Action | System Response | Acceptance Criteria |
+| ---- | ----------- | --------------- | ------------------- |
+| 1 | Open the Localnet settings modal from the target selector cog | Localnet settings modal appears | RPC URL, GraphQL URL, world package fields, and the `Use ephemeral keypair` checkbox are visible |
+| 2 | Leave `Use ephemeral keypair` enabled | Localnet deploys stay wallet-free | Localnet deployment does not block on wallet connection and no signing prompt appears |
+| 3 | Disable `Use ephemeral keypair` and save | Localnet target becomes wallet-backed | Localnet deployment now requires a connected wallet before deployment can start |
+| 4 | Start a Localnet deployment with the checkbox disabled | Wallet approval is requested | Deployment progress includes a signing stage before submission |
+| 5 | Re-enable `Use ephemeral keypair` and save | Localnet target returns to app-managed signing | Localnet deployment no longer requires a wallet connection |
 
 ---
 

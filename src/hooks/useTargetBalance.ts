@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 
 import type { DeploymentTargetId } from "../compiler/types";
+import { getLocalEnvironmentConfigSnapshot, subscribeToLocalEnvironmentChanges } from "../data/localEnvironment";
 import { getDeploymentTarget } from "../data/deploymentTargets";
 
 interface TargetBalanceResult {
@@ -13,11 +14,16 @@ interface TargetBalanceResult {
  * Query the connected wallet balance against the currently selected deployment target RPC.
  */
 export function useTargetBalance(ownerAddress: string | null, targetId: DeploymentTargetId) {
-  const target = useMemo(() => getDeploymentTarget(targetId), [targetId]);
+  const localEnvironmentSnapshot = useSyncExternalStore(
+    subscribeToLocalEnvironmentChanges,
+    () => getLocalEnvironmentConfigSnapshot() ?? "",
+    () => "",
+  );
+  const target = getDeploymentTarget(targetId);
 
   return useQuery<TargetBalanceResult>({
     enabled: ownerAddress !== null,
-    queryKey: ["target-balance", target.id, ownerAddress],
+    queryKey: ["target-balance", target.id, target.rpcUrl, ownerAddress, localEnvironmentSnapshot],
     queryFn: async () => {
       if (ownerAddress === null) {
         return { totalBalance: null };

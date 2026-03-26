@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DeployWorkflowView from "../components/DeployWorkflowView";
 import type { DeploymentState } from "../compiler/types";
+import { getLocalDeploymentTargetLabel } from "../data/localEnvironment";
 
 type TargetBalanceQuery = ReturnType<typeof import("../hooks/useTargetBalance").useTargetBalance>;
 
@@ -114,18 +115,28 @@ describe("DeployWorkflowView", () => {
   });
 
   it("shows the local target as ready when blockers are cleared", () => {
+    const localTargetLabel = getLocalDeploymentTargetLabel();
+
     renderDeployWorkflowView(
       createDeploymentState({
         selectedTarget: "local",
         canDeploy: true,
         blockerReasons: [],
-        requiredInputs: ["current compiled bytecode artifact", "available local validator"],
-        resolvedInputs: ["current compiled bytecode artifact", "available local validator"],
+        requiredInputs: [
+          "current compiled bytecode artifact",
+          `published package references for ${localTargetLabel}`,
+          "available local validator",
+        ],
+        resolvedInputs: [
+          "current compiled bytecode artifact",
+          `published package references for ${localTargetLabel}`,
+          "available local validator",
+        ],
         statusMessage: null,
       }),
     );
 
-    expect(screen.getByRole("button", { name: "Deploy local" })).toBeVisible();
+    expect(screen.getByRole("button", { name: `Deploy ${localTargetLabel}` })).toBeVisible();
     expect(screen.getByText("Ready to deploy")).toBeVisible();
     expect(screen.getByText("available local validator")).toBeVisible();
     expect(screen.getByText("Balance check is skipped for local deployment")).toBeVisible();

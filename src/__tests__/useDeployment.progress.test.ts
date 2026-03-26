@@ -259,7 +259,7 @@ describe("useDeployment progress flow", () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(4);
+      vi.advanceTimersByTime(16);
     });
 
     expect(result.current.latestAttempt?.outcome).toBe("succeeded");
@@ -272,7 +272,7 @@ describe("useDeployment progress flow", () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(4);
+      vi.advanceTimersByTime(16);
     });
 
     expect(result.current.latestAttempt?.outcome).toBe("succeeded");

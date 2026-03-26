@@ -1,4 +1,5 @@
 import type { DeploymentStage, DeploymentTarget, DeploymentTargetId } from "../compiler/types";
+import { DEFAULT_LOCAL_RPC_URL, getLocalDeploymentTargetLabel, loadLocalEnvironmentConfig } from "./localEnvironment";
 
 export const LOCAL_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
   "validating",
@@ -38,20 +39,11 @@ export const DEFAULT_DEPLOYMENT_TARGET: DeploymentTargetId = "local";
 export const DEPLOYMENT_TARGETS: readonly DeploymentTarget[] = [
   {
     id: "local",
-    label: "local",
-    networkFamily: "local",
-    requiresPublishedPackageRefs: false,
-    supportsWalletSigning: false,
-    rpcUrl: "http://127.0.0.1:9000",
-    requiresLocalValidator: true,
-  },
-  {
-    id: "local:evefrontier",
-    label: "local:evefrontier",
+    label: "localnet",
     networkFamily: "local",
     requiresPublishedPackageRefs: true,
     supportsWalletSigning: false,
-    rpcUrl: "http://127.0.0.1:9000",
+    rpcUrl: DEFAULT_LOCAL_RPC_URL,
     requiresLocalValidator: true,
   },
   {
@@ -82,6 +74,16 @@ export function getDeploymentTarget(targetId: DeploymentTargetId): DeploymentTar
 
   if (target === undefined) {
     throw new Error(`Unknown deployment target: ${targetId}`);
+  }
+
+  if (target.networkFamily === "local") {
+    const localEnvironment = loadLocalEnvironmentConfig();
+    return {
+      ...target,
+      label: getLocalDeploymentTargetLabel(localEnvironment),
+      rpcUrl: localEnvironment.rpcUrl,
+      supportsWalletSigning: !localEnvironment.useEphemeralKeypair,
+    };
   }
 
   return target;

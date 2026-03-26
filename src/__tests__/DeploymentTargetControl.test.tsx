@@ -2,12 +2,13 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import DeploymentTargetControl from "../components/DeploymentTargetControl";
+import { getLocalDeploymentTargetLabel } from "../data/localEnvironment";
 
 describe("DeploymentTargetControl", () => {
   it("renders the selected target in the primary deploy action", () => {
     render(<DeploymentTargetControl canDeploy={true} onDeploy={() => undefined} selectedTarget="local" />);
 
-    expect(screen.getByRole("button", { name: "Deploy local" })).toBeVisible();
+    expect(screen.getByRole("button", { name: `Deploy ${getLocalDeploymentTargetLabel()}` })).toBeVisible();
     expect(screen.getByRole("button", { name: "Select deployment target" })).toBeVisible();
   });
 
@@ -54,7 +55,7 @@ describe("DeploymentTargetControl", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select deployment target" }));
 
     expect(screen.getByRole("menuitemradio", { name: "testnet:utopia" })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("menuitemradio", { name: "local" })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("menuitemradio", { name: getLocalDeploymentTargetLabel() })).toHaveAttribute("aria-checked", "false");
   });
 
   it("closes the target menu when escape is pressed", () => {
@@ -81,10 +82,7 @@ describe("DeploymentTargetControl", () => {
     const toggleButton = screen.getByRole("button", { name: "Select deployment target" });
     fireEvent.keyDown(toggleButton, { key: "ArrowDown" });
 
-    expect(screen.getByRole("menuitemradio", { name: "local" })).toHaveFocus();
-
-    fireEvent.keyDown(screen.getByRole("menu", { name: "Deployment targets" }), { key: "ArrowDown" });
-    expect(screen.getByRole("menuitemradio", { name: "local:evefrontier" })).toHaveFocus();
+    expect(screen.getByRole("menuitemradio", { name: getLocalDeploymentTargetLabel() })).toHaveFocus();
 
     fireEvent.keyDown(screen.getByRole("menu", { name: "Deployment targets" }), { key: "ArrowDown" });
     expect(screen.getByRole("menuitemradio", { name: "testnet:stillness" })).toHaveFocus();
@@ -110,10 +108,10 @@ describe("DeploymentTargetControl", () => {
 
     render(<DeploymentTargetControl canDeploy={false} onDeploy={handleDeploy} selectedTarget="local" />);
 
-    const deployButton = screen.getByRole("button", { name: "Deploy local" });
+    const deployButton = screen.getByRole("button", { name: `Deploy ${getLocalDeploymentTargetLabel()}` });
 
     expect(deployButton).toHaveAttribute("aria-describedby");
-    expect(deployButton).toHaveAttribute("title", "Review blockers for local deployment");
+    expect(deployButton).toHaveAttribute("title", `Review blockers for ${getLocalDeploymentTargetLabel()} deployment`);
 
     fireEvent.click(deployButton);
 

@@ -1064,11 +1064,11 @@ function scheduleSuccessfulDeployment(input: {
     applyDeploymentOutcome(input.stateSetters, createSuccessOutcome({
       artifactId: input.artifactId,
       attemptId: input.attemptId,
-      builderToolchainVersion: input.selectedTarget === "local" ? undefined : resolvePackageReferenceBundle(input.selectedTarget)?.toolchainVersion,
+      builderToolchainVersion: resolvePackageReferenceBundle(input.selectedTarget)?.toolchainVersion,
       confirmationReference: input.confirmationReference,
       moduleName: input.moduleName,
       packageId: input.packageId,
-      sourceVersionTag: input.selectedTarget === "local" ? undefined : resolvePackageReferenceBundle(input.selectedTarget)?.sourceVersionTag,
+      sourceVersionTag: resolvePackageReferenceBundle(input.selectedTarget)?.sourceVersionTag,
       targetId: input.selectedTarget,
       targetLabel: input.targetLabel,
     }), input.validation);
@@ -1220,7 +1220,7 @@ function startRealDeployment(input: {
   void executor({
     artifact,
     ownerAddress: input.account?.address,
-    references: input.selectedTarget === "local" ? null : resolvePackageReferenceBundle(input.selectedTarget),
+    references: resolvePackageReferenceBundle(input.selectedTarget),
     target,
   }, (progressUpdate) => {
     updateDeploymentProgress(input.stateSetters.setProgress, {

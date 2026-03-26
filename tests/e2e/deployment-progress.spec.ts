@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
+import { getCompilationStatusButton, getTargetDisplayLabel, selectDeploymentTarget } from "./fixtures/workflow";
 
 for (const scenario of [
   {
@@ -11,7 +11,7 @@ for (const scenario of [
   {
     target: "local",
     search: "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_deploy_stage_delay_ms=120",
-    expectedStageLabel: "Preparing",
+    expectedStageLabel: "Fetch World Source",
   },
 ] as const) {
   test(`shows staged deployment progress for ${scenario.target} and keeps evidence after dismissal`, async ({ page }) => {
@@ -25,11 +25,12 @@ for (const scenario of [
     await expect(compilationStatus).toContainText("Compiled");
 
     await selectDeploymentTarget(page, scenario.target);
-    await page.getByRole("button", { name: `Deploy ${scenario.target}` }).click();
+  const targetLabel = getTargetDisplayLabel(scenario.target);
+  await page.getByRole("button", { name: scenario.target === "local" ? /^Deploy localnet:0x[a-f0-9]{4}\.\.\.$/i : `Deploy ${scenario.target}` }).click();
 
     const modal = page.getByRole("dialog", { name: /Deployment in progress|Deployed/ });
     await expect(modal).toBeVisible();
-    await expect(modal.locator(".ff-deployment-modal__copy", { hasText: `Target: ${scenario.target}` })).toBeVisible();
+  await expect(modal.locator(".ff-deployment-modal__copy")).toContainText(targetLabel);
     await expect(modal.locator(".ff-deployment-modal__stage-label", { hasText: "Validating" })).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__stage-label", { hasText: scenario.expectedStageLabel })).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__stage-state").filter({ hasText: /Active|Complete/ }).first()).toBeVisible();
@@ -41,7 +42,7 @@ for (const scenario of [
     await expect(deploymentStatus).toContainText("Deployed");
     await deploymentStatus.click();
     const deploymentDetails = page.locator("#deployment-status-details");
-    await expect(deploymentDetails.getByText(new RegExp(`Deployment completed for ${scenario.target}`, "i"))).toBeVisible();
+    await expect(deploymentDetails.locator(".ff-compilation-status__message").first()).toContainText(targetLabel);
     await expect(deploymentDetails.locator(".ff-compilation-status__message").filter({ hasText: /^Package ID: 0x[a-f0-9]{64}$/i })).toBeVisible();
     await expect(deploymentDetails.locator(".ff-compilation-status__message").filter({ hasText: /^Transaction Digest: 0x[a-f0-9]{64}$/i })).toBeVisible();
   });

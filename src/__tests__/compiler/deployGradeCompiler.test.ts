@@ -318,7 +318,7 @@ describe("deployGradeCompiler", () => {
       });
 
     await compileForDeployment(
-      createRequest({ target: createPackageReferenceBundle("local:evefrontier" as Exclude<import("../../compiler/types").DeploymentTargetId, "local">, { worldPackageId: targetWorldPackageId, originalWorldPackageId: targetWorldPackageId }) }),
+      createRequest({ target: createPackageReferenceBundle("local", { worldPackageId: targetWorldPackageId, originalWorldPackageId: targetWorldPackageId }) }),
       {
         initMoveCompiler: vi.fn(() => Promise.resolve()),
         resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),

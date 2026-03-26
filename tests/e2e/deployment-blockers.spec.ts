@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { getCompilationStatusButton, openDeployWorkflow, selectDeploymentTarget } from "./fixtures/workflow";
+import { getCompilationStatusButton, getTargetDisplayLabel, openDeployWorkflow, selectDeploymentTarget } from "./fixtures/workflow";
 
 test("blocks stillness deployment when no wallet is connected", async ({ page }) => {
   await page.addInitScript(() => {
@@ -42,13 +42,14 @@ test("blocks local deployment when the local target is unavailable", async ({ pa
 
   const compilationStatus = getCompilationStatusButton(page);
   await expect(compilationStatus).toContainText("Compiled");
+  const localTargetLabel = getTargetDisplayLabel("local");
 
   await openDeployWorkflow(page);
-  await page.getByRole("button", { name: "Deploy local" }).click();
+  await page.getByRole("button", { name: /^Deploy localnet:0x[a-f0-9]{4}\.\.\.$/i }).click();
 
   const blockedModal = page.getByRole("dialog", { name: "Deployment blocked" });
   await expect(blockedModal).toBeVisible();
-  await expect(blockedModal.getByText("Target: local")).toBeVisible();
+  await expect(blockedModal.locator(".ff-deployment-modal__copy")).toContainText(localTargetLabel);
   await expect(blockedModal.locator(".ff-deployment-modal__message")).toContainText("The local validator required for local deployment is unavailable.");
   await expect(blockedModal.locator(".ff-deployment-modal__remediation")).toContainText("Resolve the reported blocker before retrying deployment.");
   await blockedModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
@@ -57,7 +58,7 @@ test("blocks local deployment when the local target is unavailable", async ({ pa
   await expect(deploymentStatus).toContainText("Deployment Blocked");
   await deploymentStatus.click();
   const deploymentDetails = page.locator("#deployment-status-details");
-  await expect(deploymentDetails.getByText("Target: local")).toBeVisible();
+  await expect(deploymentDetails.locator(".ff-compilation-status__message").first()).toContainText(localTargetLabel);
   await expect(deploymentDetails.getByText("The local validator required for local deployment is unavailable.")).toBeVisible();
   await expect(deploymentDetails.getByText(/Start or configure the local validator, then retry deployment to local/i)).toBeVisible();
 });

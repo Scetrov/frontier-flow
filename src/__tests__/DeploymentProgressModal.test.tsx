@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import DeploymentProgressModal from "../components/DeploymentProgressModal";
+import { getLocalDeploymentTargetLabel } from "../data/localEnvironment";
 import { createDeploymentAttemptFixture, createDeploymentProgressFixture } from "./deployment/testFactories";
 
 describe("DeploymentProgressModal", () => {
@@ -31,13 +32,14 @@ describe("DeploymentProgressModal", () => {
 
   it("renders terminal deployment summaries and supports dismissal", () => {
     const handleDismiss = vi.fn();
+    const localTargetLabel = getLocalDeploymentTargetLabel();
     const progress = createDeploymentProgressFixture({
       attemptId: "attempt-42",
       targetId: "local",
       stage: "confirming",
       stageIndex: 4,
-      stageCount: 5,
-      completedStages: ["validating", "preparing", "signing", "submitting"],
+      stageCount: 6,
+      completedStages: ["validating", "fetch-world-source", "resolve-dependencies", "deploy-grade-compile", "submitting"],
       activeMessage: "Confirming deployment.",
     });
 
@@ -49,7 +51,7 @@ describe("DeploymentProgressModal", () => {
           outcome: "succeeded",
           currentStage: "confirming",
           endedAt: 10,
-          message: "Deployment completed for local. Package ID: 0xabc.",
+          message: `Deployment completed for ${localTargetLabel}. Package ID: 0xabc.`,
           confirmationReference: "0xdigest42",
           packageId: "0xabc",
         })}
@@ -59,10 +61,10 @@ describe("DeploymentProgressModal", () => {
     );
 
     expect(screen.getByRole("dialog", { name: "Deployed" })).toBeVisible();
-    expect(screen.getByText("Deployment completed for local. Package ID: 0xabc.")).toBeVisible();
+  expect(screen.getByText(`Deployment completed for ${localTargetLabel}. Package ID: 0xabc.`)).toBeVisible();
     expect(screen.getByText("Package ID: 0xabc")).toBeVisible();
     expect(screen.getByText("Transaction Digest: 0xdigest42")).toBeVisible();
-    expect(screen.getAllByText("Complete")).toHaveLength(5);
+    expect(screen.getAllByText("Complete")).toHaveLength(6);
     expect(screen.queryByText("Active")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
@@ -259,23 +261,23 @@ describe("DeploymentProgressModal", () => {
     expect(screen.getAllByText("Remote deployment cannot resolve the published world dependency in the browser Move compiler.")).toHaveLength(2);
   });
 
-  it("renders deploy-grade local stage lists for local:evefrontier without a signing step", () => {
+  it("renders deploy-grade local stage lists for local without a signing step", () => {
     render(
       <DeploymentProgressModal
         latestAttempt={null}
         onDismiss={() => undefined}
         progress={createDeploymentProgressFixture({
-          targetId: "local:evefrontier",
+          targetId: "local",
           stage: "deploy-grade-compile",
           stageIndex: 3,
           stageCount: 6,
           completedStages: ["validating", "fetch-world-source", "resolve-dependencies"],
-          activeMessage: "Compiling against the live world dependency graph. Target: local:evefrontier.",
+          activeMessage: `Compiling against the live world dependency graph. Target: ${getLocalDeploymentTargetLabel()}.`,
         })}
       />,
     );
 
-    expect(screen.getByText("Target: local:evefrontier")).toBeVisible();
+    expect(screen.getByText(`Target: ${getLocalDeploymentTargetLabel()}`)).toBeVisible();
     expect(screen.getByText("Deploy-Grade Compile")).toBeVisible();
     expect(screen.queryByText("Signing")).not.toBeInTheDocument();
   });

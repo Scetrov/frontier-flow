@@ -12,15 +12,19 @@ import {
   DEPLOY_GRADE_LOCAL_DEPLOYMENT_STAGE_SEQUENCE,
   DEPLOY_GRADE_REMOTE_DEPLOYMENT_STAGE_SEQUENCE,
   getDeploymentStageSequence as resolveDeploymentStageSequence,
-  LOCAL_DEPLOYMENT_STAGE_SEQUENCE,
 } from "../../data/deploymentTargets";
+import { getLocalDeploymentTargetLabel } from "../../data/localEnvironment";
 
 const DEFAULT_DEPLOYMENT_ATTEMPT_ID = "attempt-0001";
 const DEFAULT_ARTIFACT_ID = "starter_contract-00000000";
 const DEFAULT_TARGET_ID: DeploymentTargetId = "local";
 const DEFAULT_BLOCKED_REASON = "The local validator required for local deployment is unavailable.";
 const DEFAULT_NEXT_ACTION = "Start or configure the local validator, then retry deployment to local.";
-const DEFAULT_REQUIRED_INPUTS = ["current compiled bytecode artifact", "available local validator"] as const;
+const DEFAULT_REQUIRED_INPUTS = [
+  "current compiled bytecode artifact",
+  `published package references for ${getLocalDeploymentTargetLabel()}`,
+  "available local validator",
+] as const;
 
 /**
  * Create a deployment attempt fixture for deployment workflow tests.
@@ -140,11 +144,11 @@ export function createDeploymentReviewEntryFixture(
  * Create a published package reference fixture for target-validation tests.
  */
 export function createPackageReferenceBundleFixture(
-  targetId: Exclude<DeploymentTargetId, "local"> = "testnet:stillness",
+  targetId: DeploymentTargetId = "testnet:stillness",
   overrides: Partial<PackageReferenceBundle> = {},
 ): PackageReferenceBundle {
-  const defaultEnvironmentLabel = targetId === "local:evefrontier"
-    ? "Local EVE Frontier"
+  const defaultEnvironmentLabel = targetId === "local"
+    ? "Localnet 0x1"
     : targetId === "testnet:stillness"
       ? "Stillness"
       : "Utopia";
@@ -168,7 +172,7 @@ export function createPackageReferenceBundleFixture(
 /**
  * Ordered deployment stages shared by tests.
  */
-export const DEPLOYMENT_STAGE_SEQUENCE = LOCAL_DEPLOYMENT_STAGE_SEQUENCE;
+export const DEPLOYMENT_STAGE_SEQUENCE = DEPLOY_GRADE_LOCAL_DEPLOYMENT_STAGE_SEQUENCE;
 
 export const DEPLOY_GRADE_LOCAL_STAGE_SEQUENCE = DEPLOY_GRADE_LOCAL_DEPLOYMENT_STAGE_SEQUENCE;
 

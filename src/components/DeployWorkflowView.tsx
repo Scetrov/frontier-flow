@@ -230,26 +230,27 @@ function getDeployActionCopy(input: {
   readonly canDeploy: boolean;
   readonly isDeploying: boolean;
   readonly isUpgrade: boolean;
-  readonly selectedTarget: DeploymentState["selectedTarget"];
+  readonly selectedTargetLabel: string;
 }) {
   const actionVerb = input.isUpgrade ? "Upgrade" : "Deploy";
   const inProgressVerb = input.isUpgrade ? "Upgrading" : "Deploying";
 
   return {
-    actionLabel: input.isDeploying ? `${inProgressVerb} ${input.selectedTarget}` : `${actionVerb} ${input.selectedTarget}`,
+    actionLabel: input.isDeploying ? `${inProgressVerb} ${input.selectedTargetLabel}` : `${actionVerb} ${input.selectedTargetLabel}`,
     actionTitle: input.canDeploy
       ? undefined
-      : `Review blockers for ${input.selectedTarget} ${input.isUpgrade ? "upgrade" : "deployment"}`,
+      : `Review blockers for ${input.selectedTargetLabel} ${input.isUpgrade ? "upgrade" : "deployment"}`,
   };
 }
 
 function DeployWorkflowHeader({ deployment }: DeployWorkflowViewProps) {
   const isUpgrade = deployment.deploymentStatus?.status === "deployed";
+  const targetLabel = getDeploymentTarget(deployment.selectedTarget).label;
   const { actionLabel, actionTitle } = getDeployActionCopy({
     canDeploy: deployment.canDeploy,
     isDeploying: deployment.isDeploying,
     isUpgrade,
-    selectedTarget: deployment.selectedTarget,
+    selectedTargetLabel: targetLabel,
   });
 
   return (
@@ -263,7 +264,7 @@ function DeployWorkflowHeader({ deployment }: DeployWorkflowViewProps) {
           </p>
         </div>
         <div className="flex flex-wrap gap-3 text-[0.7rem] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
-          <span>Target: {deployment.selectedTarget}</span>
+          <span>Target: {targetLabel}</span>
           <span>{deployment.canDeploy ? "Ready to deploy" : "Review blockers before deploying"}</span>
           {deployment.isDeploying ? <span>Deployment in progress</span> : null}
         </div>

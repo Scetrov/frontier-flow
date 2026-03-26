@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ConnectModal,
   useCurrentAccount,
@@ -8,6 +8,7 @@ import {
 } from "@mysten/dapp-kit";
 
 import type { DeploymentTargetId } from "../compiler/types";
+import { getLocalEnvironmentConfigSnapshot, subscribeToLocalEnvironmentChanges } from "../data/localEnvironment";
 import { refreshPublishedWorldPackageManifest, shouldRefreshPublishedWorldPackageManifest } from "../data/packageReferences";
 import { useTargetBalance } from "../hooks/useTargetBalance";
 import { formatAddress } from "../utils/formatAddress";
@@ -140,6 +141,11 @@ function useResolvedCharacterName(
   selectedDeploymentTarget: DeploymentTargetId,
   onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void,
 ): string | null {
+  const localEnvironmentSnapshot = useSyncExternalStore(
+    subscribeToLocalEnvironmentChanges,
+    () => getLocalEnvironmentConfigSnapshot() ?? "",
+    () => "",
+  );
   const [characterNameState, setCharacterNameState] = useState<{
     readonly targetId: DeploymentTargetId;
     readonly value: string | null;
@@ -193,7 +199,7 @@ function useResolvedCharacterName(
     return () => {
       controller.abort();
     };
-  }, [account, onDetectedDeploymentTarget, selectedDeploymentTarget]);
+  }, [account, localEnvironmentSnapshot, onDetectedDeploymentTarget, selectedDeploymentTarget]);
 
   return account !== null
     && characterNameState !== null

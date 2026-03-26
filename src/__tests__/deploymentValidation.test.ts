@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { saveLocalEnvironmentConfig } from "../data/localEnvironment";
 import { getPackageReferenceBundle } from "../data/packageReferences";
 import { createDeploymentValidationResult, validatePackageReferenceBundle } from "../utils/deploymentValidation";
 
@@ -56,10 +57,12 @@ describe("deploymentValidation", () => {
 
     expect(validation.requiredInputs).toEqual([
       "current compiled bytecode artifact",
+      "published package references for localnet:0xcf6b...",
       "available local validator",
     ]);
     expect(validation.resolvedInputs).toEqual([
       "current compiled bytecode artifact",
+      "published package references for localnet:0xcf6b...",
     ]);
     expect(validation.blockers[0]).toMatchObject({
       code: "local-target-unavailable",
@@ -79,13 +82,44 @@ describe("deploymentValidation", () => {
 
     expect(validation.requiredInputs).toEqual([
       "current compiled bytecode artifact",
+      "published package references for localnet:0xcf6b...",
       "available local validator",
     ]);
     expect(validation.blockers).toEqual([]);
     expect(validation.resolvedInputs).toEqual([
       "current compiled bytecode artifact",
+      "published package references for localnet:0xcf6b...",
       "available local validator",
     ]);
+  });
+
+  it("requires a wallet for local deployment when ephemeral signing is disabled", () => {
+    saveLocalEnvironmentConfig(window.localStorage, {
+      rpcUrl: "http://localhost:9000",
+      graphQlUrl: "http://localhost:9125/graphql",
+      worldPackageId: "0xabc123",
+      worldPackageVersion: "0.0.18",
+      useEphemeralKeypair: false,
+    });
+
+    const validation = createDeploymentValidationResult({
+      artifactReady: true,
+      artifactHasBytecode: true,
+      hasAvailableWallets: true,
+      hasConnectedWallet: false,
+      targetId: "local",
+    });
+
+    expect(validation.requiredInputs).toEqual([
+      "current compiled bytecode artifact",
+      "connected Sui wallet for localnet:0xabc1...",
+      "published package references for localnet:0xabc1...",
+      "available local validator",
+    ]);
+    expect(validation.blockers[0]).toMatchObject({
+      code: "wallet-required",
+    });
+    expect(validation.blockers[0]?.message).toContain("Connect a Sui-compatible wallet before deploying to localnet:0xabc1...");
   });
 
   it("accepts maintained remote bundles that use object IDs for registries", () => {

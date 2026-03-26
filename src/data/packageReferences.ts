@@ -1,4 +1,13 @@
 import type { PackageReferenceBundle } from "../compiler/types";
+import {
+  DEFAULT_LOCAL_GRAPHQL_URL,
+  DEFAULT_LOCAL_WORLD_PACKAGE_ID,
+  DEFAULT_LOCAL_WORLD_PACKAGE_VERSION,
+  getLocalEnvironmentConfigSnapshot,
+  getLocalDeploymentEnvironmentLabel,
+  loadLocalEnvironmentConfig,
+  toWorldPackageVersionTag,
+} from "./localEnvironment";
 
 const RESOURCE_SOURCE = "https://docs.evefrontier.com/tools/resources";
 const LAST_VERIFIED_ON = "2026-03-21";
@@ -7,6 +16,7 @@ export const WORLD_PACKAGE_OVERRIDE_STORAGE_KEY = "frontier-flow:world-package-o
 
 let cachedBundleMap: ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> | null = null;
 let cachedOverrideSnapshot: string | null | undefined;
+let cachedLocalEnvironmentSnapshot: string | null | undefined;
 
 type RemoteDeploymentTargetId = Exclude<PackageReferenceBundle["targetId"], "local">;
 
@@ -22,15 +32,15 @@ interface StoredWorldPackageOverrides {
  */
 export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
   {
-    targetId: "local:evefrontier",
-    environmentLabel: "Local EVE Frontier",
-    worldPackageId: "0xcf6b5da20b0c6540895b79b91580ec0734fcfa4298848f0e8382ef217965bfd5",
-    originalWorldPackageId: "0xcf6b5da20b0c6540895b79b91580ec0734fcfa4298848f0e8382ef217965bfd5",
+    targetId: "local",
+    environmentLabel: getLocalDeploymentEnvironmentLabel(),
+    worldPackageId: DEFAULT_LOCAL_WORLD_PACKAGE_ID,
+    originalWorldPackageId: DEFAULT_LOCAL_WORLD_PACKAGE_ID,
     objectRegistryId: "0xc344526dd6e14297453e53195f4b9c46c0d31200ed8805195e183f796d349a63",
     serverAddressRegistryId: "0x0000000000000000000000000000000000000000000000000000000000000000",
-    sourceVersionTag: "v0.0.18",
+    sourceVersionTag: toWorldPackageVersionTag(DEFAULT_LOCAL_WORLD_PACKAGE_VERSION),
     toolchainVersion: "1.67.1",
-    source: "local",
+    source: DEFAULT_LOCAL_GRAPHQL_URL,
     lastVerifiedOn: LAST_VERIFIED_ON,
   },
   {
@@ -139,8 +149,21 @@ function extractPublishedSectionValue(manifest: string, sectionName: string, fie
 
 function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): readonly PackageReferenceBundle[] {
   const storedOverrides = getStoredWorldPackageOverrides(storage);
+  const localEnvironment = loadLocalEnvironmentConfig(storage);
 
   return PACKAGE_REFERENCE_BUNDLES.map((bundle) => {
+    if (bundle.targetId === "local") {
+      return {
+        ...bundle,
+        environmentLabel: getLocalDeploymentEnvironmentLabel(localEnvironment),
+        worldPackageId: localEnvironment.worldPackageId,
+        originalWorldPackageId: localEnvironment.worldPackageId,
+        sourceVersionTag: toWorldPackageVersionTag(localEnvironment.worldPackageVersion),
+        source: localEnvironment.graphQlUrl,
+        lastVerifiedOn: localEnvironment.updatedAt.slice(0, 10),
+      } satisfies PackageReferenceBundle;
+    }
+
     const overrideWorldPackageId = storedOverrides?.worldPackageIds[bundle.targetId as RemoteDeploymentTargetId];
     if (overrideWorldPackageId === undefined) {
       return bundle;
@@ -157,12 +180,18 @@ function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): read
 
 function createPackageReferenceBundleMap(storage = getBrowserStorage()): ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> {
   const overrideSnapshot = getStoredWorldPackageOverridesSnapshot(storage);
+  const localEnvironmentSnapshot = getLocalEnvironmentConfigSnapshot(storage);
 
-  if (cachedBundleMap !== null && cachedOverrideSnapshot === overrideSnapshot) {
+  if (
+    cachedBundleMap !== null
+    && cachedOverrideSnapshot === overrideSnapshot
+    && cachedLocalEnvironmentSnapshot === localEnvironmentSnapshot
+  ) {
     return cachedBundleMap;
   }
 
   cachedOverrideSnapshot = overrideSnapshot;
+  cachedLocalEnvironmentSnapshot = localEnvironmentSnapshot;
   cachedBundleMap = new Map(getResolvedPackageReferenceBundles(storage).map((bundle) => [bundle.targetId, bundle]));
 
   return cachedBundleMap;
@@ -227,7 +256,7 @@ export function getPackageReferenceBundleMap(): ReadonlyMap<PackageReferenceBund
 }
 
 /**
- * Resolve the published package reference bundle for a non-local deployment target.
+ * Resolve the published package reference bundle for a deployment target.
  */
 export function getPackageReferenceBundle(targetId: PackageReferenceBundle["targetId"]): PackageReferenceBundle {
   const bundle = createPackageReferenceBundleMap().get(targetId);

@@ -9,6 +9,7 @@ import type {
 } from "@mysten/dapp-kit";
 import type { signTransaction as signTransactionFunction } from "@mysten/wallet-standard";
 
+import { saveLocalEnvironmentConfig } from "../data/localEnvironment";
 import { useDeployment } from "../hooks/useDeployment";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
 
@@ -81,6 +82,7 @@ const connectedAccount = {
 describe("useDeployment blocker handling", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    window.localStorage.clear();
     mockUseCurrentAccount.mockReturnValue(null);
     mockUseCurrentWallet.mockReturnValue(createDisconnectedWalletState());
     mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
@@ -96,6 +98,7 @@ describe("useDeployment blocker handling", () => {
     });
     vi.useRealTimers();
     vi.clearAllMocks();
+    window.localStorage.clear();
     window.history.replaceState({}, "", "/");
   });
 
@@ -206,6 +209,27 @@ describe("useDeployment blocker handling", () => {
 
     expect(result.current.canDeploy).toBe(true);
     expect(result.current.blockerReasons).toEqual([]);
+  });
+
+  it("requires a connected wallet for local deployment when ephemeral signing is disabled", () => {
+    saveLocalEnvironmentConfig(window.localStorage, {
+      rpcUrl: "http://localhost:9000",
+      graphQlUrl: "http://localhost:9125/graphql",
+      worldPackageId: "0xabc123",
+      worldPackageVersion: "0.0.18",
+      useEphemeralKeypair: false,
+    });
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "local",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    expect(result.current.canDeploy).toBe(false);
+    expect(result.current.blockerReasons[0]).toContain(
+      "Connect a Sui-compatible wallet before deploying to localnet:0xabc1...",
+    );
   });
 
   it("updates deployment status previews when the selected target changes before deployment", () => {

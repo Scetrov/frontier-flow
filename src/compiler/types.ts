@@ -38,7 +38,7 @@ export interface SourceMapEntry {
   readonly context?: string;
 }
 
-export type DeploymentTargetId = "local" | "local:evefrontier" | "testnet:stillness" | "testnet:utopia";
+export type DeploymentTargetId = "local" | "testnet:stillness" | "testnet:utopia";
 
 export interface DeploymentTarget {
   readonly id: DeploymentTargetId;
@@ -51,7 +51,7 @@ export interface DeploymentTarget {
 }
 
 export interface PackageReferenceBundle {
-  readonly targetId: Exclude<DeploymentTargetId, "local">;
+  readonly targetId: DeploymentTargetId;
   readonly environmentLabel: string;
   readonly worldPackageId: string;
   readonly originalWorldPackageId: string;
@@ -76,7 +76,7 @@ export interface ResolvedWorldSource {
 }
 
 export interface CachedDependencyResolution {
-  readonly targetId: Exclude<DeploymentTargetId, "local">;
+  readonly targetId: DeploymentTargetId;
   readonly sourceVersionTag: string;
   readonly resolvedDependencies: ResolvedDependencies;
   readonly resolvedAt: number;
@@ -115,7 +115,7 @@ export interface DeployGradeCompileResult {
   readonly dependencies: readonly string[];
   readonly digest: readonly number[];
   readonly resolvedDependencies: ResolvedDependencies;
-  readonly targetId: Exclude<DeploymentTargetId, "local">;
+  readonly targetId: DeploymentTargetId;
   readonly sourceVersionTag: string;
   readonly builderToolchainVersion: string;
   readonly compiledAt: number;

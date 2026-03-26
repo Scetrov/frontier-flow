@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { getLocalDeploymentEnvironmentLabel, saveLocalEnvironmentConfig } from "../data/localEnvironment";
 
 import {
   PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
@@ -68,6 +69,12 @@ original-id = "0xddd"
   });
 
   it("exposes deploy-grade source metadata for each supported target", () => {
+    expect(getPackageReferenceBundle("local")).toMatchObject({
+      environmentLabel: getLocalDeploymentEnvironmentLabel(),
+      originalWorldPackageId: "0xcf6b5da20b0c6540895b79b91580ec0734fcfa4298848f0e8382ef217965bfd5",
+      sourceVersionTag: "v0.0.18",
+      toolchainVersion: "1.67.1",
+    });
     expect(getPackageReferenceBundle("testnet:stillness")).toMatchObject({
       originalWorldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
       sourceVersionTag: "v0.0.18",
@@ -77,6 +84,32 @@ original-id = "0xddd"
       originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
       sourceVersionTag: "v0.0.21",
       toolchainVersion: "1.68.0",
+    });
+  });
+
+  it("applies saved local environment overrides to the local bundle", () => {
+    saveLocalEnvironmentConfig(window.localStorage, {
+      rpcUrl: "http://localhost:9000",
+      graphQlUrl: "http://localhost:9125/graphql",
+      worldPackageId: "0xabc123",
+      worldPackageVersion: "0.0.21",
+      useEphemeralKeypair: true,
+    });
+
+    expect(getPackageReferenceBundle("local")).toMatchObject({
+      environmentLabel: getLocalDeploymentEnvironmentLabel({
+        version: 1,
+        rpcUrl: "http://localhost:9000",
+        graphQlUrl: "http://localhost:9125/graphql",
+        worldPackageId: "0xabc123",
+        worldPackageVersion: "0.0.21",
+        useEphemeralKeypair: true,
+        updatedAt: "2026-03-26T00:00:00.000Z",
+      }),
+      worldPackageId: "0xabc123",
+      originalWorldPackageId: "0xabc123",
+      sourceVersionTag: "v0.0.21",
+      source: "http://localhost:9125/graphql",
     });
   });
 
