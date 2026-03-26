@@ -35,13 +35,13 @@
 
 ### Implementation for User Story 1
 
-- [X] T004 [P] [US1] Create world source fetcher module: wrap builder's fetchPackageFromGitHub() with in-memory session-scoped cache keyed by versionTag, support AbortSignal in src/deployment/worldSourceFetcher.ts
-- [X] T005 [P] [US1] Write unit tests for world source fetcher (mock fetchPackageFromGitHub, verify cache hit/miss, abort signal cancellation, error wrapping) in src/**tests**/worldSourceFetcher.test.ts
-- [X] T006 [US1] Create deploy-grade compiler orchestration: derive rootGit from target metadata, call resolveDependencies() with extension files + rootGit, cache ResolvedDependencies keyed by targetId+sourceVersionTag, call buildMovePackage() with resolvedDependencies, return DeployGradeCompileResult with modules/dependencies/digest/provenance in src/compiler/deployGradeCompiler.ts
-- [X] T007 [P] [US1] Write unit tests for deploy-grade compiler (mock builder resolveDependencies and buildMovePackage, verify rootGit derivation from PackageReferenceBundle, verify resolution cache reuse, verify Move.toml rewrite for git dependency) in src/**tests**/compiler/deployGradeCompiler.test.ts
-- [X] T008 [US1] Update publishRemote to accept DeployGradeCompileResult (modules, dependencies, digest) directly for transaction construction instead of re-compiling from artifact in src/deployment/publishRemote.ts
-- [X] T009 [US1] Update publishRemote tests to cover deploy-grade compilation input path (pass DeployGradeCompileResult, verify transaction uses correct dependency IDs) in src/**tests**/publishRemote.test.ts
-- [X] T010 [US1] Integrate deploy-grade compilation into deployment executor: add fetch-world-source, resolve-dependencies, and deploy-grade-compile stages for remote targets; keep existing shim path for local targets in src/deployment/executor.ts
+- [X] T004 [P] [US1] Create world source fetcher module: wrap builder's fetchPackageFromGitHub() with in-memory session-scoped cache keyed by versionTag, support AbortSignal in `src/deployment/worldSourceFetcher.ts`
+- [X] T005 [P] [US1] Write unit tests for world source fetcher (mock fetchPackageFromGitHub, verify cache hit/miss, abort signal cancellation, error wrapping) in `src/__tests__/worldSourceFetcher.test.ts`
+- [X] T006 [US1] Create deploy-grade compiler orchestration: derive rootGit from target metadata, call resolveDependencies() with extension files + rootGit, cache ResolvedDependencies keyed by targetId+sourceVersionTag, call buildMovePackage() with resolvedDependencies, return DeployGradeCompileResult with modules/dependencies/digest/provenance in `src/compiler/deployGradeCompiler.ts`
+- [X] T007 [P] [US1] Write unit tests for deploy-grade compiler (mock builder resolveDependencies and buildMovePackage, verify rootGit derivation from PackageReferenceBundle, verify resolution cache reuse, verify Move.toml rewrite for git dependency) in `src/__tests__/compiler/deployGradeCompiler.test.ts`
+- [X] T008 [US1] Update publishRemote to accept DeployGradeCompileResult (modules, dependencies, digest) directly for transaction construction instead of re-compiling from artifact in `src/deployment/publishRemote.ts`
+- [X] T009 [US1] Update publishRemote tests to cover deploy-grade compilation input path (pass DeployGradeCompileResult, verify transaction uses correct dependency IDs) in `src/__tests__/publishRemote.test.ts`
+- [X] T010 [US1] Integrate deploy-grade compilation into deployment executor: add fetch-world-source, resolve-dependencies, and deploy-grade-compile stages for remote targets; keep existing shim path for local targets in `src/deployment/executor.ts`
 - [X] T010a [US1] Add post-deployment TurretAuth verification to confirmation flow: after publish confirmation, poll RPC to verify the published package's `TurretAuth` struct is queryable on-chain (poll every 2s, max 30s timeout, 3 retries with exponential backoff) before marking deployment as succeeded (FR-015) in src/deployment/confirmation.ts
 - [X] T011 [US1] Update useDeployment hook to invoke deploy-grade path when deployment target is remote (testnet:stillness or testnet:utopia), pass progress events from DeployCompileProgressEvent to stage model in src/hooks/useDeployment.ts
 
@@ -57,10 +57,10 @@
 
 ### Implementation for User Story 2
 
-- [X] T012 [P] [US2] Extend existing authorizationTransaction module to support deploy-grade package references: update `buildAuthorizeTurretTransaction()` to accept the deployed extension package ID from `DeployGradeCompileResult`, add already-authorized detection by checking turret extension type against deployed `TurretAuth` witness (FR-018), ensure per-turret failure isolation (FR-019) in src/utils/authorizationTransaction.ts
-- [X] T013 [P] [US2] Extend existing authorization transaction tests to cover deploy-grade input path (verify transaction uses deploy-grade package ID, already-authorized detection for same extension, per-turret failure isolation, sequential batch processing, target-switch cache invalidation) in src/**tests**/authorizationTransaction.test.ts
-- [X] T014 [US2] Extend existing useAuthorization hook to integrate deploy-grade deployment state: accept `DeployGradeCompileResult` or `PersistedDeploymentState` as the extension source, expose batch progress/results/summary, support abort in src/hooks/useAuthorization.ts
-- [X] T015 [US2] Extend existing useAuthorization hook tests for deploy-grade integration (state transitions with deploy-grade package ID, batch progress aggregation, abort handling, error state per turret) in src/**tests**/useAuthorization.test.ts
+- [X] T012 [P] [US2] Extend existing authorizationTransaction module to support deploy-grade package references: update `buildAuthorizeTurretTransaction()` to accept the deployed extension package ID from `DeployGradeCompileResult`, add already-authorized detection by checking turret extension type against deployed `TurretAuth` witness (FR-018), ensure per-turret failure isolation (FR-019) in `src/utils/authorizationTransaction.ts`
+- [X] T013 [P] [US2] Extend existing authorization transaction tests to cover deploy-grade input path (verify transaction uses deploy-grade package ID, already-authorized detection for same extension, per-turret failure isolation, sequential batch processing, target-switch cache invalidation) in `src/__tests__/authorizationTransaction.test.ts`
+- [X] T014 [US2] Extend existing useAuthorization hook to integrate deploy-grade deployment state: accept `DeployGradeCompileResult` or `PersistedDeploymentState` as the extension source, expose batch progress/results/summary, support abort in `src/hooks/useAuthorization.ts`
+- [X] T015 [US2] Extend existing useAuthorization hook tests for deploy-grade integration (state transitions with deploy-grade package ID, batch progress aggregation, abort handling, error state per turret) in `src/__tests__/useAuthorization.test.ts`
 
 **Checkpoint**: User Stories 1 AND 2 complete — full compile → deploy → authorize turret flow works within a single session
 
@@ -74,7 +74,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Add regression tests verifying authoring compilation uses local world shim with zero network calls, does not import or invoke deploy-grade compiler or worldSourceFetcher, and completes within existing performance envelope in src/**tests**/compiler/moveCompiler.test.ts
+- [ ] T016 [US3] Add regression tests verifying authoring compilation uses local world shim with zero network calls, does not import or invoke deploy-grade compiler or worldSourceFetcher, and completes within existing performance envelope in `src/__tests__/compiler/moveCompiler.test.ts`
 
 **Checkpoint**: Authoring path confirmed isolated from deploy-grade path — no regression risk
 
@@ -88,9 +88,9 @@
 
 ### Implementation for User Story 4
 
-- [ ] T017 [US4] Implement error classification in deploy-grade compiler: catch and wrap builder errors into DependencyResolutionError (network/CORS/rate-limit/stale cache), DeployCompilationError (linking mismatch), and ToolchainMismatchWarning (informational); attach user-facing messages with suggested actions in src/compiler/deployGradeCompiler.ts
-- [ ] T018 [US4] Surface classified deploy-grade errors in deployment executor as distinct stage failures (resolution-failed vs compile-failed vs wallet-failed vs network-failed) with user-readable descriptions in src/deployment/executor.ts
-- [ ] T019 [P] [US4] Write tests for error classification paths (network unreachable wraps to DependencyResolutionError, stale cache triggers re-resolve, CORS rejection classified correctly, verification mismatch classified as linking error) in src/**tests**/compiler/deployGradeCompiler.test.ts
+- [ ] T017 [US4] Implement error classification in deploy-grade compiler: catch and wrap builder errors into DependencyResolutionError (network/CORS/rate-limit/stale cache), DeployCompilationError (linking mismatch), and ToolchainMismatchWarning (informational); attach user-facing messages with suggested actions in `src/compiler/deployGradeCompiler.ts`
+- [ ] T018 [US4] Surface classified deploy-grade errors in deployment executor as distinct stage failures (resolution-failed vs compile-failed vs wallet-failed vs network-failed) with user-readable descriptions in `src/deployment/executor.ts`
+- [ ] T019 [P] [US4] Write tests for error classification paths (network unreachable wraps to DependencyResolutionError, stale cache triggers re-resolve, CORS rejection classified correctly, verification mismatch classified as linking error) in `src/__tests__/compiler/deployGradeCompiler.test.ts`
 
 **Checkpoint**: Error feedback implemented — users can distinguish resolution failures from other deployment errors
 
@@ -104,10 +104,10 @@
 
 ### Implementation for User Story 5
 
-- [X] T020 [P] [US5] Extend existing deployment state persistence module: add deploy-grade fields to `StoredDeploymentState` (sourceVersionTag, builderToolchainVersion), update `parseStoredDeploymentState` to handle new fields, ensure backward compatibility with existing schema version 1 data under localStorage key `frontier-flow:deployment` in src/utils/deploymentStateStorage.ts
-- [X] T021 [P] [US5] Extend existing deployment state persistence tests to cover deploy-grade fields (save/load roundtrip with new fields, backward compatibility with pre-deploy-grade data, staleness invalidation when moduleName or targetId changes, graceful handling of corrupt localStorage data) in src/**tests**/deploymentStateStorage.test.ts
-- [X] T022 [US5] Integrate state persistence into useDeployment hook: save PersistedDeploymentState on successful deploy, load and validate on mount, invalidate when generated contract name or target changes in src/hooks/useDeployment.ts
-- [X] T023 [US5] Update useDeployment hook tests for state persistence lifecycle (restore on mount, invalidate on contract change, clear on target switch) in src/**tests**/useDeployment.success.test.ts
+- [X] T020 [P] [US5] Extend existing deployment state persistence module: add deploy-grade fields to `StoredDeploymentState` (sourceVersionTag, builderToolchainVersion), update `parseStoredDeploymentState` to handle new fields, ensure backward compatibility with existing schema version 1 data under localStorage key `frontier-flow:deployment` in `src/utils/deploymentStateStorage.ts`
+- [X] T021 [P] [US5] Extend existing deployment state persistence tests to cover deploy-grade fields (save/load roundtrip with new fields, backward compatibility with pre-deploy-grade data, staleness invalidation when moduleName or targetId changes, graceful handling of corrupt localStorage data) in `src/__tests__/deploymentStateStorage.test.ts`
+- [X] T022 [US5] Integrate state persistence into useDeployment hook: save PersistedDeploymentState on successful deploy, load and validate on mount, invalidate when generated contract name or target changes in `src/hooks/useDeployment.ts`
+- [X] T023 [US5] Update useDeployment hook tests for state persistence lifecycle (restore on mount, invalidate on contract change, clear on target switch) in `src/__tests__/useDeployment.success.test.ts`
 
 **Checkpoint**: Deployment state survives browser reload — authorize tab works across sessions
 

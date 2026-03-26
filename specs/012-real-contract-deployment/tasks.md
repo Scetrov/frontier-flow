@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/012-real-contract-deployment/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
-**Tests**: Tests are required for this feature because the specification and constitution emphasize correctness, repeatability, and testability.
+`__tests__`: Tests are required for this feature because the specification and constitution emphasize correctness, repeatability, and testability.
 
 **Organization**: Tasks are grouped by user story so each story can be implemented and validated independently.
 

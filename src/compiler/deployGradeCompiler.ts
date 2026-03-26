@@ -23,6 +23,7 @@ const RESOLVED_WORLD_PACKAGE_NAME = "world";
 const RESOLVED_WORLD_TEST_PREFIX_PATTERN = /^dependencies\/world\/tests\//i;
 const RESOLVED_WORLD_ACCESS_CONTROL_PATH_PATTERN = /^dependencies\/world\/sources\/access\/access_control\.move$/i;
 const RESOLVED_WORLD_PUBLISHED_TOML_PATTERN = /^dependencies\/world\/published\.toml$/i;
+const RESOLVED_WORLD_MOVE_TOML_PATTERN = /^dependencies\/world\/Move\.toml$/i;
 const UNSUPPORTED_CHARACTER_TRANSFER_CHECK = /let is_character =[\s\S]*?assert!\(!is_character, ECharacterTransfer\);/;
 const COMPATIBLE_CHARACTER_TRANSFER_CHECK = [
   "let is_character = false;",
@@ -192,34 +193,76 @@ function patchWorldPublishedAddress(
       return dependencyPackage;
     }
 
-    const publishedTomlPath = Object.keys(snapshot.files).find((filePath) =>
+    const nextFiles = { ...snapshot.files };
+    let packageChanged = false;
+
+    // Patch Published.toml if present
+    const publishedTomlPath = Object.keys(nextFiles).find((filePath) =>
       RESOLVED_WORLD_PUBLISHED_TOML_PATTERN.test(filePath),
     );
 
-    if (publishedTomlPath === undefined) {
-      return dependencyPackage;
+    if (publishedTomlPath !== undefined) {
+      const existingContent = nextFiles[publishedTomlPath];
+      if (typeof existingContent === "string") {
+        const patched = existingContent
+          .replace(/(published-at\s*=\s*")[^"]+(")/g, (_, before, after) => `${before}${worldPackageId}${after}`)
+          .replace(/(original-id\s*=\s*")[^"]+(")/g, (_, before, after) => `${before}${worldPackageId}${after}`);
+
+        if (patched !== existingContent) {
+          nextFiles[publishedTomlPath] = patched;
+          packageChanged = true;
+        }
+      }
     }
 
-    const existingContent = snapshot.files[publishedTomlPath];
-    if (typeof existingContent !== "string") {
-      return dependencyPackage;
+    // Patch Move.toml: add published-at and update world/World addresses
+    const moveTomlPath = Object.keys(nextFiles).find((filePath) =>
+      RESOLVED_WORLD_MOVE_TOML_PATTERN.test(filePath),
+    );
+
+    if (moveTomlPath !== undefined) {
+      const moveTomlContent = nextFiles[moveTomlPath];
+      if (typeof moveTomlContent === "string") {
+        let patchedMoveToml = moveTomlContent;
+
+        // Add published-at to [package] section if not present
+        if (!/published-at\s*=/.test(patchedMoveToml)) {
+          patchedMoveToml = patchedMoveToml.replace(
+            /(\[package\][^\[]*?)((?=\n\[)|\n*$)/s,
+            (_, packageSection, rest) => `${packageSection.trimEnd()}\npublished-at = "${worldPackageId}"\n${rest}`,
+          );
+        } else {
+          patchedMoveToml = patchedMoveToml.replace(
+            /(published-at\s*=\s*")[^"]+(")/,
+            `$1${worldPackageId}$2`,
+          );
+        }
+
+        // Update world and World address entries to the actual on-chain address
+        patchedMoveToml = patchedMoveToml.replace(
+          /^(world\s*=\s*")0x0+(")/m,
+          `$1${worldPackageId}$2`,
+        );
+        patchedMoveToml = patchedMoveToml.replace(
+          /^(World\s*=\s*")0x0+(")/m,
+          `$1${worldPackageId}$2`,
+        );
+
+        if (patchedMoveToml !== moveTomlContent) {
+          nextFiles[moveTomlPath] = patchedMoveToml;
+          packageChanged = true;
+        }
+      }
     }
 
-    const patched = existingContent
-      .replace(/(published-at\s*=\s*")[^"]+(")/g, (_, before, after) => `${before}${worldPackageId}${after}`)
-      .replace(/(original-id\s*=\s*")[^"]+(")/g, (_, before, after) => `${before}${worldPackageId}${after}`);
-
-    if (patched === existingContent) {
+    if (!packageChanged) {
       return dependencyPackage;
     }
 
     changed = true;
     return {
       ...dependencyPackage,
-      files: {
-        ...snapshot.files,
-        [publishedTomlPath]: patched,
-      },
+      files: nextFiles,
     };
   });
 

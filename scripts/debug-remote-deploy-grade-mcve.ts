@@ -3,7 +3,11 @@ import type { Transaction } from "@mysten/sui/transactions";
 
 import { compileableSmartTurretExtensions, type GraphFixture } from "../src/__fixtures__/graphs/smartTurretExtensionFixtures";
 import { compileForDeployment } from "../src/compiler/deployGradeCompiler";
-import { compilePipeline } from "../src/compiler/pipeline";
+import { emitMove } from "../src/compiler/emitter";
+import { buildIrGraph } from "../src/compiler/irBuilder";
+import { optimiseGraph } from "../src/compiler/optimiser";
+import { collectSanitizationDiagnostics, sanitizeGraph } from "../src/compiler/sanitizer";
+import { validateGraph } from "../src/compiler/validator";
 import { getDeploymentTarget } from "../src/data/deploymentTargets";
 import { createDefaultContractFlow } from "../src/data/kitchenSinkFlow";
 import { createFlowNodeData, getNodeDefinition } from "../src/data/node-definitions";
@@ -20,16 +24,22 @@ interface ScriptOptions {
   readonly targetId: ScriptTargetId;
   readonly sender: string;
   readonly resolveTransaction: boolean;
+  readonly worldPackageIdOverride: string | null;
+  readonly rpcUrlOverride: string | null;
 }
 
 function printHelp(): void {
   console.log([
-    "Usage: bun run debug:remote-deploy-grade-mcve --fixture <id> --target <testnet:stillness|testnet:utopia|local:evefrontier> [--sender <0x...>] [--resolve-transaction]",
+    "Usage: bun run debug:remote-deploy-grade-mcve --fixture <id> --target <testnet:stillness|testnet:utopia|local:evefrontier> [--sender <0x...>] [--resolve-transaction] [--world-package-id <0x...>] [--rpc-url <url>]",
     "",
     "Targets:",
     "  testnet:stillness      deploy-grade compile + dry-run transaction (use --sender for RPC resolve)",
     "  testnet:utopia         deploy-grade compile + dry-run transaction",
     "  local:evefrontier      deploy-grade compile + keypair-signed publish to http://127.0.0.1:9000 (use --resolve-transaction to actually publish)",
+    "",
+    "Overrides:",
+    "  --world-package-id     Override the world package ID for the selected target (e.g. for a localnet with a different deployment)",
+    "  --rpc-url              Override the RPC URL for the selected target",
     "",
     "Note: for local:evefrontier the --sender arg is ignored; a fresh ephemeral keypair is generated and funded via the local faucet.",
     "",
@@ -44,6 +54,8 @@ function parseArgs(argv: readonly string[]): ScriptOptions {
   let targetId: ScriptTargetId = "testnet:stillness";
   let sender = "0x1111111111111111111111111111111111111111111111111111111111111111";
   let resolveTransaction = false;
+  let worldPackageIdOverride: string | null = null;
+  let rpcUrlOverride: string | null = null;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -77,9 +89,21 @@ function parseArgs(argv: readonly string[]): ScriptOptions {
     if (arg === "--resolve-transaction") {
       resolveTransaction = true;
     }
+
+    if (arg === "--world-package-id") {
+      worldPackageIdOverride = argv[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--rpc-url") {
+      rpcUrlOverride = argv[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
   }
 
-  return { fixtureId, targetId, sender, resolveTransaction };
+  return { fixtureId, targetId, sender, resolveTransaction, worldPackageIdOverride, rpcUrlOverride };
 }
 
 function createFlowNode(id: string, type: string, position: { readonly x: number; readonly y: number }): FlowNode {
@@ -192,29 +216,84 @@ function logCompileSummary(input: {
 async function main(): Promise<void> {
   const options = parseArgs(Bun.argv.slice(2));
   const selection = resolveFixtureFlow(options.fixtureId);
-  const pipelineResult = await compilePipeline({
-    nodes: selection.flow.nodes,
-    edges: selection.flow.edges,
-    moduleName: selection.moduleName,
-  });
 
-  if (pipelineResult.status.state !== "compiled" || pipelineResult.artifact == null) {
-    const diagnostics = pipelineResult.diagnostics.map((diagnostic) => diagnostic.rawMessage).join("\n\n");
-    throw new Error(`Compilation failed for fixture '${selection.fixtureName}'.\n${diagnostics}`);
+  // Use emitter-only path: IR → validate → sanitize → optimize → emit
+  // Skip the WASM authoring-time compilation since deploy-grade recompiles from source
+  const irGraph = buildIrGraph(selection.flow.nodes, selection.flow.edges, selection.moduleName);
+  const validation = validateGraph(irGraph);
+  if (!validation.valid) {
+    throw new Error(`IR validation failed for fixture '${selection.fixtureName}':\n${validation.diagnostics.map((d) => d.rawMessage).join("\n")}`);
+  }
+  const sanitizationDiagnostics = collectSanitizationDiagnostics(irGraph);
+  if (sanitizationDiagnostics.some((d) => d.severity === "error")) {
+    throw new Error(`Sanitization failed for fixture '${selection.fixtureName}':\n${sanitizationDiagnostics.map((d) => d.rawMessage).join("\n")}`);
+  }
+  const sanitizedGraph = sanitizeGraph(irGraph);
+  const { graph: optimisedGraph } = optimiseGraph(sanitizedGraph);
+  const emitted = emitMove(optimisedGraph);
+  const artifact = emitted.artifact;
+
+  console.log(`emitter output: ${artifact.moduleName} (${artifact.sourceFiles?.length ?? 0} source files)`);
+  console.log(`move source:\n${artifact.moveSource}\n`);
+  console.log(`Move.toml:\n${artifact.moveToml}\n`);
+  console.log(`source files:`);
+  for (const file of artifact.sourceFiles ?? []) {
+    console.log(`  ${file.path} (${file.content.length} chars)`);
   }
 
   const target = getDeploymentTarget(options.targetId);
-  const references = getPackageReferenceBundle(options.targetId);
+  const baseReferences = getPackageReferenceBundle(options.targetId);
+  const references = options.worldPackageIdOverride !== null
+    ? {
+      ...baseReferences,
+      worldPackageId: options.worldPackageIdOverride,
+      originalWorldPackageId: options.worldPackageIdOverride,
+    }
+    : baseReferences;
+  const effectiveRpcUrl = options.rpcUrlOverride ?? target.rpcUrl;
+
+  if (options.worldPackageIdOverride !== null) {
+    console.log(`world package id override: ${options.worldPackageIdOverride}`);
+  }
+  if (options.rpcUrlOverride !== null) {
+    console.log(`rpc url override: ${options.rpcUrlOverride}`);
+  }
+
   const worldSource = await fetchWorldSource({
     repositoryUrl: WORLD_CONTRACTS_REPOSITORY_URL,
     versionTag: references.sourceVersionTag,
     subdirectory: "contracts/world",
   });
   const deployGradeResult = await compileForDeployment({
-    artifact: pipelineResult.artifact,
+    artifact,
     worldSource,
     target: references,
   });
+
+  // Debug: inspect resolved dependency structure
+  if (deployGradeResult.resolvedDependencies) {
+    const depData = JSON.parse(deployGradeResult.resolvedDependencies.dependencies) as unknown[];
+    console.log(`\n--- resolved dependency packages (${String(depData.length)}) ---`);
+    for (const pkg of depData) {
+      const p = pkg as { name?: string; id?: string; files?: Record<string, string> };
+      const fileKeys = p.files !== undefined ? Object.keys(p.files) : [];
+      const publishedToml = fileKeys.find((k) => /published\.toml/i.test(k));
+      const moveToml = fileKeys.find((k) => /move\.toml/i.test(k));
+      console.log(`  package: ${p.name ?? "?"} id=${p.id ?? "?"} files=${String(fileKeys.length)}`);
+      console.log(`    all keys: ${fileKeys.join(", ")}`);
+      if (publishedToml !== undefined && p.files !== undefined) {
+        console.log(`    Published.toml path: ${publishedToml}`);
+        console.log(`    Published.toml content:\n${p.files[publishedToml]}`);
+      } else if (p.name?.toLowerCase() === "world") {
+        console.log("    NO Published.toml found in World package");
+      }
+      if (moveToml !== undefined && p.files !== undefined) {
+        console.log(`    Move.toml path: ${moveToml}`);
+        console.log(`    Move.toml content:\n${p.files[moveToml]}`);
+      }
+    }
+    console.log("--- end resolved dependency packages ---\n");
+  }
 
   logCompileSummary({
     fixtureName: selection.fixtureName,
@@ -230,7 +309,7 @@ async function main(): Promise<void> {
 
   const isLocal = options.targetId === "local:evefrontier";
   const network = isLocal ? "localnet" : "testnet";
-  const client = new SuiJsonRpcClient({ url: target.rpcUrl, network });
+  const client = new SuiJsonRpcClient({ url: effectiveRpcUrl, network });
 
   await publishToRemoteTarget({
     compileResult: deployGradeResult,
