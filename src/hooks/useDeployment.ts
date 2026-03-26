@@ -16,7 +16,7 @@ import type {
   DeploymentTargetId,
   GeneratedContractArtifact,
 } from "../compiler/types";
-import { DEFAULT_DEPLOYMENT_TARGET, getDeploymentTarget } from "../data/deploymentTargets";
+import { DEFAULT_DEPLOYMENT_TARGET, getDeploymentStageSequence, getDeploymentTarget } from "../data/deploymentTargets";
 import { resolvePackageReferenceBundle } from "../utils/deploymentValidation";
 import { confirmPublishedPackageWithClient } from "../deployment/confirmation";
 import { createDeploymentExecutor, type DeploymentExecutionResult } from "../deployment/executor";
@@ -34,24 +34,6 @@ interface UseDeploymentOptions {
   readonly status: CompilationStatus;
 }
 
-const LOCAL_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
-  "validating",
-  "preparing",
-  "signing",
-  "submitting",
-  "confirming",
-];
-
-const REMOTE_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
-  "validating",
-  "fetch-world-source",
-  "resolve-dependencies",
-  "deploy-grade-compile",
-  "signing",
-  "submitting",
-  "confirming",
-];
-
 const ACTIVE_STAGE_MESSAGE: Record<DeploymentStage, string> = {
   validating: "Validating deployment prerequisites.",
   preparing: "Preparing deployment payload.",
@@ -62,10 +44,6 @@ const ACTIVE_STAGE_MESSAGE: Record<DeploymentStage, string> = {
   submitting: "Submitting deployment transaction.",
   confirming: "Confirming deployment transaction.",
 };
-
-function getDeploymentStageSequence(targetId: DeploymentTargetId): readonly DeploymentStage[] {
-  return targetId === "local" ? LOCAL_DEPLOYMENT_STAGE_SEQUENCE : REMOTE_DEPLOYMENT_STAGE_SEQUENCE;
-}
 
 function getArtifactFromStatus(status: CompilationStatus): GeneratedContractArtifact | null {
   return status.state === "compiled" || status.state === "error"

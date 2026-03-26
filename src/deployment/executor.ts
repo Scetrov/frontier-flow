@@ -9,6 +9,7 @@ import type {
   PackageReferenceBundle,
 } from "../compiler/types";
 import { compileForDeployment } from "../compiler/deployGradeCompiler";
+import { usesDeployGradeCompilation, usesWalletSignedPublish } from "../data/deploymentTargets";
 import { createWorldSourceFromCachedResolution, getProjectCachedDependencyResolution } from "./dependencySnapshotLoader";
 import { fetchWorldSource } from "./worldSourceFetcher";
 import { confirmPublishedPackage, type DeploymentConfirmationRequest, type DeploymentConfirmationResult } from "./confirmation";
@@ -185,30 +186,23 @@ function reportInitialProgress(
   onProgress: ((progress: DeploymentExecutionProgress) => void) | undefined,
 ): DeploymentStage {
   reportProgress(onProgress, "validating", "Validating deployment prerequisites.");
-  const nextStage = request.target.supportsWalletSigning ? "fetch-world-source" : "preparing";
+  const nextStage = usesDeployGradeCompilation(request.target) ? "fetch-world-source" : "preparing";
   reportProgress(
     onProgress,
     nextStage,
-    request.target.supportsWalletSigning
+    usesDeployGradeCompilation(request.target)
       ? "Fetching the upstream world package source."
       : "Preparing deployment payload.",
   );
   return nextStage;
 }
 
-function createPublishMetadata(publishResult: LocalPublishResult | RemotePublishResult) {
-  return {
-    sourceVersionTag: "sourceVersionTag" in publishResult ? publishResult.sourceVersionTag : undefined,
-    builderToolchainVersion: "builderToolchainVersion" in publishResult ? publishResult.builderToolchainVersion : undefined,
-  };
-}
-
-async function executeRemotePublish(
+async function compileDeployGradeArtifact(
   request: DeploymentExecutionRequest,
   dependencies: DeploymentExecutorDependencies,
   setStage: (stage: DeploymentStage) => void,
   onProgress?: (progress: DeploymentExecutionProgress) => void,
-): Promise<RemotePublishResult> {
+): Promise<{ readonly compileResult: DeployGradeCompileResult; readonly worldSource: FetchWorldSourceResult }> {
   const references = request.references as PackageReferenceBundle;
   const cachedResolution = await dependencies.loadCachedResolution({ references });
   const worldSource = cachedResolution === null
@@ -227,6 +221,39 @@ async function executeRemotePublish(
     },
   });
 
+  return { compileResult, worldSource };
+}
+
+function createDeployGradeLocalArtifact(
+  artifact: GeneratedContractArtifact,
+  compileResult: DeployGradeCompileResult,
+): GeneratedContractArtifact {
+  const sourceFiles = artifact.sourceFiles?.filter((file) => !file.path.startsWith("deps/world/"));
+
+  return {
+    ...artifact,
+    sourceFiles,
+    bytecodeModules: [...compileResult.modules],
+    dependencies: [...compileResult.dependencies],
+  };
+}
+
+function createPublishMetadata(publishResult: LocalPublishResult | RemotePublishResult) {
+  return {
+    sourceVersionTag: "sourceVersionTag" in publishResult ? publishResult.sourceVersionTag : undefined,
+    builderToolchainVersion: "builderToolchainVersion" in publishResult ? publishResult.builderToolchainVersion : undefined,
+  };
+}
+
+async function executeRemotePublish(
+  request: DeploymentExecutionRequest,
+  dependencies: DeploymentExecutorDependencies,
+  setStage: (stage: DeploymentStage) => void,
+  onProgress?: (progress: DeploymentExecutionProgress) => void,
+): Promise<RemotePublishResult> {
+  const references = request.references as PackageReferenceBundle;
+  const { compileResult, worldSource } = await compileDeployGradeArtifact(request, dependencies, setStage, onProgress);
+
   setStage("signing");
   reportProgress(onProgress, "signing", "Waiting for wallet signing approval.");
   return dependencies.publishRemote({
@@ -242,6 +269,24 @@ async function executeRemotePublish(
     target: request.target,
     references,
     execute: () => Promise.reject(new Error("Remote publish execution dependency was not provided.")),
+    signal: request.signal,
+  });
+}
+
+async function executeDeployGradeLocalPublish(
+  request: DeploymentExecutionRequest,
+  dependencies: DeploymentExecutorDependencies,
+  setStage: (stage: DeploymentStage) => void,
+  onProgress?: (progress: DeploymentExecutionProgress) => void,
+): Promise<LocalPublishResult> {
+  const { compileResult } = await compileDeployGradeArtifact(request, dependencies, setStage, onProgress);
+
+  setStage("submitting");
+  reportProgress(onProgress, "submitting", "Submitting deployment transaction.");
+  return dependencies.publishLocal({
+    artifact: createDeployGradeLocalArtifact(request.artifact, compileResult),
+    target: request.target,
+    references: request.references,
     signal: request.signal,
   });
 }
@@ -267,8 +312,12 @@ async function executePublishStep(
 ): Promise<LocalPublishResult | RemotePublishResult | DeploymentExecutionResult> {
   const { request, dependencies, setStage, getStage, onProgress } = context;
   try {
-    if (request.target.supportsWalletSigning) {
-      return await executeRemotePublish(request, dependencies, setStage, onProgress);
+    if (usesDeployGradeCompilation(request.target)) {
+      if (usesWalletSignedPublish(request.target)) {
+        return await executeRemotePublish(request, dependencies, setStage, onProgress);
+      }
+
+      return await executeDeployGradeLocalPublish(request, dependencies, setStage, onProgress);
     }
 
     return await executeLocalPublish(request, dependencies, setStage, onProgress);

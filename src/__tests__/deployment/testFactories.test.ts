@@ -5,6 +5,7 @@ import {
   createDeploymentReviewEntryFixture,
   createDeploymentStatusFixture,
   createDeploymentStatusMessageFixture,
+  DEPLOY_GRADE_LOCAL_STAGE_SEQUENCE,
   DEPLOYMENT_STAGE_SEQUENCE,
 } from "./testFactories";
 
@@ -35,5 +36,16 @@ describe("deployment test factories", () => {
     });
 
     expect(statusMessage.confirmationReference).toBe("0xdigest-42");
+  });
+
+  it("uses the deploy-grade local stage sequence for local:evefrontier progress fixtures", () => {
+    const progress = createDeploymentProgressFixture({
+      targetId: "local:evefrontier",
+      stage: "deploy-grade-compile",
+      stageIndex: 3,
+    });
+
+    expect(progress.stageCount).toBe(DEPLOY_GRADE_LOCAL_STAGE_SEQUENCE.length);
+    expect(progress.completedStages).toEqual(["validating", "fetch-world-source", "resolve-dependencies"]);
   });
 });

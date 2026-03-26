@@ -57,6 +57,7 @@ describe("publishToRemoteTarget", () => {
       expect(publishedWorldManifest?.content ?? "").toContain("[published.testnet]");
       expect(publishedWorldManifest?.content ?? "").toContain('published-at = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"');
       expect(publishedWorldManifest?.content ?? "").toContain('original-id = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"');
+      expect(publishedWorldManifest?.content ?? "").toContain('toolchain-version = "1.67.1"');
 
       return Promise.resolve({
         success: true,
@@ -72,6 +73,46 @@ describe("publishToRemoteTarget", () => {
       artifact: inputArtifact,
       ownerAddress: "0x1234",
       target: getDeploymentTarget("testnet:stillness"),
+      references,
+      execute,
+    });
+
+    expect(compileMoveMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the target toolchain version in the legacy published dependency manifest", async () => {
+    const execute = vi.fn(() => Promise.resolve({ digest: "0xdigest" }));
+    const references = createPackageReferenceBundleFixture("testnet:utopia", {
+      toolchainVersion: "1.68.0",
+    });
+    compileMoveMock.mockReset();
+    compileMoveMock.mockImplementationOnce((artifact) => {
+      const publishedWorldManifest = artifact.sourceFiles?.find((file) => file.path === "deps/world/Published.toml");
+      expect(publishedWorldManifest?.content ?? "").toContain('toolchain-version = "1.68.0"');
+
+      return Promise.resolve({
+        success: true,
+        modules: [new Uint8Array([1, 2, 3])],
+        dependencies: [
+          "0x0000000000000000000000000000000000000000000000000000000000000001",
+          "0x0000000000000000000000000000000000000000000000000000000000000002",
+        ],
+        errors: null,
+        warnings: [],
+        artifact: createGeneratedArtifactStub({
+          bytecodeModules: [new Uint8Array([1, 2, 3])],
+          dependencies: [
+            "0x0000000000000000000000000000000000000000000000000000000000000001",
+            "0x0000000000000000000000000000000000000000000000000000000000000002",
+          ],
+        }),
+      });
+    });
+
+    await publishToRemoteTarget({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      ownerAddress: "0x1234",
+      target: getDeploymentTarget("testnet:utopia"),
       references,
       execute,
     });

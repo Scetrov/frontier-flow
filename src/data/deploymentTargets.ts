@@ -1,4 +1,31 @@
-import type { DeploymentTarget, DeploymentTargetId } from "../compiler/types";
+import type { DeploymentStage, DeploymentTarget, DeploymentTargetId } from "../compiler/types";
+
+export const LOCAL_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "preparing",
+  "signing",
+  "submitting",
+  "confirming",
+];
+
+export const DEPLOY_GRADE_LOCAL_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "fetch-world-source",
+  "resolve-dependencies",
+  "deploy-grade-compile",
+  "submitting",
+  "confirming",
+];
+
+export const DEPLOY_GRADE_REMOTE_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "fetch-world-source",
+  "resolve-dependencies",
+  "deploy-grade-compile",
+  "signing",
+  "submitting",
+  "confirming",
+];
 
 /**
  * Default deployment target shown before the user makes an explicit selection.
@@ -58,6 +85,39 @@ export function getDeploymentTarget(targetId: DeploymentTargetId): DeploymentTar
   }
 
   return target;
+}
+
+/**
+ * Return true when a target must compile against published package references.
+ */
+export function usesDeployGradeCompilation(
+  target: Pick<DeploymentTarget, "requiresPublishedPackageRefs">,
+): boolean {
+  return target.requiresPublishedPackageRefs;
+}
+
+/**
+ * Return true when a target publishes through a connected wallet.
+ */
+export function usesWalletSignedPublish(
+  target: Pick<DeploymentTarget, "supportsWalletSigning">,
+): boolean {
+  return target.supportsWalletSigning;
+}
+
+/**
+ * Resolve the visible deployment stage sequence for a target.
+ */
+export function getDeploymentStageSequence(targetId: DeploymentTargetId): readonly DeploymentStage[] {
+  const target = getDeploymentTarget(targetId);
+
+  if (!usesDeployGradeCompilation(target)) {
+    return LOCAL_DEPLOYMENT_STAGE_SEQUENCE;
+  }
+
+  return usesWalletSignedPublish(target)
+    ? DEPLOY_GRADE_REMOTE_DEPLOYMENT_STAGE_SEQUENCE
+    : DEPLOY_GRADE_LOCAL_DEPLOYMENT_STAGE_SEQUENCE;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
-import type { DeploymentAttempt, DeploymentProgress, DeploymentStage, DeploymentTargetId } from "../compiler/types";
+import type { DeploymentAttempt, DeploymentProgress, DeploymentStage } from "../compiler/types";
+import { getDeploymentStageSequence } from "../data/deploymentTargets";
 
 interface DeploymentProgressModalProps {
   readonly latestAttempt: DeploymentAttempt | null;
@@ -18,28 +19,6 @@ const STAGE_LABELS: Record<DeploymentStage, string> = {
   submitting: "Submitting",
   confirming: "Confirming",
 };
-
-const LOCAL_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
-  "validating",
-  "preparing",
-  "signing",
-  "submitting",
-  "confirming",
-];
-
-const REMOTE_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
-  "validating",
-  "fetch-world-source",
-  "resolve-dependencies",
-  "deploy-grade-compile",
-  "signing",
-  "submitting",
-  "confirming",
-];
-
-function getDeploymentStageSequence(targetId: DeploymentTargetId): readonly DeploymentStage[] {
-  return targetId === "local" ? LOCAL_DEPLOYMENT_STAGE_SEQUENCE : REMOTE_DEPLOYMENT_STAGE_SEQUENCE;
-}
 
 function isTerminalAttempt(
   latestAttempt: DeploymentAttempt | null,

@@ -8,6 +8,12 @@ import type {
   DeploymentTargetId,
   PackageReferenceBundle,
 } from "../../compiler/types";
+import {
+  DEPLOY_GRADE_LOCAL_DEPLOYMENT_STAGE_SEQUENCE,
+  DEPLOY_GRADE_REMOTE_DEPLOYMENT_STAGE_SEQUENCE,
+  getDeploymentStageSequence as resolveDeploymentStageSequence,
+  LOCAL_DEPLOYMENT_STAGE_SEQUENCE,
+} from "../../data/deploymentTargets";
 
 const DEFAULT_DEPLOYMENT_ATTEMPT_ID = "attempt-0001";
 const DEFAULT_ARTIFACT_ID = "starter_contract-00000000";
@@ -137,15 +143,23 @@ export function createPackageReferenceBundleFixture(
   targetId: Exclude<DeploymentTargetId, "local"> = "testnet:stillness",
   overrides: Partial<PackageReferenceBundle> = {},
 ): PackageReferenceBundle {
+  const defaultEnvironmentLabel = targetId === "local:evefrontier"
+    ? "Local EVE Frontier"
+    : targetId === "testnet:stillness"
+      ? "Stillness"
+      : "Utopia";
+  const defaultSourceVersionTag = targetId === "testnet:utopia" ? "v0.0.21" : "v0.0.18";
+  const defaultToolchainVersion = targetId === "testnet:utopia" ? "1.68.0" : "1.67.1";
+
   return {
     targetId,
-    environmentLabel: overrides.environmentLabel ?? (targetId === "testnet:stillness" ? "Stillness" : "Utopia"),
+    environmentLabel: overrides.environmentLabel ?? defaultEnvironmentLabel,
     worldPackageId: overrides.worldPackageId ?? "0x1",
     originalWorldPackageId: overrides.originalWorldPackageId ?? overrides.worldPackageId ?? "0x1",
     objectRegistryId: overrides.objectRegistryId ?? "0x2",
     serverAddressRegistryId: overrides.serverAddressRegistryId ?? "0x3",
-    sourceVersionTag: overrides.sourceVersionTag ?? (targetId === "testnet:stillness" ? "v0.0.18" : "v0.0.21"),
-    toolchainVersion: overrides.toolchainVersion ?? (targetId === "testnet:stillness" ? "1.67.1" : "1.68.0"),
+    sourceVersionTag: overrides.sourceVersionTag ?? defaultSourceVersionTag,
+    toolchainVersion: overrides.toolchainVersion ?? defaultToolchainVersion,
     source: overrides.source ?? "test",
     lastVerifiedOn: overrides.lastVerifiedOn ?? "2026-03-21",
   };
@@ -154,24 +168,12 @@ export function createPackageReferenceBundleFixture(
 /**
  * Ordered deployment stages shared by tests.
  */
-export const DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
-  "validating",
-  "preparing",
-  "signing",
-  "submitting",
-  "confirming",
-];
+export const DEPLOYMENT_STAGE_SEQUENCE = LOCAL_DEPLOYMENT_STAGE_SEQUENCE;
 
-export const REMOTE_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
-  "validating",
-  "fetch-world-source",
-  "resolve-dependencies",
-  "deploy-grade-compile",
-  "signing",
-  "submitting",
-  "confirming",
-];
+export const DEPLOY_GRADE_LOCAL_STAGE_SEQUENCE = DEPLOY_GRADE_LOCAL_DEPLOYMENT_STAGE_SEQUENCE;
+
+export const REMOTE_DEPLOYMENT_STAGE_SEQUENCE = DEPLOY_GRADE_REMOTE_DEPLOYMENT_STAGE_SEQUENCE;
 
 export function getDeploymentStageSequence(targetId: DeploymentTargetId): readonly DeploymentStage[] {
-  return targetId === "local" ? DEPLOYMENT_STAGE_SEQUENCE : REMOTE_DEPLOYMENT_STAGE_SEQUENCE;
+  return resolveDeploymentStageSequence(targetId);
 }

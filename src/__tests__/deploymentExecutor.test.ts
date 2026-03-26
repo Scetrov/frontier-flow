@@ -138,20 +138,17 @@ describe("deployment executor error sanitization", () => {
     expect(result.stage).toBe("submitting");
   });
 
-  it("uses wallet signing based on the target publish mechanism instead of published-reference requirements", async () => {
-    const publishLocal = () => Promise.resolve({ packageId: "0xabc", transactionDigest: "0xdigest" });
-    const publishRemote = () => Promise.resolve({ packageId: "0xdef", transactionDigest: "0xremote" });
+  it("uses local publish when the target does not require deploy-grade compilation", async () => {
+    const publishLocal: DeploymentExecutorDependencies["publishLocal"] = () => Promise.resolve({ packageId: "0xabc", transactionDigest: "0xdigest" });
+    const publishRemote: DeploymentExecutorDependencies["publishRemote"] = () => Promise.resolve({ packageId: "0xdef", transactionDigest: "0xremote" });
     const confirm = () => Promise.resolve({ confirmed: true, confirmationReference: "0xdigest", finalStage: "confirming" as const });
-    const publishLocalSpy = vi.fn(publishLocal);
-    const publishRemoteSpy = vi.fn(publishRemote);
+    const publishLocalSpy = vi.fn<DeploymentExecutorDependencies["publishLocal"]>(publishLocal);
+    const publishRemoteSpy = vi.fn<DeploymentExecutorDependencies["publishRemote"]>(publishRemote);
     const executor = createDeploymentExecutor({ confirm, publishLocal: publishLocalSpy, publishRemote: publishRemoteSpy });
     const request: DeploymentExecutionRequest = {
       artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
       references: null,
-      target: {
-        ...getDeploymentTarget("local"),
-        requiresPublishedPackageRefs: true,
-      },
+      target: getDeploymentTarget("local"),
     };
 
     const result = await executor(request);
@@ -205,6 +202,70 @@ describe("deployment executor error sanitization", () => {
     expect(fetchWorldSource).toHaveBeenCalledTimes(1);
     expect(compileForDeployment).toHaveBeenCalledTimes(1);
     expect(publishRemote).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes local:evefrontier through deploy-grade compilation before local publish", async () => {
+    const fetchedWorldSource: FetchWorldSourceResult = {
+      files: {
+        "Move.toml": "[package]\nname=\"world\"\n",
+        "sources/world.move": "module world::world {}",
+      },
+      sourceVersionTag: "v0.0.18",
+      fetchedAt: 1,
+    };
+    const loadCachedResolution = vi.fn(() => Promise.resolve(null));
+    const fetchWorldSource = vi.fn(() => Promise.resolve(fetchedWorldSource));
+    const compileForDeployment = vi.fn(() => Promise.resolve({
+      modules: [new Uint8Array([9, 8, 7])],
+      dependencies: ["0x1", "0x2"],
+      digest: [9, 8, 7],
+      resolvedDependencies: {
+        files: "{}",
+        dependencies: "{}",
+        lockfileDependencies: "{}",
+      },
+      targetId: "local:evefrontier" as const,
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
+      compiledAt: 2,
+    }));
+    const publishLocal = vi.fn<DeploymentExecutorDependencies["publishLocal"]>(() => Promise.resolve({ packageId: "0xabc", transactionDigest: "0xdigest" }));
+    const publishRemote = vi.fn<DeploymentExecutorDependencies["publishRemote"]>(() => Promise.resolve({ packageId: "0xdef", transactionDigest: "0xremote" }));
+    const confirm = vi.fn(() => Promise.resolve({ confirmed: true, confirmationReference: "0xdigest", finalStage: "confirming" as const }));
+    const executor = createDeploymentExecutor({
+      loadCachedResolution,
+      fetchWorldSource,
+      compileForDeployment,
+      publishLocal,
+      publishRemote,
+      confirm,
+    });
+
+    const result = await executor({
+      artifact: createGeneratedArtifactStub({
+        bytecodeModules: [new Uint8Array([1, 2, 3])],
+        sourceFiles: [
+          { path: "sources/starter_contract.move", content: "module builder_extensions::starter_contract {}" },
+          { path: "deps/world/Move.toml", content: "[package]\nname=\"world\"\n" },
+        ],
+      }),
+      references: createPackageReferenceBundleFixture("local:evefrontier"),
+      target: getDeploymentTarget("local:evefrontier"),
+    });
+
+    expect(result.outcome).toBe("succeeded");
+    expect(loadCachedResolution).toHaveBeenCalledTimes(1);
+    expect(fetchWorldSource).toHaveBeenCalledTimes(1);
+    expect(compileForDeployment).toHaveBeenCalledTimes(1);
+    expect(publishLocal).toHaveBeenCalledTimes(1);
+    expect(publishRemote).not.toHaveBeenCalled();
+    const publishLocalCall = publishLocal.mock.calls[0]?.[0] as Parameters<DeploymentExecutorDependencies["publishLocal"]>[0] | undefined;
+    expect(publishLocalCall).toBeDefined();
+    expect(publishLocalCall?.artifact.bytecodeModules).toEqual([new Uint8Array([9, 8, 7])]);
+    expect(publishLocalCall?.artifact.dependencies).toEqual(["0x1", "0x2"]);
+    expect(publishLocalCall?.artifact.sourceFiles).toEqual([
+      { path: "sources/starter_contract.move", content: "module builder_extensions::starter_contract {}" },
+    ]);
   });
 
   it("uses the bundled dependency snapshot before falling back to GitHub", async () => {

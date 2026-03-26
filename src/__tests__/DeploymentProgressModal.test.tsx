@@ -258,4 +258,25 @@ describe("DeploymentProgressModal", () => {
     expect(screen.getByRole("dialog", { name: "Deployment failed" })).toBeVisible();
     expect(screen.getAllByText("Remote deployment cannot resolve the published world dependency in the browser Move compiler.")).toHaveLength(2);
   });
+
+  it("renders deploy-grade local stage lists for local:evefrontier without a signing step", () => {
+    render(
+      <DeploymentProgressModal
+        latestAttempt={null}
+        onDismiss={() => undefined}
+        progress={createDeploymentProgressFixture({
+          targetId: "local:evefrontier",
+          stage: "deploy-grade-compile",
+          stageIndex: 3,
+          stageCount: 6,
+          completedStages: ["validating", "fetch-world-source", "resolve-dependencies"],
+          activeMessage: "Compiling against the live world dependency graph. Target: local:evefrontier.",
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Target: local:evefrontier")).toBeVisible();
+    expect(screen.getByText("Deploy-Grade Compile")).toBeVisible();
+    expect(screen.queryByText("Signing")).not.toBeInTheDocument();
+  });
 });

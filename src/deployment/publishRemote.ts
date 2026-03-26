@@ -50,7 +50,7 @@ function createPublishedWorldDependencyManifest(references: PackageReferenceBund
     `published-at = "${references.worldPackageId}"`,
     `original-id = "${references.originalWorldPackageId}"`,
     "version = 1",
-    'toolchain-version = "1.67.1"',
+    `toolchain-version = "${references.toolchainVersion}"`,
     'build-config = { flavor = "sui", edition = "2024" }',
     'upgrade-capability = "0x0"',
     "",
