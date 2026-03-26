@@ -191,6 +191,7 @@ function logCompileSummary(input: {
   readonly moduleName: string;
   readonly sourceVersionTag: string;
   readonly targetId: ScriptTargetId;
+  readonly dependencyLinkPackageId: string;
   readonly worldPackageId: string;
   readonly originalWorldPackageId: string;
   readonly dependencies: readonly string[];
@@ -201,8 +202,12 @@ function logCompileSummary(input: {
   console.log(`target: ${input.targetId}`);
   console.log(`module: ${input.moduleName}`);
   console.log(`world source version: ${input.sourceVersionTag}`);
+  console.log(`dependency link package id: ${input.dependencyLinkPackageId}`);
   console.log(`world package id: ${input.worldPackageId}`);
   console.log(`world original package id: ${input.originalWorldPackageId}`);
+  if (input.dependencyLinkPackageId !== input.worldPackageId) {
+    console.log("package id mismatch: deploy-grade dependency linking is using the original package id instead of the active runtime package id");
+  }
   console.log(`compiled modules: ${String(input.modules.length)}`);
   input.modules.forEach((moduleBytes, index) => {
     console.log(`  module[${String(index)}]: ${String(moduleBytes.length)} bytes preview=${formatBytecodePreview(moduleBytes)}`);
@@ -331,6 +336,7 @@ async function main(): Promise<void> {
     moduleName: selection.moduleName,
     sourceVersionTag: worldSource.sourceVersionTag,
     targetId: options.targetId,
+    dependencyLinkPackageId: references.originalWorldPackageId,
     worldPackageId: references.worldPackageId,
     originalWorldPackageId: references.originalWorldPackageId,
     dependencies: deployGradeResult.dependencies,

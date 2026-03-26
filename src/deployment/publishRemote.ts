@@ -37,6 +37,18 @@ const REMOTE_WORLD_DEPENDENCY_LINKING_ERROR = [
   "Published.toml only applies to the root package in the current toolchain, so this deploy path cannot link the live world package yet.",
 ].join(" ");
 
+function getDependencyLinkPackageId(references: PackageReferenceBundle): string {
+  return references.originalWorldPackageId;
+}
+
+function createPublishUpgradeMissingDependencyError(references: PackageReferenceBundle): Error {
+  return new Error([
+    `Remote deployment could not link ${references.targetId} against the configured world package ${references.worldPackageId}.`,
+    `The chain still resolves this dependency through the original package id ${references.originalWorldPackageId}, so publish dependency resolution failed with PublishUpgradeMissingDependency.`,
+    "Run the remote deploy-grade MCVE with transaction resolution to verify both ids if this target changes again.",
+  ].join(" "));
+}
+
 function extractMoveEdition(moveToml: string): string {
   const match = moveToml.match(/edition\s*=\s*"([^"]+)"/);
   return match?.[1] ?? "2024.beta";
@@ -147,16 +159,17 @@ function normalizeRemotePublishDependencies(
   dependencies: readonly string[],
   references: PackageReferenceBundle,
 ): readonly string[] {
+  const dependencyLinkPackageId = getDependencyLinkPackageId(references);
   const normalizedDependencies = dependencies.map((dependency) => {
-    if (dependency === references.originalWorldPackageId) {
-      return references.worldPackageId;
+    if (dependency === references.originalWorldPackageId || dependency === references.worldPackageId) {
+      return dependencyLinkPackageId;
     }
 
     return dependency;
   });
 
-  if (!normalizedDependencies.includes(references.worldPackageId)) {
-    normalizedDependencies.push(references.worldPackageId);
+  if (!normalizedDependencies.includes(dependencyLinkPackageId)) {
+    normalizedDependencies.push(dependencyLinkPackageId);
   }
 
   return Array.from(new Set(normalizedDependencies));
@@ -206,10 +219,24 @@ export async function publishToRemoteTarget(request: RemotePublishRequest): Prom
   const dependencies = resolveRemoteDependencies(request, compileResult, compiledArtifact);
   const transaction = createPublishTransaction(modules, dependencies, request.ownerAddress);
 
-  const result = await request.execute(transaction, {
-    onSubmitting: request.onSubmitting,
-    signal: request.signal,
-  });
+  let result: { digest: string };
+  try {
+    result = await request.execute(transaction, {
+      onSubmitting: request.onSubmitting,
+      signal: request.signal,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error
+      && /PublishUpgradeMissingDependency/i.test(error.message)
+      && request.references.worldPackageId !== request.references.originalWorldPackageId
+    ) {
+      throw createPublishUpgradeMissingDependencyError(request.references);
+    }
+
+    throw error;
+  }
+
   return {
     builderToolchainVersion: compileResult?.builderToolchainVersion,
     sourceVersionTag: compileResult?.sourceVersionTag,

@@ -82,6 +82,10 @@ function createRootGit(revision: string): { readonly git: string; readonly rev: 
   };
 }
 
+function getDependencyLinkPackageId(target: DeployGradeCompileRequest["target"]): string {
+  return target.originalWorldPackageId;
+}
+
 function createFileMap(request: DeployGradeCompileRequest): Record<string, string> {
   const files: Record<string, string> = {
     "Move.toml": rewriteMoveTomlForDeployGrade(request.artifact.moveToml, request.worldSource.sourceVersionTag),
@@ -369,8 +373,9 @@ function createLocalWorldFileMap(
   request: DeployGradeCompileRequest,
   worldSourceFiles: Record<string, string>,
 ): Record<string, string> {
+  const dependencyLinkPackageId = getDependencyLinkPackageId(request.target);
   const files: Record<string, string> = {
-    "Move.toml": rewriteMoveTomlForLocalWorldDependency(request.artifact.moveToml, request.target.worldPackageId),
+    "Move.toml": rewriteMoveTomlForLocalWorldDependency(request.artifact.moveToml, dependencyLinkPackageId),
   };
 
   for (const file of request.artifact.sourceFiles ?? [{ path: request.artifact.sourceFilePath, content: request.artifact.moveSource }]) {
@@ -585,7 +590,8 @@ export async function compileForDeployment(
   const sanitizedDependencies = sanitizeResolvedDependencies(resolvedDependencies);
 
   // Step 2: Extract world source from resolved deps and create local file map
-  const worldSourceFiles = extractWorldSourceFromResolvedDependencies(sanitizedDependencies, request.target.worldPackageId);
+  const dependencyLinkPackageId = getDependencyLinkPackageId(request.target);
+  const worldSourceFiles = extractWorldSourceFromResolvedDependencies(sanitizedDependencies, dependencyLinkPackageId);
   const localFiles = createLocalWorldFileMap(request, worldSourceFiles);
 
   const buildResult = await buildExtensionWithLocalWorld(request, localFiles, buildCompilerPackage);

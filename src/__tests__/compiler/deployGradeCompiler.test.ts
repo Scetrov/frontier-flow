@@ -335,4 +335,51 @@ describe("deployGradeCompiler", () => {
     expect(worldMoveToml).toContain(`world = "${targetWorldPackageId}"`);
     expect(buildMovePackage).toHaveBeenCalledTimes(2);
   });
+
+  it("links upgraded world packages through the original package id during deploy-grade compilation", async () => {
+    const currentWorldPackageId = "0x07e6b810c2dff6df56ea7fbad9ff32f4d84cbee53e496267515887b712924bd1";
+    const originalWorldPackageId = "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75";
+    const resolvedDependencies: ResolvedDependencies = {
+      files: "{}",
+      dependencies: JSON.stringify([
+        {
+          name: "world",
+          files: {
+            "dependencies/world/sources/example.move": "module world::example {}",
+          },
+        },
+      ]),
+      lockfileDependencies: "{}",
+    };
+    const buildMovePackage = vi.fn()
+      .mockResolvedValue({
+        modules: [toBase64([1, 2, 3])],
+        dependencies: ["0x1", "0x2"],
+        digest: [3, 2, 1],
+      });
+
+    await compileForDeployment(
+      createRequest({
+        target: createPackageReferenceBundle("testnet:utopia", {
+          worldPackageId: currentWorldPackageId,
+          originalWorldPackageId,
+        }),
+      }),
+      {
+        initMoveCompiler: vi.fn(() => Promise.resolve()),
+        resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+        buildMovePackage,
+        getSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
+        verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+        now: () => 42,
+      },
+    );
+
+    const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly files?: Record<string, string> };
+    const rootMoveToml = mainBuildInput.files?.["Move.toml"] ?? "";
+    const worldMoveToml = mainBuildInput.files?.["deps/world/Move.toml"] ?? "";
+    expect(rootMoveToml).toContain(`world = "${originalWorldPackageId}"`);
+    expect(worldMoveToml).toContain(`published-at = "${originalWorldPackageId}"`);
+    expect(worldMoveToml).toContain(`world = "${originalWorldPackageId}"`);
+  });
 });
