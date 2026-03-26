@@ -19,6 +19,15 @@ import { DeployCompilationError as DeployCompilationErrorClass, DependencyResolu
 
 const WORLD_CONTRACTS_GIT_URL = "https://github.com/evefrontier/world-contracts.git";
 const WORLD_CONTRACTS_SUBDIRECTORY = "contracts/world";
+const RESOLVED_WORLD_PACKAGE_NAME = "world";
+const RESOLVED_WORLD_TEST_PREFIX_PATTERN = /^dependencies\/world\/tests\//i;
+const RESOLVED_WORLD_ACCESS_CONTROL_PATH_PATTERN = /^dependencies\/world\/sources\/access\/access_control\.move$/i;
+const RESOLVED_WORLD_PUBLISHED_TOML_PATTERN = /^dependencies\/world\/published\.toml$/i;
+const UNSUPPORTED_CHARACTER_TRANSFER_CHECK = /let is_character =[\s\S]*?assert!\(!is_character, ECharacterTransfer\);/;
+const COMPATIBLE_CHARACTER_TRANSFER_CHECK = [
+  "let is_character = false;",
+  "    assert!(!is_character, ECharacterTransfer);",
+].join("\n");
 
 interface BuildSuccessResult {
   readonly modules: readonly string[];
@@ -68,6 +77,11 @@ function decodeBase64(value: string): Uint8Array {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
+interface ResolvedDependencyPackageSnapshot {
+  readonly name?: string;
+  readonly files?: Record<string, string>;
+}
+
 function createRootGit(revision: string): { readonly git: string; readonly rev: string; readonly subdir: string } {
   return {
     git: WORLD_CONTRACTS_GIT_URL,
@@ -90,6 +104,133 @@ function createFileMap(request: DeployGradeCompileRequest): Record<string, strin
   }
 
   return files;
+}
+
+function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies): ResolvedDependencies {
+  let dependencyPackages: unknown;
+
+  try {
+    dependencyPackages = JSON.parse(resolvedDependencies.dependencies);
+  } catch {
+    return resolvedDependencies;
+  }
+
+  if (!Array.isArray(dependencyPackages)) {
+    return resolvedDependencies;
+  }
+
+  let changed = false;
+  const sanitizedDependencyPackages = dependencyPackages.map((dependencyPackage) => {
+    if (typeof dependencyPackage !== "object" || dependencyPackage === null) {
+      return dependencyPackage;
+    }
+
+    const snapshot = dependencyPackage as ResolvedDependencyPackageSnapshot;
+    if (snapshot.name?.toLowerCase() !== RESOLVED_WORLD_PACKAGE_NAME || snapshot.files === undefined) {
+      return dependencyPackage;
+    }
+
+    const nextFiles = { ...snapshot.files };
+
+    for (const filePath of Object.keys(nextFiles)) {
+      if (RESOLVED_WORLD_TEST_PREFIX_PATTERN.test(filePath)) {
+        delete nextFiles[filePath];
+        changed = true;
+      }
+    }
+
+    const accessControlPath = Object.keys(nextFiles).find((filePath) => RESOLVED_WORLD_ACCESS_CONTROL_PATH_PATTERN.test(filePath));
+    const accessControlSource = accessControlPath === undefined ? undefined : nextFiles[accessControlPath];
+    if (typeof accessControlSource === "string" && accessControlPath !== undefined && UNSUPPORTED_CHARACTER_TRANSFER_CHECK.test(accessControlSource)) {
+      nextFiles[accessControlPath] = accessControlSource.replace(
+        UNSUPPORTED_CHARACTER_TRANSFER_CHECK,
+        COMPATIBLE_CHARACTER_TRANSFER_CHECK,
+      );
+      changed = true;
+    }
+
+    return {
+      ...dependencyPackage,
+      files: nextFiles,
+    };
+  });
+
+  if (!changed) {
+    return resolvedDependencies;
+  }
+
+  return {
+    ...resolvedDependencies,
+    dependencies: JSON.stringify(sanitizedDependencyPackages),
+  };
+}
+
+function patchWorldPublishedAddress(
+  resolvedDependencies: ResolvedDependencies,
+  worldPackageId: string,
+): ResolvedDependencies {
+  let dependencyPackages: unknown;
+
+  try {
+    dependencyPackages = JSON.parse(resolvedDependencies.dependencies);
+  } catch {
+    return resolvedDependencies;
+  }
+
+  if (!Array.isArray(dependencyPackages)) {
+    return resolvedDependencies;
+  }
+
+  let changed = false;
+  const patchedPackages = dependencyPackages.map((dependencyPackage) => {
+    if (typeof dependencyPackage !== "object" || dependencyPackage === null) {
+      return dependencyPackage;
+    }
+
+    const snapshot = dependencyPackage as ResolvedDependencyPackageSnapshot;
+    if (snapshot.name?.toLowerCase() !== RESOLVED_WORLD_PACKAGE_NAME || snapshot.files === undefined) {
+      return dependencyPackage;
+    }
+
+    const publishedTomlPath = Object.keys(snapshot.files).find((filePath) =>
+      RESOLVED_WORLD_PUBLISHED_TOML_PATTERN.test(filePath),
+    );
+
+    if (publishedTomlPath === undefined) {
+      return dependencyPackage;
+    }
+
+    const existingContent = snapshot.files[publishedTomlPath];
+    if (typeof existingContent !== "string") {
+      return dependencyPackage;
+    }
+
+    const patched = existingContent
+      .replace(/(published-at\s*=\s*")[^"]+(")/g, (_, before, after) => `${before}${worldPackageId}${after}`)
+      .replace(/(original-id\s*=\s*")[^"]+(")/g, (_, before, after) => `${before}${worldPackageId}${after}`);
+
+    if (patched === existingContent) {
+      return dependencyPackage;
+    }
+
+    changed = true;
+    return {
+      ...dependencyPackage,
+      files: {
+        ...snapshot.files,
+        [publishedTomlPath]: patched,
+      },
+    };
+  });
+
+  if (!changed) {
+    return resolvedDependencies;
+  }
+
+  return {
+    ...resolvedDependencies,
+    dependencies: JSON.stringify(patchedPackages),
+  };
 }
 
 function getCompilerDependencies(dependencies: DeployGradeCompilerDependencies) {
@@ -191,13 +332,13 @@ async function resolveDeployDependencies(
     && cachedResolution.targetId === request.target.targetId
     && cachedResolution.sourceVersionTag === request.worldSource.sourceVersionTag;
   if (isValidCachedResolution) {
-    return cachedResolution.resolvedDependencies;
+    return sanitizeResolvedDependencies(cachedResolution.resolvedDependencies);
   }
 
   request.onProgress?.({ phase: "resolving-dependencies", current: 0, total: 0 });
 
   try {
-    const resolvedDependencies = await resolve({
+    const resolvedDependencies = sanitizeResolvedDependencies(await resolve({
       files,
       wasm: moveBuilderLiteWasmUrl,
       rootGit,
@@ -209,7 +350,7 @@ async function resolveDeployDependencies(
           request.onProgress?.(mapped);
         }
       },
-    });
+    }));
 
     resolutionCache.set(cacheKey, {
       targetId: request.target.targetId,
@@ -284,7 +425,8 @@ export async function compileForDeployment(
   await verifyIntegrity();
   await initCompiler({ wasm: moveBuilderLiteWasmUrl });
   const resolvedDependencies = await resolveDeployDependencies({ request, files, rootGit, cacheKey, resolve: resolveCompilerDependencies, now });
-  const buildResult = await buildDeployArtifact({ request, files, rootGit, resolvedDependencies, build: buildCompilerPackage });
+  const patchedDependencies = patchWorldPublishedAddress(resolvedDependencies, request.target.worldPackageId);
+  const buildResult = await buildDeployArtifact({ request, files, rootGit, resolvedDependencies: patchedDependencies, build: buildCompilerPackage });
 
   return {
     modules: buildResult.modules.map((moduleBytes) => decodeBase64(moduleBytes)),

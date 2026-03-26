@@ -194,7 +194,11 @@ function DeploymentStatusSummary({ deployment }: DeployWorkflowViewProps) {
 
       <div className="space-y-3 text-sm leading-relaxed text-[var(--cream-white)]">
         <p>{statusHeadline}</p>
-        {statusDetails ? <p className="text-[var(--text-secondary)]">{statusDetails}</p> : null}
+        {statusDetails ? (
+          <pre className="overflow-x-auto border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.92)] px-4 py-3 font-mono text-xs leading-6 text-[var(--text-secondary)] whitespace-pre-wrap" aria-label="Deployment status details">
+            <code>{statusDetails}</code>
+          </pre>
+        ) : null}
         {deployment.deploymentStatus?.packageId ? <p>Package ID: {deployment.deploymentStatus.packageId}</p> : null}
         {deployment.deploymentStatus?.confirmationReference ? <p>Transaction digest: {deployment.deploymentStatus.confirmationReference}</p> : null}
       </div>

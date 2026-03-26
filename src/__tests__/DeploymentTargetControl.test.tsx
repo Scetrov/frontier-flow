@@ -84,6 +84,9 @@ describe("DeploymentTargetControl", () => {
     expect(screen.getByRole("menuitemradio", { name: "local" })).toHaveFocus();
 
     fireEvent.keyDown(screen.getByRole("menu", { name: "Deployment targets" }), { key: "ArrowDown" });
+    expect(screen.getByRole("menuitemradio", { name: "local:evefrontier" })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByRole("menu", { name: "Deployment targets" }), { key: "ArrowDown" });
     expect(screen.getByRole("menuitemradio", { name: "testnet:stillness" })).toHaveFocus();
 
     fireEvent.keyDown(screen.getByRole("menuitemradio", { name: "testnet:stillness" }), { key: "Enter" });

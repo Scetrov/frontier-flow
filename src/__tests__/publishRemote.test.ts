@@ -17,6 +17,10 @@ import { createPackageReferenceBundleFixture } from "./deployment/testFactories"
 describe("publishToRemoteTarget", () => {
   it("recompiles remote artifacts with a published world dependency manifest", async () => {
     const execute = vi.fn(() => Promise.resolve({ digest: "0xdigest" }));
+    const references = createPackageReferenceBundleFixture("testnet:stillness", {
+      worldPackageId: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      originalWorldPackageId: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    });
     const inputArtifact = createGeneratedArtifactStub({
       moveToml: [
         "[package]",
@@ -51,6 +55,8 @@ describe("publishToRemoteTarget", () => {
       const publishedWorldManifest = artifact.sourceFiles?.find((file) => file.path === "deps/world/Published.toml");
       expect(publishedWorldManifest).toBeDefined();
       expect(publishedWorldManifest?.content ?? "").toContain("[published.testnet]");
+      expect(publishedWorldManifest?.content ?? "").toContain('published-at = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"');
+      expect(publishedWorldManifest?.content ?? "").toContain('original-id = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"');
 
       return Promise.resolve({
         success: true,
@@ -66,7 +72,7 @@ describe("publishToRemoteTarget", () => {
       artifact: inputArtifact,
       ownerAddress: "0x1234",
       target: getDeploymentTarget("testnet:stillness"),
-      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      references,
       execute,
     });
 
@@ -110,12 +116,16 @@ describe("publishToRemoteTarget", () => {
   it("publishes deploy-grade compile results directly without re-running shim compilation", async () => {
     const execute = vi.fn(() => Promise.resolve({ digest: "0xdeploygrade" }));
     compileMoveMock.mockReset();
+    const references = createPackageReferenceBundleFixture("testnet:stillness", {
+      worldPackageId: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      originalWorldPackageId: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    });
 
     await publishToRemoteTarget({
       compileResult: {
         modules: [new Uint8Array([1, 2, 3])],
         dependencies: [
-          "0x0000000000000000000000000000000000000000000000000000000000000003",
+          "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "0x0000000000000000000000000000000000000000000000000000000000000004",
         ],
         digest: [1, 2, 3],
@@ -131,15 +141,54 @@ describe("publishToRemoteTarget", () => {
       },
       ownerAddress: "0x1234",
       target: getDeploymentTarget("testnet:stillness"),
-      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      references,
       execute,
     });
 
     expect(compileMoveMock).not.toHaveBeenCalled();
     const [transaction] = execute.mock.calls[0] as unknown as [{ getData: () => { commands: Array<{ $kind: string; Publish?: { dependencies: string[] } }> } }];
     expect(transaction.getData().commands[0]?.Publish?.dependencies).toEqual([
-      "0x0000000000000000000000000000000000000000000000000000000000000003",
+      "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "0x0000000000000000000000000000000000000000000000000000000000000004",
+    ]);
+  });
+
+  it("appends the active world package id when deploy-grade compile results omit it", async () => {
+    const execute = vi.fn(() => Promise.resolve({ digest: "0xdeploygrade" }));
+    const references = createPackageReferenceBundleFixture("testnet:stillness", {
+      worldPackageId: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      originalWorldPackageId: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    });
+
+    await publishToRemoteTarget({
+      compileResult: {
+        modules: [new Uint8Array([1, 2, 3])],
+        dependencies: [
+          "0x0000000000000000000000000000000000000000000000000000000000000001",
+          "0x0000000000000000000000000000000000000000000000000000000000000002",
+        ],
+        digest: [1, 2, 3],
+        resolvedDependencies: {
+          files: "{}",
+          dependencies: "{}",
+          lockfileDependencies: "{}",
+        },
+        targetId: "testnet:stillness",
+        sourceVersionTag: "v0.0.18",
+        builderToolchainVersion: "1.67.1",
+        compiledAt: 1,
+      },
+      ownerAddress: "0x1234",
+      target: getDeploymentTarget("testnet:stillness"),
+      references,
+      execute,
+    });
+
+    const [transaction] = execute.mock.calls[0] as unknown as [{ getData: () => { commands: Array<{ $kind: string; Publish?: { dependencies: string[] } }> } }];
+    expect(transaction.getData().commands[0]?.Publish?.dependencies).toEqual([
+      "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "0x0000000000000000000000000000000000000000000000000000000000000002",
+      "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     ]);
   });
 

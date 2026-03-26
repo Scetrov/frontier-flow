@@ -29,8 +29,8 @@ original-id = "0x222"
 published-at = "0x333"
 original-id = "0x444"
 `)).toEqual({
-  "testnet:stillness": "0x222",
-  "testnet:utopia": "0x444",
+  "testnet:stillness": "0x111",
+  "testnet:utopia": "0x333",
     });
   });
 
@@ -55,14 +55,14 @@ original-id = "0xddd"
 
     expect(JSON.parse(window.localStorage.getItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY) ?? "{}")).toMatchObject({
       source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
-      version: 1,
+      version: 2,
       worldPackageIds: {
-        "testnet:stillness": "0xbbb",
-        "testnet:utopia": "0xddd",
+        "testnet:stillness": "0xaaa",
+        "testnet:utopia": "0xccc",
       },
     });
-    expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe("0xbbb");
-    expect(getPackageReferenceBundle("testnet:utopia").worldPackageId).toBe("0xddd");
+    expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe("0xaaa");
+    expect(getPackageReferenceBundle("testnet:utopia").worldPackageId).toBe("0xccc");
     expect(getPackageReferenceBundle("testnet:stillness").sourceVersionTag).toBe("v0.0.18");
     expect(getPackageReferenceBundle("testnet:utopia").toolchainVersion).toBe("1.68.0");
   });
@@ -100,10 +100,23 @@ original-id = "0xddd"
 
     const refreshedMap = getPackageReferenceBundleMap();
     expect(refreshedMap).not.toBe(initialMap);
-    expect(refreshedMap.get("testnet:stillness")?.worldPackageId).toBe("0xbbb");
+    expect(refreshedMap.get("testnet:stillness")?.worldPackageId).toBe("0xaaa");
   });
 
   it("skips manifest refresh when overrides were already verified today", () => {
+    window.localStorage.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify({
+      version: 2,
+      lastVerifiedOn: new Date().toISOString().slice(0, 10),
+      source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
+      worldPackageIds: {
+        "testnet:stillness": "0xaaa",
+      },
+    }));
+
+    expect(shouldRefreshPublishedWorldPackageManifest(window.localStorage)).toBe(false);
+  });
+
+  it("forces a manifest refresh when stale version-1 overrides are present", () => {
     window.localStorage.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify({
       version: 1,
       lastVerifiedOn: new Date().toISOString().slice(0, 10),
@@ -113,6 +126,6 @@ original-id = "0xddd"
       },
     }));
 
-    expect(shouldRefreshPublishedWorldPackageManifest(window.localStorage)).toBe(false);
+    expect(shouldRefreshPublishedWorldPackageManifest(window.localStorage)).toBe(true);
   });
 });

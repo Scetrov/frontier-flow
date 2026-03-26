@@ -204,4 +204,168 @@ describe("deployGradeCompiler", () => {
       userMessage: "Deploy-grade compilation failed because dependency linking did not match the live world package.",
     });
   });
+
+  it("sanitizes resolved world dependency sources before the deploy-grade build step", async () => {
+    const resolvedDependencies: ResolvedDependencies = {
+      files: "{}",
+      dependencies: JSON.stringify([
+        {
+          name: "world",
+          files: {
+            "dependencies/world/tests/primitives/location_tests.move": "module world::location_tests;",
+            "dependencies/world/sources/access/access_control.move": [
+              "public fun transfer_owner_cap_to_address<T: key>(owner_cap: OwnerCap<T>, new_owner: address, ctx: &mut TxContext) {",
+              "    let cap_type = type_name::with_defining_ids<T>();",
+              '    let is_character =',
+              '        cap_type.module_string() == std::ascii::string(b"character")',
+              '        && cap_type.datatype_string() == std::ascii::string(b"Character");',
+              '    assert!(!is_character, ECharacterTransfer);',
+              "}",
+            ].join("\n"),
+          },
+        },
+      ]),
+      lockfileDependencies: "{}",
+    };
+    const buildMovePackage = vi.fn((input: {
+      readonly resolvedDependencies?: ResolvedDependencies;
+    }) => Promise.resolve().then(() => {
+      const dependencyPackages = JSON.parse(input.resolvedDependencies?.dependencies ?? "[]") as Array<{
+        readonly name?: string;
+        readonly files?: Record<string, string>;
+      }>;
+      const worldPackage = dependencyPackages.find((dependencyPackage) => dependencyPackage.name === "world");
+
+      expect(worldPackage?.files).not.toHaveProperty("dependencies/world/tests/primitives/location_tests.move");
+      expect(worldPackage?.files?.["dependencies/world/sources/access/access_control.move"]).toContain("let is_character = false;");
+      expect(worldPackage?.files?.["dependencies/world/sources/access/access_control.move"]).not.toContain("datatype_string()");
+
+      return {
+        modules: [toBase64([1, 2, 3])],
+        dependencies: ["0x1", "0x2"],
+        digest: [3, 2, 1],
+      };
+    }));
+
+    await compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      buildMovePackage,
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+      now: () => 42,
+    });
+
+    expect(buildMovePackage).toHaveBeenCalledTimes(1);
+  });
+
+  it("sanitizes resolved World dependency snapshots even when package names and paths are capitalized", async () => {
+    const resolvedDependencies: ResolvedDependencies = {
+      files: "{}",
+      dependencies: JSON.stringify([
+        {
+          name: "World",
+          files: {
+            "dependencies/World/tests/assemblies/storage_unit_tests.move": "module world::storage_unit_tests;",
+            "dependencies/World/sources/access/access_control.move": [
+              "public fun transfer_owner_cap_to_address<T: key>(owner_cap: OwnerCap<T>, new_owner: address, ctx: &mut TxContext) {",
+              "    let cap_type = type_name::with_defining_ids<T>();",
+              '    let is_character =',
+              '        cap_type.module_string() == std::ascii::string(b"character")',
+              '        && cap_type.datatype_string() == std::ascii::string(b"Character");',
+              '    assert!(!is_character, ECharacterTransfer);',
+              "}",
+            ].join("\n"),
+          },
+        },
+      ]),
+      lockfileDependencies: "{}",
+    };
+    const buildMovePackage = vi.fn((input: {
+      readonly resolvedDependencies?: ResolvedDependencies;
+    }) => Promise.resolve().then(() => {
+      const dependencyPackages = JSON.parse(input.resolvedDependencies?.dependencies ?? "[]") as Array<{
+        readonly name?: string;
+        readonly files?: Record<string, string>;
+      }>;
+      const worldPackage = dependencyPackages.find((dependencyPackage) => dependencyPackage.name === "World");
+
+      expect(worldPackage?.files).not.toHaveProperty("dependencies/World/tests/assemblies/storage_unit_tests.move");
+      expect(worldPackage?.files?.["dependencies/World/sources/access/access_control.move"]).toContain("let is_character = false;");
+      expect(worldPackage?.files?.["dependencies/World/sources/access/access_control.move"]).not.toContain("datatype_string()");
+
+      return {
+        modules: [toBase64([1, 2, 3])],
+        dependencies: ["0x1", "0x2"],
+        digest: [3, 2, 1],
+      };
+    }));
+
+    await compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      buildMovePackage,
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+      now: () => 42,
+    });
+
+    expect(buildMovePackage).toHaveBeenCalledTimes(1);
+  });
+
+  it("patches the world Published.toml address to match the target worldPackageId before the build step", async () => {
+    const targetWorldPackageId = "0xcf6b5da20b0c6540895b79b91580ec0734fcfa4298848f0e8382ef217965bfd5";
+    const resolvedDependencies: ResolvedDependencies = {
+      files: "{}",
+      dependencies: JSON.stringify([
+        {
+          name: "World",
+          files: {
+            "dependencies/World/Published.toml": [
+              "[published.testnet]",
+              'chain-id = "4c78adac"',
+              'published-at = "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c"',
+              'original-id = "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c"',
+              "version = 1",
+            ].join("\n"),
+          },
+        },
+      ]),
+      lockfileDependencies: "{}",
+    };
+    const buildMovePackage = vi.fn((input: {
+      readonly resolvedDependencies?: ResolvedDependencies;
+    }) => Promise.resolve().then(() => {
+      const dependencyPackages = JSON.parse(input.resolvedDependencies?.dependencies ?? "[]") as Array<{
+        readonly name?: string;
+        readonly files?: Record<string, string>;
+      }>;
+      const worldPackage = dependencyPackages.find((pkg) => pkg.name === "World");
+      const publishedToml = worldPackage?.files?.["dependencies/World/Published.toml"] ?? "";
+
+      expect(publishedToml).toContain(`published-at = "${targetWorldPackageId}"`);
+      expect(publishedToml).toContain(`original-id = "${targetWorldPackageId}"`);
+      expect(publishedToml).not.toContain("0x28b497");
+
+      return {
+        modules: [toBase64([1, 2, 3])],
+        dependencies: ["0x1", "0x2"],
+        digest: [3, 2, 1],
+      };
+    }));
+
+    await compileForDeployment(
+      createRequest({ target: createPackageReferenceBundle("local:evefrontier" as Exclude<import("../../compiler/types").DeploymentTargetId, "local">, { worldPackageId: targetWorldPackageId, originalWorldPackageId: targetWorldPackageId }) }),
+      {
+        initMoveCompiler: vi.fn(() => Promise.resolve()),
+        resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+        buildMovePackage,
+        getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+        verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+        now: () => 42,
+      },
+    );
+
+    expect(buildMovePackage).toHaveBeenCalledTimes(1);
+  });
 });

@@ -12,8 +12,10 @@
   },
   "scripts": {
     "dev": "vite",
+    "debug:remote-deploy-grade-mcve": "bun run ./scripts/debug-remote-deploy-grade-mcve.ts",
     "build": "tsc -b && vite build",
     "build:with-world-contracts": "bun run fetch:world-contracts && bun run build",
+    "debug:local-publish-mcve": "bun run ./scripts/debug-local-publish-mcve.ts",
     "fetch:world-contracts": "bun run ./scripts/fetch-world-contracts.ts",
     "lint": "eslint .",
     "preview": "vite preview",

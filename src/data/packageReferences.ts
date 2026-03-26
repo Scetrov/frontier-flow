@@ -11,7 +11,7 @@ let cachedOverrideSnapshot: string | null | undefined;
 type RemoteDeploymentTargetId = Exclude<PackageReferenceBundle["targetId"], "local">;
 
 interface StoredWorldPackageOverrides {
-  readonly version: 1;
+  readonly version: 2;
   readonly lastVerifiedOn: string;
   readonly source: string;
   readonly worldPackageIds: Partial<Record<RemoteDeploymentTargetId, string>>;
@@ -21,6 +21,18 @@ interface StoredWorldPackageOverrides {
  * Maintained Stillness and Utopia package references used for deployment validation.
  */
 export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
+  {
+    targetId: "local:evefrontier",
+    environmentLabel: "Local EVE Frontier",
+    worldPackageId: "0xcf6b5da20b0c6540895b79b91580ec0734fcfa4298848f0e8382ef217965bfd5",
+    originalWorldPackageId: "0xcf6b5da20b0c6540895b79b91580ec0734fcfa4298848f0e8382ef217965bfd5",
+    objectRegistryId: "0xc344526dd6e14297453e53195f4b9c46c0d31200ed8805195e183f796d349a63",
+    serverAddressRegistryId: "0x0000000000000000000000000000000000000000000000000000000000000000",
+    sourceVersionTag: "v0.0.18",
+    toolchainVersion: "1.67.1",
+    source: "local",
+    lastVerifiedOn: LAST_VERIFIED_ON,
+  },
   {
     targetId: "testnet:stillness",
     environmentLabel: "Stillness",
@@ -66,7 +78,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseStoredWorldPackageOverrides(value: unknown): StoredWorldPackageOverrides | null {
   if (
     !isRecord(value)
-    || value.version !== 1
+    || value.version !== 2
     || typeof value.lastVerifiedOn !== "string"
     || typeof value.source !== "string"
     || !isRecord(value.worldPackageIds)
@@ -83,7 +95,7 @@ function parseStoredWorldPackageOverrides(value: unknown): StoredWorldPackageOve
   }
 
   return {
-    version: 1,
+    version: 2,
     lastVerifiedOn: value.lastVerifiedOn,
     source: value.source,
     worldPackageIds,
@@ -171,7 +183,7 @@ export function parsePublishedWorldPackageManifest(manifest: string): Partial<Re
   for (const [sectionName, targetId] of [["testnet_stillness", "testnet:stillness"], ["testnet_utopia", "testnet:utopia"]] as const) {
     const originalId = extractPublishedSectionValue(manifest, sectionName, "original-id");
     const publishedAt = extractPublishedSectionValue(manifest, sectionName, "published-at");
-    const resolvedPackageId = originalId ?? publishedAt;
+    const resolvedPackageId = publishedAt ?? originalId;
 
     if (resolvedPackageId !== null && isPublishedPackageId(resolvedPackageId)) {
       results[targetId] = resolvedPackageId;
@@ -198,7 +210,7 @@ export async function refreshPublishedWorldPackageManifest(input: {
   const manifest = await response.text();
   const worldPackageIds = parsePublishedWorldPackageManifest(manifest);
   saveStoredWorldPackageOverrides(input.storage ?? getBrowserStorage(), {
-    version: 1,
+    version: 2,
     lastVerifiedOn: getCurrentIsoDate(),
     source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
     worldPackageIds,

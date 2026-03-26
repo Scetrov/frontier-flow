@@ -38,7 +38,7 @@ export interface SourceMapEntry {
   readonly context?: string;
 }
 
-export type DeploymentTargetId = "local" | "testnet:stillness" | "testnet:utopia";
+export type DeploymentTargetId = "local" | "local:evefrontier" | "testnet:stillness" | "testnet:utopia";
 
 export interface DeploymentTarget {
   readonly id: DeploymentTargetId;

@@ -11,7 +11,7 @@ describe("VisualDeploymentTargetSelector", () => {
 
     const options = screen.getAllByRole("menuitemradio").map((option) => option.textContent);
 
-    expect(options).toEqual(["local", "testnet:stillness", "testnet:utopia"]);
+    expect(options).toEqual(["local", "local:evefrontier", "testnet:stillness", "testnet:utopia"]);
   });
 
   it("notifies when the selected target changes", () => {

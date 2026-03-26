@@ -87,6 +87,32 @@ describe("DeployWorkflowView", () => {
     expect(screen.getByText("Resolve the wallet connection before retrying deployment.")).toBeVisible();
   });
 
+  it("renders multiline deployment diagnostics in a preserved code block", () => {
+    const details = [
+      "Deployment failed.",
+      "error[E04023]: invalid method call",
+      "  ┌─ dependencies/world/sources/access/access_control.move:113:12",
+    ].join("\n");
+
+    renderDeployWorkflowView(createDeploymentState({
+      statusMessage: {
+        attemptId: "attempt-2",
+        targetId: "testnet:stillness",
+        severity: "error",
+        headline: "Deployment failed",
+        details,
+        visibleInFooter: true,
+        visibleInMovePanel: true,
+      },
+    }));
+
+    const detailsBlock = screen.getByLabelText("Deployment status details");
+
+    expect(detailsBlock.tagName).toBe("PRE");
+    expect(detailsBlock.textContent).toBe(details);
+    expect(detailsBlock.textContent).toContain("error[E04023]: invalid method call");
+  });
+
   it("shows the local target as ready when blockers are cleared", () => {
     renderDeployWorkflowView(
       createDeploymentState({

@@ -48,7 +48,7 @@ function createPublishedWorldDependencyManifest(references: PackageReferenceBund
     "[published.testnet]",
     `chain-id = "${TESTNET_CHAIN_ID}"`,
     `published-at = "${references.worldPackageId}"`,
-    `original-id = "${references.worldPackageId}"`,
+    `original-id = "${references.originalWorldPackageId}"`,
     "version = 1",
     'toolchain-version = "1.67.1"',
     'build-config = { flavor = "sui", edition = "2024" }',
@@ -143,15 +143,42 @@ async function resolvePublishModules(
   };
 }
 
+function normalizeRemotePublishDependencies(
+  dependencies: readonly string[],
+  references: PackageReferenceBundle,
+): readonly string[] {
+  const normalizedDependencies = dependencies.map((dependency) => {
+    if (dependency === references.originalWorldPackageId) {
+      return references.worldPackageId;
+    }
+
+    return dependency;
+  });
+
+  if (!normalizedDependencies.includes(references.worldPackageId)) {
+    normalizedDependencies.push(references.worldPackageId);
+  }
+
+  return Array.from(new Set(normalizedDependencies));
+}
+
 function resolveRemoteDependencies(
   request: RemotePublishRequest,
+  compileResult: DeployGradeCompileResult | undefined,
   compiledArtifact: GeneratedContractArtifact | null,
 ): readonly string[] {
-  return prepareArtifactManifestForTarget(
-    compiledArtifact?.moduleName ?? request.artifact?.moduleName ?? "unknown-module",
-    request.target.id,
-    compiledArtifact?.dependencies ?? [],
-  ).dependencies;
+  if (compileResult !== undefined) {
+    return normalizeRemotePublishDependencies(compileResult.dependencies, request.references);
+  }
+
+  return normalizeRemotePublishDependencies(
+    prepareArtifactManifestForTarget(
+      compiledArtifact?.moduleName ?? request.artifact?.moduleName ?? "unknown-module",
+      request.target.id,
+      compiledArtifact?.dependencies ?? [],
+    ).dependencies,
+    request.references,
+  );
 }
 
 function createPublishTransaction(
@@ -176,7 +203,7 @@ export async function publishToRemoteTarget(request: RemotePublishRequest): Prom
 
   const { compileResult, compiledArtifact } = await resolvePublishModules(request);
   const modules = compileResult?.modules ?? compiledArtifact?.bytecodeModules ?? [];
-  const dependencies = compileResult?.dependencies ?? resolveRemoteDependencies(request, compiledArtifact);
+  const dependencies = resolveRemoteDependencies(request, compileResult, compiledArtifact);
   const transaction = createPublishTransaction(modules, dependencies, request.ownerAddress);
 
   const result = await request.execute(transaction, {

@@ -19,6 +19,15 @@ export const DEPLOYMENT_TARGETS: readonly DeploymentTarget[] = [
     requiresLocalValidator: true,
   },
   {
+    id: "local:evefrontier",
+    label: "local:evefrontier",
+    networkFamily: "local",
+    requiresPublishedPackageRefs: true,
+    supportsWalletSigning: false,
+    rpcUrl: "http://127.0.0.1:9000",
+    requiresLocalValidator: true,
+  },
+  {
     id: "testnet:stillness",
     label: "testnet:stillness",
     networkFamily: "testnet",

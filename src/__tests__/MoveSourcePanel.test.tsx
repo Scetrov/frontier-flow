@@ -72,6 +72,37 @@ describe("MoveSourcePanel", () => {
     expect(screen.getByText(/Resolve graph validation issues or compile errors/)).toBeVisible();
   });
 
+  it("renders build output alongside source code when diagnostics are available", () => {
+    const rawBuildOutput = [
+      "error[E04023]: invalid method call",
+      "   ┌─ ./dependencies/world/sources/access/access_control.move:113:2",
+      "   │",
+      "113 │ │ cap_type.datatype_string() == std::ascii::string(b\"character\")",
+    ].join("\n");
+    const artifact = createGeneratedArtifactStub({
+      diagnostics: [{
+        severity: "error",
+        stage: "compilation",
+        rawMessage: rawBuildOutput,
+        line: 113,
+        reactFlowNodeId: null,
+        socketId: null,
+        userMessage: "invalid method call",
+      }],
+    });
+
+    render(
+      <MoveSourcePanel
+        sourceCode={artifact.moveSource}
+        status={{ state: "error", diagnostics: artifact.diagnostics ?? [], artifact }}
+      />,
+    );
+
+    expect(screen.getByLabelText(`${artifact.sourceFilePath} contents`).textContent).toBe(artifact.moveSource);
+    expect(screen.getByRole("region", { name: "Build output" })).toBeVisible();
+    expect(screen.getByLabelText("Build output contents").textContent).toContain(rawBuildOutput);
+  });
+
   it("does not render deployment review content for blocked deployment state", () => {
     render(
       <MoveSourcePanel
