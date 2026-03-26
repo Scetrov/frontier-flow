@@ -6,10 +6,12 @@ for (const scenario of [
   {
     target: "testnet:stillness",
     search: "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_wallet=connected&ff_mock_deploy_stage_delay_ms=120",
+    expectedStageLabel: "Fetch World Source",
   },
   {
     target: "local",
     search: "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_deploy_stage_delay_ms=120",
+    expectedStageLabel: "Preparing",
   },
 ] as const) {
   test(`shows staged deployment progress for ${scenario.target} and keeps evidence after dismissal`, async ({ page }) => {
@@ -29,7 +31,7 @@ for (const scenario of [
     await expect(modal).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__copy", { hasText: `Target: ${scenario.target}` })).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__stage-label", { hasText: "Validating" })).toBeVisible();
-    await expect(modal.locator(".ff-deployment-modal__stage-label", { hasText: "Preparing" })).toBeVisible();
+    await expect(modal.locator(".ff-deployment-modal__stage-label", { hasText: scenario.expectedStageLabel })).toBeVisible();
     await expect(modal.locator(".ff-deployment-modal__stage-state").filter({ hasText: /Active|Complete/ }).first()).toBeVisible();
 
     await modal.getByRole("button", { name: "Dismiss" }).click();

@@ -10,6 +10,17 @@ interface DeploymentStateValidationContext {
   readonly moduleName?: string;
 }
 
+interface StoredDeploymentStateFields {
+  readonly packageId: string;
+  readonly moduleName: string;
+  readonly targetId: DeploymentTargetId;
+  readonly transactionDigest: string;
+  readonly deployedAt: string;
+  readonly contractName: string;
+  readonly sourceVersionTag?: unknown;
+  readonly builderToolchainVersion?: unknown;
+}
+
 /**
  * Loads the persisted deployment state when storage contains a valid version 1 snapshot.
  */
@@ -83,6 +94,19 @@ export function loadActiveContractName(storage: Storage | undefined): string | n
   }
 }
 
+function hasRequiredStoredDeploymentStateFields(value: Record<string, unknown>): value is Record<string, unknown> & StoredDeploymentStateFields {
+  return typeof value.packageId === "string"
+    && typeof value.moduleName === "string"
+    && isDeploymentTargetId(value.targetId)
+    && typeof value.transactionDigest === "string"
+    && typeof value.deployedAt === "string"
+    && typeof value.contractName === "string";
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
 function parseStoredDeploymentState(value: unknown): StoredDeploymentState | null {
   if (!isRecord(value)) {
     return null;
@@ -92,14 +116,7 @@ function parseStoredDeploymentState(value: unknown): StoredDeploymentState | nul
     return null;
   }
 
-  if (
-    typeof value.packageId !== "string"
-    || typeof value.moduleName !== "string"
-    || !isDeploymentTargetId(value.targetId)
-    || typeof value.transactionDigest !== "string"
-    || typeof value.deployedAt !== "string"
-    || typeof value.contractName !== "string"
-  ) {
+  if (!hasRequiredStoredDeploymentStateFields(value)) {
     return null;
   }
 
@@ -111,8 +128,8 @@ function parseStoredDeploymentState(value: unknown): StoredDeploymentState | nul
     transactionDigest: value.transactionDigest,
     deployedAt: value.deployedAt,
     contractName: sanitizeContractName(value.contractName),
-    sourceVersionTag: typeof value.sourceVersionTag === "string" ? value.sourceVersionTag : undefined,
-    builderToolchainVersion: typeof value.builderToolchainVersion === "string" ? value.builderToolchainVersion : undefined,
+    sourceVersionTag: optionalString(value.sourceVersionTag),
+    builderToolchainVersion: optionalString(value.builderToolchainVersion),
   };
 }
 

@@ -116,38 +116,76 @@ async function compileArtifactForRemotePublish(
   return compileResult.artifact;
 }
 
-/**
- * Publish a compiled artifact to a supported remote Sui target.
- */
-export async function publishToRemoteTarget(request: RemotePublishRequest): Promise<RemotePublishResult> {
+function requireOwnerAddress(request: RemotePublishRequest): void {
   if (request.ownerAddress.length === 0) {
     throw new Error(`A connected wallet address is required before deploying to ${request.target.label}.`);
   }
+}
 
-  const compiledArtifact = request.compileResult === undefined
-    ? await compileArtifactForRemotePublish(request.artifact ?? (() => { throw new Error("A compiled artifact is required for remote publishing."); })(), request.references)
-    : null;
-  const modules = request.compileResult?.modules ?? compiledArtifact?.bytecodeModules ?? [];
-  const dependencies = request.compileResult?.dependencies
-    ?? prepareArtifactManifestForTarget(
-      compiledArtifact?.moduleName ?? request.artifact?.moduleName ?? "unknown-module",
-      request.target.id,
-      compiledArtifact?.dependencies ?? [],
-    ).dependencies;
+function resolveCompileInputArtifact(request: RemotePublishRequest): GeneratedContractArtifact {
+  if (request.artifact !== undefined) {
+    return request.artifact;
+  }
+
+  throw new Error("A compiled artifact is required for remote publishing.");
+}
+
+async function resolvePublishModules(
+  request: RemotePublishRequest,
+): Promise<{ readonly compileResult?: DeployGradeCompileResult; readonly compiledArtifact: GeneratedContractArtifact | null }> {
+  if (request.compileResult !== undefined) {
+    return { compileResult: request.compileResult, compiledArtifact: null };
+  }
+
+  return {
+    compileResult: undefined,
+    compiledArtifact: await compileArtifactForRemotePublish(resolveCompileInputArtifact(request), request.references),
+  };
+}
+
+function resolveRemoteDependencies(
+  request: RemotePublishRequest,
+  compiledArtifact: GeneratedContractArtifact | null,
+): readonly string[] {
+  return prepareArtifactManifestForTarget(
+    compiledArtifact?.moduleName ?? request.artifact?.moduleName ?? "unknown-module",
+    request.target.id,
+    compiledArtifact?.dependencies ?? [],
+  ).dependencies;
+}
+
+function createPublishTransaction(
+  modules: readonly Uint8Array[],
+  dependencies: readonly string[],
+  ownerAddress: string,
+): Transaction {
   const transaction = new Transaction();
   const [upgradeCap] = transaction.publish({
     modules: modules.map((module) => Array.from(module)),
     dependencies: Array.from(dependencies),
   });
-  transaction.transferObjects([upgradeCap], request.ownerAddress);
+  transaction.transferObjects([upgradeCap], ownerAddress);
+  return transaction;
+}
+
+/**
+ * Publish a compiled artifact to a supported remote Sui target.
+ */
+export async function publishToRemoteTarget(request: RemotePublishRequest): Promise<RemotePublishResult> {
+  requireOwnerAddress(request);
+
+  const { compileResult, compiledArtifact } = await resolvePublishModules(request);
+  const modules = compileResult?.modules ?? compiledArtifact?.bytecodeModules ?? [];
+  const dependencies = compileResult?.dependencies ?? resolveRemoteDependencies(request, compiledArtifact);
+  const transaction = createPublishTransaction(modules, dependencies, request.ownerAddress);
 
   const result = await request.execute(transaction, {
     onSubmitting: request.onSubmitting,
     signal: request.signal,
   });
   return {
-    builderToolchainVersion: request.compileResult?.builderToolchainVersion,
-    sourceVersionTag: request.compileResult?.sourceVersionTag,
+    builderToolchainVersion: compileResult?.builderToolchainVersion,
+    sourceVersionTag: compileResult?.sourceVersionTag,
     transactionDigest: result.digest,
   };
 }

@@ -68,6 +68,14 @@ export interface DeploymentExecutorDependencies {
   }) => Promise<RemotePublishResult>;
 }
 
+interface PublishStepContext {
+  readonly request: DeploymentExecutionRequest;
+  readonly dependencies: DeploymentExecutorDependencies;
+  readonly setStage: (stage: DeploymentStage) => void;
+  readonly getStage: () => DeploymentStage;
+  readonly onProgress?: (progress: DeploymentExecutionProgress) => void;
+}
+
 const DEFAULT_EXECUTOR_DEPENDENCIES: DeploymentExecutorDependencies = {
   compileForDeployment: ({ artifact, references, worldSource, signal, onProgress }) => compileForDeployment({
     artifact,
@@ -156,6 +164,201 @@ function classifyExecutionError(error: unknown, fallbackStage: DeploymentStage):
   };
 }
 
+function reportProgress(
+  onProgress: ((progress: DeploymentExecutionProgress) => void) | undefined,
+  stage: DeploymentStage,
+  message: string,
+): void {
+  onProgress?.({ message, stage });
+}
+
+function reportInitialProgress(
+  request: DeploymentExecutionRequest,
+  onProgress: ((progress: DeploymentExecutionProgress) => void) | undefined,
+): DeploymentStage {
+  reportProgress(onProgress, "validating", "Validating deployment prerequisites.");
+  const nextStage = request.target.supportsWalletSigning ? "fetch-world-source" : "preparing";
+  reportProgress(
+    onProgress,
+    nextStage,
+    request.target.supportsWalletSigning
+      ? "Fetching the upstream world package source."
+      : "Preparing deployment payload.",
+  );
+  return nextStage;
+}
+
+function createPublishMetadata(publishResult: LocalPublishResult | RemotePublishResult) {
+  return {
+    sourceVersionTag: "sourceVersionTag" in publishResult ? publishResult.sourceVersionTag : undefined,
+    builderToolchainVersion: "builderToolchainVersion" in publishResult ? publishResult.builderToolchainVersion : undefined,
+  };
+}
+
+async function executeRemotePublish(
+  request: DeploymentExecutionRequest,
+  dependencies: DeploymentExecutorDependencies,
+  setStage: (stage: DeploymentStage) => void,
+  onProgress?: (progress: DeploymentExecutionProgress) => void,
+): Promise<RemotePublishResult> {
+  const references = request.references as PackageReferenceBundle;
+  const worldSource = await dependencies.fetchWorldSource({ references, signal: request.signal });
+  const compileResult = await dependencies.compileForDeployment({
+    artifact: request.artifact,
+    references,
+    worldSource,
+    signal: request.signal,
+    onProgress: (message, stage) => {
+      setStage(stage);
+      reportProgress(onProgress, stage, message);
+    },
+  });
+
+  setStage("signing");
+  reportProgress(onProgress, "signing", "Waiting for wallet signing approval.");
+  return dependencies.publishRemote({
+    compileResult: {
+      ...compileResult,
+      sourceVersionTag: worldSource.sourceVersionTag,
+    },
+    ownerAddress: request.ownerAddress ?? "",
+    onSubmitting: () => {
+      setStage("submitting");
+      reportProgress(onProgress, "submitting", "Submitting deployment transaction.");
+    },
+    target: request.target,
+    references,
+    execute: () => Promise.reject(new Error("Remote publish execution dependency was not provided.")),
+    signal: request.signal,
+  });
+}
+
+async function executeLocalPublish(
+  request: DeploymentExecutionRequest,
+  dependencies: DeploymentExecutorDependencies,
+  setStage: (stage: DeploymentStage) => void,
+  onProgress?: (progress: DeploymentExecutionProgress) => void,
+): Promise<LocalPublishResult> {
+  setStage("submitting");
+  reportProgress(onProgress, "submitting", "Submitting deployment transaction.");
+  return dependencies.publishLocal({
+    artifact: request.artifact,
+    target: request.target,
+    references: request.references,
+    signal: request.signal,
+  });
+}
+
+async function executePublishStep(
+  context: PublishStepContext,
+): Promise<LocalPublishResult | RemotePublishResult | DeploymentExecutionResult> {
+  const { request, dependencies, setStage, getStage, onProgress } = context;
+  try {
+    if (request.target.supportsWalletSigning) {
+      return await executeRemotePublish(request, dependencies, setStage, onProgress);
+    }
+
+    return await executeLocalPublish(request, dependencies, setStage, onProgress);
+  } catch (error: unknown) {
+    return classifyExecutionError(error, getStage() === "signing" ? "signing" : "submitting");
+  }
+}
+
+async function executeConfirmationStep(
+  request: DeploymentExecutionRequest,
+  publishResult: LocalPublishResult | RemotePublishResult,
+  dependencies: DeploymentExecutorDependencies,
+): Promise<DeploymentConfirmationResult | DeploymentExecutionResult> {
+  try {
+    return await dependencies.confirm({
+      artifact: request.artifact,
+      packageId: publishResult.packageId,
+      target: request.target,
+      transactionDigest: publishResult.transactionDigest,
+      signal: request.signal,
+    });
+  } catch (error: unknown) {
+    return classifyExecutionError(error, "confirming");
+  }
+}
+
+function toConfirmationFailure(
+  request: DeploymentExecutionRequest,
+  confirmation: DeploymentConfirmationResult,
+): DeploymentExecutionResult {
+  return {
+    outcome: "unresolved",
+    packageId: confirmation.packageId,
+    confirmationReference: confirmation.confirmationReference,
+    stage: confirmation.finalStage,
+    message: `Deployment submission for ${request.target.label} could not be confirmed within the verification window.`,
+    errorCode: "confirmation-timeout",
+  };
+}
+
+function toSuccessResult(
+  request: DeploymentExecutionRequest,
+  confirmation: DeploymentConfirmationResult,
+  publishMetadata: { readonly sourceVersionTag?: string; readonly builderToolchainVersion?: string },
+): DeploymentExecutionResult {
+  return {
+    outcome: "succeeded",
+    packageId: confirmation.packageId,
+    confirmationReference: confirmation.confirmationReference,
+    stage: confirmation.finalStage,
+    ...publishMetadata,
+    message: `Deployment completed for ${request.target.label}.`,
+  };
+}
+
+async function executeDeployment(
+  request: DeploymentExecutionRequest,
+  resolvedDependencies: DeploymentExecutorDependencies,
+  onProgress?: (progress: DeploymentExecutionProgress) => void,
+): Promise<DeploymentExecutionResult> {
+  let currentStage: DeploymentStage = "validating";
+  const setStage = (stage: DeploymentStage) => {
+    currentStage = stage;
+  };
+
+  try {
+    setStage(reportInitialProgress(request, onProgress));
+
+    const publishResult = await executePublishStep({
+      request,
+      dependencies: resolvedDependencies,
+      setStage,
+      getStage: () => currentStage,
+      onProgress,
+    });
+    if ("outcome" in publishResult) {
+      return publishResult;
+    }
+
+    const publishMetadata = createPublishMetadata(publishResult);
+    setStage("confirming");
+    reportProgress(onProgress, "confirming", "Confirming deployment transaction.");
+
+    const confirmation = await executeConfirmationStep(request, publishResult, resolvedDependencies);
+    if ("outcome" in confirmation) {
+      return {
+        ...confirmation,
+        packageId: publishResult.packageId,
+        confirmationReference: publishResult.transactionDigest,
+        ...publishMetadata,
+      };
+    }
+
+    if (!confirmation.confirmed) {
+      return toConfirmationFailure(request, confirmation);
+    }
+
+    return toSuccessResult(request, confirmation, publishMetadata);
+  } catch (error: unknown) {
+    return classifyExecutionError(error, currentStage);
+  }
+}
+
 /**
  * Create a typed deployment executor that isolates publish and confirmation mechanics.
  */
@@ -167,125 +370,5 @@ export function createDeploymentExecutor(
     ...dependencies,
   };
 
-  return async (request, onProgress) => {
-    let currentStage: DeploymentStage = "validating";
-
-    try {
-      onProgress?.({ message: "Validating deployment prerequisites.", stage: "validating" });
-      currentStage = request.target.supportsWalletSigning ? "fetch-world-source" : "preparing";
-      onProgress?.({
-        message: request.target.supportsWalletSigning
-          ? "Fetching the upstream world package source."
-          : "Preparing deployment payload.",
-        stage: currentStage,
-      });
-
-      const publishResult = await (async (): Promise<LocalPublishResult | RemotePublishResult | DeploymentExecutionResult> => {
-        try {
-          if (request.target.supportsWalletSigning) {
-            const worldSource = await resolvedDependencies.fetchWorldSource({
-              references: request.references as PackageReferenceBundle,
-              signal: request.signal,
-            });
-
-            const compileResult = await resolvedDependencies.compileForDeployment({
-              artifact: request.artifact,
-              references: request.references as PackageReferenceBundle,
-              worldSource,
-              signal: request.signal,
-              onProgress: (message, stage) => {
-                currentStage = stage;
-                onProgress?.({ message, stage });
-              },
-            });
-            currentStage = "signing";
-            onProgress?.({ message: "Waiting for wallet signing approval.", stage: "signing" });
-            return await resolvedDependencies.publishRemote({
-              compileResult: {
-                ...compileResult,
-                sourceVersionTag: worldSource.sourceVersionTag,
-              },
-              ownerAddress: request.ownerAddress ?? "",
-              onSubmitting: () => {
-                currentStage = "submitting";
-                onProgress?.({ message: "Submitting deployment transaction.", stage: "submitting" });
-              },
-              target: request.target,
-              references: request.references as PackageReferenceBundle,
-              execute: () => Promise.reject(new Error("Remote publish execution dependency was not provided.")),
-              signal: request.signal,
-            });
-          }
-
-          currentStage = "submitting";
-          onProgress?.({ message: "Submitting deployment transaction.", stage: "submitting" });
-          return await resolvedDependencies.publishLocal({
-            artifact: request.artifact,
-            target: request.target,
-            references: request.references,
-            signal: request.signal,
-          });
-        } catch (error: unknown) {
-          return classifyExecutionError(error, currentStage === "signing" ? "signing" : "submitting");
-        }
-      })();
-
-      if ("outcome" in publishResult) {
-        return publishResult;
-      }
-
-      const publishMetadata = {
-        sourceVersionTag: "sourceVersionTag" in publishResult ? publishResult.sourceVersionTag : undefined,
-        builderToolchainVersion: "builderToolchainVersion" in publishResult ? publishResult.builderToolchainVersion : undefined,
-      };
-
-      currentStage = "confirming";
-      onProgress?.({ message: "Confirming deployment transaction.", stage: "confirming" });
-
-      const confirmation = await (async (): Promise<DeploymentConfirmationResult | DeploymentExecutionResult> => {
-        try {
-          return await resolvedDependencies.confirm({
-            artifact: request.artifact,
-            packageId: publishResult.packageId,
-            target: request.target,
-            transactionDigest: publishResult.transactionDigest,
-            signal: request.signal,
-          });
-        } catch (error: unknown) {
-          return classifyExecutionError(error, "confirming");
-        }
-      })();
-
-      if ("outcome" in confirmation) {
-        return {
-          ...confirmation,
-          packageId: publishResult.packageId,
-          confirmationReference: publishResult.transactionDigest,
-          ...publishMetadata,
-        };
-      }
-
-      if (!confirmation.confirmed) {
-        return {
-          outcome: "unresolved",
-          packageId: confirmation.packageId,
-          confirmationReference: confirmation.confirmationReference,
-          stage: confirmation.finalStage,
-          message: `Deployment submission for ${request.target.label} could not be confirmed within the verification window.`,
-          errorCode: "confirmation-timeout",
-        };
-      }
-
-      return {
-        outcome: "succeeded",
-        packageId: confirmation.packageId,
-        confirmationReference: confirmation.confirmationReference,
-        stage: confirmation.finalStage,
-        ...publishMetadata,
-        message: `Deployment completed for ${request.target.label}.`,
-      };
-    } catch (error: unknown) {
-      return classifyExecutionError(error, currentStage);
-    }
-  };
+  return async (request, onProgress) => executeDeployment(request, resolvedDependencies, onProgress);
 }

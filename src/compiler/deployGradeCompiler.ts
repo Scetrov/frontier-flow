@@ -36,6 +36,23 @@ interface DeployGradeCompilerDependencies {
   readonly resolveDependencies?: typeof resolveDependencies;
 }
 
+interface ResolveDeployDependenciesOptions {
+  readonly request: DeployGradeCompileRequest;
+  readonly files: Record<string, string>;
+  readonly rootGit: { readonly git: string; readonly rev: string; readonly subdir: string };
+  readonly cacheKey: string;
+  readonly resolve: typeof resolveDependencies;
+  readonly now: () => number;
+}
+
+interface BuildDeployArtifactOptions {
+  readonly request: DeployGradeCompileRequest;
+  readonly files: Record<string, string>;
+  readonly rootGit: { readonly git: string; readonly rev: string; readonly subdir: string };
+  readonly resolvedDependencies: ResolvedDependencies;
+  readonly build: typeof buildMovePackage;
+}
+
 const resolutionCache = new Map<string, CachedDependencyResolution>();
 
 function getResolutionCacheKey(targetId: string, sourceVersionTag: string): string {
@@ -69,6 +86,16 @@ function createFileMap(request: DeployGradeCompileRequest): Record<string, strin
   }
 
   return files;
+}
+
+function getCompilerDependencies(dependencies: DeployGradeCompilerDependencies) {
+  return {
+    init: dependencies.initMoveCompiler ?? initMoveCompiler,
+    resolve: dependencies.resolveDependencies ?? resolveDependencies,
+    build: dependencies.buildMovePackage ?? buildMovePackage,
+    getVersion: dependencies.getSuiMoveVersion ?? getSuiMoveVersion,
+    now: dependencies.now ?? Date.now,
+  };
 }
 
 function rewriteMoveTomlForDeployGrade(moveToml: string, sourceVersionTag: string): string {
@@ -150,65 +177,47 @@ function classifyCompilationError(error: unknown) {
   });
 }
 
-/**
- * Reset the cached dependency-resolution snapshot for tests.
- */
-export function resetDeployGradeCompilerStateForTests(): void {
-  resolutionCache.clear();
+async function resolveDeployDependencies(
+  options: ResolveDeployDependenciesOptions,
+): Promise<ResolvedDependencies> {
+  const { request, files, rootGit, cacheKey, resolve, now } = options;
+  const cachedResolution = request.cachedResolution ?? resolutionCache.get(cacheKey);
+  if (cachedResolution !== undefined) {
+    return cachedResolution.resolvedDependencies;
+  }
+
+  request.onProgress?.({ phase: "resolving-dependencies", current: 0, total: 0 });
+
+  try {
+    const resolvedDependencies = await resolve({
+      files,
+      rootGit,
+      network: "testnet",
+      silenceWarnings: false,
+      onProgress: (event) => {
+        const mapped = toDeployProgress(event);
+        if (mapped !== null) {
+          request.onProgress?.(mapped);
+        }
+      },
+    });
+
+    resolutionCache.set(cacheKey, {
+      targetId: request.target.targetId,
+      sourceVersionTag: request.worldSource.sourceVersionTag,
+      resolvedDependencies,
+      resolvedAt: now(),
+    });
+    return resolvedDependencies;
+  } catch (error) {
+    throw classifyResolutionError(error);
+  }
 }
 
-/**
- * Compile a generated artifact against the live upstream world dependency graph.
- */
-export async function compileForDeployment(
-  request: DeployGradeCompileRequest,
-  dependencies: DeployGradeCompilerDependencies = {},
-): Promise<DeployGradeCompileResult> {
-  const init = dependencies.initMoveCompiler ?? initMoveCompiler;
-  const resolve = dependencies.resolveDependencies ?? resolveDependencies;
-  const build = dependencies.buildMovePackage ?? buildMovePackage;
-  const getVersion = dependencies.getSuiMoveVersion ?? getSuiMoveVersion;
-  const now = dependencies.now ?? Date.now;
-  const files = createFileMap(request);
-  const cacheKey = getResolutionCacheKey(request.target.targetId, request.worldSource.sourceVersionTag);
-  const rootGit = createRootGit(request.worldSource.sourceVersionTag);
-
-  await init();
-
-  let cachedResolution = request.cachedResolution;
-  if (cachedResolution === undefined) {
-    cachedResolution = resolutionCache.get(cacheKey);
-  }
-
-  let resolvedDependencies: ResolvedDependencies;
-  if (cachedResolution !== undefined) {
-    resolvedDependencies = cachedResolution.resolvedDependencies;
-  } else {
-    request.onProgress?.({ phase: "resolving-dependencies", current: 0, total: 0 });
-    try {
-      resolvedDependencies = await resolve({
-        files,
-        rootGit,
-        network: "testnet",
-        silenceWarnings: false,
-        onProgress: (event) => {
-          const mapped = toDeployProgress(event);
-          if (mapped !== null) {
-            request.onProgress?.(mapped);
-          }
-        },
-      });
-      resolutionCache.set(cacheKey, {
-        targetId: request.target.targetId,
-        sourceVersionTag: request.worldSource.sourceVersionTag,
-        resolvedDependencies,
-        resolvedAt: now(),
-      });
-    } catch (error) {
-      throw classifyResolutionError(error);
-    }
-  }
-
+async function buildDeployArtifact(
+  options: BuildDeployArtifactOptions,
+): Promise<BuildSuccessResult> {
+  const { request, files, rootGit, resolvedDependencies, build } = options;
   request.onProgress?.({ phase: "compiling" });
 
   let buildResult: BuildSuccessResult | BuildErrorResult;
@@ -235,6 +244,31 @@ export async function compileForDeployment(
   }
 
   request.onProgress?.({ phase: "complete" });
+  return buildResult;
+}
+
+/**
+ * Reset the cached dependency-resolution snapshot for tests.
+ */
+export function resetDeployGradeCompilerStateForTests(): void {
+  resolutionCache.clear();
+}
+
+/**
+ * Compile a generated artifact against the live upstream world dependency graph.
+ */
+export async function compileForDeployment(
+  request: DeployGradeCompileRequest,
+  dependencies: DeployGradeCompilerDependencies = {},
+): Promise<DeployGradeCompileResult> {
+  const { init, resolve, build, getVersion, now } = getCompilerDependencies(dependencies);
+  const files = createFileMap(request);
+  const cacheKey = getResolutionCacheKey(request.target.targetId, request.worldSource.sourceVersionTag);
+  const rootGit = createRootGit(request.worldSource.sourceVersionTag);
+
+  await init();
+  const resolvedDependencies = await resolveDeployDependencies({ request, files, rootGit, cacheKey, resolve, now });
+  const buildResult = await buildDeployArtifact({ request, files, rootGit, resolvedDependencies, build });
 
   return {
     modules: buildResult.modules.map((moduleBytes) => decodeBase64(moduleBytes)),
