@@ -16,6 +16,10 @@ export function getCompilationStatusButton(page: Page) {
   return page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
 }
 
+export function getCodeViewButton(page: Page) {
+  return page.locator("header").getByRole("button", { name: "Code", exact: true });
+}
+
 export async function openDeployWorkflow(page: Page) {
   await expect(getCompilationStatusButton(page)).toContainText("Compiled");
   await page.locator("header").getByRole("button", { name: "Deploy", exact: true }).click();

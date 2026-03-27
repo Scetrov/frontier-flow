@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { CONTRACT_LIBRARY_STORAGE_KEY } from "../../src/utils/contractStorage";
 import { expectNoAccessibilityViolations } from "./fixtures/accessibility";
-import { getCompilationStatusButton } from "./fixtures/workflow";
+import { getCodeViewButton, getCompilationStatusButton } from "./fixtures/workflow";
 import { referenceGraphFixtures, type GraphFixtureEdge, type GraphFixtureNode } from "./referenceGraphFixtures";
 
 async function prepareCompilationPage(page: Page) {
@@ -66,7 +66,7 @@ test("auto-compiles after idle and unlocks the workflow", async ({ page, isMobil
   await prepareCompilationPage(page);
 
   const statusButton = getCompilationStatusButton(page);
-  const moveTab = page.getByRole("button", { name: "Move" });
+  const moveTab = getCodeViewButton(page);
   const deployTab = page.locator("header").getByRole("button", { name: "Deploy", exact: true });
 
   await expect(statusButton).toBeVisible();
@@ -94,7 +94,7 @@ test("generated source view passes automated accessibility auditing", async ({ p
   await prepareCompilationPageWithQuery(page, "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120");
 
   await expect(getCompilationStatusButton(page)).toContainText("Compiled");
-  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await getCodeViewButton(page).click();
   await expect(page.getByText("Generated source")).toBeVisible();
   await expectNoAccessibilityViolations(page);
 });
@@ -121,7 +121,7 @@ test("reference graph matrix compiles multiple supported saved contracts through
     });
 
     const statusButton = getCompilationStatusButton(page);
-    const moveTab = page.getByRole("button", { name: "Move", exact: true });
+    const moveTab = getCodeViewButton(page);
     const deployTab = page.locator("header").getByRole("button", { name: "Deploy", exact: true });
 
     await expect(statusButton).toContainText("Compiled");
@@ -160,6 +160,6 @@ test("surfaces mock compiler failures through the build status panel", async ({ 
   await statusButton.click();
   await expect(page.getByText(/mock compile failure/i)).toBeVisible();
 
-  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await getCodeViewButton(page).click();
   await expect(page.getByText(/module builder_extensions::starter_contract/i)).toBeVisible();
 });

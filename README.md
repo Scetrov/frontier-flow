@@ -118,13 +118,13 @@ bun run verify
 bun run dev
 ```
 
-Open http://localhost:5179 or the local URL printed by Vite, then:
+Open <http://localhost:5179> or the local URL printed by Vite, then:
 
 1. Stay in the `Visual` view and drag a trigger node such as `Aggression` or `Proximity` onto the canvas.
 2. Add logic, data, and action nodes, then connect their typed sockets.
 3. Configure any node that needs structured values.
 4. Wait for auto-compile or click `Build`.
-5. Switch to the `Move` view to inspect the generated source and deployment readiness.
+5. Switch to the `Code` view to inspect the generated source.
 
 ### Run tests
 
@@ -211,7 +211,7 @@ Open the node editor when a graph element needs structured input. In this exampl
 
 ![Generated Move source view with deployment target selector](./docs/assets/screenshot-viewing-code.png)
 
-Switch to the `Move` view to inspect the generated source before deployment. The top bar keeps `Build` and deploy-target controls available while the source panel shows the exact Move module produced from the graph, along with status badges for build output and deployment readiness.
+Switch to the `Code` view to inspect the generated source before deployment. The top bar keeps `Build` and deploy-target controls available while the source panel shows the exact Move module produced from the graph, with compiler diagnostics kept alongside the selected source file when the build reports issues.
 
 ### 4. Track deployment progress
 

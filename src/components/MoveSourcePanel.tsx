@@ -71,32 +71,6 @@ function getArtifactFiles(sourceCode: string | null, status: CompilationStatus):
   return Array.from(files.values());
 }
 
-function getDeploymentMetadata(status: CompilationStatus): {
-  readonly badges: readonly string[];
-  readonly details: readonly string[];
-} {
-  const artifact = status.state === "compiled" || status.state === "error"
-    ? status.artifact ?? null
-    : null;
-  const deploymentStatus = artifact?.deploymentStatus;
-
-  if (deploymentStatus === undefined) {
-    return { badges: [], details: [] };
-  }
-
-  const badges = deploymentStatus.targetId === undefined
-    ? []
-    : [deploymentStatus.targetId];
-  const details = Array.from(new Set([
-    ...deploymentStatus.blockedReasons,
-    deploymentStatus.nextActionSummary,
-    deploymentStatus.packageId,
-    deploymentStatus.confirmationReference,
-  ].filter((value): value is string => typeof value === "string" && value.length > 0)));
-
-  return { badges, details };
-}
-
 function getBuildOutput(status: CompilationStatus): string | null {
   const artifactDiagnostics = status.state === "compiled" || status.state === "error"
     ? status.artifact?.diagnostics ?? []
@@ -334,7 +308,6 @@ function MoveBuildOutput({ buildOutput }: { readonly buildOutput: string }) {
 }
 
 function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps) {
-  const deploymentMetadata = useMemo(() => getDeploymentMetadata(status), [status]);
   const buildOutput = useMemo(() => getBuildOutput(status), [status]);
   const isCompiling = status.state === "compiling";
   const { displayedLines, files, highlightedSource, selectedFile, selectedFilePath, setSelectedFilePath } = useMoveSourceSelection(sourceCode, status);
@@ -367,16 +340,6 @@ function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps
       </header>
 
       <div className="ff-move-source__body">
-        {deploymentMetadata.badges.length > 0 || deploymentMetadata.details.length > 0 ? (
-          <div className="ff-move-source__meta" aria-label="Move source metadata">
-            {deploymentMetadata.badges.map((badge) => (
-              <span className="ff-move-source__badge" key={badge}>{badge}</span>
-            ))}
-            {deploymentMetadata.details.map((detail) => (
-              <span className="ff-move-source__filename" key={detail}>{detail}</span>
-            ))}
-          </div>
-        ) : null}
         <p className="ff-move-source__learn-banner">
           Learn how to extend this code using{" "}
           <a className="ff-move-source__learn-link" href="https://evefrontier.space/move/" rel="noreferrer" target="_blank">

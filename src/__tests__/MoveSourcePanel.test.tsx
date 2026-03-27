@@ -121,10 +121,10 @@ describe("MoveSourcePanel", () => {
     );
 
     expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
-    expect(screen.getByText(/Provide the target turret package and extension registration details to continue deployment/i)).toBeVisible();
+    expect(screen.queryByText(/Provide the target turret package and extension registration details to continue deployment/i)).not.toBeInTheDocument();
   });
 
-  it("renders deployment metadata without restoring the old compiled-status chip", () => {
+  it("does not render deployment metadata in the Move tab", () => {
     const { container } = render(
       <MoveSourcePanel
         sourceCode={compiledArtifact.moveSource}
@@ -132,12 +132,12 @@ describe("MoveSourcePanel", () => {
       />,
     );
 
-    expect(container.querySelector(".ff-move-source__meta")).not.toBeNull();
-    expect(screen.getByText("Provide the target turret package and extension registration details to continue deployment.")).toBeVisible();
+    expect(container.querySelector(".ff-move-source__meta")).toBeNull();
+    expect(screen.queryByText("Provide the target turret package and extension registration details to continue deployment.")).not.toBeInTheDocument();
     expect(screen.queryAllByText("Compiled")).toHaveLength(0);
   });
 
-  it("surfaces deployment metadata for successful deployments in the Move tab", () => {
+  it("does not surface deployment metadata for successful deployments in the Move tab", () => {
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("deployed", {
         targetId: "testnet:stillness",
@@ -154,9 +154,9 @@ describe("MoveSourcePanel", () => {
       />,
     );
 
-    expect(screen.getByText("testnet:stillness")).toBeVisible();
-    expect(screen.getByText("0xabc123")).toBeVisible();
-    expect(screen.getByText("0xdigest123")).toBeVisible();
+    expect(screen.queryByText("testnet:stillness")).not.toBeInTheDocument();
+    expect(screen.queryByText("0xabc123")).not.toBeInTheDocument();
+    expect(screen.queryByText("0xdigest123")).not.toBeInTheDocument();
   });
 
   it("does not render deployment review content for ready deployment state", () => {
@@ -176,7 +176,7 @@ describe("MoveSourcePanel", () => {
 
     expect(screen.queryByRole("region", { name: "Deployment review" })).not.toBeInTheDocument();
     expect(screen.queryByText("Target: testnet:stillness")).not.toBeInTheDocument();
-    expect(screen.getByText("Ready to deploy the generated artifact to the selected turret.")).toBeVisible();
+    expect(screen.queryByText("Ready to deploy the generated artifact to the selected turret.")).not.toBeInTheDocument();
   });
 
   it("invokes rebuild when the Move tab rebuild button is pressed", () => {

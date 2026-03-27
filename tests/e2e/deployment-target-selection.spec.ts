@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
+import { getCodeViewButton, getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
 
 test("selects a deployment target and surfaces deployment success metadata", async ({ page }) => {
   await page.addInitScript(() => {
@@ -26,7 +26,7 @@ test("selects a deployment target and surfaces deployment success metadata", asy
   await expect(deploymentDetails.getByText(/Deployment completed for testnet:stillness/i)).toBeVisible();
   await expect(deploymentDetails.locator(".ff-compilation-status__message").filter({ hasText: /^Package ID: 0x[a-f0-9]{64}$/i })).toBeVisible();
 
-  await page.getByRole("button", { name: "Move" }).click();
-  await expect(page.locator(".ff-move-source__badge", { hasText: "testnet:stillness" })).toBeVisible();
-  await expect(page.locator(".ff-move-source__filename", { hasText: /0x[a-f0-9]{64}/i }).first()).toBeVisible();
+  await getCodeViewButton(page).click();
+  await expect(page.getByText("Generated source")).toBeVisible();
+  await expect(page.locator(".ff-move-source__meta")).toHaveCount(0);
 });
