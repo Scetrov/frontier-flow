@@ -262,6 +262,8 @@ describe("Sidebar", () => {
         "Header and footer stay pinned while the catalogue scrolls. Config sources now pair with reusable list accessors.",
       ),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /themop\.dev/i })).toHaveAttribute("href", "https://themop.dev");
+    expect(screen.getByText("Use Ministry of Passage in your gates for jump control.")).toBeInTheDocument();
   });
 
   it("writes drag metadata including grab offset when a node drag starts", () => {
