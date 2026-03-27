@@ -326,7 +326,7 @@ function MoveBuildOutput({ highlightedBuildOutput }: { readonly highlightedBuild
       <div className="ff-move-source__output-header">
         <p className="ff-move-source__output-eyebrow">Build</p>
         <h3 className="ff-move-source__output-title">Build output</h3>
-        <p className="ff-move-source__output-copy">Raw compiler diagnostics stay visible beside the selected source file for side-by-side debugging.</p>
+        <p className="ff-move-source__output-copy">Warnings below are not unusual as the emitter will sometimes produce extra variables and aliases. If there are errors please log them on <a className="ff-alpha-banner__link keychainify-checked" href="https://github.com/Scetrov/frontier-flow/issues" rel="noopener noreferrer" target="_blank">GitHub</a>.</p>
       </div>
       <pre aria-label="Build output contents" className="ff-move-source__output-code">
         <code dangerouslySetInnerHTML={{ __html: highlightedBuildOutput }} />
