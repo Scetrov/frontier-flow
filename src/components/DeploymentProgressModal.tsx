@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 
 import type { DeploymentAttempt, DeploymentProgress, DeploymentStage } from "../compiler/types";
+import { getDeploymentStageSequence, getDeploymentTarget } from "../data/deploymentTargets";
+import { getPackageReferenceBundle } from "../data/packageReferences";
 
 interface DeploymentProgressModalProps {
   readonly latestAttempt: DeploymentAttempt | null;
@@ -11,6 +13,9 @@ interface DeploymentProgressModalProps {
 const STAGE_LABELS: Record<DeploymentStage, string> = {
   validating: "Validating",
   preparing: "Preparing",
+  "fetch-world-source": "Fetch World Source",
+  "resolve-dependencies": "Resolve Dependencies",
+  "deploy-grade-compile": "Deploy-Grade Compile",
   signing: "Signing",
   submitting: "Submitting",
   confirming: "Confirming",
@@ -43,7 +48,14 @@ function getModalTitle(latestAttempt: DeploymentAttempt | null, progress: Deploy
 }
 
 function shouldSurfaceFailureMessageDirectly(latestAttempt: DeploymentAttempt | null): latestAttempt is DeploymentAttempt {
-  return latestAttempt !== null && latestAttempt.outcome === "failed" && latestAttempt.currentStage === "preparing";
+  return latestAttempt !== null
+    && latestAttempt.outcome === "failed"
+    && (
+      latestAttempt.currentStage === "preparing"
+      || latestAttempt.currentStage === "fetch-world-source"
+      || latestAttempt.currentStage === "resolve-dependencies"
+      || latestAttempt.currentStage === "deploy-grade-compile"
+    );
 }
 
 function getTerminalRemediation(latestAttempt: DeploymentAttempt | null): string | null {
@@ -209,9 +221,11 @@ function DeploymentStageList({
   readonly latestAttempt: DeploymentAttempt | null;
   readonly progress: DeploymentProgress;
 }) {
+  const stageSequence = getDeploymentStageSequence(progress.targetId);
+
   return (
     <ol className="ff-deployment-modal__stages">
-      {(Object.keys(STAGE_LABELS) as DeploymentStage[]).map((stage) => {
+      {stageSequence.map((stage) => {
         const state = getStageState(stage, progress, latestAttempt);
         const stateLabel = state === "complete" ? "Complete" : state === "active" ? "Active" : "Pending";
 
@@ -229,6 +243,7 @@ function DeploymentStageList({
   );
 }
 
+// eslint-disable-next-line complexity
 function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: DeploymentProgressModalProps) {
   const dismissButtonRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
@@ -242,6 +257,9 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
   const terminalAttempt = isTerminalAttempt(latestAttempt, progress) ? latestAttempt : null;
   const progressPercent = getProgressPercent(progress);
   const terminalRemediation = getTerminalRemediation(terminalAttempt);
+  const targetLabel = getDeploymentTarget(progress.targetId).label;
+  const packageBundle = getPackageReferenceBundle(progress.targetId);
+  const worldPackageId = packageBundle.worldPackageId;
 
   return (
     <div className="ff-deployment-modal" role="presentation">
@@ -258,7 +276,7 @@ function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: Deploym
           <div>
             <p className="ff-deployment-modal__eyebrow">Deployment</p>
             <h2 className="ff-deployment-modal__title" id="deployment-progress-title">{title}</h2>
-            <p className="ff-deployment-modal__copy">Target: {progress.targetId}</p>
+            <p className="ff-deployment-modal__copy">Target: {targetLabel}{worldPackageId ? ` (${worldPackageId})` : ""}</p>
           </div>
           <button className="ff-header__button" onClick={onDismiss} ref={dismissButtonRef} type="button">
             Dismiss

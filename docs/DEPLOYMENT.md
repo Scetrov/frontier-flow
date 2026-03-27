@@ -3,7 +3,7 @@ title: Frontier Flow - Deployment Guide
 version: 1.0.0
 status: draft
 created: 2026-02-22
-updated: 2026-02-22
+updated: 2026-03-26
 author: Scetrov
 description: Deployment configuration, release process, and environment management for the Frontier Flow project.
 ---
@@ -18,6 +18,7 @@ description: Deployment configuration, release process, and environment manageme
 6. [Release Process](#6-release-process)
 7. [Rollback Procedure](#7-rollback-procedure)
 8. [Custom Domain & DNS](#8-custom-domain--dns)
+9. [In-App Wallet Behaviour](#9-in-app-wallet-behaviour)
 
 ---
 
@@ -54,12 +55,11 @@ flowchart TB
 
 ```toml
 [build]
-  command = "bun install --frozen-lockfile && bun run build"
+  command = "bun run build"
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "24"
-  BUN_VERSION = "latest"
+  BUN_VERSION = "1.3.6"
 
 # SPA routing: all paths serve index.html
 [[redirects]]
@@ -128,10 +128,10 @@ cp .env.example .env
 
 Available environment variables:
 
-| Variable                | Default | Purpose                                         |
-| ----------------------- | ------- | ----------------------------------------------- |
+| Variable                | Default | Purpose                                           |
+| ----------------------- | ------- | ------------------------------------------------- |
 | `VITE_BASE_PATH`        | `/`     | Base URL path (overridden by GitHub Pages deploy) |
-| `VITE_GITHUB_CLIENT_ID` | —       | GitHub OAuth app client ID (future)              |
+| `VITE_GITHUB_CLIENT_ID` | —       | GitHub OAuth app client ID (future)               |
 
 The `VITE_BASE_PATH` variable is used in `vite.config.ts` to set the `base` option. It is only overridden in the `deploy-pages.yml` GitHub Actions workflow for GitHub Pages subpath deployments.
 
@@ -258,6 +258,37 @@ Future release pipeline additions (see [SECURITY.md §6.3](./SECURITY.md#63-rele
 3. Publish release artifacts to GitHub Releases
 
 ---
+
+## 9. In-App Wallet Behaviour
+
+Frontier Flow has two distinct deployment signing modes inside the application. The active mode depends on the selected deployment target and, for localnet, the saved Localnet settings.
+
+### 9.1 Localnet Deployment
+
+The Localnet settings modal exposes a `Use ephemeral keypair` checkbox.
+
+- Checked by default: Frontier Flow creates a temporary `Ed25519` keypair in the browser, funds it from the localnet faucet, signs the publish transaction locally, and submits directly to the configured local RPC endpoint.
+- Because the application signs the transaction itself in this mode, no browser-wallet approval prompt appears.
+- This mode still requires the configured local validator, GraphQL endpoint, and world package metadata to be valid.
+
+- Unchecked: Frontier Flow keeps the same deploy-grade localnet compilation flow, but the publish transaction is handed to the connected wallet through the Sui Wallet Standard API.
+- In this mode, localnet deployment behaves like a published-target deployment from the user’s perspective: a wallet must be connected, the progress flow includes a signing stage, and the wallet must approve the transaction before submission continues.
+- The transaction is still executed against the configured localnet RPC endpoint.
+
+### 9.2 Published Targets
+
+- `testnet:stillness` and `testnet:utopia` always require a connected wallet.
+- Frontier Flow compiles against the maintained published world references for the selected target, asks the wallet to sign, then executes the signed transaction through the configured Sui client.
+- If the wallet approval is rejected, the deployment attempt is recorded as cancelled at the signing stage.
+
+### 9.3 Summary Table
+
+| Target mode                                    | Connected wallet required | Wallet popup expected | Signer source                                            |
+| ---------------------------------------------- | ------------------------- | --------------------- | -------------------------------------------------------- |
+| Localnet with `Use ephemeral keypair` enabled  | No                        | No                    | Temporary faucet-funded keypair created by Frontier Flow |
+| Localnet with `Use ephemeral keypair` disabled | Yes                       | Yes                   | Connected browser wallet                                 |
+| `testnet:stillness`                            | Yes                       | Yes                   | Connected browser wallet                                 |
+| `testnet:utopia`                               | Yes                       | Yes                   | Connected browser wallet                                 |
 
 ## 7. Rollback Procedure
 

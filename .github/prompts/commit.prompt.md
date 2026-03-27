@@ -2,7 +2,7 @@
 agent: agent
 name: commit
 description: This prompt is designed to automate the process of running pre-commit hooks, fixing any issues that arise, and managing the Git workflow for committing and pushing changes, as well as creating a Pull Request if necessary.
-model: GPT-5.4 (copilot)
+model: GPT-5 mini (copilot)
 ---
 
 Please execute the following workflow for my current branch:

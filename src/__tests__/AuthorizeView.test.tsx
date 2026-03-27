@@ -102,15 +102,32 @@ function createAuthorizationProgress(overrides: Partial<AuthorizationProgressSta
 }
 
 function createAuthorizationResult(overrides: Partial<UseAuthorizationResult> = {}): UseAuthorizationResult {
+  const abortAuthorization = overrides.abortAuthorization ?? vi.fn();
+  const cancelAuthorization = overrides.cancelAuthorization ?? vi.fn();
+  const dismissProgress = overrides.dismissProgress ?? vi.fn();
+  const retryEventConfirmation = overrides.retryEventConfirmation ?? vi.fn().mockResolvedValue(undefined);
+  const startAuthorization = overrides.startAuthorization ?? vi.fn().mockResolvedValue(undefined);
+  const results = overrides.results ?? [];
+  const summary = overrides.summary ?? {
+    confirmed: 0,
+    failed: 0,
+    pending: 0,
+    warnings: 0,
+    total: 0,
+  };
+
   return {
-    cancelAuthorization: vi.fn(),
-    dismissProgress: vi.fn(),
+    abortAuthorization,
+    cancelAuthorization,
+    dismissProgress,
     isAuthorizing: false,
     progress: null,
-    retryEventConfirmation: vi.fn().mockResolvedValue(undefined),
-    startAuthorization: vi.fn().mockResolvedValue(undefined),
+    results,
+    retryEventConfirmation,
+    startAuthorization,
+    summary,
     ...overrides,
-  };
+  } as UseAuthorizationResult;
 }
 
 beforeEach(() => {

@@ -125,7 +125,63 @@ describe("useAuthorization", () => {
       transactionDigest: "0xdigest",
       errorMessage: null,
     }]);
+    expect(result.current.summary).toEqual({
+      confirmed: 1,
+      failed: 0,
+      pending: 0,
+      warnings: 0,
+      total: 1,
+    });
+    expect(result.current.results).toEqual([{
+      turretObjectId: "0x1111",
+      status: "confirmed",
+      transactionDigest: "0xdigest",
+      errorMessage: null,
+    }]);
     expect(result.current.progress?.completedAt).not.toBeNull();
+  });
+
+  it("exposes explicit abort handling for an in-flight batch", async () => {
+    const queryAuthorizationEventFn = vi.fn(() => Promise.resolve(false));
+    const { result } = renderHook(() => useAuthorization({
+      deploymentState,
+      walletAccount: createConnectedAccount(),
+      currentWallet: createConnectedWallet(),
+      suiClient: createSuiClient(),
+      buildTransactionFn: vi.fn(() => createTransaction()),
+      confirmationTimeoutMs: 200,
+      eventPollingIntervalMs: 100,
+      fetchCharacterIdFn: vi.fn(() => Promise.resolve("0xcharacter")),
+      fetchOwnerCapFn: vi.fn(() => Promise.resolve("0xownercap")),
+      queryAuthorizationEventFn,
+      signTransactionFn: vi.fn<typeof signTransactionFunction>(() => Promise.resolve({
+        bytes: "dGVzdA==",
+        signature: "0xsig",
+      })),
+    }));
+
+    await act(async () => {
+      void result.current.startAuthorization(["0x1111", "0x2222"]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.isAuthorizing).toBe(true);
+
+    act(() => {
+      result.current.abortAuthorization();
+    });
+
+    expect(result.current.isAuthorizing).toBe(false);
+    expect(result.current.progress).toBeNull();
+    expect(result.current.summary).toEqual({
+      confirmed: 0,
+      failed: 0,
+      pending: 0,
+      warnings: 0,
+      total: 0,
+    });
+    expect(result.current.results).toEqual([]);
   });
 
   it("waits for the deployed witness type to become queryable before signing", async () => {

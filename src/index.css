@@ -545,6 +545,12 @@ button,
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
 }
 
+.ff-visual-target-selector__option-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.2rem;
+}
+
 .ff-visual-target-selector__option {
   display: inline-flex;
   align-items: center;
@@ -561,9 +567,22 @@ button,
   text-transform: uppercase;
 }
 
+.ff-visual-target-selector__settings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.85rem;
+  border: 1px solid transparent;
+  background: rgba(22, 28, 40, 0.94);
+  color: var(--brand-orange);
+  cursor: pointer;
+}
+
 .ff-visual-target-selector__option:hover,
 .ff-visual-target-selector__option:focus-visible,
-.ff-visual-target-selector__option[aria-checked="true"] {
+.ff-visual-target-selector__option[aria-checked="true"],
+.ff-visual-target-selector__settings:hover,
+.ff-visual-target-selector__settings:focus-visible {
   border-color: var(--brand-orange);
   background: rgba(255, 71, 0, 0.12);
   outline: none;
@@ -582,6 +601,135 @@ button,
   color: var(--brand-orange);
   font-size: 0.72rem;
   pointer-events: none;
+}
+
+.ff-local-environment-modal__panel {
+  width: min(36rem, calc(100vw - 2rem));
+}
+
+.ff-local-environment-modal__close,
+.ff-local-environment-modal__action {
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.92);
+  color: var(--cream-white);
+  cursor: pointer;
+  font: inherit;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ff-local-environment-modal__close:hover,
+.ff-local-environment-modal__close:focus-visible,
+.ff-local-environment-modal__action:hover,
+.ff-local-environment-modal__action:focus-visible {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.12);
+  outline: none;
+}
+
+.ff-local-environment-modal__action--primary {
+  border-color: var(--brand-orange);
+}
+
+.ff-local-environment-modal__action:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.ff-local-environment-modal__grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.ff-local-environment-modal__field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.ff-local-environment-modal__toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.85rem;
+  align-items: start;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(10, 6, 6, 0.72);
+  padding: 0.9rem;
+}
+
+.ff-local-environment-modal__toggle-input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0.15rem 0 0;
+  accent-color: var(--brand-orange);
+}
+
+.ff-local-environment-modal__toggle-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ff-local-environment-modal__toggle-help {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.ff-local-environment-modal__label {
+  color: var(--cream-white);
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ff-local-environment-modal__input {
+  width: 100%;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(10, 6, 6, 0.92);
+  color: var(--cream-white);
+  font: inherit;
+  min-height: 2.85rem;
+  padding: 0.75rem 0.85rem;
+}
+
+.ff-local-environment-modal__input:focus-visible {
+  border-color: var(--brand-orange);
+  outline: none;
+}
+
+.ff-local-environment-modal__input--invalid {
+  border-color: rgba(255, 71, 0, 0.65);
+}
+
+.ff-local-environment-modal__error,
+.ff-local-environment-modal__validation {
+  color: var(--brand-orange);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.ff-local-environment-modal__validation {
+  margin: 1rem 0 0;
+}
+
+.ff-local-environment-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .ff-local-environment-modal__actions {
+    flex-direction: column-reverse;
+  }
+
+  .ff-local-environment-modal__close,
+  .ff-local-environment-modal__action {
+    width: 100%;
+  }
 }
 
 .ff-deploy-workflow__action {
@@ -1732,6 +1880,17 @@ button,
   min-height: 0;
 }
 
+.ff-move-source__panel--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(22rem, 1fr);
+}
+
+.ff-move-source__panel-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
 .ff-move-source__learn-banner {
   margin: 0;
   border-bottom: 1px solid var(--ui-border-dark);
@@ -1832,6 +1991,65 @@ button,
 .ff-move-source__code .hljs-number,
 .ff-move-source__code .hljs-literal {
   color: #f7c873;
+}
+
+.ff-move-source__output {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border-left: 1px solid var(--ui-border-dark);
+  background:
+    linear-gradient(180deg, rgba(255, 140, 105, 0.08), transparent 18%),
+    rgba(10, 15, 20, 0.88);
+}
+
+.ff-move-source__output-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-bottom: 1px solid var(--ui-border-dark);
+  padding: 0.9rem 1rem;
+}
+
+.ff-move-source__output-eyebrow {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-move-source__output-title {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cream-white);
+}
+
+.ff-move-source__output-copy {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.ff-move-source__output-code {
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 1rem;
+  color: var(--cream-white);
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.7rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .ff-authorize-view {
@@ -2199,6 +2417,7 @@ button,
 
 .ff-contract-bar,
 .ff-move-source__syntax,
+.ff-move-source__output-code,
 .ff-node-field-editor__body,
 .ff-toolbox__scroll {
   scrollbar-width: thin;
@@ -2229,6 +2448,7 @@ button,
 
 .ff-contract-bar::-webkit-scrollbar,
 .ff-move-source__syntax::-webkit-scrollbar,
+.ff-move-source__output-code::-webkit-scrollbar,
 .ff-node-field-editor__body::-webkit-scrollbar,
 .ff-toolbox__scroll::-webkit-scrollbar {
   width: 0.8rem;
@@ -2237,6 +2457,7 @@ button,
 
 .ff-contract-bar::-webkit-scrollbar-track,
 .ff-move-source__syntax::-webkit-scrollbar-track,
+.ff-move-source__output-code::-webkit-scrollbar-track,
 .ff-node-field-editor__body::-webkit-scrollbar-track,
 .ff-toolbox__scroll::-webkit-scrollbar-track {
   background: rgba(250, 250, 229, 0.06);
@@ -2244,6 +2465,7 @@ button,
 
 .ff-contract-bar::-webkit-scrollbar-thumb,
 .ff-move-source__syntax::-webkit-scrollbar-thumb,
+.ff-move-source__output-code::-webkit-scrollbar-thumb,
 .ff-node-field-editor__body::-webkit-scrollbar-thumb,
 .ff-toolbox__scroll::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, var(--brand-orange), var(--brand-dark));
@@ -2252,6 +2474,7 @@ button,
 
 .ff-contract-bar::-webkit-scrollbar-thumb:hover,
 .ff-move-source__syntax::-webkit-scrollbar-thumb:hover,
+.ff-move-source__output-code::-webkit-scrollbar-thumb:hover,
 .ff-node-field-editor__body::-webkit-scrollbar-thumb:hover,
 .ff-toolbox__scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #ff6a2e, var(--brand-orange));
@@ -2810,6 +3033,16 @@ button,
 
   .ff-move-source__header {
     padding: 0.9rem 1rem;
+  }
+
+  .ff-move-source__panel--split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ff-move-source__output {
+    border-top: 1px solid var(--ui-border-dark);
+    border-left: 0;
+    max-height: 20rem;
   }
 }
 

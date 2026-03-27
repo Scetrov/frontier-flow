@@ -13,6 +13,7 @@ import MoveSourcePanel from "./components/MoveSourcePanel";
 import Sidebar from "./components/Sidebar";
 import VisualDeploymentTargetSelector from "./components/VisualDeploymentTargetSelector";
 import { seededExampleContracts } from "./data/exampleContracts";
+import { subscribeToLocalEnvironmentChanges } from "./data/localEnvironment";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
 import { useDeployment } from "./hooks/useDeployment";
 import type { RemediationNotice } from "./types/nodes";
@@ -294,6 +295,8 @@ function getLiveDeploymentState(
     transactionDigest: latestAttempt.confirmationReference,
     deployedAt: new Date(latestAttempt.endedAt ?? latestAttempt.startedAt).toISOString(),
     contractName: loadActiveContractName(getBrowserStorage()) ?? latestAttempt.moduleName,
+    sourceVersionTag: latestAttempt.sourceVersionTag,
+    builderToolchainVersion: latestAttempt.builderToolchainVersion,
   };
 }
 
@@ -621,6 +624,7 @@ function useStandardAppController(initialAppState: InitialAppState): StandardApp
 }
 
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
+  const [, setLocalEnvironmentRevision] = useState(0);
   const initialAppState = useMemo(() => getInitialAppState(), []);
   const {
     authorizeDeploymentState,
@@ -641,6 +645,10 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     setRemediationNotices,
     transientStatusMessage,
   } = useStandardAppController(initialAppState);
+
+  useEffect(() => subscribeToLocalEnvironmentChanges(() => {
+    setLocalEnvironmentRevision((currentValue) => currentValue + 1);
+  }), []);
 
   return (
     <StandardAppLayout

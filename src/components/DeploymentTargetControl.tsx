@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import type { DeploymentTargetId } from "../compiler/types";
-import { DEPLOYMENT_TARGETS } from "../data/deploymentTargets";
+import { DEPLOYMENT_TARGETS, getDeploymentTarget } from "../data/deploymentTargets";
 import { ConservativeDeployIcon } from "./HeaderActionIcons";
 
 interface DeploymentTargetControlProps {
@@ -43,21 +43,21 @@ function getDeployCopy(input: {
   readonly canDeploy: boolean;
   readonly isDeploying: boolean;
   readonly isUpgrade: boolean;
-  readonly selectedTarget: DeploymentTargetId;
+  readonly selectedTargetLabel: string;
 }) {
   const actionVerb = input.isUpgrade ? "Upgrade" : "Deploy";
   const inProgressVerb = input.isUpgrade ? "Upgrading" : "Deploying";
 
   return {
     deployDescription: input.isDeploying
-      ? `${inProgressVerb} for ${input.selectedTarget} is currently in progress.`
+      ? `${inProgressVerb} for ${input.selectedTargetLabel} is currently in progress.`
       : input.canDeploy
-        ? `Launch ${actionVerb.toLowerCase()} for ${input.selectedTarget}.`
-        : `Review blockers for ${input.selectedTarget} ${input.isUpgrade ? "upgrade" : "deployment"} before retrying.`,
-    deployLabel: input.isDeploying ? `${inProgressVerb} ${input.selectedTarget}` : `${actionVerb} ${input.selectedTarget}`,
+        ? `Launch ${actionVerb.toLowerCase()} for ${input.selectedTargetLabel}.`
+        : `Review blockers for ${input.selectedTargetLabel} ${input.isUpgrade ? "upgrade" : "deployment"} before retrying.`,
+    deployLabel: input.isDeploying ? `${inProgressVerb} ${input.selectedTargetLabel}` : `${actionVerb} ${input.selectedTargetLabel}`,
     deployTitle: input.canDeploy
       ? undefined
-      : `Review blockers for ${input.selectedTarget} ${input.isUpgrade ? "upgrade" : "deployment"}`,
+      : `Review blockers for ${input.selectedTargetLabel} ${input.isUpgrade ? "upgrade" : "deployment"}`,
   };
 }
 
@@ -233,7 +233,7 @@ function DeploymentTargetMenu({
           role="menuitemradio"
           type="button"
         >
-          {target.label}
+          {getDeploymentTarget(target.id).label}
         </button>
       ))}
     </div>
@@ -257,7 +257,8 @@ function DeploymentTargetControl({
   const statusDescriptionId = useId();
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
   const isDeployDisabled = isDeploying || onDeploy === undefined;
-  const { deployDescription, deployLabel, deployTitle } = getDeployCopy({ canDeploy, isDeploying, isUpgrade, selectedTarget });
+  const selectedTargetLabel = getDeploymentTarget(selectedTarget).label;
+  const { deployDescription, deployLabel, deployTitle } = getDeployCopy({ canDeploy, isDeploying, isUpgrade, selectedTargetLabel });
   const containerClassName = `ff-deployment-target-control${isActive ? " ff-deployment-target-control--active" : ""}`;
 
   const openMenu = (initialFocus: "first" | "last" | "selected" = "selected") => {

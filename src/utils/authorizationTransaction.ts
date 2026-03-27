@@ -45,6 +45,7 @@ export interface FetchOwnerCapInput {
 export interface BuildAuthorizeTurretTransactionInput {
   readonly deploymentState: StoredDeploymentState;
   readonly characterId: string;
+  readonly currentExtensionType?: string | null;
   readonly ownerCapId: string;
   readonly turretObjectId: string;
 }
@@ -202,7 +203,15 @@ export function buildAuthorizeTurretTransaction(input: BuildAuthorizeTurretTrans
   const bundle = getPackageReferenceBundle(input.deploymentState.targetId);
   const tx = new Transaction();
   const turretType = `${bundle.worldPackageId}::turret::Turret`;
-  const authWitnessType = `${input.deploymentState.packageId}::${input.deploymentState.moduleName}::TurretAuth`;
+  const authWitnessType = getAuthorizationWitnessType(input.deploymentState);
+
+  if (isDeploymentAlreadyAuthorized({
+    deploymentState: input.deploymentState,
+    currentExtensionType: input.currentExtensionType ?? null,
+  })) {
+    throw new Error("The selected turret is already authorized for this deployed extension.");
+  }
+
   const [ownerCap, receipt] = tx.moveCall({
     target: `${bundle.worldPackageId}::character::borrow_owner_cap`,
     typeArguments: [turretType],
@@ -222,6 +231,17 @@ export function buildAuthorizeTurretTransaction(input: BuildAuthorizeTurretTrans
   });
 
   return tx;
+}
+
+export function getAuthorizationWitnessType(deploymentState: StoredDeploymentState): string {
+  return `${deploymentState.packageId}::${deploymentState.moduleName}::TurretAuth`;
+}
+
+export function isDeploymentAlreadyAuthorized(input: {
+  readonly deploymentState: StoredDeploymentState;
+  readonly currentExtensionType: string | null;
+}): boolean {
+  return input.currentExtensionType?.trim().toLowerCase() === getAuthorizationWitnessType(input.deploymentState).toLowerCase();
 }
 
 async function postGraphQl<TData>(input: {

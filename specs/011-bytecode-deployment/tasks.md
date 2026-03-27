@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/011-bytecode-deployment/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/, quickstart.md
 
-**tests**: Tests are required for this feature. The project constitution and plan call for test-first delivery across UI, hook orchestration, and E2E deployment workflows.
+`__tests__`: Tests are required for this feature. The project constitution and plan call for test-first delivery across UI, hook orchestration, and E2E deployment workflows.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -17,9 +17,9 @@
 
 **Purpose**: Add the static deployment target inputs and test scaffolds used by the rest of the feature.
 
-- [x] T001 Create deployment target definitions in src/data/deploymentTargets.ts
-- [x] T002 [P] Create maintained Stillness and Utopia package reference bundles in src/data/packageReferences.ts
-- [x] T003 [P] Create deployment fixture builders for tests in src/**tests**/deployment/testFactories.ts
+- [x] T001 Create deployment target definitions in `src/data/deploymentTargets.ts`
+- [x] T002 [P] Create maintained Stillness and Utopia package reference bundles in `src/data/packageReferences.ts`
+- [x] T003 [P] Create deployment fixture builders for tests in `src/__tests__/deployment/testFactories.ts`
 
 ---
 
@@ -29,11 +29,11 @@
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [x] T004 Extend deployment target, attempt, progress, and status types in src/compiler/types.ts
-- [x] T005 [P] Update generated artifact helper factories for deployment metadata in src/**tests**/compiler/helpers.ts
-- [x] T006 [P] Persist selected deployment target in shared UI state storage in src/utils/uiStateStorage.ts
-- [x] T007 Create deployment orchestration hook with typed state and callbacks in src/hooks/useDeployment.ts
-- [x] T008 Expose deployment orchestration state from the app shell in src/App.tsx
+- [x] T004 Extend deployment target, attempt, progress, and status types in `src/compiler/types.ts`
+- [x] T005 [P] Update generated artifact helper factories for deployment metadata in `src/__tests__/compiler/helpers.ts`
+- [x] T006 [P] Persist selected deployment target in shared UI state storage in `src/utils/uiStateStorage.ts`
+- [x] T007 Create deployment orchestration hook with typed state and callbacks in `src/hooks/useDeployment.ts`
+- [x] T008 Expose deployment orchestration state from the app shell in `src/App.tsx`
 
 **Checkpoint**: Foundation ready. User stories can now be implemented and tested independently.
 
@@ -47,9 +47,9 @@
 
 ### Tests for User Story 1
 
-- [x] T009 [P] [US1] Add deploy control interaction tests in src/**tests**/DeploymentTargetControl.test.tsx
-- [x] T010 [P] [US1] Add deployment success-path orchestration tests in src/**tests**/useDeployment.success.test.ts
-- [x] T011 [P] [US1] Add target-selection deployment E2E coverage in tests/e2e/deployment-target-selection.spec.ts
+- [x] T009 [P] [US1] Add deploy control interaction tests in `src/__tests__/DeploymentTargetControl.test.tsx`
+- [x] T010 [P] [US1] Add deployment success-path orchestration tests in `src/__tests__/useDeployment.success.test.ts`
+- [x] T011 [P] [US1] Add target-selection deployment E2E coverage in `tests/e2e/deployment-target-selection.spec.ts`
 
 ### Implementation for User Story 1
 
@@ -71,9 +71,9 @@
 
 ### Tests for User Story 2
 
-- [x] T017 [P] [US2] Add deployment blocker classification tests in src/**tests**/useDeployment.blockers.test.ts
-- [x] T018 [P] [US2] Add blocker summary rendering tests in src/**tests**/CompilationStatus.deployment-blockers.test.tsx
-- [x] T019 [P] [US2] Add deployment blocker E2E coverage in tests/e2e/deployment-blockers.spec.ts
+- [x] T017 [P] [US2] Add deployment blocker classification tests in `src/__tests__/useDeployment.blockers.test.ts`
+- [x] T018 [P] [US2] Add blocker summary rendering tests in `src/__tests__/CompilationStatus.deployment-blockers.test.tsx`
+- [x] T019 [P] [US2] Add deployment blocker E2E coverage in `tests/e2e/deployment-blockers.spec.ts`
 
 ### Implementation for User Story 2
 
@@ -95,15 +95,15 @@
 
 ### Tests for User Story 3
 
-- [x] T025 [P] [US3] Add deployment progress modal component tests in src/**tests**/DeploymentProgressModal.test.tsx
-- [x] T026 [P] [US3] Add deployment stage progression tests in src/**tests**/useDeployment.progress.test.ts
-- [x] T027 [P] [US3] Add deployment progress modal E2E coverage in tests/e2e/deployment-progress.spec.ts
+- [x] T025 [P] [US3] Add deployment progress modal component tests in `src/__tests__/DeploymentProgressModal.test.tsx`
+- [x] T026 [P] [US3] Add deployment stage progression tests in `src/__tests__/useDeployment.progress.test.ts`
+- [x] T027 [P] [US3] Add deployment progress modal E2E coverage in `tests/e2e/deployment-progress.spec.ts`
 
 ### Implementation for User Story 3
 
-- [x] T028 [P] [US3] Implement the deployment progress modal in src/components/DeploymentProgressModal.tsx
-- [x] T029 [US3] Extend deployment orchestration with progress stages and dismissible modal state in src/hooks/useDeployment.ts
-- [x] T030 [US3] Mount the deployment progress modal from the app shell in src/App.tsx
+- [x] T028 [P] [US3] Implement the deployment progress modal in `src/components/DeploymentProgressModal.tsx`
+- [x] T029 [US3] Extend deployment orchestration with progress stages and dismissible modal state in `src/hooks/useDeployment.ts`
+- [x] T030 [US3] Mount the deployment progress modal from the app shell in `src/App.tsx`
 
 **Checkpoint**: User Story 3 is independently functional when users can track active deployment progress in a modal without relying on the footer alone.
 
@@ -117,9 +117,9 @@
 
 ### Tests for User Story 4
 
-- [x] T031 [P] [US4] Add deployment status popup detail tests in src/**tests**/CompilationStatus.deployment-popup.test.tsx
-- [x] T032 [P] [US4] Add deployment metadata parity tests for the Move source panel in src/**tests**/MoveSourcePanel.deployment.test.tsx
-- [x] T033 [P] [US4] Add deployment status popup E2E coverage in tests/e2e/deployment-status-popup.spec.ts
+- [x] T031 [P] [US4] Add deployment status popup detail tests in `src/__tests__/CompilationStatus.deployment-popup.test.tsx`
+- [x] T032 [P] [US4] Add deployment metadata parity tests for the Move source panel in `src/__tests__/MoveSourcePanel.deployment.test.tsx`
+- [x] T033 [P] [US4] Add deployment status popup E2E coverage in `tests/e2e/deployment-status-popup.spec.ts`
 
 ### Implementation for User Story 4
 

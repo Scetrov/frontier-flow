@@ -1,4 +1,32 @@
-import type { DeploymentTarget, DeploymentTargetId } from "../compiler/types";
+import type { DeploymentStage, DeploymentTarget, DeploymentTargetId } from "../compiler/types";
+import { DEFAULT_LOCAL_RPC_URL, getLocalDeploymentTargetLabel, loadLocalEnvironmentConfig } from "./localEnvironment";
+
+export const LOCAL_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "preparing",
+  "signing",
+  "submitting",
+  "confirming",
+];
+
+export const DEPLOY_GRADE_LOCAL_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "fetch-world-source",
+  "resolve-dependencies",
+  "deploy-grade-compile",
+  "submitting",
+  "confirming",
+];
+
+export const DEPLOY_GRADE_REMOTE_DEPLOYMENT_STAGE_SEQUENCE: readonly DeploymentStage[] = [
+  "validating",
+  "fetch-world-source",
+  "resolve-dependencies",
+  "deploy-grade-compile",
+  "signing",
+  "submitting",
+  "confirming",
+];
 
 /**
  * Default deployment target shown before the user makes an explicit selection.
@@ -11,11 +39,11 @@ export const DEFAULT_DEPLOYMENT_TARGET: DeploymentTargetId = "local";
 export const DEPLOYMENT_TARGETS: readonly DeploymentTarget[] = [
   {
     id: "local",
-    label: "local",
+    label: "localnet",
     networkFamily: "local",
-    requiresPublishedPackageRefs: false,
+    requiresPublishedPackageRefs: true,
     supportsWalletSigning: false,
-    rpcUrl: "http://127.0.0.1:9000",
+    rpcUrl: DEFAULT_LOCAL_RPC_URL,
     requiresLocalValidator: true,
   },
   {
@@ -48,7 +76,50 @@ export function getDeploymentTarget(targetId: DeploymentTargetId): DeploymentTar
     throw new Error(`Unknown deployment target: ${targetId}`);
   }
 
+  if (target.networkFamily === "local") {
+    const localEnvironment = loadLocalEnvironmentConfig();
+    return {
+      ...target,
+      label: getLocalDeploymentTargetLabel(localEnvironment),
+      rpcUrl: localEnvironment.rpcUrl,
+      supportsWalletSigning: !localEnvironment.useEphemeralKeypair,
+    };
+  }
+
   return target;
+}
+
+/**
+ * Return true when a target must compile against published package references.
+ */
+export function usesDeployGradeCompilation(
+  target: Pick<DeploymentTarget, "requiresPublishedPackageRefs">,
+): boolean {
+  return target.requiresPublishedPackageRefs;
+}
+
+/**
+ * Return true when a target publishes through a connected wallet.
+ */
+export function usesWalletSignedPublish(
+  target: Pick<DeploymentTarget, "supportsWalletSigning">,
+): boolean {
+  return target.supportsWalletSigning;
+}
+
+/**
+ * Resolve the visible deployment stage sequence for a target.
+ */
+export function getDeploymentStageSequence(targetId: DeploymentTargetId): readonly DeploymentStage[] {
+  const target = getDeploymentTarget(targetId);
+
+  if (!usesDeployGradeCompilation(target)) {
+    return LOCAL_DEPLOYMENT_STAGE_SEQUENCE;
+  }
+
+  return usesWalletSignedPublish(target)
+    ? DEPLOY_GRADE_REMOTE_DEPLOYMENT_STAGE_SEQUENCE
+    : DEPLOY_GRADE_LOCAL_DEPLOYMENT_STAGE_SEQUENCE;
 }
 
 /**

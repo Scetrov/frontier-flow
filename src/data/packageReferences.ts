@@ -1,17 +1,27 @@
 import type { PackageReferenceBundle } from "../compiler/types";
+import {
+  DEFAULT_LOCAL_GRAPHQL_URL,
+  DEFAULT_LOCAL_WORLD_PACKAGE_ID,
+  DEFAULT_LOCAL_WORLD_PACKAGE_VERSION,
+  getLocalEnvironmentConfigSnapshot,
+  getLocalDeploymentEnvironmentLabel,
+  loadLocalEnvironmentConfig,
+  toWorldPackageVersionTag,
+} from "./localEnvironment";
 
 const RESOURCE_SOURCE = "https://docs.evefrontier.com/tools/resources";
-const LAST_VERIFIED_ON = "2026-03-21";
+const LAST_VERIFIED_ON = "2026-03-26";
 export const PUBLISHED_WORLD_PACKAGE_MANIFEST_URL = "https://raw.githubusercontent.com/evefrontier/world-contracts/refs/heads/main/contracts/world/Published.toml";
 export const WORLD_PACKAGE_OVERRIDE_STORAGE_KEY = "frontier-flow:world-package-overrides";
 
 let cachedBundleMap: ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> | null = null;
 let cachedOverrideSnapshot: string | null | undefined;
+let cachedLocalEnvironmentSnapshot: string | null | undefined;
 
 type RemoteDeploymentTargetId = Exclude<PackageReferenceBundle["targetId"], "local">;
 
 interface StoredWorldPackageOverrides {
-  readonly version: 1;
+  readonly version: 2;
   readonly lastVerifiedOn: string;
   readonly source: string;
   readonly worldPackageIds: Partial<Record<RemoteDeploymentTargetId, string>>;
@@ -22,20 +32,38 @@ interface StoredWorldPackageOverrides {
  */
 export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
   {
+    targetId: "local",
+    environmentLabel: getLocalDeploymentEnvironmentLabel(),
+    worldPackageId: DEFAULT_LOCAL_WORLD_PACKAGE_ID,
+    originalWorldPackageId: DEFAULT_LOCAL_WORLD_PACKAGE_ID,
+    objectRegistryId: "0xc344526dd6e14297453e53195f4b9c46c0d31200ed8805195e183f796d349a63",
+    serverAddressRegistryId: "0x0000000000000000000000000000000000000000000000000000000000000000",
+    sourceVersionTag: toWorldPackageVersionTag(DEFAULT_LOCAL_WORLD_PACKAGE_VERSION),
+    toolchainVersion: "1.67.1",
+    source: DEFAULT_LOCAL_GRAPHQL_URL,
+    lastVerifiedOn: LAST_VERIFIED_ON,
+  },
+  {
     targetId: "testnet:stillness",
     environmentLabel: "Stillness",
     worldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+    originalWorldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
     objectRegistryId: "0x454a9aa3d37e1d08d3c9181239c1b683781e4087fbbbd48c935d54b6736fd05c",
     serverAddressRegistryId: "0xeb97b81668699672b1147c28dacb3d595534c48f4e177d3d80337dbde464f05f",
+    sourceVersionTag: "v0.0.18",
+    toolchainVersion: "1.67.1",
     source: RESOURCE_SOURCE,
     lastVerifiedOn: LAST_VERIFIED_ON,
   },
   {
     targetId: "testnet:utopia",
     environmentLabel: "Utopia",
-    worldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
+    worldPackageId: "0x07e6b810c2dff6df56ea7fbad9ff32f4d84cbee53e496267515887b712924bd1",
+    originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
     objectRegistryId: "0xc2b969a72046c47e24991d69472afb2216af9e91caf802684514f39706d7dc57",
     serverAddressRegistryId: "0x9a9f2f7d1b8cf100feb532223aa6c38451edb05406323af5054f9d974555708b",
+    sourceVersionTag: "v0.0.21",
+    toolchainVersion: "1.68.0",
     source: RESOURCE_SOURCE,
     lastVerifiedOn: LAST_VERIFIED_ON,
   },
@@ -60,7 +88,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseStoredWorldPackageOverrides(value: unknown): StoredWorldPackageOverrides | null {
   if (
     !isRecord(value)
-    || value.version !== 1
+    || value.version !== 2
     || typeof value.lastVerifiedOn !== "string"
     || typeof value.source !== "string"
     || !isRecord(value.worldPackageIds)
@@ -77,7 +105,7 @@ function parseStoredWorldPackageOverrides(value: unknown): StoredWorldPackageOve
   }
 
   return {
-    version: 1,
+    version: 2,
     lastVerifiedOn: value.lastVerifiedOn,
     source: value.source,
     worldPackageIds,
@@ -121,8 +149,21 @@ function extractPublishedSectionValue(manifest: string, sectionName: string, fie
 
 function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): readonly PackageReferenceBundle[] {
   const storedOverrides = getStoredWorldPackageOverrides(storage);
+  const localEnvironment = loadLocalEnvironmentConfig(storage);
 
   return PACKAGE_REFERENCE_BUNDLES.map((bundle) => {
+    if (bundle.targetId === "local") {
+      return {
+        ...bundle,
+        environmentLabel: getLocalDeploymentEnvironmentLabel(localEnvironment),
+        worldPackageId: localEnvironment.worldPackageId,
+        originalWorldPackageId: localEnvironment.worldPackageId,
+        sourceVersionTag: toWorldPackageVersionTag(localEnvironment.worldPackageVersion),
+        source: localEnvironment.graphQlUrl,
+        lastVerifiedOn: localEnvironment.updatedAt.slice(0, 10),
+      } satisfies PackageReferenceBundle;
+    }
+
     const overrideWorldPackageId = storedOverrides?.worldPackageIds[bundle.targetId as RemoteDeploymentTargetId];
     if (overrideWorldPackageId === undefined) {
       return bundle;
@@ -139,12 +180,18 @@ function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): read
 
 function createPackageReferenceBundleMap(storage = getBrowserStorage()): ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> {
   const overrideSnapshot = getStoredWorldPackageOverridesSnapshot(storage);
+  const localEnvironmentSnapshot = getLocalEnvironmentConfigSnapshot(storage);
 
-  if (cachedBundleMap !== null && cachedOverrideSnapshot === overrideSnapshot) {
+  if (
+    cachedBundleMap !== null
+    && cachedOverrideSnapshot === overrideSnapshot
+    && cachedLocalEnvironmentSnapshot === localEnvironmentSnapshot
+  ) {
     return cachedBundleMap;
   }
 
   cachedOverrideSnapshot = overrideSnapshot;
+  cachedLocalEnvironmentSnapshot = localEnvironmentSnapshot;
   cachedBundleMap = new Map(getResolvedPackageReferenceBundles(storage).map((bundle) => [bundle.targetId, bundle]));
 
   return cachedBundleMap;
@@ -165,7 +212,7 @@ export function parsePublishedWorldPackageManifest(manifest: string): Partial<Re
   for (const [sectionName, targetId] of [["testnet_stillness", "testnet:stillness"], ["testnet_utopia", "testnet:utopia"]] as const) {
     const originalId = extractPublishedSectionValue(manifest, sectionName, "original-id");
     const publishedAt = extractPublishedSectionValue(manifest, sectionName, "published-at");
-    const resolvedPackageId = originalId ?? publishedAt;
+    const resolvedPackageId = publishedAt ?? originalId;
 
     if (resolvedPackageId !== null && isPublishedPackageId(resolvedPackageId)) {
       results[targetId] = resolvedPackageId;
@@ -192,7 +239,7 @@ export async function refreshPublishedWorldPackageManifest(input: {
   const manifest = await response.text();
   const worldPackageIds = parsePublishedWorldPackageManifest(manifest);
   saveStoredWorldPackageOverrides(input.storage ?? getBrowserStorage(), {
-    version: 1,
+    version: 2,
     lastVerifiedOn: getCurrentIsoDate(),
     source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
     worldPackageIds,
@@ -209,7 +256,7 @@ export function getPackageReferenceBundleMap(): ReadonlyMap<PackageReferenceBund
 }
 
 /**
- * Resolve the published package reference bundle for a non-local deployment target.
+ * Resolve the published package reference bundle for a deployment target.
  */
 export function getPackageReferenceBundle(targetId: PackageReferenceBundle["targetId"]): PackageReferenceBundle {
   const bundle = createPackageReferenceBundleMap().get(targetId);
@@ -221,6 +268,32 @@ export function getPackageReferenceBundle(targetId: PackageReferenceBundle["targ
   return bundle;
 }
 
+function hasRpcLookupError(value: unknown): boolean {
+  return typeof value === "object"
+    && value !== null
+    && "error" in value
+    && (value as { readonly error?: unknown }).error != null;
+}
+
+export async function verifyPublishedWorldPackageExists(
+  targetId: PackageReferenceBundle["targetId"],
+  client: { getObject?: (args: { id: string; signal?: AbortSignal }) => Promise<unknown> },
+  signal?: AbortSignal,
+): Promise<boolean> {
+  try {
+    const bundle = getPackageReferenceBundle(targetId);
+    if (typeof client.getObject !== "function") {
+      // If the provided client does not implement getObject, assume existence.
+      return true;
+    }
+
+    const result = await client.getObject({ id: bundle.worldPackageId, signal });
+    return !hasRpcLookupError(result);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Validate that a maintained bundle preserves the published-target metadata shape.
  */
@@ -228,7 +301,10 @@ export function hasValidPackageReferenceBundleShape(bundle: PackageReferenceBund
   return bundle.environmentLabel.length > 0
     && bundle.source.length > 0
     && bundle.lastVerifiedOn.length > 0
+    && bundle.sourceVersionTag.length > 0
+    && bundle.toolchainVersion.length > 0
     && bundle.worldPackageId.startsWith("0x")
+    && bundle.originalWorldPackageId.startsWith("0x")
     && bundle.objectRegistryId.startsWith("0x")
     && bundle.serverAddressRegistryId.startsWith("0x");
 }

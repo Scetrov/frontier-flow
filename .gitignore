@@ -14,11 +14,11 @@ node-compile-cache/
 playwright-transform-cache*/
 bunx-*/
 tmp.*
-# rolldown-vite's experimental module runner creates random-named cache dirs
-# (nanoid IDs, 20-21 chars) in process.cwd() — ignore them all
-????????????????????/
-?????????????????????/
+verify-remediation-todo.md
+.deploy-grade-resolution-cache-*.json
+.resolved-deps-cache.json
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+.org.chromium.Chromium.*

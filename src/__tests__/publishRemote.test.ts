@@ -17,6 +17,10 @@ import { createPackageReferenceBundleFixture } from "./deployment/testFactories"
 describe("publishToRemoteTarget", () => {
   it("recompiles remote artifacts with a published world dependency manifest", async () => {
     const execute = vi.fn(() => Promise.resolve({ digest: "0xdigest" }));
+    const references = createPackageReferenceBundleFixture("testnet:stillness", {
+      worldPackageId: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      originalWorldPackageId: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    });
     const inputArtifact = createGeneratedArtifactStub({
       moveToml: [
         "[package]",
@@ -51,6 +55,9 @@ describe("publishToRemoteTarget", () => {
       const publishedWorldManifest = artifact.sourceFiles?.find((file) => file.path === "deps/world/Published.toml");
       expect(publishedWorldManifest).toBeDefined();
       expect(publishedWorldManifest?.content ?? "").toContain("[published.testnet]");
+      expect(publishedWorldManifest?.content ?? "").toContain('published-at = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"');
+      expect(publishedWorldManifest?.content ?? "").toContain('original-id = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"');
+      expect(publishedWorldManifest?.content ?? "").toContain('toolchain-version = "1.67.1"');
 
       return Promise.resolve({
         success: true,
@@ -66,7 +73,47 @@ describe("publishToRemoteTarget", () => {
       artifact: inputArtifact,
       ownerAddress: "0x1234",
       target: getDeploymentTarget("testnet:stillness"),
-      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      references,
+      execute,
+    });
+
+    expect(compileMoveMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the target toolchain version in the legacy published dependency manifest", async () => {
+    const execute = vi.fn(() => Promise.resolve({ digest: "0xdigest" }));
+    const references = createPackageReferenceBundleFixture("testnet:utopia", {
+      toolchainVersion: "1.68.0",
+    });
+    compileMoveMock.mockReset();
+    compileMoveMock.mockImplementationOnce((artifact) => {
+      const publishedWorldManifest = artifact.sourceFiles?.find((file) => file.path === "deps/world/Published.toml");
+      expect(publishedWorldManifest?.content ?? "").toContain('toolchain-version = "1.68.0"');
+
+      return Promise.resolve({
+        success: true,
+        modules: [new Uint8Array([1, 2, 3])],
+        dependencies: [
+          "0x0000000000000000000000000000000000000000000000000000000000000001",
+          "0x0000000000000000000000000000000000000000000000000000000000000002",
+        ],
+        errors: null,
+        warnings: [],
+        artifact: createGeneratedArtifactStub({
+          bytecodeModules: [new Uint8Array([1, 2, 3])],
+          dependencies: [
+            "0x0000000000000000000000000000000000000000000000000000000000000001",
+            "0x0000000000000000000000000000000000000000000000000000000000000002",
+          ],
+        }),
+      });
+    });
+
+    await publishToRemoteTarget({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      ownerAddress: "0x1234",
+      target: getDeploymentTarget("testnet:utopia"),
+      references,
       execute,
     });
 
@@ -105,6 +152,116 @@ describe("publishToRemoteTarget", () => {
     const commands = transaction.getData().commands;
 
     expect(commands.map((command: { $kind: string }) => command.$kind)).toEqual(["Publish", "TransferObjects"]);
+  });
+
+  it("publishes deploy-grade compile results directly without re-running shim compilation", async () => {
+    const execute = vi.fn(() => Promise.resolve({ digest: "0xdeploygrade" }));
+    compileMoveMock.mockReset();
+    const references = createPackageReferenceBundleFixture("testnet:stillness", {
+      worldPackageId: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      originalWorldPackageId: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    });
+
+    await publishToRemoteTarget({
+      compileResult: {
+        modules: [new Uint8Array([1, 2, 3])],
+        dependencies: [
+          "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "0x0000000000000000000000000000000000000000000000000000000000000004",
+        ],
+        digest: [1, 2, 3],
+        resolvedDependencies: {
+          files: "{}",
+          dependencies: "{}",
+          lockfileDependencies: "{}",
+        },
+        targetId: "testnet:stillness",
+        sourceVersionTag: "v0.0.18",
+        builderToolchainVersion: "1.67.1",
+        compiledAt: 1,
+      },
+      ownerAddress: "0x1234",
+      target: getDeploymentTarget("testnet:stillness"),
+      references,
+      execute,
+    });
+
+    expect(compileMoveMock).not.toHaveBeenCalled();
+    const [transaction] = execute.mock.calls[0] as unknown as [{ getData: () => { commands: Array<{ $kind: string; Publish?: { dependencies: string[] } }> } }];
+    expect(transaction.getData().commands[0]?.Publish?.dependencies).toEqual([
+      "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "0x0000000000000000000000000000000000000000000000000000000000000004",
+    ]);
+  });
+
+  it("appends the active world package id when deploy-grade compile results omit it", async () => {
+    const execute = vi.fn(() => Promise.resolve({ digest: "0xdeploygrade" }));
+    const references = createPackageReferenceBundleFixture("testnet:stillness", {
+      worldPackageId: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      originalWorldPackageId: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    });
+
+    await publishToRemoteTarget({
+      compileResult: {
+        modules: [new Uint8Array([1, 2, 3])],
+        dependencies: [
+          "0x0000000000000000000000000000000000000000000000000000000000000001",
+          "0x0000000000000000000000000000000000000000000000000000000000000002",
+        ],
+        digest: [1, 2, 3],
+        resolvedDependencies: {
+          files: "{}",
+          dependencies: "{}",
+          lockfileDependencies: "{}",
+        },
+        targetId: "testnet:stillness",
+        sourceVersionTag: "v0.0.18",
+        builderToolchainVersion: "1.67.1",
+        compiledAt: 1,
+      },
+      ownerAddress: "0x1234",
+      target: getDeploymentTarget("testnet:stillness"),
+      references,
+      execute,
+    });
+
+    const [transaction] = execute.mock.calls[0] as unknown as [{ getData: () => { commands: Array<{ $kind: string; Publish?: { dependencies: string[] } }> } }];
+    expect(transaction.getData().commands[0]?.Publish?.dependencies).toEqual([
+      "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "0x0000000000000000000000000000000000000000000000000000000000000002",
+      "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    ]);
+  });
+
+  it("surfaces upgraded-package dependency mismatches with the original package id hint", async () => {
+    const references = createPackageReferenceBundleFixture("testnet:utopia", {
+      worldPackageId: "0x07e6b810c2dff6df56ea7fbad9ff32f4d84cbee53e496267515887b712924bd1",
+      originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
+    });
+
+    await expect(() => publishToRemoteTarget({
+      compileResult: {
+        modules: [new Uint8Array([1, 2, 3])],
+        dependencies: [
+          "0x0000000000000000000000000000000000000000000000000000000000000001",
+          "0x0000000000000000000000000000000000000000000000000000000000000002",
+        ],
+        digest: [1, 2, 3],
+        resolvedDependencies: {
+          files: "{}",
+          dependencies: "{}",
+          lockfileDependencies: "{}",
+        },
+        targetId: "testnet:utopia",
+        sourceVersionTag: "v0.0.21",
+        builderToolchainVersion: "1.68.0",
+        compiledAt: 1,
+      },
+      ownerAddress: "0x1234",
+      target: getDeploymentTarget("testnet:utopia"),
+      references,
+      execute: () => Promise.reject(new Error("Transaction resolution failed: PublishUpgradeMissingDependency in command 0")),
+    })).rejects.toThrow("original package id 0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75");
   });
 
   it("fails early when the connected wallet address is missing", async () => {

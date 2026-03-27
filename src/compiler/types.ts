@@ -51,18 +51,153 @@ export interface DeploymentTarget {
 }
 
 export interface PackageReferenceBundle {
-  readonly targetId: Exclude<DeploymentTargetId, "local">;
+  readonly targetId: DeploymentTargetId;
   readonly environmentLabel: string;
   readonly worldPackageId: string;
+  readonly originalWorldPackageId: string;
   readonly objectRegistryId: string;
   readonly serverAddressRegistryId: string;
+  readonly sourceVersionTag: string;
+  readonly toolchainVersion: string;
   readonly source: string;
   readonly lastVerifiedOn: string;
 }
 
+export interface ResolvedDependencies {
+  readonly files: string;
+  readonly dependencies: string;
+  readonly lockfileDependencies: string;
+}
+
+export interface ResolvedWorldSource {
+  readonly sourceVersionTag: string;
+  readonly files: Readonly<Record<string, string>>;
+  readonly fetchedAt: number;
+}
+
+export interface CachedDependencyResolution {
+  readonly targetId: DeploymentTargetId;
+  readonly sourceVersionTag: string;
+  readonly resolvedDependencies: ResolvedDependencies;
+  readonly resolvedAt: number;
+}
+
+export interface FetchWorldSourceRequest {
+  readonly repositoryUrl: string;
+  readonly versionTag: string;
+  readonly subdirectory: string;
+  readonly signal?: AbortSignal;
+}
+
+export type FetchWorldSourceResult = ResolvedWorldSource;
+
+export type DeployCompileProgressEvent =
+  | { readonly phase: "fetching-source" }
+  | {
+      readonly phase: "resolving-dependencies";
+      readonly current: number;
+      readonly total: number;
+    }
+  | { readonly phase: "compiling" }
+  | { readonly phase: "complete" };
+
+export interface DeployGradeCompileRequest {
+  readonly artifact: GeneratedContractArtifact;
+  readonly worldSource: FetchWorldSourceResult;
+  readonly target: PackageReferenceBundle;
+  readonly cachedResolution?: CachedDependencyResolution;
+  readonly onProgress?: (event: DeployCompileProgressEvent) => void;
+  readonly signal?: AbortSignal;
+}
+
+export interface DeployGradeCompileResult {
+  readonly modules: readonly Uint8Array[];
+  readonly dependencies: readonly string[];
+  readonly digest: readonly number[];
+  readonly resolvedDependencies: ResolvedDependencies;
+  readonly targetId: DeploymentTargetId;
+  readonly sourceVersionTag: string;
+  readonly builderToolchainVersion: string;
+  readonly compiledAt: number;
+}
+
+export interface TurretAuthorizationState {
+  readonly turretId: string;
+  readonly status: "pending" | "submitting" | "confirming" | "confirmed" | "failed";
+  readonly transactionDigest?: string;
+  readonly error?: string;
+}
+
+interface DeployGradeErrorOptions {
+  readonly code: string;
+  readonly userMessage: string;
+  readonly suggestedAction?: string;
+  readonly cause?: unknown;
+}
+
+class DeployGradeError extends Error {
+  readonly code: string;
+  readonly userMessage: string;
+  readonly suggestedAction?: string;
+
+  constructor(message: string, options: DeployGradeErrorOptions) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
+    this.name = new.target.name;
+    this.code = options.code;
+    this.userMessage = options.userMessage;
+    this.suggestedAction = options.suggestedAction;
+  }
+}
+
+export class DependencyResolutionError extends DeployGradeError {
+  constructor(message: string, options: Omit<DeployGradeErrorOptions, "code"> & { readonly code?: string }) {
+    super(message, {
+      ...options,
+      code: options.code ?? "dependency-resolution-failed",
+    });
+  }
+}
+
+export class DeployCompilationError extends DeployGradeError {
+  constructor(message: string, options: Omit<DeployGradeErrorOptions, "code"> & { readonly code?: string }) {
+    super(message, {
+      ...options,
+      code: options.code ?? "deploy-compilation-failed",
+    });
+  }
+}
+
+export class ToolchainMismatchWarning extends DeployGradeError {
+  readonly expectedVersion: string;
+  readonly actualVersion: string;
+
+  constructor(message: string, input: {
+    readonly expectedVersion: string;
+    readonly actualVersion: string;
+    readonly userMessage: string;
+    readonly suggestedAction?: string;
+  }) {
+    super(message, {
+      code: "toolchain-mismatch",
+      userMessage: input.userMessage,
+      suggestedAction: input.suggestedAction,
+    });
+    this.expectedVersion = input.expectedVersion;
+    this.actualVersion = input.actualVersion;
+  }
+}
+
 export type DeploymentStatusType = "blocked" | "ready" | "deployed";
 export type DeploymentAttemptOutcome = "blocked" | "cancelled" | "failed" | "unresolved" | "succeeded";
-export type DeploymentStage = "validating" | "preparing" | "signing" | "submitting" | "confirming";
+export type DeploymentStage =
+  | "validating"
+  | "preparing"
+  | "fetch-world-source"
+  | "resolve-dependencies"
+  | "deploy-grade-compile"
+  | "signing"
+  | "submitting"
+  | "confirming";
 export type DeploymentMessageSeverity = "info" | "warning" | "error" | "success";
 
 export interface ContractIdentity {
@@ -124,6 +259,8 @@ export interface DeploymentAttempt {
   readonly currentStage: DeploymentStage;
   readonly packageId?: string;
   readonly confirmationReference?: string;
+  readonly sourceVersionTag?: string;
+  readonly builderToolchainVersion?: string;
   readonly message: string;
   readonly errorCode?: string;
 }

@@ -97,6 +97,20 @@ function getDeploymentMetadata(status: CompilationStatus): {
   return { badges, details };
 }
 
+function getBuildOutput(status: CompilationStatus): string | null {
+  const artifactDiagnostics = status.state === "compiled" || status.state === "error"
+    ? status.artifact?.diagnostics ?? []
+    : [];
+  const statusDiagnostics = status.state === "error"
+    ? status.diagnostics
+    : [];
+  const messages = Array.from(new Set([...statusDiagnostics, ...artifactDiagnostics]
+    .map((diagnostic) => diagnostic.rawMessage.trim())
+    .filter((message) => message.length > 0)));
+
+  return messages.length > 0 ? messages.join("\n\n") : null;
+}
+
 function getDefaultFilePath(files: readonly VirtualArtifactFile[], status: CompilationStatus, sourceCode: string | null): string | null {
   const artifact = status.state === "compiled" || status.state === "error"
     ? status.artifact ?? null
@@ -304,8 +318,24 @@ function MoveSourceContent({
   );
 }
 
+function MoveBuildOutput({ buildOutput }: { readonly buildOutput: string }) {
+  return (
+    <aside aria-label="Build output" className="ff-move-source__output" role="region">
+      <div className="ff-move-source__output-header">
+        <p className="ff-move-source__output-eyebrow">Build</p>
+        <h3 className="ff-move-source__output-title">Build output</h3>
+        <p className="ff-move-source__output-copy">Raw compiler diagnostics stay visible beside the selected source file for side-by-side debugging.</p>
+      </div>
+      <pre aria-label="Build output contents" className="ff-move-source__output-code">
+        <code>{buildOutput}</code>
+      </pre>
+    </aside>
+  );
+}
+
 function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps) {
   const deploymentMetadata = useMemo(() => getDeploymentMetadata(status), [status]);
+  const buildOutput = useMemo(() => getBuildOutput(status), [status]);
   const isCompiling = status.state === "compiling";
   const { displayedLines, files, highlightedSource, selectedFile, selectedFilePath, setSelectedFilePath } = useMoveSourceSelection(sourceCode, status);
   const [copyLabel, setCopiedLabel] = useCopyLabel();
@@ -356,11 +386,14 @@ function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps
         <MoveSourceTabs files={files} onSelectFile={setSelectedFilePath} selectedFilePath={selectedFilePath} />
         <div
           aria-labelledby={selectedFile === null ? undefined : `move-source-tab-${selectedFile.path}`}
-          className="ff-move-source__panel"
+          className={buildOutput === null ? "ff-move-source__panel" : "ff-move-source__panel ff-move-source__panel--split"}
           id={selectedFile === null ? undefined : `move-source-panel-${selectedFile.path}`}
           role={selectedFile === null ? undefined : "tabpanel"}
         >
-          <MoveSourceContent displayedLines={displayedLines} highlightedSource={highlightedSource} selectedFile={selectedFile} status={status} />
+          <div className="ff-move-source__panel-main">
+            <MoveSourceContent displayedLines={displayedLines} highlightedSource={highlightedSource} selectedFile={selectedFile} status={status} />
+          </div>
+          {buildOutput !== null ? <MoveBuildOutput buildOutput={buildOutput} /> : null}
         </div>
       </div>
     </section>

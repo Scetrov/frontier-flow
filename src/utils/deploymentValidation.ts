@@ -99,7 +99,7 @@ function isSuiObjectId(value: string): boolean {
 }
 
 export function validatePackageReferenceBundle(
-  targetId: Exclude<DeploymentTargetId, "local">,
+  targetId: DeploymentTargetId,
   bundle: PackageReferenceBundle | null,
   search?: string,
 ): DeploymentBlocker | null {
@@ -133,7 +133,7 @@ export function validatePackageReferenceBundle(
 }
 
 export function resolvePackageReferenceBundle(
-  targetId: Exclude<DeploymentTargetId, "local">,
+  targetId: DeploymentTargetId,
 ): PackageReferenceBundle | null {
   try {
     return getPackageReferenceBundle(targetId);
@@ -208,9 +208,8 @@ function createPackageReferenceBlockers(input: {
     return [];
   }
 
-  const publishedTargetId = input.targetId as Exclude<DeploymentTargetId, "local">;
-  const bundle = resolvePackageReferenceBundle(publishedTargetId);
-  const packageReferenceBlocker = validatePackageReferenceBundle(publishedTargetId, bundle, input.search);
+  const bundle = resolvePackageReferenceBundle(input.targetId);
+  const packageReferenceBlocker = validatePackageReferenceBundle(input.targetId, bundle, input.search);
 
   return packageReferenceBlocker === null ? [] : [packageReferenceBlocker];
 }

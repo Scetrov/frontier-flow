@@ -159,13 +159,13 @@
   dependency graphs) MUST be treated as distinct concerns.
   Deploy-grade compilation MUST NOT rely on local shim packages
   as the sole dependency resolution mechanism (ADR-009,
-  status: Proposed).
+  status: Accepted).
 - Build artifact provenance MUST be explicit: upstream
   checked-in artifacts (e.g., `Move.toml`, `Move.lock`),
   derived builder inputs (e.g., `rootGit`), and generated
   resolution outputs (e.g., `resolvedDependencies`) MUST be
   distinguishable in the compilation pipeline (ADR-009,
-  status: Proposed).
+  status: Accepted).
 
 ## Architecture & Design Standards
 

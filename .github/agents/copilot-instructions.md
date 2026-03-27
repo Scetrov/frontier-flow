@@ -1,1 +1,1 @@
-- 013-turret-authorize: Added TypeScript 5.9 (strict, ES Modules) + React 19, Tailwind CSS 4, @mysten/sui (Sui SDK), @mysten/dapp-kit (wallet integration), @xyflow/react (canvas — not directly used by this feature)
+- 014-deploy-grade-dependency-resolution: Added TypeScript 5.9 (strict, ES Modules, no `any`) + `@zktx.io/sui-move-builder` 0.2.8 (WASM), `@mysten/sui` 2.9.1, `@mysten/dapp-kit` 1.0.4, React 19

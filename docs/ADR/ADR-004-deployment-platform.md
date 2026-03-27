@@ -10,7 +10,7 @@ The OAuth callback is the only server-side requirement. It is a single function 
 
 ## Decision
 
-We will use Netlify for hosting, serverless functions, and deployment. The OAuth token exchange will be implemented as a Netlify serverless function at `/api/github-callback`. Security headers, including the Content Security Policy with `wasm-unsafe-eval`, will be configured in `netlify.toml`. The build command will be `bun install --frozen-lockfile && bun run build` to ensure deterministic installs.
+We will use Netlify for hosting, serverless functions, and deployment. The OAuth token exchange will be implemented as a Netlify serverless function at `/api/github-callback`. Security headers, including the Content Security Policy with `wasm-unsafe-eval`, will be configured in `netlify.toml`. The build command will be `bun run build`. Netlify and CI should still perform deterministic installs using `bun install --frozen-lockfile` together with the committed `bun.lockb` to guarantee reproducible builds.
 
 ## Status
 

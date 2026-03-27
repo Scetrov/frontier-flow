@@ -105,7 +105,17 @@ describe("useDeployment progress flow", () => {
     act(() => {
       vi.advanceTimersByTime(25);
     });
-    expect(result.current.progress?.stage).toBe("preparing");
+    expect(result.current.progress?.stage).toBe("fetch-world-source");
+
+    act(() => {
+      vi.advanceTimersByTime(25);
+    });
+    expect(result.current.progress?.stage).toBe("resolve-dependencies");
+
+    act(() => {
+      vi.advanceTimersByTime(25);
+    });
+    expect(result.current.progress?.stage).toBe("deploy-grade-compile");
 
     act(() => {
       vi.advanceTimersByTime(25);
@@ -147,7 +157,7 @@ describe("useDeployment progress flow", () => {
     expect(result.current.isProgressModalOpen).toBe(false);
 
     act(() => {
-      vi.advanceTimersByTime(75);
+      vi.advanceTimersByTime(125);
     });
 
     expect(result.current.latestAttempt?.outcome).toBe("succeeded");
@@ -170,7 +180,7 @@ describe("useDeployment progress flow", () => {
 
     act(() => {
       result.current.dismissProgress();
-      vi.advanceTimersByTime(100);
+      vi.advanceTimersByTime(150);
     });
 
     const firstAttemptId = result.current.latestAttempt?.attemptId;
@@ -218,7 +228,7 @@ describe("useDeployment progress flow", () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(100);
+      vi.advanceTimersByTime(150);
     });
 
     expect(result.current.latestAttempt?.outcome).toBe("succeeded");
@@ -249,7 +259,7 @@ describe("useDeployment progress flow", () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(4);
+      vi.advanceTimersByTime(16);
     });
 
     expect(result.current.latestAttempt?.outcome).toBe("succeeded");
@@ -262,7 +272,7 @@ describe("useDeployment progress flow", () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(4);
+      vi.advanceTimersByTime(16);
     });
 
     expect(result.current.latestAttempt?.outcome).toBe("succeeded");

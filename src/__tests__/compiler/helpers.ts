@@ -169,15 +169,18 @@ export function createDeploymentStatusMessage(
 }
 
 export function createPackageReferenceBundle(
-  targetId: Exclude<DeploymentTargetId, "local"> = "testnet:stillness",
+  targetId: DeploymentTargetId = "testnet:stillness",
   overrides: Partial<PackageReferenceBundle> = {},
 ): PackageReferenceBundle {
   const bundle: PackageReferenceBundle = {
     targetId,
-    environmentLabel: overrides.environmentLabel ?? (targetId === "testnet:stillness" ? "Stillness" : "Utopia"),
+    environmentLabel: overrides.environmentLabel ?? (targetId === "local" ? "Localnet 0x1" : targetId === "testnet:stillness" ? "Stillness" : "Utopia"),
     worldPackageId: overrides.worldPackageId ?? "0x1",
+    originalWorldPackageId: overrides.originalWorldPackageId ?? overrides.worldPackageId ?? "0x1",
     objectRegistryId: overrides.objectRegistryId ?? "0x2",
     serverAddressRegistryId: overrides.serverAddressRegistryId ?? "0x3",
+    sourceVersionTag: overrides.sourceVersionTag ?? (targetId === "testnet:utopia" ? "v0.0.21" : "v0.0.18"),
+    toolchainVersion: overrides.toolchainVersion ?? (targetId === "testnet:utopia" ? "1.68.0" : "1.67.1"),
     source: overrides.source ?? "test",
     lastVerifiedOn: overrides.lastVerifiedOn ?? "2026-03-21",
   };

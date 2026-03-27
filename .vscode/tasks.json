@@ -109,6 +109,17 @@
       "problemMatcher": []
     },
     {
+      "label": "Preload Deploy Cache",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "./scripts/preload-deploy-cache.ts", "./scripts/deploy-cache-packages.json"],
+      "presentation": {
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Verify Workspace",
       "dependsOrder": "sequence",
       "dependsOn": ["Typecheck", "Lint", "Unit Tests"],

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import DeploymentProgressModal from "../components/DeploymentProgressModal";
+import { getLocalDeploymentTargetLabel } from "../data/localEnvironment";
 import { createDeploymentAttemptFixture, createDeploymentProgressFixture } from "./deployment/testFactories";
 
 describe("DeploymentProgressModal", () => {
@@ -12,32 +13,33 @@ describe("DeploymentProgressModal", () => {
         onDismiss={() => undefined}
         progress={createDeploymentProgressFixture({
           targetId: "testnet:stillness",
-          stage: "preparing",
+          stage: "fetch-world-source",
           stageIndex: 1,
-          stageCount: 5,
+          stageCount: 7,
           completedStages: ["validating"],
-          activeMessage: "Preparing deployment payload for testnet:stillness.",
+          activeMessage: "Fetching the upstream world package source. Target: testnet:stillness.",
         })}
       />,
     );
 
     expect(screen.getByRole("dialog", { name: "Deployment in progress" })).toBeVisible();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "40");
-    expect(screen.getByText("Target: testnet:stillness")).toBeVisible();
-    expect(document.querySelector(".ff-deployment-modal__message")?.textContent).toBe("Preparing deployment payload for testnet:stillness.");
-    expect(screen.getByText("Preparing")).toBeVisible();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "29");
+    expect(screen.getByText("Target: testnet:stillness (0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c)")).toBeVisible();
+    expect(document.querySelector(".ff-deployment-modal__message")?.textContent).toBe("Fetching the upstream world package source. Target: testnet:stillness.");
+    expect(screen.getByText("Fetch World Source")).toBeVisible();
     expect(screen.getByText("Active")).toBeVisible();
   });
 
   it("renders terminal deployment summaries and supports dismissal", () => {
     const handleDismiss = vi.fn();
+    const localTargetLabel = getLocalDeploymentTargetLabel();
     const progress = createDeploymentProgressFixture({
       attemptId: "attempt-42",
       targetId: "local",
       stage: "confirming",
       stageIndex: 4,
-      stageCount: 5,
-      completedStages: ["validating", "preparing", "signing", "submitting"],
+      stageCount: 6,
+      completedStages: ["validating", "fetch-world-source", "resolve-dependencies", "deploy-grade-compile", "submitting"],
       activeMessage: "Confirming deployment.",
     });
 
@@ -49,7 +51,7 @@ describe("DeploymentProgressModal", () => {
           outcome: "succeeded",
           currentStage: "confirming",
           endedAt: 10,
-          message: "Deployment completed for local. Package ID: 0xabc.",
+          message: `Deployment completed for ${localTargetLabel}. Package ID: 0xabc.`,
           confirmationReference: "0xdigest42",
           packageId: "0xabc",
         })}
@@ -59,10 +61,10 @@ describe("DeploymentProgressModal", () => {
     );
 
     expect(screen.getByRole("dialog", { name: "Deployed" })).toBeVisible();
-    expect(screen.getByText("Deployment completed for local. Package ID: 0xabc.")).toBeVisible();
+    expect(screen.getByText(`Deployment completed for ${localTargetLabel}. Package ID: 0xabc.`)).toBeVisible();
     expect(screen.getByText("Package ID: 0xabc")).toBeVisible();
     expect(screen.getByText("Transaction Digest: 0xdigest42")).toBeVisible();
-    expect(screen.getAllByText("Complete")).toHaveLength(5);
+    expect(screen.getAllByText("Complete")).toHaveLength(6);
     expect(screen.queryByText("Active")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
@@ -75,9 +77,9 @@ describe("DeploymentProgressModal", () => {
     const progress = createDeploymentProgressFixture({
       targetId: "testnet:stillness",
       stage: "signing",
-      stageIndex: 2,
-      stageCount: 5,
-      completedStages: ["validating", "preparing"],
+      stageIndex: 4,
+      stageCount: 7,
+      completedStages: ["validating", "fetch-world-source", "resolve-dependencies", "deploy-grade-compile"],
       activeMessage: "Waiting for wallet approval.",
     });
 
@@ -132,9 +134,9 @@ describe("DeploymentProgressModal", () => {
       attemptId: "attempt-99",
       targetId: "testnet:stillness",
       stage: "confirming",
-      stageIndex: 4,
-      stageCount: 5,
-      completedStages: ["validating", "preparing", "signing", "submitting"],
+      stageIndex: 6,
+      stageCount: 7,
+      completedStages: ["validating", "fetch-world-source", "resolve-dependencies", "deploy-grade-compile", "signing", "submitting"],
       activeMessage: "Confirming deployment transaction.",
     });
 
@@ -156,10 +158,10 @@ describe("DeploymentProgressModal", () => {
     );
 
     expect(screen.getByRole("dialog", { name: "Deployed" })).toBeVisible();
-    expect(screen.getByText("Target: testnet:stillness")).toBeVisible();
+    expect(screen.getByText("Target: testnet:stillness (0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c)")).toBeVisible();
     expect(screen.getByText("Package ID: 0xdef")).toBeVisible();
     expect(screen.getByText("Transaction Digest: 0xconfirm99")).toBeVisible();
-    expect(screen.getAllByText("Complete")).toHaveLength(5);
+    expect(screen.getAllByText("Complete")).toHaveLength(7);
   });
 
   it("announces unresolved outcomes and renders retry guidance", () => {
@@ -167,9 +169,9 @@ describe("DeploymentProgressModal", () => {
       attemptId: "attempt-unresolved",
       targetId: "testnet:utopia",
       stage: "confirming",
-      stageIndex: 4,
-      stageCount: 5,
-      completedStages: ["validating", "preparing", "signing", "submitting"],
+      stageIndex: 6,
+      stageCount: 7,
+      completedStages: ["validating", "fetch-world-source", "resolve-dependencies", "deploy-grade-compile", "signing", "submitting"],
       activeMessage: "Confirming deployment.",
     });
 
@@ -202,9 +204,9 @@ describe("DeploymentProgressModal", () => {
       attemptId: "attempt-failed",
       targetId: "testnet:stillness",
       stage: "submitting",
-      stageIndex: 3,
-      stageCount: 5,
-      completedStages: ["validating", "preparing", "signing"],
+      stageIndex: 5,
+      stageCount: 7,
+      completedStages: ["validating", "fetch-world-source", "resolve-dependencies", "deploy-grade-compile", "signing"],
       activeMessage: "Submitting deployment transaction.",
     });
 
@@ -228,15 +230,15 @@ describe("DeploymentProgressModal", () => {
     expect(screen.getByText("Review the wallet and RPC error details, then retry deployment once the target is healthy.")).toBeVisible();
   });
 
-  it("renders preparation-stage compiler blocker details for failed outcomes", () => {
+  it("renders deploy-grade compiler blocker details for failed outcomes", () => {
     const progress = createDeploymentProgressFixture({
       attemptId: "attempt-prepare-failed",
       targetId: "testnet:stillness",
-      stage: "preparing",
-      stageIndex: 1,
-      stageCount: 5,
-      completedStages: ["validating"],
-      activeMessage: "Preparing deployment payload.",
+      stage: "resolve-dependencies",
+      stageIndex: 2,
+      stageCount: 7,
+      completedStages: ["validating", "fetch-world-source"],
+      activeMessage: "Resolving live world dependencies.",
     });
 
     render(
@@ -245,7 +247,7 @@ describe("DeploymentProgressModal", () => {
           attemptId: "attempt-prepare-failed",
           targetId: "testnet:stillness",
           outcome: "failed",
-          currentStage: "preparing",
+          currentStage: "resolve-dependencies",
           endedAt: 12,
           message: "Remote deployment cannot resolve the published world dependency in the browser Move compiler.",
           errorCode: "deployment-executor-error",
@@ -257,5 +259,26 @@ describe("DeploymentProgressModal", () => {
 
     expect(screen.getByRole("dialog", { name: "Deployment failed" })).toBeVisible();
     expect(screen.getAllByText("Remote deployment cannot resolve the published world dependency in the browser Move compiler.")).toHaveLength(2);
+  });
+
+  it("renders deploy-grade local stage lists for local without a signing step", () => {
+    render(
+      <DeploymentProgressModal
+        latestAttempt={null}
+        onDismiss={() => undefined}
+        progress={createDeploymentProgressFixture({
+          targetId: "local",
+          stage: "deploy-grade-compile",
+          stageIndex: 3,
+          stageCount: 6,
+          completedStages: ["validating", "fetch-world-source", "resolve-dependencies"],
+          activeMessage: `Compiling against the live world dependency graph. Target: ${getLocalDeploymentTargetLabel()}.`,
+        })}
+      />,
+    );
+
+    expect(screen.getByText(`Target: ${getLocalDeploymentTargetLabel()} (0xcf6b5da20b0c6540895b79b91580ec0734fcfa4298848f0e8382ef217965bfd5)`)).toBeVisible();
+    expect(screen.getByText("Deploy-Grade Compile")).toBeVisible();
+    expect(screen.queryByText("Signing")).not.toBeInTheDocument();
   });
 });

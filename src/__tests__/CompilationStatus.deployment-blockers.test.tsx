@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import CompilationStatus from "../components/CompilationStatus";
+import { getLocalDeploymentTargetLabel } from "../data/localEnvironment";
 import { createDeploymentReviewEntry, createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
 
 describe("CompilationStatus deployment blocker details", () => {
@@ -39,12 +40,21 @@ describe("CompilationStatus deployment blocker details", () => {
   });
 
   it("renders local-target remediation when local deployment is unavailable", () => {
+    const localTargetLabel = getLocalDeploymentTargetLabel();
+
     const artifact = createGeneratedArtifactStub({
       deploymentStatus: createDeploymentStatus("blocked", {
         targetId: "local",
         stage: "validating",
-        requiredInputs: ["current compiled bytecode artifact", "available local validator"],
-        resolvedInputs: ["current compiled bytecode artifact"],
+        requiredInputs: [
+          "current compiled bytecode artifact",
+          `published package references for ${localTargetLabel}`,
+          "available local validator",
+        ],
+        resolvedInputs: [
+          "current compiled bytecode artifact",
+          `published package references for ${localTargetLabel}`,
+        ],
         blockedReasons: ["The local validator required for local deployment is unavailable."],
         nextActionSummary: "Start or configure the local validator, then retry deployment to local.",
       }),
@@ -61,6 +71,7 @@ describe("CompilationStatus deployment blocker details", () => {
 
     expect(screen.getByText("Target: local")).toBeVisible();
     expect(screen.getByText("The local validator required for local deployment is unavailable.")).toBeVisible();
+    expect(screen.getByText(`Required inputs: current compiled bytecode artifact, published package references for ${localTargetLabel}, available local validator`)).toBeVisible();
     expect(screen.getByText("Start or configure the local validator, then retry deployment to local.")).toBeVisible();
   });
 

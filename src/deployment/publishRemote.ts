@@ -1,10 +1,16 @@
 import { Transaction } from "@mysten/sui/transactions";
 import { compileMove } from "../compiler/moveCompiler";
 import { prepareArtifactManifestForTarget } from "../compiler/emitter";
-import type { DeploymentTarget, GeneratedContractArtifact, PackageReferenceBundle } from "../compiler/types";
+import type {
+  DeploymentTarget,
+  DeployGradeCompileResult,
+  GeneratedContractArtifact,
+  PackageReferenceBundle,
+} from "../compiler/types";
 
 export interface RemotePublishRequest {
-  readonly artifact: GeneratedContractArtifact;
+  readonly artifact?: GeneratedContractArtifact;
+  readonly compileResult?: DeployGradeCompileResult;
   readonly ownerAddress: string;
   readonly onSubmitting?: () => void;
   readonly target: DeploymentTarget;
@@ -21,6 +27,8 @@ export interface RemotePublishExecutionRequest {
 export interface RemotePublishResult {
   readonly packageId?: string;
   readonly transactionDigest?: string;
+  readonly sourceVersionTag?: string;
+  readonly builderToolchainVersion?: string;
 }
 
 const TESTNET_CHAIN_ID = "4c78adac";
@@ -28,6 +36,27 @@ const REMOTE_WORLD_DEPENDENCY_LINKING_ERROR = [
   "Remote deployment cannot resolve the published world dependency in the browser Move compiler.",
   "Published.toml only applies to the root package in the current toolchain, so this deploy path cannot link the live world package yet.",
 ].join(" ");
+
+function getDependencyLinkPackageId(references: PackageReferenceBundle): string {
+  return references.originalWorldPackageId;
+}
+
+function createPublishUpgradeMissingDependencyError(references: PackageReferenceBundle): Error {
+  return new Error([
+    `Remote deployment could not link ${references.targetId} against the configured world package ${references.worldPackageId}.`,
+    `The chain still resolves this dependency through the original package id ${references.originalWorldPackageId}, so publish dependency resolution failed with PublishUpgradeMissingDependency.`,
+    "Run the remote deploy-grade MCVE with transaction resolution to verify both ids if this target changes again.",
+  ].join(" "));
+}
+
+function shouldMapPublishUpgradeMissingDependency(
+  error: unknown,
+  references: PackageReferenceBundle,
+): error is Error {
+  return error instanceof Error
+    && /PublishUpgradeMissingDependency/i.test(error.message)
+    && references.worldPackageId !== references.originalWorldPackageId;
+}
 
 function extractMoveEdition(moveToml: string): string {
   const match = moveToml.match(/edition\s*=\s*"([^"]+)"/);
@@ -40,9 +69,9 @@ function createPublishedWorldDependencyManifest(references: PackageReferenceBund
     "[published.testnet]",
     `chain-id = "${TESTNET_CHAIN_ID}"`,
     `published-at = "${references.worldPackageId}"`,
-    `original-id = "${references.worldPackageId}"`,
+    `original-id = "${references.originalWorldPackageId}"`,
     "version = 1",
-    'toolchain-version = "1.67.1"',
+    `toolchain-version = "${references.toolchainVersion}"`,
     'build-config = { flavor = "sui", edition = "2024" }',
     'upgrade-capability = "0x0"',
     "",
@@ -108,32 +137,114 @@ async function compileArtifactForRemotePublish(
   return compileResult.artifact;
 }
 
+function requireOwnerAddress(request: RemotePublishRequest): void {
+  if (request.ownerAddress.length === 0) {
+    throw new Error(`A connected wallet address is required before deploying to ${request.target.label}.`);
+  }
+}
+
+function resolveCompileInputArtifact(request: RemotePublishRequest): GeneratedContractArtifact {
+  if (request.artifact !== undefined) {
+    return request.artifact;
+  }
+
+  throw new Error("A compiled artifact is required for remote publishing.");
+}
+
+async function resolvePublishModules(
+  request: RemotePublishRequest,
+): Promise<{ readonly compileResult?: DeployGradeCompileResult; readonly compiledArtifact: GeneratedContractArtifact | null }> {
+  if (request.compileResult !== undefined) {
+    return { compileResult: request.compileResult, compiledArtifact: null };
+  }
+
+  return {
+    compileResult: undefined,
+    compiledArtifact: await compileArtifactForRemotePublish(resolveCompileInputArtifact(request), request.references),
+  };
+}
+
+function normalizeRemotePublishDependencies(
+  dependencies: readonly string[],
+  references: PackageReferenceBundle,
+): readonly string[] {
+  const dependencyLinkPackageId = getDependencyLinkPackageId(references);
+  const normalizedDependencies = dependencies.map((dependency) => {
+    if (dependency === references.originalWorldPackageId || dependency === references.worldPackageId) {
+      return dependencyLinkPackageId;
+    }
+
+    return dependency;
+  });
+
+  if (!normalizedDependencies.includes(dependencyLinkPackageId)) {
+    normalizedDependencies.push(dependencyLinkPackageId);
+  }
+
+  return Array.from(new Set(normalizedDependencies));
+}
+
+function resolveRemoteDependencies(
+  request: RemotePublishRequest,
+  compileResult: DeployGradeCompileResult | undefined,
+  compiledArtifact: GeneratedContractArtifact | null,
+): readonly string[] {
+  if (compileResult !== undefined) {
+    return normalizeRemotePublishDependencies(compileResult.dependencies, request.references);
+  }
+
+  return normalizeRemotePublishDependencies(
+    prepareArtifactManifestForTarget(
+      compiledArtifact?.moduleName ?? request.artifact?.moduleName ?? "unknown-module",
+      request.target.id,
+      compiledArtifact?.dependencies ?? [],
+    ).dependencies,
+    request.references,
+  );
+}
+
+function createPublishTransaction(
+  modules: readonly Uint8Array[],
+  dependencies: readonly string[],
+  ownerAddress: string,
+): Transaction {
+  const transaction = new Transaction();
+  const [upgradeCap] = transaction.publish({
+    modules: modules.map((module) => Array.from(module)),
+    dependencies: Array.from(dependencies),
+  });
+  transaction.transferObjects([upgradeCap], ownerAddress);
+  return transaction;
+}
+
 /**
  * Publish a compiled artifact to a supported remote Sui target.
  */
 export async function publishToRemoteTarget(request: RemotePublishRequest): Promise<RemotePublishResult> {
-  if (request.ownerAddress.length === 0) {
-    throw new Error(`A connected wallet address is required before deploying to ${request.target.label}.`);
+  requireOwnerAddress(request);
+
+  const { compileResult, compiledArtifact } = await resolvePublishModules(request);
+  const modules = compileResult?.modules ?? compiledArtifact?.bytecodeModules ?? [];
+  const dependencies = resolveRemoteDependencies(request, compileResult, compiledArtifact);
+  const transaction = createPublishTransaction(modules, dependencies, request.ownerAddress);
+
+  let result: { digest: string };
+  try {
+    result = await request.execute(transaction, {
+      onSubmitting: request.onSubmitting,
+      signal: request.signal,
+    });
+  } catch (error) {
+    if (shouldMapPublishUpgradeMissingDependency(error, request.references)) {
+      throw createPublishUpgradeMissingDependencyError(request.references);
+    }
+
+    throw error;
   }
 
-  const compiledArtifact = await compileArtifactForRemotePublish(request.artifact, request.references);
-  const manifest = prepareArtifactManifestForTarget(
-    compiledArtifact.moduleName,
-    request.target.id,
-    compiledArtifact.dependencies,
-  );
-  const transaction = new Transaction();
-  const [upgradeCap] = transaction.publish({
-    modules: compiledArtifact.bytecodeModules.map((module) => Array.from(module)),
-    dependencies: Array.from(manifest.dependencies),
-  });
-  transaction.transferObjects([upgradeCap], request.ownerAddress);
-
-  const result = await request.execute(transaction, {
-    onSubmitting: request.onSubmitting,
-    signal: request.signal,
-  });
   return {
+    builderToolchainVersion: compileResult?.builderToolchainVersion,
+    sourceVersionTag: compileResult?.sourceVersionTag,
     transactionDigest: result.digest,
   };
 }
