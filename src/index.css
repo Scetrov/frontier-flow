@@ -2052,6 +2052,18 @@ button,
   word-break: break-word;
 }
 
+.ff-move-source__output-token {
+  font-weight: 600;
+}
+
+.ff-move-source__output-token--warning {
+  color: #f7c873;
+}
+
+.ff-move-source__output-token--error {
+  color: #ff7b72;
+}
+
 .ff-authorize-view {
   display: flex;
   width: 100%;
@@ -2154,10 +2166,82 @@ button,
   gap: 0.55rem;
   color: var(--text-secondary);
   font-size: 0.82rem;
+  cursor: pointer;
+  user-select: none;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.ff-authorize-list__select-all:hover,
+.ff-authorize-list__select-all:focus-within {
+  color: var(--cream-white);
+}
+
+.ff-authorize-list__select-all.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ff-authorize-list__select-all-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
 .ff-authorize-list__select-all-input {
+  position: absolute;
+  inset: 0;
   margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.ff-authorize-list__select-all-indicator {
+  position: relative;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 1px solid rgba(255, 244, 230, 0.45);
+  background: rgba(6, 9, 16, 0.75);
+}
+
+.ff-authorize-list__select-all-indicator::before,
+.ff-authorize-list__select-all-indicator::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.65rem;
+  height: 1px;
+  background: transparent;
+}
+
+.ff-authorize-list__select-all-indicator::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.ff-authorize-list__select-all-indicator::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.ff-authorize-list__select-all-input:focus-visible + .ff-authorize-list__select-all-indicator {
+  outline: 1px solid var(--brand-orange);
+  outline-offset: 2px;
+}
+
+.ff-authorize-list__select-all-input:checked + .ff-authorize-list__select-all-indicator {
+  border-color: rgba(255, 126, 61, 0.88);
+  background: rgba(255, 71, 0, 0.24);
+}
+
+.ff-authorize-list__select-all-input:checked + .ff-authorize-list__select-all-indicator::before,
+.ff-authorize-list__select-all-input:checked + .ff-authorize-list__select-all-indicator::after {
+  background: var(--cream-white);
+}
+
+.ff-authorize-list__select-all-label {
+  white-space: nowrap;
 }
 
 .ff-authorize-list__items {

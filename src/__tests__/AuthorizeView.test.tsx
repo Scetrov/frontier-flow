@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   useCurrentAccount as useCurrentAccountHook,
@@ -45,8 +45,10 @@ const deploymentState: StoredDeploymentState = {
   contractName: "Starter Contract",
 };
 
+const connectedWalletAddress = "0x1234";
+
 const connectedAccount = {
-  address: "0x1234",
+  address: connectedWalletAddress,
   chains: [],
   features: [],
   icon: undefined,
@@ -224,6 +226,52 @@ describe("AuthorizeView", () => {
       walletAccount: connectedAccount,
       currentWallet: connectedWallet,
     }));
+  });
+
+  it("renders linked code blocks for deployment ids and copies package and wallet values", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText,
+      },
+    });
+
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: [],
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AuthorizeView deploymentState={deploymentState} />);
+
+    expect(screen.getByRole("link", { name: deploymentState.packageId })).toHaveAttribute(
+      "href",
+      "https://suiscan.xyz/testnet/object/0xfeedface",
+    );
+    expect(screen.getByRole("link", { name: connectedWalletAddress })).toHaveAttribute(
+      "href",
+      "https://suiscan.xyz/testnet/account/0x1234",
+    );
+    expect(screen.getByText(deploymentState.packageId).closest("code")).not.toBeNull();
+    expect(screen.getByText(deploymentState.moduleName).closest("code")).not.toBeNull();
+    expect(screen.getByText(deploymentState.targetId).closest("code")).not.toBeNull();
+    expect(screen.getByText(connectedWalletAddress).closest("code")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy package id" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(deploymentState.packageId);
+    });
+    expect(screen.getByRole("button", { name: "Copied package id" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy wallet address" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(connectedWalletAddress);
+    });
+    expect(screen.getByRole("button", { name: "Copied wallet address" })).toBeVisible();
   });
 
   it("starts authorization for the selected turret", () => {

@@ -152,15 +152,15 @@ function useResolvedCharacterName(
     readonly walletAddress: string;
   } | null>(null);
   const lastAutoDetectedTargetRef = useRef<string | null>(null);
+  const walletAddress = getWalletAddress(account);
 
   useEffect(() => {
-    if (account === null) {
+    if (walletAddress === null) {
       lastAutoDetectedTargetRef.current = null;
       return undefined;
     }
 
     const controller = new AbortController();
-    const walletAddress = account.address;
     const targetId = selectedDeploymentTarget;
 
     if (shouldRefreshPublishedWorldPackageManifest()) {
@@ -199,11 +199,11 @@ function useResolvedCharacterName(
     return () => {
       controller.abort();
     };
-  }, [account, localEnvironmentSnapshot, onDetectedDeploymentTarget, selectedDeploymentTarget]);
+  }, [localEnvironmentSnapshot, onDetectedDeploymentTarget, selectedDeploymentTarget, walletAddress]);
 
-  return account !== null
+  return walletAddress !== null
     && characterNameState !== null
-    && characterNameState.walletAddress === account.address
+    && characterNameState.walletAddress === walletAddress
     && (selectedDeploymentTarget === "local" || characterNameState.targetId === selectedDeploymentTarget)
     ? characterNameState.value
     : null;
@@ -250,6 +250,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function getWalletAddress(account: ReturnType<typeof useCurrentAccount>): string | null {
+  return isRecord(account) && typeof account.address === "string"
+    ? account.address
+    : null;
+}
+
 function WalletStatus({
   onDetectedDeploymentTarget,
   selectedDeploymentTarget = "local",
@@ -270,9 +276,10 @@ function WalletStatus({
   const primaryButtonClassName = `${sharedButtonClassName} border-[var(--brand-orange)] bg-transparent text-[var(--brand-orange)] hover:bg-[rgba(255,71,0,0.1)]`;
   const disconnectButtonClassName = `${sharedButtonClassName} ff-wallet-status__action--disconnect border-[var(--brand-orange)] bg-[var(--brand-orange)] text-[var(--text-dark)] hover:bg-[var(--brand-dark)]`;
   const disabledButtonClassName = `${sharedButtonClassName} border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.85)] text-[var(--text-secondary)]`;
+  const walletAddress = getWalletAddress(account);
 
-  if (account !== null) {
-    const { balanceLabel, identityLabel } = getConnectedWalletPresentation(balanceQuery, account.address, characterName);
+  if (walletAddress !== null) {
+    const { balanceLabel, identityLabel } = getConnectedWalletPresentation(balanceQuery, walletAddress, characterName);
 
     return (
       <ConnectedWalletStatus

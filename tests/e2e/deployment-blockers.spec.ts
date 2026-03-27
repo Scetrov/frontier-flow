@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { getCompilationStatusButton, getTargetDisplayLabel, openDeployWorkflow, selectDeploymentTarget } from "./fixtures/workflow";
+import { getCodeViewButton, getCompilationStatusButton, getTargetDisplayLabel, openDeployWorkflow, selectDeploymentTarget } from "./fixtures/workflow";
 
 test("blocks stillness deployment when no wallet is connected", async ({ page }) => {
   await page.addInitScript(() => {
@@ -29,8 +29,9 @@ test("blocks stillness deployment when no wallet is connected", async ({ page })
   await expect(deploymentDetails.getByText("Target: testnet:stillness")).toBeVisible();
   await expect(deploymentDetails.getByText(/Connect a Sui-compatible wallet before deploying to testnet:stillness/i)).toBeVisible();
 
-  await page.getByRole("button", { name: "Move" }).click();
-  await expect(page.locator(".ff-move-source__filename", { hasText: /Connect and approve a Sui-compatible wallet for testnet:stillness, then retry deployment/i }).first()).toBeVisible();
+  await getCodeViewButton(page).click();
+  await expect(page.getByText("Generated source")).toBeVisible();
+  await expect(page.locator(".ff-move-source__meta")).toHaveCount(0);
 });
 
 test("blocks local deployment when the local target is unavailable", async ({ page }) => {

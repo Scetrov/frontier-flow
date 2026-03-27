@@ -229,7 +229,7 @@ async function fetchPlayerProfileContent(input: {
   readonly targetId: RemoteDeploymentTargetId;
   readonly walletAddress: string;
 }): Promise<unknown> {
-  const playerProfileType = `${getPackageReferenceBundle(input.targetId).worldPackageId}::character::PlayerProfile`;
+  const playerProfileType = `${getPackageReferenceBundle(input.targetId).originalWorldPackageId}::character::PlayerProfile`;
   const playerProfileData = await postGraphQl<PlayerProfileLookupResponse>({
     endpoint: input.endpoint,
     fetchFn: input.fetchFn,

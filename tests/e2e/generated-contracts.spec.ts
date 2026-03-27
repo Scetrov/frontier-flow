@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { expectNoAccessibilityViolations } from "./fixtures/accessibility";
-import { getCompilationStatusButton } from "./fixtures/workflow";
+import { getCodeViewButton, getCompilationStatusButton } from "./fixtures/workflow";
 import { openAuthorizationReadinessPage } from "./fixtures/authorizationReadiness";
 import { referenceGraphFixtures } from "./referenceGraphFixtures";
 
@@ -14,12 +14,12 @@ test("preview and build consume the same generated artifact", async ({ page, isM
   const statusButton = getCompilationStatusButton(page);
   await expect(statusButton).toContainText("Compiled");
 
-  await expect(page.getByRole("button", { name: "Move", exact: true })).toBeEnabled();
+  await expect(getCodeViewButton(page)).toBeEnabled();
   await expect(page.getByRole("button", { name: "Deploy", exact: true })).toBeEnabled();
 
-  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await getCodeViewButton(page).click();
   await expect(page.getByText(`${referenceFixture.expectedModuleName}.move`)).toBeVisible();
   await expect(page.getByText(new RegExp(`module builder_extensions::${referenceFixture.expectedModuleName}`, "i"))).toBeVisible();
-  await expect(page.locator(".ff-move-source__filename").filter({ hasText: /Select a deployment target and validate the target prerequisites before deploying\./i })).toBeVisible();
+  await expect(page.locator(".ff-move-source__meta")).toHaveCount(0);
   await expectNoAccessibilityViolations(page);
 });

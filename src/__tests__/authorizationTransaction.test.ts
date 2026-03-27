@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildAuthorizeTurretTransaction,
@@ -19,6 +19,10 @@ const deploymentState: StoredDeploymentState = {
 };
 
 describe("authorizationTransaction", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it("builds the borrow-authorize-return transaction sequence", () => {
     const transaction = buildAuthorizeTurretTransaction({
       deploymentState,
@@ -114,6 +118,65 @@ describe("authorizationTransaction", () => {
     expect(ownerCapLookupRequest?.body).toContain("::access::OwnerCap<");
   });
 
+  it("searches across multiple wallet-owned player profiles for the matching owner capability", async () => {
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: {
+                    character_id: "0x1234",
+                  },
+                },
+              }, {
+                contents: {
+                  json: {
+                    character_id: "0x5678",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                address: "0xabcd",
+                contents: {
+                  json: {
+                    authorized_object_id: "0x1111",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    await expect(fetchOwnerCap({
+      deploymentState,
+      walletAddress: "0x9999",
+      turretObjectId: "0x1111",
+      fetchFn,
+    })).resolves.toBe("0xabcd");
+
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+  });
+
   it("fails when the owner capability query does not contain the selected turret", async () => {
     const fetchFn = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -154,5 +217,56 @@ describe("authorizationTransaction", () => {
       turretObjectId: "0x1111",
       fetchFn,
     })).rejects.toThrow("Could not find ownership capability for this turret.");
+  });
+
+  it("uses the original world package id for utopia owner-cap lookups", async () => {
+    const utopiaDeploymentState: StoredDeploymentState = {
+      ...deploymentState,
+      targetId: "testnet:utopia",
+    };
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: {
+                    character_id: "0x1234",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                address: "0xabcd",
+                contents: {
+                  json: {
+                    authorized_object_id: "0x1111",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    await expect(fetchOwnerCap({
+      deploymentState: utopiaDeploymentState,
+      walletAddress: "0x9999",
+      turretObjectId: "0x1111",
+      fetchFn,
+    })).resolves.toBe("0xabcd");
+
+    expect(typeof fetchFn.mock.calls[0]?.[1]?.body).toBe("string");
+    expect(fetchFn.mock.calls[0]?.[1]?.body).toContain("0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75::character::PlayerProfile");
+    expect(typeof fetchFn.mock.calls[1]?.[1]?.body).toBe("string");
+    expect(fetchFn.mock.calls[1]?.[1]?.body).toContain("0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75::access::OwnerCap<0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75::turret::Turret>");
   });
 });

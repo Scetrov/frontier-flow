@@ -1,6 +1,6 @@
 import { getPackageReferenceBundle } from "../data/packageReferences";
 import type { StoredDeploymentState, TurretExtensionInfo, TurretInfo } from "../types/authorization";
-import { fetchAuthorizationCharacterId } from "./authorizationTransaction";
+import { fetchAuthorizationCharacterIds } from "./authorizationTransaction";
 import { getAuthorizationMockEnvironment, overlayMockAuthorizedTurrets } from "./authorizationMocking";
 
 interface GraphQlError {
@@ -53,6 +53,7 @@ interface FetchTurretsInput {
 
 const TESTNET_GRAPHQL_ENDPOINT = "https://graphql.testnet.sui.io/graphql";
 const GRAPHQL_PAGE_SIZE = 50;
+const MOVE_TYPE_NAME_WRAPPER = "0x1::type_name::TypeName";
 
 const TURRETS_QUERY = `query Turrets($owner: SuiAddress!, $type: String!) {
   address(address: $owner) {
@@ -121,36 +122,38 @@ export async function fetchTurrets(input: FetchTurretsInput): Promise<readonly T
   }
 
   const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
-  const bundle = getPackageReferenceBundle(remoteTargetId);
-  const characterId = await fetchAuthorizationCharacterId({
+  const characterIds = await fetchAuthorizationCharacterIds({
     targetId: remoteTargetId,
     walletAddress: input.walletAddress,
     signal: input.signal,
     fetchFn,
   });
+  const bundle = getPackageReferenceBundle(remoteTargetId);
 
-  if (characterId === null) {
+  if (characterIds.length === 0) {
     return [];
   }
 
-  const ownerCapType = `${bundle.worldPackageId}::access::OwnerCap<${bundle.worldPackageId}::turret::Turret>`;
-  const data = await postGraphQl<TurretLookupResponse>({
-    endpoint,
-    fetchFn,
-    query: TURRETS_QUERY,
-    signal: input.signal,
-    variables: {
-      owner: characterId,
-      type: ownerCapType,
-    },
-  });
+  const ownerCapType = `${bundle.originalWorldPackageId}::access::OwnerCap<${bundle.originalWorldPackageId}::turret::Turret>`;
+  const turretIdsByCharacter = await Promise.all(characterIds.map(async (characterId) => {
+    const data = await postGraphQl<TurretLookupResponse>({
+      endpoint,
+      fetchFn,
+      query: TURRETS_QUERY,
+      signal: input.signal,
+      variables: {
+        owner: characterId,
+        type: ownerCapType,
+      },
+    });
 
-  const turretIds = getTurretNodes(data)
-    .map((node) => extractTurretIdFromOwnerCap(node.contents?.json))
-    .filter(isNonNullable)
-    .filter(isSuiAddress);
+    return getTurretNodes(data)
+      .map((node) => extractTurretIdFromOwnerCap(node.contents?.json))
+      .filter(isNonNullable)
+      .filter(isSuiAddress);
+  }));
 
-  const uniqueTurretIds = [...new Set(turretIds)];
+  const uniqueTurretIds = [...new Set(turretIdsByCharacter.flat())];
 
   if (uniqueTurretIds.length === 0) {
     return [];
@@ -299,6 +302,10 @@ function extractTurretExtension(content: unknown, deploymentState: StoredDeploym
 function getExtensionContainer(content: unknown): unknown {
   return findFirstValueAtKeys(content, [
     "extension",
+    "extensionType",
+    "extension_type",
+    "turretExtension",
+    "turret_extension",
     "currentExtension",
     "current_extension",
     "authorizedExtension",
@@ -326,8 +333,10 @@ function extractTurretIdFromOwnerCap(content: unknown): string | null {
 }
 
 function getExtensionIdentity(content: unknown): { readonly packageId: string; readonly moduleName: string; readonly typeName: string } | null {
-  const rawTypeName = findFirstStringAtKeys(content, ["typeName", "type_name", "authorizationType", "authorization_type"]);
-  const rawPackageId = findFirstStringAtKeys(content, ["packageId", "package_id"]);
+  const rawTypeName = findFirstStringAtKeys(content, ["typeName", "type_name", "authorizationType", "authorization_type"])
+    ?? extractTypeNameWrapperValue(content)
+    ?? findFirstTypeNameLikeValue(content);
+  const rawPackageId = normalizeSuiAddress(findFirstStringAtKeys(content, ["packageId", "package_id"]));
   const rawModuleName = findFirstStringAtKeys(content, ["moduleName", "module_name"]);
   const derivedTypeParts = parseTypeName(rawTypeName);
   const packageId = rawPackageId ?? derivedTypeParts?.packageId ?? null;
@@ -343,7 +352,7 @@ function getExtensionIdentity(content: unknown): { readonly packageId: string; r
 
 function buildExtensionTypeName(typeName: string | null, packageId: string | null, moduleName: string | null): string | null {
   if (typeName !== null) {
-    return typeName;
+    return normalizeTypeName(typeName) ?? typeName;
   }
 
   if (packageId === null || moduleName === null) {
@@ -354,17 +363,135 @@ function buildExtensionTypeName(typeName: string | null, packageId: string | nul
 }
 
 function parseTypeName(typeName: string | null): { readonly packageId: string; readonly moduleName: string } | null {
-  if (typeName === null) {
+  const normalizedTypeName = typeName === null
+    ? null
+    : normalizeTypeName(typeName);
+
+  if (normalizedTypeName === null) {
     return null;
   }
 
-  const [packageId, moduleName] = typeName.split("::");
+  const [packageId, moduleName] = normalizedTypeName.split("::");
 
   if (!isSuiAddress(packageId) || moduleName.length === 0) {
     return null;
   }
 
   return { packageId, moduleName };
+}
+
+function extractTypeNameWrapperValue(content: unknown): string | null {
+  const visited = new Set<object>();
+  const queue: unknown[] = [content];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (!isRecord(current) && !Array.isArray(current)) {
+      continue;
+    }
+
+    if (visited.has(current)) {
+      continue;
+    }
+
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      for (const item of current) {
+        queue.push(item);
+      }
+
+      continue;
+    }
+
+    if (current.type === MOVE_TYPE_NAME_WRAPPER) {
+      const fields = current.fields;
+
+      if (isRecord(fields) && typeof fields.name === "string") {
+        return fields.name;
+      }
+    }
+
+    for (const value of Object.values(current)) {
+      queue.push(value);
+    }
+  }
+
+  return null;
+}
+
+function normalizeTypeName(typeName: string): string | null {
+  const segments = typeName.split("::");
+
+  if (segments.length < 3) {
+    return null;
+  }
+
+  const packageId = normalizeSuiAddress(segments[0]);
+
+  if (packageId === null || segments[1].length === 0) {
+    return null;
+  }
+
+  return [packageId, ...segments.slice(1)].join("::");
+}
+
+function normalizeSuiAddress(value: string | null): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  if (isSuiAddress(value)) {
+    return value;
+  }
+
+  const prefixedValue = `0x${String(value)}`;
+
+  return isSuiAddress(prefixedValue) ? prefixedValue : null;
+}
+
+function findFirstTypeNameLikeValue(content: unknown): string | null {
+  const visited = new Set<object>();
+  const queue: unknown[] = [content];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (typeof current === "string") {
+      const normalizedTypeName = normalizeTypeName(current);
+
+      if (normalizedTypeName !== null && normalizedTypeName.endsWith("::TurretAuth")) {
+        return normalizedTypeName;
+      }
+
+      continue;
+    }
+
+    if (!isRecord(current) && !Array.isArray(current)) {
+      continue;
+    }
+
+    if (visited.has(current)) {
+      continue;
+    }
+
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      for (const item of current) {
+        queue.push(item);
+      }
+
+      continue;
+    }
+
+    for (const value of Object.values(current)) {
+      queue.push(value);
+    }
+  }
+
+  return null;
 }
 
 function findFirstValueAtKeys(input: unknown, keys: readonly string[]): unknown {

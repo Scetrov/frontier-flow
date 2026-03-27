@@ -17,6 +17,7 @@ function AuthorizeTurretList({ onSelectionChange, turrets }: AuthorizeTurretList
     () => turrets.filter((turret) => !turret.currentExtension?.isCurrentDeployment).map((turret) => turret.objectId),
     [turrets],
   );
+  const selectAllDisabled = selectableTurretIds.length === 0;
   const selectableTurretIdSet = useMemo(() => new Set(selectableTurretIds), [selectableTurretIds]);
   const actionableSelectedIds = useMemo(
     () => selectedIds.filter((objectId) => selectableTurretIdSet.has(objectId)),
@@ -36,17 +37,20 @@ function AuthorizeTurretList({ onSelectionChange, turrets }: AuthorizeTurretList
           <p className="ff-authorize-list__eyebrow">Owned Turrets</p>
           <h2 className="ff-authorize-list__title">Select turrets to authorize</h2>
         </div>
-        <label className="ff-authorize-list__select-all">
-          <input
-            checked={allSelectableChecked}
-            className="ff-authorize-list__select-all-input"
-            disabled={selectableTurretIds.length === 0}
-            onChange={() => {
-              setSelectedIds(allSelectableChecked ? [] : selectableTurretIds);
-            }}
-            type="checkbox"
-          />
-          <span>Select all available</span>
+        <label className={["ff-authorize-list__select-all", selectAllDisabled ? "is-disabled" : ""].filter(Boolean).join(" ")}>
+          <span className="ff-authorize-list__select-all-shell">
+            <input
+              checked={allSelectableChecked}
+              className="ff-authorize-list__select-all-input"
+              disabled={selectAllDisabled}
+              onChange={() => {
+                setSelectedIds(allSelectableChecked ? [] : selectableTurretIds);
+              }}
+              type="checkbox"
+            />
+            <span aria-hidden="true" className="ff-authorize-list__select-all-indicator" />
+          </span>
+          <span className="ff-authorize-list__select-all-label">Select all available</span>
         </label>
       </div>
 

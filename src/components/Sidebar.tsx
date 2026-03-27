@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
+import ministryOfPassageLogo from "../../assets/TheMOPLogo.png";
 import { authorableNodeDefinitions } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
 import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
@@ -94,6 +95,32 @@ function SidebarHeader() {
       <p className="mt-2 text-sm text-[var(--text-secondary)]">
         Drag nodes from the toolbox to start creating a flow.
       </p>
+    </div>
+  );
+}
+
+function SidebarFooterCta() {
+  return (
+    <div className="shrink-0 border-t border-[var(--ui-border-dark)] px-4 py-4 sm:px-5">
+      <p className="font-heading text-[0.62rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
+        Jump Control
+      </p>
+      <a
+        className="group mt-3 flex items-center gap-3 px-3 py-3 text-left transition-colors"
+        href="https://themop.dev"
+        rel="noreferrer"
+        target="_blank"
+      >
+        <img alt="" className="h-14 w-auto shrink-0" src={ministryOfPassageLogo} />
+        <span className="min-w-0">
+          <span className="block font-heading text-[0.8rem] uppercase tracking-[0.16em] text-[var(--cream-white)] transition-colors group-hover:text-[var(--brand-orange)]">
+            themop.dev
+          </span>
+          <span className="mt-1 block text-xs leading-5 text-[var(--text-secondary)]">
+            Use Ministry of Passage in your gates for jump control.
+          </span>
+        </span>
+      </a>
     </div>
   );
 }
@@ -209,6 +236,8 @@ function SidebarDrawer({
               </div>
             )}
           </div>
+
+          <SidebarFooterCta />
         </aside>
       </div>
     </div>

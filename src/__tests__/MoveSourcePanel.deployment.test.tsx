@@ -25,6 +25,7 @@ describe("MoveSourcePanel deployment parity", () => {
     expect(screen.queryByText("Stage: confirming")).not.toBeInTheDocument();
     expect(screen.queryByText("Package ID: 0xdef456")).not.toBeInTheDocument();
     expect(screen.queryByText("Transaction Digest: digest-utopia-01")).not.toBeInTheDocument();
+    expect(screen.queryByText("Deployment completed for testnet:utopia. Package ID: 0xdef456.")).not.toBeInTheDocument();
   });
 
   it("does not render prior deployment history inside the Move tab", () => {
@@ -68,5 +69,6 @@ describe("MoveSourcePanel deployment parity", () => {
     expect(screen.queryByText("Approve the wallet signing request to continue deployment.")).not.toBeInTheDocument();
     expect(screen.queryByText("Historical only")).not.toBeInTheDocument();
     expect(screen.queryByText("Local validator state changed after this attempt. Re-verify this evidence before relying on it.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Deployment completed for testnet:stillness. Package ID: 0xabc123.")).not.toBeInTheDocument();
   });
 });

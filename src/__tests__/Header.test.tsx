@@ -15,7 +15,7 @@ describe("Header", () => {
     expect(screen.getByAltText("Frontier Flow")).toBeInTheDocument();
     expect(screen.getByText("Frontier Flow")).toBeVisible();
     expect(screen.getByRole("button", { name: "Visual" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Move" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Code" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Deploy" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Authorize" })).toBeVisible();
     expect(screen.getByText("Wallet Status Slot")).toBeVisible();
@@ -25,8 +25,8 @@ describe("Header", () => {
   it("disables the move and deploy tabs until automatic compile has settled", () => {
     render(<Header isCompiling={true} onViewChange={() => undefined} />);
 
-    expect(screen.getByRole("button", { name: "Move" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move" })).toHaveAttribute("title", "Automatic compile is in progress");
+    expect(screen.getByRole("button", { name: "Code" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Code" })).toHaveAttribute("title", "Automatic compile is in progress");
     expect(screen.getByRole("button", { name: "Deploy" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Deploy" })).toHaveAttribute("title", "Automatic compile is in progress");
   });
@@ -34,7 +34,7 @@ describe("Header", () => {
   it("surfaces the waiting tooltip before move and deploy unlock", () => {
     render(<Header onViewChange={() => undefined} />);
 
-    expect(screen.getByRole("button", { name: "Move" })).toHaveAttribute("title", "Automatic compile will unlock Move after the current graph settles");
+    expect(screen.getByRole("button", { name: "Code" })).toHaveAttribute("title", "Automatic compile will unlock Code after the current graph settles");
     expect(screen.getByRole("button", { name: "Deploy" })).toHaveAttribute("title", "Compile the current graph before reviewing deploy checks");
   });
 
@@ -51,7 +51,7 @@ describe("Header", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    fireEvent.click(screen.getByRole("button", { name: "Code" }));
     fireEvent.click(screen.getByRole("button", { name: "Deploy" }));
     fireEvent.click(screen.getByRole("button", { name: "Authorize" }));
 

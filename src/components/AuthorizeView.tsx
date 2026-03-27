@@ -2,6 +2,7 @@ import { useCurrentAccount, useCurrentWallet, useSuiClient } from "@mysten/dapp-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { StoredDeploymentState } from "../types/authorization";
+import { getDeploymentTarget } from "../data/deploymentTargets";
 import { useAuthorization } from "../hooks/useAuthorization";
 import { useTurretList } from "../hooks/useTurretList";
 import AuthorizationProgressModal from "./AuthorizationProgressModal";
@@ -45,11 +46,90 @@ function AuthorizeViewHeader() {
   );
 }
 
+function getSuiScanHref(
+  targetId: StoredDeploymentState["targetId"],
+  resource: "account" | "object",
+  value: string,
+): string | null {
+  const target = getDeploymentTarget(targetId);
+
+  if (target.networkFamily === "local") {
+    return null;
+  }
+
+  return `https://suiscan.xyz/${target.networkFamily}/${resource}/${encodeURIComponent(value)}`;
+}
+
+function AuthorizeDeploymentField(input: {
+  readonly action?: React.ReactNode;
+  readonly href?: string | null;
+  readonly label: string;
+  readonly value: string;
+}) {
+  const { action, href = null, label, value } = input;
+  const content = (
+    <pre className="overflow-x-auto border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.92)] px-3 py-2 font-mono text-xs leading-6 text-[var(--cream-white)] whitespace-pre-wrap break-all">
+      <code>{value}</code>
+    </pre>
+  );
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">{label}</dt>
+        {action}
+      </div>
+      <dd className="mt-0 min-w-0 text-[var(--cream-white)]">
+        {href === null ? content : (
+          <a
+            className="group block focus-visible:outline-none"
+            href={href}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <div className="transition-colors group-hover:text-[var(--brand-orange)] group-focus-visible:text-[var(--brand-orange)]">
+              {content}
+            </div>
+          </a>
+        )}
+      </dd>
+    </div>
+  );
+}
+
 function AuthorizeDeploymentPanel(input: {
   readonly deploymentState: StoredDeploymentState | null;
   readonly walletAddress: string | null | undefined;
 }) {
   const { deploymentState, walletAddress } = input;
+  const [copiedField, setCopiedField] = useState<"package" | "wallet" | null>(null);
+
+  useEffect(() => {
+    if (copiedField === null) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCopiedField(null);
+    }, 1_500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [copiedField]);
+
+  const handleCopy = useCallback(async (field: "package" | "wallet", value: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopiedField(field);
+  }, []);
+
+  const packageHref = deploymentState === null
+    ? null
+    : getSuiScanHref(deploymentState.targetId, "object", deploymentState.packageId);
+  const walletHref = deploymentState === null || walletAddress === null || walletAddress === undefined
+    ? null
+    : getSuiScanHref(deploymentState.targetId, "account", walletAddress);
+  const actionClassName = "inline-flex shrink-0 items-center border border-[var(--ui-border-dark)] bg-[rgba(20,10,10,0.52)] px-2 py-1 font-heading text-[0.62rem] uppercase tracking-[0.18em] text-[var(--text-secondary)] transition-colors hover:border-[var(--brand-orange)] hover:text-[var(--cream-white)] disabled:cursor-default disabled:hover:border-[var(--ui-border-dark)] disabled:hover:text-[var(--text-secondary)]";
 
   return (
     <aside className="border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.78)] p-5">
@@ -62,22 +142,42 @@ function AuthorizeDeploymentPanel(input: {
         </p>
       ) : (
         <dl className="mt-4 grid gap-3 text-sm text-[var(--text-secondary)]">
-          <div>
-            <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Package</dt>
-            <dd className="mt-1 break-all text-[var(--cream-white)]">{deploymentState.packageId}</dd>
-          </div>
-          <div>
-            <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Module</dt>
-            <dd className="mt-1 text-[var(--cream-white)]">{deploymentState.moduleName}</dd>
-          </div>
-          <div>
-            <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Target</dt>
-            <dd className="mt-1 text-[var(--cream-white)]">{deploymentState.targetId}</dd>
-          </div>
-          <div>
-            <dt className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">Wallet</dt>
-            <dd className="mt-1 break-all text-[var(--cream-white)]">{walletAddress ?? "Connect wallet"}</dd>
-          </div>
+          <AuthorizeDeploymentField
+            action={(
+              <button
+                aria-label={copiedField === "package" ? "Copied package id" : "Copy package id"}
+                className={actionClassName}
+                onClick={() => {
+                  void handleCopy("package", deploymentState.packageId);
+                }}
+                type="button"
+              >
+                {copiedField === "package" ? "Copied" : "Copy"}
+              </button>
+            )}
+            href={packageHref}
+            label="Package"
+            value={deploymentState.packageId}
+          />
+          <AuthorizeDeploymentField label="Module" value={deploymentState.moduleName} />
+          <AuthorizeDeploymentField label="Target" value={deploymentState.targetId} />
+          <AuthorizeDeploymentField
+            action={walletAddress ? (
+              <button
+                aria-label={copiedField === "wallet" ? "Copied wallet address" : "Copy wallet address"}
+                className={actionClassName}
+                onClick={() => {
+                  void handleCopy("wallet", walletAddress);
+                }}
+                type="button"
+              >
+                {copiedField === "wallet" ? "Copied" : "Copy"}
+              </button>
+            ) : undefined}
+            href={walletHref}
+            label="Wallet"
+            value={walletAddress ?? "Connect wallet"}
+          />
         </dl>
       )}
     </aside>

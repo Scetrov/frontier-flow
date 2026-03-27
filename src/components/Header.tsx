@@ -104,11 +104,11 @@ function ViewNavigation({
             <path d="M10 1.5L8 12.5" stroke="currentColor" strokeWidth="1.4" />
           </svg>
         )}
-        label="Move"
+        label="Code"
         onClick={() => {
           onViewChange("move");
         }}
-        tooltip={!canAccessMove ? (isCompiling ? "Automatic compile is in progress" : "Automatic compile will unlock Move after the current graph settles") : undefined}
+        tooltip={!canAccessMove ? (isCompiling ? "Automatic compile is in progress" : "Automatic compile will unlock Code after the current graph settles") : undefined}
       />
       <WorkflowSeparator />
       <NavigationButton
