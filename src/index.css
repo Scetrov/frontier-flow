@@ -2052,6 +2052,18 @@ button,
   word-break: break-word;
 }
 
+.ff-move-source__output-token {
+  font-weight: 600;
+}
+
+.ff-move-source__output-token--warning {
+  color: #f7c873;
+}
+
+.ff-move-source__output-token--error {
+  color: #ff7b72;
+}
+
 .ff-authorize-view {
   display: flex;
   width: 100%;

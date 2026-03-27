@@ -103,6 +103,45 @@ describe("MoveSourcePanel", () => {
     expect(screen.getByLabelText("Build output contents").textContent).toContain(rawBuildOutput);
   });
 
+  it("syntax highlights warning and error prefixes in build output", () => {
+    const warningOutput = "warning[W02021]: duplicate alias";
+    const errorOutput = "error[E04023]: invalid method call";
+    const artifact = createGeneratedArtifactStub({
+      diagnostics: [
+        {
+          severity: "warning",
+          stage: "compilation",
+          rawMessage: warningOutput,
+          line: 3,
+          reactFlowNodeId: null,
+          socketId: null,
+          userMessage: "duplicate alias",
+        },
+        {
+          severity: "error",
+          stage: "compilation",
+          rawMessage: errorOutput,
+          line: 12,
+          reactFlowNodeId: null,
+          socketId: null,
+          userMessage: "invalid method call",
+        },
+      ],
+    });
+
+    const { container } = render(
+      <MoveSourcePanel
+        sourceCode={artifact.moveSource}
+        status={{ state: "error", diagnostics: artifact.diagnostics ?? [], artifact }}
+      />,
+    );
+
+    expect(container.querySelector(".ff-move-source__output-token--warning")?.textContent).toBe("warning[W02021]");
+    expect(container.querySelector(".ff-move-source__output-token--error")?.textContent).toBe("error[E04023]");
+    expect(screen.getByLabelText("Build output contents").textContent).toContain(warningOutput);
+    expect(screen.getByLabelText("Build output contents").textContent).toContain(errorOutput);
+  });
+
   it("does not render deployment review content for blocked deployment state", () => {
     render(
       <MoveSourcePanel

@@ -29,6 +29,7 @@ interface MoveSourcePanelProps {
 interface MoveSourceSelection {
   readonly displayedLines: readonly string[];
   readonly files: readonly VirtualArtifactFile[];
+  readonly highlightedBuildOutput: string | null;
   readonly highlightedSource: string;
   readonly selectedFile: VirtualArtifactFile | null;
   readonly selectedFilePath: string | null;
@@ -108,6 +109,31 @@ function highlightSource(content: string, language: VirtualArtifactFile["languag
   return hljs.highlight(content, { language }).value;
 }
 
+function escapeHtml(content: string): string {
+  return content
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function highlightBuildOutput(buildOutput: string | null): string | null {
+  if (buildOutput === null) {
+    return null;
+  }
+
+  return buildOutput.split("\n").map((line) => {
+    const lineMatch = /^(warning|error)\[([^\]]+)\](.*)$/.exec(line);
+    if (lineMatch === null) {
+      return escapeHtml(line);
+    }
+
+    const [, severity, code, remainder] = lineMatch;
+    return `<span class="ff-move-source__output-token ff-move-source__output-token--${severity}">${severity}[${escapeHtml(code)}]</span>${escapeHtml(remainder)}`;
+  }).join("\n");
+}
+
 function getFileTabLabelParts(path: string): FileTabLabelParts {
   const segments = path.split("/").filter((segment) => segment.length > 0);
   if (segments.length <= 1) {
@@ -145,6 +171,7 @@ function useCopyLabel(): readonly [string, () => void] {
 
 function useMoveSourceSelection(sourceCode: string | null, status: CompilationStatus): MoveSourceSelection {
   const files = useMemo(() => getArtifactFiles(sourceCode, status), [sourceCode, status]);
+  const highlightedBuildOutput = useMemo(() => highlightBuildOutput(getBuildOutput(status)), [status]);
   const defaultFilePath = useMemo(() => getDefaultFilePath(files, status, sourceCode), [files, sourceCode, status]);
   const [selectedFilePath, setSelectedFilePathState] = useState<string | null>(defaultFilePath);
 
@@ -161,6 +188,7 @@ function useMoveSourceSelection(sourceCode: string | null, status: CompilationSt
   return {
     displayedLines,
     files,
+    highlightedBuildOutput,
     highlightedSource,
     selectedFile,
     selectedFilePath: resolvedSelectedFilePath,
@@ -292,7 +320,7 @@ function MoveSourceContent({
   );
 }
 
-function MoveBuildOutput({ buildOutput }: { readonly buildOutput: string }) {
+function MoveBuildOutput({ highlightedBuildOutput }: { readonly highlightedBuildOutput: string }) {
   return (
     <aside aria-label="Build output" className="ff-move-source__output" role="region">
       <div className="ff-move-source__output-header">
@@ -301,16 +329,23 @@ function MoveBuildOutput({ buildOutput }: { readonly buildOutput: string }) {
         <p className="ff-move-source__output-copy">Raw compiler diagnostics stay visible beside the selected source file for side-by-side debugging.</p>
       </div>
       <pre aria-label="Build output contents" className="ff-move-source__output-code">
-        <code>{buildOutput}</code>
+        <code dangerouslySetInnerHTML={{ __html: highlightedBuildOutput }} />
       </pre>
     </aside>
   );
 }
 
 function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps) {
-  const buildOutput = useMemo(() => getBuildOutput(status), [status]);
   const isCompiling = status.state === "compiling";
-  const { displayedLines, files, highlightedSource, selectedFile, selectedFilePath, setSelectedFilePath } = useMoveSourceSelection(sourceCode, status);
+  const {
+    displayedLines,
+    files,
+    highlightedBuildOutput,
+    highlightedSource,
+    selectedFile,
+    selectedFilePath,
+    setSelectedFilePath,
+  } = useMoveSourceSelection(sourceCode, status);
   const [copyLabel, setCopiedLabel] = useCopyLabel();
 
   async function handleCopy(): Promise<void> {
@@ -349,14 +384,14 @@ function MoveSourcePanel({ onRebuild, sourceCode, status }: MoveSourcePanelProps
         <MoveSourceTabs files={files} onSelectFile={setSelectedFilePath} selectedFilePath={selectedFilePath} />
         <div
           aria-labelledby={selectedFile === null ? undefined : `move-source-tab-${selectedFile.path}`}
-          className={buildOutput === null ? "ff-move-source__panel" : "ff-move-source__panel ff-move-source__panel--split"}
+          className={highlightedBuildOutput === null ? "ff-move-source__panel" : "ff-move-source__panel ff-move-source__panel--split"}
           id={selectedFile === null ? undefined : `move-source-panel-${selectedFile.path}`}
           role={selectedFile === null ? undefined : "tabpanel"}
         >
           <div className="ff-move-source__panel-main">
             <MoveSourceContent displayedLines={displayedLines} highlightedSource={highlightedSource} selectedFile={selectedFile} status={status} />
           </div>
-          {buildOutput !== null ? <MoveBuildOutput buildOutput={buildOutput} /> : null}
+          {highlightedBuildOutput !== null ? <MoveBuildOutput highlightedBuildOutput={highlightedBuildOutput} /> : null}
         </div>
       </div>
     </section>

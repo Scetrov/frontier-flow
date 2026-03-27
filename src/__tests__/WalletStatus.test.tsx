@@ -124,6 +124,14 @@ describe("WalletStatus", () => {
     expect(screen.getByRole("button", { name: "Connect" })).toBeVisible();
   });
 
+  it("treats an undefined current account as disconnected", () => {
+    mockUseCurrentAccount.mockReturnValue(undefined as unknown as CurrentAccount);
+
+    render(<WalletStatus />);
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeVisible();
+  });
+
   it("shows wallet guidance after clicking connect with no installed wallets", () => {
     mockUseWallets.mockReturnValue([]);
 

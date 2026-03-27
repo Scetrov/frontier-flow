@@ -345,6 +345,122 @@ describe("turretQueries", () => {
     ]);
   });
 
+  it("parses TypeName-wrapped turret extensions from Move object fields", () => {
+    expect(parseTurretResponse({
+      address: {
+        objects: {
+          nodes: [
+            {
+              address: "0x111",
+              contents: {
+                json: {
+                  metadata: { name: "Priority Bastion" },
+                  extension: {
+                    type: "0x1::type_name::TypeName",
+                    fields: {
+                      name: "feedface::starter_contract::TurretAuth",
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }, deploymentState)).toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Priority Bastion",
+        currentExtension: {
+          packageId: "0xfeedface",
+          moduleName: "starter_contract",
+          typeName: "0xfeedface::starter_contract::TurretAuth",
+          isCurrentDeployment: true,
+        },
+      },
+    ]);
+  });
+
+  it("parses turret extensions wrapped in Move Option<TypeName> fields", () => {
+    expect(parseTurretResponse({
+      address: {
+        objects: {
+          nodes: [
+            {
+              address: "0x111",
+              contents: {
+                json: {
+                  metadata: { name: "Option Bastion" },
+                  fields: {
+                    extension: {
+                      type: "0x1::option::Option<0x1::type_name::TypeName>",
+                      fields: {
+                        vec: [
+                          {
+                            type: "0x1::type_name::TypeName",
+                            fields: {
+                              name: "feedface::starter_contract::TurretAuth",
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }, deploymentState)).toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Option Bastion",
+        currentExtension: {
+          packageId: "0xfeedface",
+          moduleName: "starter_contract",
+          typeName: "0xfeedface::starter_contract::TurretAuth",
+          isCurrentDeployment: true,
+        },
+      },
+    ]);
+  });
+
+  it("falls back to any nested TurretAuth type-name string inside the extension payload", () => {
+    expect(parseTurretResponse({
+      address: {
+        objects: {
+          nodes: [
+            {
+              address: "0x111",
+              contents: {
+                json: {
+                  metadata: { name: "Fallback Bastion" },
+                  extension: {
+                    fields: {
+                      current_type: "feedface::starter_contract::TurretAuth",
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }, deploymentState)).toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Fallback Bastion",
+        currentExtension: {
+          packageId: "0xfeedface",
+          moduleName: "starter_contract",
+          typeName: "0xfeedface::starter_contract::TurretAuth",
+          isCurrentDeployment: true,
+        },
+      },
+    ]);
+  });
+
   it("returns an empty list when the response contains no turrets", () => {
     expect(parseTurretResponse({
       address: {
