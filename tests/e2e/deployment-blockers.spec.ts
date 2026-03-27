@@ -58,7 +58,11 @@ test("blocks local deployment when the local target is unavailable", async ({ pa
   await expect(deploymentStatus).toContainText("Deployment Blocked");
   await deploymentStatus.click();
   const deploymentDetails = page.locator("#deployment-status-details");
-  await expect(deploymentDetails.locator(".ff-compilation-status__message").first()).toContainText(localTargetLabel);
+  await expect(deploymentDetails).toBeVisible();
+  await expect(deploymentDetails.getByText("Deployment blocked", { exact: true })).toBeVisible();
+  await expect(deploymentDetails.getByText("Target: local", { exact: true })).toBeVisible();
+  await expect(deploymentDetails.getByText("Stage: validating", { exact: true })).toBeVisible();
+  await expect(deploymentDetails.getByText("Severity: error", { exact: true })).toBeVisible();
   await expect(deploymentDetails.getByText("The local validator required for local deployment is unavailable.")).toBeVisible();
   await expect(deploymentDetails.getByText(/Start or configure the local validator, then retry deployment to local/i)).toBeVisible();
 });

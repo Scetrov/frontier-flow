@@ -42,7 +42,11 @@ for (const scenario of [
     await expect(deploymentStatus).toContainText("Deployed");
     await deploymentStatus.click();
     const deploymentDetails = page.locator("#deployment-status-details");
-    await expect(deploymentDetails.locator(".ff-compilation-status__message").first()).toContainText(targetLabel);
+    await expect(deploymentDetails).toBeVisible();
+    await expect(deploymentDetails.getByText("Deployed", { exact: true })).toBeVisible();
+    await expect(deploymentDetails.getByText(`Target: ${scenario.target}`, { exact: true })).toBeVisible();
+    await expect(deploymentDetails.getByText("Stage: confirming", { exact: true })).toBeVisible();
+    await expect(deploymentDetails.getByText("Severity: success", { exact: true })).toBeVisible();
     await expect(deploymentDetails.locator(".ff-compilation-status__message").filter({ hasText: /^Package ID: 0x[a-f0-9]{64}$/i })).toBeVisible();
     await expect(deploymentDetails.locator(".ff-compilation-status__message").filter({ hasText: /^Transaction Digest: 0x[a-f0-9]{64}$/i })).toBeVisible();
   });

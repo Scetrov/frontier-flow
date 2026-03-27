@@ -49,6 +49,15 @@ function createPublishUpgradeMissingDependencyError(references: PackageReference
   ].join(" "));
 }
 
+function shouldMapPublishUpgradeMissingDependency(
+  error: unknown,
+  references: PackageReferenceBundle,
+): error is Error {
+  return error instanceof Error
+    && /PublishUpgradeMissingDependency/i.test(error.message)
+    && references.worldPackageId !== references.originalWorldPackageId;
+}
+
 function extractMoveEdition(moveToml: string): string {
   const match = moveToml.match(/edition\s*=\s*"([^"]+)"/);
   return match?.[1] ?? "2024.beta";
@@ -226,11 +235,7 @@ export async function publishToRemoteTarget(request: RemotePublishRequest): Prom
       signal: request.signal,
     });
   } catch (error) {
-    if (
-      error instanceof Error
-      && /PublishUpgradeMissingDependency/i.test(error.message)
-      && request.references.worldPackageId !== request.references.originalWorldPackageId
-    ) {
+    if (shouldMapPublishUpgradeMissingDependency(error, request.references)) {
       throw createPublishUpgradeMissingDependencyError(request.references);
     }
 
