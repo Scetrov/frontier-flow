@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.6.0](https://github.com/Scetrov/frontier-flow/compare/v0.5.1...v0.6.0) (2026-03-27)
+
+
+### Features
+
+* add deploy-grade dependency resolution ([#15](https://github.com/Scetrov/frontier-flow/issues/15)) ([ef6296f](https://github.com/Scetrov/frontier-flow/commit/ef6296f90d223f1d4e72873b6fa2fb784a379e54))
+
+
+### Bug Fixes
+
+* text for warnings ([807d484](https://github.com/Scetrov/frontier-flow/commit/807d484638209d4717e08f82b7e9cb0d90ceb4ba))
+
 ### [0.5.1](https://github.com/Scetrov/frontier-flow/compare/v0.5.0...v0.5.1) (2026-03-22)
 
 
