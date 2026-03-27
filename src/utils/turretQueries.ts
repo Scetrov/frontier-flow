@@ -1,6 +1,6 @@
 import { getPackageReferenceBundle } from "../data/packageReferences";
 import type { StoredDeploymentState, TurretExtensionInfo, TurretInfo } from "../types/authorization";
-import { fetchAuthorizationCharacterId } from "./authorizationTransaction";
+import { fetchAuthorizationCharacterIds } from "./authorizationTransaction";
 import { getAuthorizationMockEnvironment, overlayMockAuthorizedTurrets } from "./authorizationMocking";
 
 interface GraphQlError {
@@ -121,36 +121,38 @@ export async function fetchTurrets(input: FetchTurretsInput): Promise<readonly T
   }
 
   const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
-  const bundle = getPackageReferenceBundle(remoteTargetId);
-  const characterId = await fetchAuthorizationCharacterId({
+  const characterIds = await fetchAuthorizationCharacterIds({
     targetId: remoteTargetId,
     walletAddress: input.walletAddress,
     signal: input.signal,
     fetchFn,
   });
+  const bundle = getPackageReferenceBundle(remoteTargetId);
 
-  if (characterId === null) {
+  if (characterIds.length === 0) {
     return [];
   }
 
-  const ownerCapType = `${bundle.worldPackageId}::access::OwnerCap<${bundle.worldPackageId}::turret::Turret>`;
-  const data = await postGraphQl<TurretLookupResponse>({
-    endpoint,
-    fetchFn,
-    query: TURRETS_QUERY,
-    signal: input.signal,
-    variables: {
-      owner: characterId,
-      type: ownerCapType,
-    },
-  });
+  const ownerCapType = `${bundle.originalWorldPackageId}::access::OwnerCap<${bundle.originalWorldPackageId}::turret::Turret>`;
+  const turretIdsByCharacter = await Promise.all(characterIds.map(async (characterId) => {
+    const data = await postGraphQl<TurretLookupResponse>({
+      endpoint,
+      fetchFn,
+      query: TURRETS_QUERY,
+      signal: input.signal,
+      variables: {
+        owner: characterId,
+        type: ownerCapType,
+      },
+    });
 
-  const turretIds = getTurretNodes(data)
-    .map((node) => extractTurretIdFromOwnerCap(node.contents?.json))
-    .filter(isNonNullable)
-    .filter(isSuiAddress);
+    return getTurretNodes(data)
+      .map((node) => extractTurretIdFromOwnerCap(node.contents?.json))
+      .filter(isNonNullable)
+      .filter(isSuiAddress);
+  }));
 
-  const uniqueTurretIds = [...new Set(turretIds)];
+  const uniqueTurretIds = [...new Set(turretIdsByCharacter.flat())];
 
   if (uniqueTurretIds.length === 0) {
     return [];

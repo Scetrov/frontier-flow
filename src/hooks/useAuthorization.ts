@@ -15,7 +15,9 @@ import {
 import {
   buildAuthorizeTurretTransaction,
   fetchAuthorizationCharacterId,
+  fetchAuthorizationTarget,
   fetchOwnerCap,
+  type AuthorizationTargetLookup,
   type BuildAuthorizeTurretTransactionInput,
   type FetchOwnerCapInput,
 } from "../utils/authorizationTransaction";
@@ -50,6 +52,7 @@ interface UseAuthorizationOptions {
   readonly eventPollingIntervalMs?: number;
   readonly fetchCharacterIdFn?: typeof fetchAuthorizationCharacterId;
   readonly fetchOwnerCapFn?: (input: FetchOwnerCapInput) => Promise<string>;
+  readonly resolveAuthorizationTargetFn?: (input: FetchOwnerCapInput) => Promise<AuthorizationTargetLookup>;
   readonly queryAuthorizationEventFn?: (input: QueryAuthorizationEventInput) => Promise<boolean>;
   readonly signTransactionFn?: typeof signTransactionFunction;
 }
@@ -82,11 +85,10 @@ interface AuthorizationDependencies {
   readonly deploymentState: StoredDeploymentState | null;
   readonly ensureWitnessTypeAvailableFn: (input: EnsureAuthorizationWitnessAvailableInput) => Promise<void>;
   readonly eventPollingIntervalMs: number;
-  readonly fetchCharacterIdFn: typeof fetchAuthorizationCharacterId;
-  readonly fetchOwnerCapFn: (input: FetchOwnerCapInput) => Promise<string>;
   readonly isAuthorizing: boolean;
   readonly progress: AuthorizationProgressState | null;
   readonly queryAuthorizationEventFn: (input: QueryAuthorizationEventInput) => Promise<boolean>;
+  readonly resolveAuthorizationTargetFn: (input: FetchOwnerCapInput) => Promise<AuthorizationTargetLookup>;
   readonly setIsAuthorizing: Dispatch<SetStateAction<boolean>>;
   readonly setProgress: Dispatch<SetStateAction<AuthorizationProgressState | null>>;
   readonly signTransactionFn: typeof signTransactionFunction;
@@ -113,6 +115,7 @@ export function useAuthorization({
   ensureWitnessTypeAvailableFn = ensureAuthorizationWitnessAvailable,
   fetchCharacterIdFn = fetchAuthorizationCharacterId,
   fetchOwnerCapFn = fetchOwnerCap,
+  resolveAuthorizationTargetFn,
   queryAuthorizationEventFn = queryAuthorizationEvent,
   signTransactionFn = signTransaction,
 }: UseAuthorizationOptions): UseAuthorizationResult {
@@ -129,6 +132,18 @@ export function useAuthorization({
   const deploymentKey = deploymentState === null
     ? null
     : `${deploymentState.targetId}:${deploymentState.packageId}:${deploymentState.moduleName}`;
+  const effectiveResolveAuthorizationTargetFn = resolveAuthorizationTargetFn
+    ?? (fetchCharacterIdFn !== fetchAuthorizationCharacterId || fetchOwnerCapFn !== fetchOwnerCap
+      ? async (input: FetchOwnerCapInput): Promise<AuthorizationTargetLookup> => {
+          const characterId = await resolveAuthorizationCharacterId(input.deploymentState, fetchCharacterIdFn, input.walletAddress);
+          const ownerCapId = await fetchOwnerCapFn(input);
+
+          return {
+            characterId,
+            ownerCapId,
+          };
+        }
+      : fetchAuthorizationTarget);
 
   const cancelAuthorization = () => {
     activeOperationIdRef.current += 1;
@@ -158,11 +173,10 @@ export function useAuthorization({
     deploymentState,
     ensureWitnessTypeAvailableFn,
     eventPollingIntervalMs,
-    fetchCharacterIdFn,
-    fetchOwnerCapFn,
     isAuthorizing,
     progress,
     queryAuthorizationEventFn,
+    resolveAuthorizationTargetFn: effectiveResolveAuthorizationTargetFn,
     setIsAuthorizing,
     setProgress,
     signTransactionFn,
@@ -424,20 +438,18 @@ async function executeAuthorizationBatch(
     return;
   }
 
-  const characterId = await resolveAuthorizationCharacterId(deploymentState, dependencies.fetchCharacterIdFn, refs.accountRef.current);
   const waitForWalletConnection = createWalletConnectionWaiter(operation.operationId, operation.progressSetter, refs);
 
   for (const turretObjectId of operation.turretObjectIds) {
     await processTurret({
       buildTransactionFn: dependencies.buildTransactionFn,
-      characterId,
       confirmationTimeoutMs: dependencies.confirmationTimeoutMs,
       deploymentState,
       ensureWitnessTypeAvailableFn: dependencies.ensureWitnessTypeAvailableFn,
       eventPollingIntervalMs: dependencies.eventPollingIntervalMs,
-      fetchOwnerCapFn: dependencies.fetchOwnerCapFn,
       progressSetter: operation.progressSetter,
       queryAuthorizationEventFn: dependencies.queryAuthorizationEventFn,
+      resolveAuthorizationTargetFn: dependencies.resolveAuthorizationTargetFn,
       signTransactionFn: dependencies.signTransactionFn,
       suiClient: refs.clientRef.current,
       turretObjectId,
@@ -451,7 +463,7 @@ async function executeAuthorizationBatch(
 async function resolveAuthorizationCharacterId(
   deploymentState: StoredDeploymentState,
   fetchCharacterIdFn: typeof fetchAuthorizationCharacterId,
-  account: CurrentAccount | null,
+  walletAddress: string,
 ): Promise<string> {
   if (deploymentState.targetId === "local") {
     throw new Error("Turret authorization is only available for published testnet deployments.");
@@ -459,7 +471,7 @@ async function resolveAuthorizationCharacterId(
 
   const characterId = await fetchCharacterIdFn({
     targetId: deploymentState.targetId,
-    walletAddress: getConnectedAccountAddress(account),
+    walletAddress,
   });
 
   if (characterId === null) {
@@ -673,14 +685,13 @@ function createMockDigest(turretObjectId: string, index: number): string {
 
 async function processTurret(input: {
   readonly buildTransactionFn: (input: BuildAuthorizeTurretTransactionInput) => ReturnType<typeof buildAuthorizeTurretTransaction>;
-  readonly characterId: string;
   readonly confirmationTimeoutMs: number;
   readonly deploymentState: StoredDeploymentState;
   readonly ensureWitnessTypeAvailableFn: (input: EnsureAuthorizationWitnessAvailableInput) => Promise<void>;
   readonly eventPollingIntervalMs: number;
-  readonly fetchOwnerCapFn: (input: FetchOwnerCapInput) => Promise<string>;
   readonly progressSetter: Dispatch<SetStateAction<AuthorizationProgressState | null>>;
   readonly queryAuthorizationEventFn: (input: QueryAuthorizationEventInput) => Promise<boolean>;
+  readonly resolveAuthorizationTargetFn: (input: FetchOwnerCapInput) => Promise<AuthorizationTargetLookup>;
   readonly signTransactionFn: typeof signTransactionFunction;
   readonly suiClient: SuiClient;
   readonly turretObjectId: string;
@@ -749,20 +760,19 @@ function markTurretSubmitting(
 
 async function submitAuthorizationTransaction(input: {
   readonly buildTransactionFn: (input: BuildAuthorizeTurretTransactionInput) => ReturnType<typeof buildAuthorizeTurretTransaction>;
-  readonly characterId: string;
   readonly confirmationTimeoutMs: number;
   readonly deploymentState: StoredDeploymentState;
   readonly ensureWitnessTypeAvailableFn: (input: EnsureAuthorizationWitnessAvailableInput) => Promise<void>;
   readonly eventPollingIntervalMs: number;
-  readonly fetchOwnerCapFn: (input: FetchOwnerCapInput) => Promise<string>;
   readonly progressSetter: Dispatch<SetStateAction<AuthorizationProgressState | null>>;
+  readonly resolveAuthorizationTargetFn: (input: FetchOwnerCapInput) => Promise<AuthorizationTargetLookup>;
   readonly signTransactionFn: typeof signTransactionFunction;
   readonly suiClient: SuiClient;
   readonly turretObjectId: string;
   readonly walletAccountRef: { readonly current: CurrentAccount | null };
   readonly walletRef: { readonly current: CurrentWallet };
 }): Promise<string | null> {
-  const ownerCapId = await input.fetchOwnerCapFn({
+  const { characterId, ownerCapId } = await input.resolveAuthorizationTargetFn({
     deploymentState: input.deploymentState,
     turretObjectId: input.turretObjectId,
     walletAddress: getConnectedAccountAddress(input.walletAccountRef.current),
@@ -784,7 +794,7 @@ async function submitAuthorizationTransaction(input: {
 
   const transaction = input.buildTransactionFn({
     deploymentState: input.deploymentState,
-    characterId: input.characterId,
+    characterId,
     ownerCapId,
     turretObjectId: input.turretObjectId,
   });

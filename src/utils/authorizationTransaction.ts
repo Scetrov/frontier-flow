@@ -1,6 +1,9 @@
 import { Transaction } from "@mysten/sui/transactions";
 
-import { getPackageReferenceBundle } from "../data/packageReferences";
+import {
+  getPackageReferenceBundle,
+  refreshPublishedWorldPackageManifest,
+} from "../data/packageReferences";
 import type { StoredDeploymentState } from "../types/authorization";
 
 interface GraphQlError {
@@ -34,6 +37,11 @@ interface FetchAuthorizationCharacterIdInput {
   readonly fetchFn?: typeof fetch;
 }
 
+export interface AuthorizationTargetLookup {
+  readonly characterId: string;
+  readonly ownerCapId: string;
+}
+
 export interface FetchOwnerCapInput {
   readonly deploymentState: StoredDeploymentState;
   readonly walletAddress: string;
@@ -53,9 +61,9 @@ export interface BuildAuthorizeTurretTransactionInput {
 const TESTNET_GRAPHQL_ENDPOINT = "https://graphql.testnet.sui.io/graphql";
 const GRAPHQL_PAGE_SIZE = 50;
 
-const PLAYER_PROFILE_QUERY = `query PlayerProfile($owner: SuiAddress!, $type: String!) {
+const PLAYER_PROFILE_QUERY = `query PlayerProfiles($owner: SuiAddress!, $type: String!) {
   address(address: $owner) {
-    objects(filter: { type: $type }, first: 1) {
+    objects(filter: { type: $type }, first: ${String(GRAPHQL_PAGE_SIZE)}) {
       nodes {
         contents {
           json
@@ -79,66 +87,142 @@ const OWNER_CAPS_QUERY = `query OwnerCaps($owner: SuiAddress!, $type: String!) {
 }`;
 
 /**
+ * Resolve every wallet-owned character id for a published deployment target.
+ */
+export async function fetchAuthorizationCharacterIds(
+  input: FetchAuthorizationCharacterIdInput,
+): Promise<readonly string[]> {
+  const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
+  const initialBundle = getPackageReferenceBundle(input.targetId);
+  const initialCharacterIds = await loadAuthorizationCharacterIds({
+    fetchFn,
+    signal: input.signal,
+    walletAddress: input.walletAddress,
+    worldPackageId: initialBundle.originalWorldPackageId,
+  });
+
+  if (initialCharacterIds.length > 0) {
+    return initialCharacterIds;
+  }
+
+  const refreshedBundle = await refreshBundleAfterEmptyCharacterLookup({
+    fetchFn,
+    targetId: input.targetId,
+    worldPackageId: initialBundle.worldPackageId,
+  });
+
+  if (refreshedBundle === null) {
+    return [];
+  }
+
+  return loadAuthorizationCharacterIds({
+    fetchFn,
+    signal: input.signal,
+    walletAddress: input.walletAddress,
+    worldPackageId: refreshedBundle.originalWorldPackageId,
+  });
+}
+
+/**
  * Resolve the active character id for a wallet on a published deployment target.
  */
 export async function fetchAuthorizationCharacterId(
   input: FetchAuthorizationCharacterIdInput,
 ): Promise<string | null> {
+  return (await fetchAuthorizationCharacterIds(input))[0] ?? null;
+}
+
+/**
+ * Resolve the exact character-owner-cap pair required to authorize a turret.
+ */
+export async function fetchAuthorizationTarget(input: FetchOwnerCapInput): Promise<AuthorizationTargetLookup> {
+  validateFetchOwnerCapInput(input);
   const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
-  const bundle = getPackageReferenceBundle(input.targetId);
+  const targetId = getPublishedTargetId(input.deploymentState);
+  const characterIds = await fetchAuthorizationCharacterIds({
+    targetId,
+    walletAddress: input.walletAddress,
+    signal: input.signal,
+    fetchFn,
+  });
+  const bundle = getPackageReferenceBundle(targetId);
+
+  if (characterIds.length === 0) {
+    throw new Error("Could not resolve the active character for this wallet.");
+  }
+
+  for (const characterId of characterIds) {
+    const data = await postGraphQl<AuthorizationLookupResponse>({
+      endpoint: TESTNET_GRAPHQL_ENDPOINT,
+      fetchFn,
+      query: OWNER_CAPS_QUERY,
+      signal: input.signal,
+      variables: {
+        owner: characterId,
+        type: `${bundle.originalWorldPackageId}::access::OwnerCap<${bundle.originalWorldPackageId}::turret::Turret>`,
+      },
+    });
+
+    const ownerCapId = findOwnerCapId(data.address?.objects?.nodes ?? [], input.turretObjectId);
+
+    if (ownerCapId !== null) {
+      return {
+        characterId,
+        ownerCapId,
+      };
+    }
+  }
+
+  throw new Error("Could not find ownership capability for this turret.");
+}
+
+async function loadAuthorizationCharacterIds(input: {
+  readonly fetchFn: typeof fetch;
+  readonly signal?: AbortSignal;
+  readonly walletAddress: string;
+  readonly worldPackageId: string;
+}): Promise<readonly string[]> {
   const data = await postGraphQl<AuthorizationLookupResponse>({
     endpoint: TESTNET_GRAPHQL_ENDPOINT,
-    fetchFn,
+    fetchFn: input.fetchFn,
     query: PLAYER_PROFILE_QUERY,
     signal: input.signal,
     variables: {
       owner: input.walletAddress,
-      type: `${bundle.worldPackageId}::character::PlayerProfile`,
+      type: `${input.worldPackageId}::character::PlayerProfile`,
     },
   });
-  const content = data.address?.objects?.nodes?.[0]?.contents?.json;
-  const characterId = findFirstStringAtKeys(content, ["character_id", "characterId"]);
 
-  return isSuiAddress(characterId) ? characterId : null;
+  return dedupeSuiAddresses(
+    (data.address?.objects?.nodes ?? [])
+      .map((node) => findFirstStringAtKeys(node.contents?.json, ["character_id", "characterId"]))
+      .filter(isSuiAddress),
+  );
+}
+
+async function refreshBundleAfterEmptyCharacterLookup(input: {
+  readonly fetchFn: typeof fetch;
+  readonly targetId: Exclude<StoredDeploymentState["targetId"], "local">;
+  readonly worldPackageId: string;
+}): Promise<ReturnType<typeof getPackageReferenceBundle> | null> {
+  try {
+    await refreshPublishedWorldPackageManifest({ fetchFn: input.fetchFn });
+  } catch {
+    return null;
+  }
+
+  const refreshedBundle = getPackageReferenceBundle(input.targetId);
+
+  return refreshedBundle.worldPackageId.toLowerCase() === input.worldPackageId.toLowerCase()
+    ? null
+    : refreshedBundle;
 }
 
 /**
  * Resolve the wallet-owned OwnerCap object id for a specific turret.
  */
 export async function fetchOwnerCap(input: FetchOwnerCapInput): Promise<string> {
-  validateFetchOwnerCapInput(input);
-  const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
-  const targetId = getPublishedTargetId(input.deploymentState);
-  const bundle = getPackageReferenceBundle(targetId);
-  const characterId = await fetchAuthorizationCharacterId({
-    targetId,
-    walletAddress: input.walletAddress,
-    signal: input.signal,
-    fetchFn,
-  });
-
-  if (characterId === null) {
-    throw new Error("Could not resolve the active character for this wallet.");
-  }
-
-  const data = await postGraphQl<AuthorizationLookupResponse>({
-    endpoint: TESTNET_GRAPHQL_ENDPOINT,
-    fetchFn,
-    query: OWNER_CAPS_QUERY,
-    signal: input.signal,
-    variables: {
-      owner: characterId,
-      type: `${bundle.worldPackageId}::access::OwnerCap<${bundle.worldPackageId}::turret::Turret>`,
-    },
-  });
-
-  const ownerCapId = findOwnerCapId(data.address?.objects?.nodes ?? [], input.turretObjectId);
-
-  if (ownerCapId !== null) {
-    return ownerCapId;
-  }
-
-  throw new Error("Could not find ownership capability for this turret.");
+  return (await fetchAuthorizationTarget(input)).ownerCapId;
 }
 
 function validateFetchOwnerCapInput(input: FetchOwnerCapInput): void {
@@ -186,6 +270,24 @@ function findOwnerCapId(nodes: readonly AuthorizationLookupNode[], turretObjectI
   }
 
   return null;
+}
+
+function dedupeSuiAddresses(values: readonly string[]): readonly string[] {
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+
+  for (const value of values) {
+    const normalizedValue = value.toLowerCase();
+
+    if (seen.has(normalizedValue)) {
+      continue;
+    }
+
+    seen.add(normalizedValue);
+    deduped.push(value);
+  }
+
+  return deduped;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { StoredDeploymentState } from "../types/authorization";
 import { fetchTurrets, getTurretGraphQlEndpoint, parseTurretResponse } from "../utils/turretQueries";
@@ -14,6 +14,10 @@ const deploymentState: StoredDeploymentState = {
 };
 
 describe("turretQueries", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   function createTurretFetchFn() {
     return vi.fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -145,6 +149,152 @@ describe("turretQueries", () => {
     expect(typeof turretLookupRequest?.body).toBe("string");
     expect(turretLookupRequest?.body).toContain("first: 50");
     expect(turretLookupRequest?.body).toContain("::access::OwnerCap<");
+  });
+
+  it("loads turrets across multiple wallet-owned player profiles", async () => {
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: {
+                    character_id: "0x1234",
+                  },
+                },
+              }, {
+                contents: {
+                  json: {
+                    character_id: "0x5678",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                address: "0xownercap",
+                contents: {
+                  json: {
+                    authorized_object_id: "0x111",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          object: {
+            asMoveObject: {
+              contents: {
+                json: {
+                  metadata: { name: "Pilot Bastion" },
+                },
+              },
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    await expect(fetchTurrets({
+      walletAddress: "0x9999",
+      deploymentState,
+      fetchFn,
+    })).resolves.toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Pilot Bastion",
+        currentExtension: null,
+      },
+    ]);
+
+    expect(fetchFn).toHaveBeenCalledTimes(4);
+  });
+
+  it("uses the original world package id for utopia turret lookups", async () => {
+    const utopiaDeploymentState: StoredDeploymentState = {
+      ...deploymentState,
+      targetId: "testnet:utopia",
+    };
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                contents: {
+                  json: {
+                    character_id: "0x1234",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          address: {
+            objects: {
+              nodes: [{
+                address: "0xownercap",
+                contents: {
+                  json: {
+                    authorized_object_id: "0x111",
+                  },
+                },
+              }],
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: {
+          object: {
+            asMoveObject: {
+              contents: {
+                json: {
+                  metadata: { name: "Utopia Bastion" },
+                },
+              },
+            },
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    await expect(fetchTurrets({
+      walletAddress: "0x9999",
+      deploymentState: utopiaDeploymentState,
+      fetchFn,
+    })).resolves.toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Utopia Bastion",
+        currentExtension: null,
+      },
+    ]);
+
+    expect(typeof fetchFn.mock.calls[0]?.[1]?.body).toBe("string");
+    expect(fetchFn.mock.calls[0]?.[1]?.body).toContain("0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75::character::PlayerProfile");
+    expect(typeof fetchFn.mock.calls[1]?.[1]?.body).toBe("string");
+    expect(fetchFn.mock.calls[1]?.[1]?.body).toContain("0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75::access::OwnerCap<0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75::turret::Turret>");
   });
 
   it("parses turret payloads and marks the current deployment extension", () => {
