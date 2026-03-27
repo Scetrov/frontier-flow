@@ -268,6 +268,13 @@ export function getPackageReferenceBundle(targetId: PackageReferenceBundle["targ
   return bundle;
 }
 
+function hasRpcLookupError(value: unknown): boolean {
+  return typeof value === "object"
+    && value !== null
+    && "error" in value
+    && (value as { readonly error?: unknown }).error != null;
+}
+
 export async function verifyPublishedWorldPackageExists(
   targetId: PackageReferenceBundle["targetId"],
   client: { getObject?: (args: { id: string; signal?: AbortSignal }) => Promise<unknown> },
@@ -280,8 +287,8 @@ export async function verifyPublishedWorldPackageExists(
       return true;
     }
 
-    await client.getObject({ id: bundle.worldPackageId, signal });
-    return true;
+    const result = await client.getObject({ id: bundle.worldPackageId, signal });
+    return !hasRpcLookupError(result);
   } catch {
     return false;
   }

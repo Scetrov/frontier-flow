@@ -160,6 +160,7 @@ function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
 
       try {
         setWorldCheckState("pending");
+        setWorldDetail(null);
         const exists = await verifyPublishedWorldPackageExists(deployment.selectedTarget, suiClient, controller.signal);
         if (cancelled) return;
         const bundle = getPackageReferenceBundle(deployment.selectedTarget);

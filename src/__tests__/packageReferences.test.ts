@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getLocalDeploymentEnvironmentLabel, saveLocalEnvironmentConfig } from "../data/localEnvironment";
 
 import {
@@ -9,6 +9,7 @@ import {
   parsePublishedWorldPackageManifest,
   refreshPublishedWorldPackageManifest,
   shouldRefreshPublishedWorldPackageManifest,
+  verifyPublishedWorldPackageExists,
 } from "../data/packageReferences";
 
 describe("packageReferences", () => {
@@ -160,5 +161,18 @@ original-id = "0xddd"
     }));
 
     expect(shouldRefreshPublishedWorldPackageManifest(window.localStorage)).toBe(true);
+  });
+
+  it("treats RPC object-error payloads as missing published world packages", async () => {
+    const client = {
+      getObject: vi.fn(() => Promise.resolve({
+        error: {
+          code: "notExists",
+        },
+      })),
+    };
+
+    await expect(verifyPublishedWorldPackageExists("testnet:stillness", client)).resolves.toBe(false);
+    expect(client.getObject).toHaveBeenCalledTimes(1);
   });
 });

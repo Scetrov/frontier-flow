@@ -87,13 +87,13 @@ updates:
 
 ### 2.3 Supply Chain Hardening
 
-| Control                      | Implementation                                                                                                                                                                                                                                                                                                                   |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Dependency audit**         | Run `bunx npm-audit --audit-level=high` in CI. **Fail the build** on high/critical vulnerabilities                                                                                                                                                                                                                               |
-| **Socket.dev or Snyk**       | Integrate a supply chain analysis tool that detects typosquatting, install scripts, and protestware                                                                                                                                                                                                                              |
-| **WASM binary verification** | `src/compiler/moveCompiler.ts` fetches the bundled `sui_move_wasm_bg.wasm`, hashes it with SHA-256, and rejects compilation unless it matches the pinned digest `710212f879fef4feb0bf6932a8ecece1323ca3b675b07691df927977492105a0` before `initMoveCompiler()` runs (see [RISK-REGISTER R-11](./RISK-REGISTER.md))               |
+| Control | Implementation |
+| --- | --- |
+| **Dependency audit** | Run `bunx npm-audit --audit-level=high` in CI. **Fail the build** on high/critical vulnerabilities |
+| **Socket.dev or Snyk** | Integrate a supply chain analysis tool that detects typosquatting, install scripts, and protestware |
+| **WASM binary verification** | `src/compiler/moveBuilderLite.ts` fetches the bundled `sui_move_wasm_bg.wasm`, hashes it with SHA-256, and exposes `verifyMoveBuilderLiteIntegrity()` for compiler entry points such as `src/compiler/moveCompiler.ts` to reject initialization unless the digest matches the pinned checksum `710212f879fef4feb0bf6932a8ecece1323ca3b675b07691df927977492105a0` (see [RISK-REGISTER R-11](./RISK-REGISTER.md)) |
 | **Deploy-grade compilation** | WASM binary verification applies to authoring-time compilation. ADR-009 introduces a deploy-grade path that may use server-assisted compilation for dependency resolution, which would introduce separate supply-chain considerations for server components (see [ADR-009](./ADR/ADR-009-deploy-grade-dependency-resolution.md)) |
-| **Provenance metadata**      | Prefer packages that publish [npm provenance attestations](https://docs.npmjs.com/generating-provenance-statements). Track provenance adoption among critical dependencies                                                                                                                                                       |
+| **Provenance metadata** | Prefer packages that publish [npm provenance attestations](https://docs.npmjs.com/generating-provenance-statements). Track provenance adoption among critical dependencies |
 
 ---
 

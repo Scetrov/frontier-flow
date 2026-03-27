@@ -13,7 +13,7 @@ describe("resolveLocalPublishModules", () => {
     await expect(resolveLocalPublishModules(artifact)).resolves.toEqual([new Uint8Array([1, 2, 3])]);
   });
 
-  it("rebuilds and returns the full bundled module set when the artifact includes the world shim", async () => {
+  it("rebuilds and returns only the artifact modules when the bundle includes dependency bytecode", async () => {
     const artifact = createGeneratedArtifactStub({
       bytecodeModules: [new Uint8Array([9, 9, 9])],
       sourceFiles: [
@@ -33,10 +33,7 @@ describe("resolveLocalPublishModules", () => {
         initMoveCompiler,
         buildMovePackage,
       }),
-    })).resolves.toEqual([
-      new Uint8Array([1, 2, 3]),
-      new Uint8Array([4, 5, 6]),
-    ]);
+    })).resolves.toEqual([new Uint8Array([4, 5, 6])]);
 
     expect(verifyCompilerIntegrity).toHaveBeenCalledTimes(1);
     expect(initMoveCompiler).toHaveBeenCalledTimes(1);

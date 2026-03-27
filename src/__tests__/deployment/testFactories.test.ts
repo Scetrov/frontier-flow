@@ -8,7 +8,7 @@ import {
   DEPLOY_GRADE_LOCAL_STAGE_SEQUENCE,
   DEPLOYMENT_STAGE_SEQUENCE,
 } from "./testFactories";
-import { getLocalDeploymentTargetLabel } from "../..//data/localEnvironment";
+import { getLocalDeploymentTargetLabel } from "../../data/localEnvironment";
 
 describe("deployment test factories", () => {
   it("derives progress stage count and completed stages from the shared sequence", () => {

@@ -52,6 +52,23 @@ function createArtifactFileMap(artifact: GeneratedContractArtifact): Readonly<Re
   return files;
 }
 
+function selectArtifactModules(
+  rebuiltModules: readonly string[],
+  artifact: GeneratedContractArtifact,
+): readonly string[] {
+  const expectedModuleCount = artifact.bytecodeModules.length;
+
+  if (expectedModuleCount === 0 || rebuiltModules.length === expectedModuleCount) {
+    return rebuiltModules;
+  }
+
+  if (rebuiltModules.length < expectedModuleCount) {
+    throw new Error("Local publish rebuild returned fewer modules than the compiled artifact.");
+  }
+
+  return rebuiltModules.slice(-expectedModuleCount);
+}
+
 /**
  * Resolve the module bytecode that should be published to a local validator.
  */
@@ -78,7 +95,7 @@ export async function resolveLocalPublishModules(
     throw new Error(`Local publish could not rebuild bundled dependency modules: ${result.error}`);
   }
 
-  return result.modules.map((moduleBytes) => decodeBase64(moduleBytes));
+  return selectArtifactModules(result.modules, artifact).map((moduleBytes) => decodeBase64(moduleBytes));
 }
 
 /**

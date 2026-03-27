@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { DeploymentTargetId } from "../compiler/types";
 import { DEPLOYMENT_TARGETS, getDeploymentTarget } from "../data/deploymentTargets";
@@ -11,8 +11,9 @@ interface VisualDeploymentTargetSelectorProps {
 
 interface TargetMenuProps {
   readonly buttonRef: React.RefObject<HTMLButtonElement | null>;
-  readonly focusOption: (index: number) => void;
+  readonly focusMenuItem: (index: number) => void;
   readonly menuId: string;
+  readonly menuRef: React.RefObject<HTMLDivElement | null>;
   readonly onOpenLocalEnvironmentSettings: () => void;
   readonly onTargetChange: (target: DeploymentTargetId) => void;
   readonly optionRefs: React.RefObject<Array<HTMLButtonElement | null>>;
@@ -29,12 +30,23 @@ interface TargetSelectorTriggerProps {
   readonly selectedTarget: DeploymentTargetId;
 }
 
-function TargetMenu({ buttonRef, focusOption, menuId, onOpenLocalEnvironmentSettings, onTargetChange, optionRefs, selectedTarget, setMenuOpen }: TargetMenuProps) {
+function getMenuItemCount(): number {
+  return DEPLOYMENT_TARGETS.reduce((count, target) => count + (target.id === "local" ? 2 : 1), 0);
+}
+
+function getMenuItems(menuElement: HTMLDivElement | null): HTMLButtonElement[] {
+  return menuElement === null
+    ? []
+    : Array.from(menuElement.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"], [role="menuitem"]'));
+}
+
+function TargetMenu({ buttonRef, focusMenuItem, menuId, menuRef, onOpenLocalEnvironmentSettings, onTargetChange, optionRefs, selectedTarget, setMenuOpen }: TargetMenuProps) {
   return (
     <div
       aria-label="Target network/server"
       className="ff-visual-target-selector__menu"
       id={menuId}
+      ref={menuRef}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault();
@@ -43,29 +55,30 @@ function TargetMenu({ buttonRef, focusOption, menuId, onOpenLocalEnvironmentSett
           return;
         }
 
-        const focusedIndex = optionRefs.current.findIndex((option) => option === document.activeElement);
+        const menuItems = getMenuItems(menuRef.current);
+        const focusedIndex = menuItems.findIndex((option) => option === document.activeElement);
 
         if (event.key === "ArrowDown") {
           event.preventDefault();
-          focusOption(focusedIndex === -1 ? 0 : focusedIndex + 1);
+          focusMenuItem(focusedIndex === -1 ? 0 : focusedIndex + 1);
           return;
         }
 
         if (event.key === "ArrowUp") {
           event.preventDefault();
-          focusOption(focusedIndex === -1 ? DEPLOYMENT_TARGETS.length - 1 : focusedIndex - 1);
+          focusMenuItem(focusedIndex === -1 ? getMenuItemCount() - 1 : focusedIndex - 1);
           return;
         }
 
         if (event.key === "Home") {
           event.preventDefault();
-          focusOption(0);
+          focusMenuItem(0);
           return;
         }
 
         if (event.key === "End") {
           event.preventDefault();
-          focusOption(DEPLOYMENT_TARGETS.length - 1);
+          focusMenuItem(getMenuItemCount() - 1);
         }
       }}
       role="menu"
@@ -105,6 +118,14 @@ function TargetMenu({ buttonRef, focusOption, menuId, onOpenLocalEnvironmentSett
                 setMenuOpen(false);
                 onOpenLocalEnvironmentSettings();
               }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setMenuOpen(false);
+                  onOpenLocalEnvironmentSettings();
+                }
+              }}
+              role="menuitem"
               type="button"
             >
               <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
@@ -182,8 +203,15 @@ function VisualDeploymentTargetSelector({ onTargetChange, selectedTarget }: Visu
   const [localSettingsOpen, setLocalSettingsOpen] = useState(false);
   const [initialFocus, setInitialFocus] = useState<"first" | "last" | "selected">("selected");
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const menuId = useId();
+
+  const focusMenuItem = useCallback((index: number) => {
+    const menuItemCount = getMenuItemCount();
+    const normalizedIndex = (index + menuItemCount) % menuItemCount;
+    getMenuItems(menuRef.current)[normalizedIndex]?.focus();
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -192,20 +220,18 @@ function VisualDeploymentTargetSelector({ onTargetChange, selectedTarget }: Visu
 
     const selectedIndex = DEPLOYMENT_TARGETS.findIndex((target) => target.id === selectedTarget);
     const fallbackIndex = selectedIndex === -1 ? 0 : selectedIndex;
-    const focusIndex = initialFocus === "first"
-      ? 0
-      : initialFocus === "last"
-        ? DEPLOYMENT_TARGETS.length - 1
-        : fallbackIndex;
+    if (initialFocus === "first") {
+      focusMenuItem(0);
+      return;
+    }
 
-    optionRefs.current[focusIndex]?.focus();
-  }, [initialFocus, menuOpen, selectedTarget]);
+    if (initialFocus === "last") {
+      focusMenuItem(getMenuItemCount() - 1);
+      return;
+    }
 
-  const focusOption = (index: number) => {
-    const optionCount = DEPLOYMENT_TARGETS.length;
-    const normalizedIndex = (index + optionCount) % optionCount;
-    optionRefs.current[normalizedIndex]?.focus();
-  };
+    optionRefs.current[fallbackIndex]?.focus();
+  }, [focusMenuItem, initialFocus, menuOpen, selectedTarget]);
 
   const openMenu = (focusTarget: "first" | "last" | "selected" = "selected") => {
     setInitialFocus(focusTarget);
@@ -234,8 +260,9 @@ function VisualDeploymentTargetSelector({ onTargetChange, selectedTarget }: Visu
       {menuOpen ? (
         <TargetMenu
           buttonRef={buttonRef}
-          focusOption={focusOption}
+          focusMenuItem={focusMenuItem}
           menuId={menuId}
+          menuRef={menuRef}
           onOpenLocalEnvironmentSettings={() => {
             setLocalSettingsOpen(true);
           }}

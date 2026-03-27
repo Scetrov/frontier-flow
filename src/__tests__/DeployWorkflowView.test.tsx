@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DeployWorkflowView from "../components/DeployWorkflowView";
@@ -9,11 +9,12 @@ type TargetBalanceQuery = ReturnType<typeof import("../hooks/useTargetBalance").
 
 const mockUseTargetBalance = vi.fn<(...args: [string | null, import("../compiler/types").DeploymentTargetId]) => TargetBalanceQuery>();
 const mockGetObject = vi.fn<() => Promise<unknown>>();
+const mockSuiClient = { getObject: mockGetObject };
 
 vi.mock("@mysten/dapp-kit", () => ({
   useCurrentAccount: () => ({ address: "0xabc" }),
   useCurrentWallet: () => ({ isConnected: true }),
-  useSuiClient: () => ({ getObject: mockGetObject }),
+  useSuiClient: () => mockSuiClient,
   useWallets: () => ([{ name: "Vault" }]),
 }));
 
@@ -149,5 +150,44 @@ describe("DeployWorkflowView", () => {
     expect(await screen.findByText("Skipped for local deployment")).toBeVisible();
     expect(screen.queryByText("Current blockers")).not.toBeInTheDocument();
     expect(screen.getByText("No deployment attempt has been recorded for this graph revision yet.")).toBeVisible();
+  });
+
+  it("clears the previous world package detail while a new target check is pending", async () => {
+    const pendingCheck = new Promise(() => undefined);
+    mockGetObject
+      .mockResolvedValueOnce({})
+      .mockReturnValueOnce(pendingCheck);
+
+    const { rerender } = renderDeployWorkflowView(createDeploymentState());
+
+    expect(await screen.findByText("0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c")).toBeVisible();
+
+    rerender(<DeployWorkflowView deployment={createDeploymentState({
+      selectedTarget: "testnet:utopia",
+      blockerReasons: ["Connect a Sui-compatible wallet before deploying to testnet:utopia."],
+      requiredInputs: [
+        "current compiled bytecode artifact",
+        "connected Sui wallet for testnet:utopia",
+        "published package references for testnet:utopia",
+      ],
+      resolvedInputs: [
+        "current compiled bytecode artifact",
+        "published package references for testnet:utopia",
+      ],
+      statusMessage: {
+        attemptId: "attempt-utopia",
+        targetId: "testnet:utopia",
+        severity: "warning",
+        headline: "Deployment blocked",
+        details: "Resolve the wallet connection before retrying deployment.",
+        visibleInFooter: true,
+        visibleInMovePanel: true,
+      },
+    })} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Checking published world package")).toBeVisible();
   });
 });

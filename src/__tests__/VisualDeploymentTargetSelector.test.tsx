@@ -50,7 +50,7 @@ describe("VisualDeploymentTargetSelector", () => {
     render(<VisualDeploymentTargetSelector onTargetChange={() => undefined} selectedTarget="local" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Target network/server" }));
-    fireEvent.click(screen.getByRole("button", { name: "Configure local environment" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Configure local environment" }));
 
     expect(screen.getByRole("dialog", { name: "Local deployment settings" })).toBeVisible();
 
@@ -78,7 +78,7 @@ describe("VisualDeploymentTargetSelector", () => {
     render(<VisualDeploymentTargetSelector onTargetChange={() => undefined} selectedTarget="local" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Target network/server" }));
-    fireEvent.click(screen.getByRole("button", { name: "Configure local environment" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Configure local environment" }));
 
     fireEvent.change(screen.getByLabelText("RPC URL"), { target: { value: "not-a-url" } });
     fireEvent.change(screen.getByLabelText("GraphQL URL"), { target: { value: "still-not-a-url" } });
@@ -92,5 +92,23 @@ describe("VisualDeploymentTargetSelector", () => {
     expect(screen.getByText("Enter a valid semantic version such as 0.0.18.")).toBeVisible();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(window.localStorage.getItem(LOCAL_ENVIRONMENT_STORAGE_KEY)).toBeNull();
+  });
+
+  it("includes the local settings action in arrow-key navigation", () => {
+    render(<VisualDeploymentTargetSelector onTargetChange={() => undefined} selectedTarget="local" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Target network/server" }));
+
+    const localTarget = screen.getByRole("menuitemradio", { name: getLocalDeploymentTargetLabel() });
+    expect(localTarget).toHaveFocus();
+
+    fireEvent.keyDown(localTarget, { key: "ArrowDown" });
+
+    const settingsAction = screen.getByRole("menuitem", { name: "Configure local environment" });
+    expect(settingsAction).toHaveFocus();
+
+    fireEvent.keyDown(settingsAction, { key: "Enter" });
+
+    expect(screen.getByRole("dialog", { name: "Local deployment settings" })).toBeVisible();
   });
 });
