@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createNamedFlowContract, loadContractLibrary, updateNamedFlowContract } from "../utils/contractStorage";
+import { createNamedFlowContract, loadContractLibrary, mergeImportedContract, updateNamedFlowContract } from "../utils/contractStorage";
 
 describe("contractStorage seeded library support", () => {
   it("merges seeded contracts into a fallback library", () => {
@@ -128,5 +128,65 @@ describe("contractStorage seeded library support", () => {
         updatedAt: existing.updatedAt,
       }),
     );
+  });
+
+  it("parses Walrus provenance from stored contracts", () => {
+    const fallback = createNamedFlowContract("Starter Contract", [], []);
+    const storage = window.localStorage;
+
+    storage.setItem(
+      "frontier-flow:contracts",
+      JSON.stringify({
+        version: 2,
+        activeContractName: "Published Contract",
+        contracts: [
+          {
+            description: "Published snapshot",
+            edges: [],
+            name: "Published Contract",
+            nodes: [],
+            updatedAt: "2026-03-23T12:00:00.000Z",
+            walrusProvenance: {
+              blobId: "blob-123",
+              blobObjectId: "0xblob",
+              contentType: "application/x.frontier-flow+yaml",
+              network: "testnet",
+              publishedAt: "2026-03-23T12:00:00.000Z",
+            },
+          },
+        ],
+      }),
+    );
+
+    const library = loadContractLibrary(storage, fallback, []);
+
+    expect(library.contracts[0].walrusProvenance).toEqual(
+      expect.objectContaining({ blobId: "blob-123", blobObjectId: "0xblob" }),
+    );
+  });
+
+  it("merges imported contracts without overwriting existing names", () => {
+    const existing = createNamedFlowContract("Aggressor First", [], []);
+    const imported = createNamedFlowContract("Aggressor First", [], [], {
+      walrusProvenance: {
+        blobId: "blob-123",
+        contentType: "application/x.frontier-flow+yaml",
+        network: "testnet",
+        publishedAt: "2026-03-23T12:00:00.000Z",
+      },
+    });
+
+    const merged = mergeImportedContract({
+      importedContract: imported,
+      library: {
+        activeContractName: existing.name,
+        contracts: [existing],
+        version: 2,
+      },
+    });
+
+    expect(merged.importedContractName).toBe("Aggressor First (2)");
+    expect(merged.library.contracts).toHaveLength(2);
+    expect(merged.library.contracts[1].walrusProvenance).toEqual(imported.walrusProvenance);
   });
 });

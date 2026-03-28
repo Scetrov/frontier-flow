@@ -115,6 +115,25 @@ export function getEdgeStrokeWidth(
 }
 
 /**
+ * Rebuilds the runtime edge presentation from the current source-handle connection.
+ */
+export function deriveFlowEdgePresentation(
+  edge: FlowEdge,
+  nodesById: ReadonlyMap<string, FlowNode>,
+): Pick<FlowEdge, "animated" | "style"> {
+  const sourceNode = nodesById.get(edge.source);
+
+  return {
+    animated: edge.animated ?? true,
+    style: {
+      ...edge.style,
+      stroke: getEdgeColor(sourceNode, edge.sourceHandle ?? null),
+      strokeWidth: getEdgeStrokeWidth(sourceNode, edge.sourceHandle ?? null),
+    },
+  };
+}
+
+/**
  * Returns true when adding a connection would create a cycle.
  */
 export function createsCycle(

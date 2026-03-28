@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { useCurrentAccount, useCurrentWallet, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 
 import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, DeploymentTargetId } from "./compiler/types";
 import AlphaBanner from "./components/AlphaBanner";
@@ -8,6 +9,7 @@ import DeployWorkflowView from "./components/DeployWorkflowView";
 import DeploymentProgressModal from "./components/DeploymentProgressModal";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
+import PrivacyNoticeBanner from "./components/PrivacyNoticeBanner";
 import type { PrimaryView } from "./components/Header";
 import MoveSourcePanel from "./components/MoveSourcePanel";
 import Sidebar from "./components/Sidebar";
@@ -16,6 +18,7 @@ import { seededExampleContracts } from "./data/exampleContracts";
 import { subscribeToLocalEnvironmentChanges } from "./data/localEnvironment";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
 import { useDeployment } from "./hooks/useDeployment";
+import type { GraphTransferWalletBridge } from "./hooks/useGraphTransfer";
 import type { RemediationNotice } from "./types/nodes";
 import type { StoredDeploymentState } from "./types/authorization";
 import { createNamedFlowContract, loadContractLibrary } from "./utils/contractStorage";
@@ -23,6 +26,7 @@ import { createCompilationGraphKey } from "./utils/compilationGraphKey";
 import { loadCompilationState, saveCompilationState, type PersistedCompilationState } from "./utils/compilationStateStorage";
 import { loadActiveContractName, loadDeploymentState, validateDeploymentState } from "./utils/deploymentStateStorage";
 import { mergeDeploymentStatus } from "./utils/mergeDeploymentStatus";
+import { acknowledgePrivacyNotice, shouldShowPrivacyNotice } from "./utils/privacyNoticeStorage";
 import { loadUiState, mergeUiState } from "./utils/uiStateStorage";
 
 const defaultContractFlow = createDefaultContractFlow();
@@ -47,6 +51,7 @@ interface AppMainContentProps {
   readonly deployment: ReturnType<typeof useDeployment>;
   readonly displayStatus: CompilationStatus;
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
+  readonly graphTransferWalletBridge: GraphTransferWalletBridge;
   readonly moveSourceCode: string | null;
   readonly onMoveRebuild: () => Promise<void>;
   readonly onCompilationStateChange: (
@@ -62,6 +67,7 @@ interface AppMainContentProps {
 
 interface VisualWorkspaceViewProps {
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
+  readonly graphTransferWalletBridge: GraphTransferWalletBridge;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
   readonly onSelectedDeploymentTargetChange: (target: DeploymentTargetId) => void;
@@ -75,10 +81,13 @@ interface StandardAppLayoutProps {
   readonly diagnostics: readonly CompilerDiagnostic[];
   readonly displayStatus: CompilationStatus;
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
+  readonly graphTransferWalletBridge: GraphTransferWalletBridge;
+  readonly isPrivacyNoticeVisible: boolean;
   readonly isCompiling: boolean;
   readonly isCompiledWorkflowReady: boolean;
   readonly isKitchenSinkRoute: boolean;
   readonly moveSourceCode: string | null;
+  readonly onDismissPrivacyNotice: () => void;
   readonly onMoveRebuild: () => Promise<void>;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
@@ -195,6 +204,7 @@ function getValidatedDeploymentState(targetId: InitialAppState["selectedDeployme
 
 function VisualWorkspaceView({
   focusedDiagnosticSelection,
+  graphTransferWalletBridge,
   onCompilationStateChange,
   onRemediationNoticesChange,
   onSelectedDeploymentTargetChange,
@@ -215,6 +225,7 @@ function VisualWorkspaceView({
         <CanvasWorkspace
           focusedDiagnosticNodeId={focusedDiagnosticSelection?.nodeId ?? null}
           focusedDiagnosticRequestKey={focusedDiagnosticSelection?.requestKey ?? 0}
+          graphTransferWalletBridge={graphTransferWalletBridge}
           initialContractName={defaultContractName}
           initialEdges={defaultContractFlow.edges}
           initialNodes={defaultContractFlow.nodes}
@@ -241,6 +252,7 @@ function AppMainContent({
   deployment,
   displayStatus,
   focusedDiagnosticSelection,
+  graphTransferWalletBridge,
   moveSourceCode,
   onMoveRebuild,
   onCompilationStateChange,
@@ -252,6 +264,7 @@ function AppMainContent({
     return (
       <VisualWorkspaceView
         focusedDiagnosticSelection={focusedDiagnosticSelection}
+        graphTransferWalletBridge={graphTransferWalletBridge}
         onCompilationStateChange={onCompilationStateChange}
         onRemediationNoticesChange={onRemediationNoticesChange}
         onSelectedDeploymentTargetChange={onSelectedDeploymentTargetChange}
@@ -336,10 +349,13 @@ function StandardAppLayout({
   diagnostics,
   displayStatus,
   focusedDiagnosticSelection,
+  graphTransferWalletBridge,
+  isPrivacyNoticeVisible,
   isCompiling,
   isCompiledWorkflowReady,
   isKitchenSinkRoute,
   moveSourceCode,
+  onDismissPrivacyNotice,
   onMoveRebuild,
   onCompilationStateChange,
   onRemediationNoticesChange,
@@ -377,6 +393,7 @@ function StandardAppLayout({
             deployment={deployment}
             displayStatus={displayStatus}
             focusedDiagnosticSelection={focusedDiagnosticSelection}
+            graphTransferWalletBridge={graphTransferWalletBridge}
             moveSourceCode={moveSourceCode}
             onMoveRebuild={onMoveRebuild}
             onCompilationStateChange={onCompilationStateChange}
@@ -386,6 +403,7 @@ function StandardAppLayout({
           />
         </main>
       )}
+      {isPrivacyNoticeVisible ? <PrivacyNoticeBanner onDismiss={onDismissPrivacyNotice} /> : null}
       <Footer
         deploymentStatus={deployment.deploymentStatus}
         diagnostics={diagnostics}
@@ -625,6 +643,10 @@ function useStandardAppController(initialAppState: InitialAppState): StandardApp
 
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
   const [, setLocalEnvironmentRevision] = useState(0);
+  const currentAccount = useCurrentAccount();
+  const { isConnected } = useCurrentWallet();
+  const signAndExecuteTransaction = useSignAndExecuteTransaction();
+  const [isPrivacyNoticeVisible, setIsPrivacyNoticeVisible] = useState(() => shouldShowPrivacyNotice(getBrowserStorage()));
   const initialAppState = useMemo(() => getInitialAppState(), []);
   const {
     authorizeDeploymentState,
@@ -645,6 +667,18 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     setRemediationNotices,
     transientStatusMessage,
   } = useStandardAppController(initialAppState);
+  const graphTransferWalletBridge = useMemo<GraphTransferWalletBridge>(() => ({
+    accountAddress: currentAccount?.address ?? null,
+    walletConnected: isConnected,
+    signAndExecuteTransaction: async (transaction) => {
+      const result = await signAndExecuteTransaction.mutateAsync({ transaction });
+      return { digest: result.digest };
+    },
+  }), [currentAccount?.address, isConnected, signAndExecuteTransaction]);
+  const handleDismissPrivacyNotice = useCallback(() => {
+    acknowledgePrivacyNotice(getBrowserStorage());
+    setIsPrivacyNoticeVisible(false);
+  }, []);
 
   useEffect(() => subscribeToLocalEnvironmentChanges(() => {
     setLocalEnvironmentRevision((currentValue) => currentValue + 1);
@@ -658,10 +692,13 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       diagnostics={diagnostics}
       displayStatus={displayStatus}
       focusedDiagnosticSelection={focusedDiagnosticSelection}
+      graphTransferWalletBridge={graphTransferWalletBridge}
+      isPrivacyNoticeVisible={isPrivacyNoticeVisible}
       isCompiling={isCompiling}
       isCompiledWorkflowReady={isCompiledWorkflowReady}
       isKitchenSinkRoute={isKitchenSinkRoute}
       moveSourceCode={moveSourceCode}
+      onDismissPrivacyNotice={handleDismissPrivacyNotice}
       onMoveRebuild={onMoveRebuild}
       onCompilationStateChange={onCompilationStateChange}
       onRemediationNoticesChange={setRemediationNotices}

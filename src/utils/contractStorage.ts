@@ -2,6 +2,14 @@ import type { FlowEdge, FlowNode } from "../types/nodes";
 
 export const CONTRACT_LIBRARY_STORAGE_KEY = "frontier-flow:contracts";
 
+export interface PublishedGraphProvenance {
+  readonly blobId: string;
+  readonly blobObjectId?: string;
+  readonly network: "testnet";
+  readonly publishedAt: string;
+  readonly contentType: "application/x.frontier-flow+yaml";
+}
+
 export interface NamedFlowContract {
   readonly id?: string;
   readonly name: string;
@@ -10,6 +18,7 @@ export interface NamedFlowContract {
   readonly edges: FlowEdge[];
   readonly updatedAt: string;
   readonly isSeeded?: boolean;
+  readonly walrusProvenance?: PublishedGraphProvenance;
 }
 
 export interface ContractLibrary {
@@ -23,10 +32,26 @@ interface CreateNamedFlowContractOptions {
   readonly description?: string;
   readonly updatedAt?: string;
   readonly isSeeded?: boolean;
+  readonly walrusProvenance?: PublishedGraphProvenance;
 }
 
 interface UpdateNamedFlowContractOptions {
   readonly preserveUpdatedAt?: boolean;
+  readonly walrusProvenance?: PublishedGraphProvenance;
+}
+
+export interface MergeImportedContractRequest {
+  readonly library: ContractLibrary;
+  readonly importedContract: NamedFlowContract;
+  readonly makeUniqueName?: (baseName: string, existingNames: readonly string[]) => string;
+  readonly activateImportedContract?: boolean;
+}
+
+export interface MergeImportedContractResult {
+  readonly library: ContractLibrary;
+  readonly importedContract: NamedFlowContract;
+  readonly importedContractName: string;
+  readonly originalImportedContractName: string;
 }
 
 function createContractId(name: string): string {
@@ -60,6 +85,7 @@ export function createNamedFlowContract(
     edges: [...edges],
     updatedAt: options.updatedAt ?? new Date().toISOString(),
     isSeeded: options.isSeeded,
+    walrusProvenance: options.walrusProvenance,
   };
 }
 
@@ -77,6 +103,7 @@ export function updateNamedFlowContract(
     description: contract.description,
     updatedAt: options.preserveUpdatedAt === true ? contract.updatedAt : undefined,
     isSeeded: contract.isSeeded,
+    walrusProvenance: options.walrusProvenance ?? contract.walrusProvenance,
   });
 }
 
@@ -95,6 +122,34 @@ export function createUniqueContractName(baseName: string, existingNames: readon
   }
 
   return `${normalizedBaseName} (${String(suffix)})`;
+}
+
+/**
+ * Adds an imported contract to the library without overwriting existing contracts.
+ */
+export function mergeImportedContract(request: MergeImportedContractRequest): MergeImportedContractResult {
+  const makeUniqueName = request.makeUniqueName ?? createUniqueContractName;
+  const existingNames = request.library.contracts.map((contract) => contract.name);
+  const importedContractName = makeUniqueName(request.importedContract.name, existingNames);
+  const importedContract = importedContractName === request.importedContract.name
+    ? request.importedContract
+    : createNamedFlowContract(importedContractName, request.importedContract.nodes, request.importedContract.edges, {
+        id: request.importedContract.id,
+        description: request.importedContract.description,
+        updatedAt: request.importedContract.updatedAt,
+        walrusProvenance: request.importedContract.walrusProvenance,
+      });
+
+  return {
+    library: {
+      ...request.library,
+      activeContractName: request.activateImportedContract === false ? request.library.activeContractName : importedContract.name,
+      contracts: request.library.contracts.concat(importedContract),
+    },
+    importedContract,
+    importedContractName: importedContract.name,
+    originalImportedContractName: request.importedContract.name,
+  };
 }
 
 /**
@@ -202,6 +257,30 @@ function parseNamedFlowContract(rawContract: unknown): NamedFlowContract | undef
     edges: rawContract.edges as FlowEdge[],
     updatedAt: typeof rawContract.updatedAt === "string" ? rawContract.updatedAt : new Date(0).toISOString(),
     isSeeded: rawContract.isSeeded === true,
+    walrusProvenance: parsePublishedGraphProvenance(rawContract.walrusProvenance),
+  };
+}
+
+function parsePublishedGraphProvenance(value: unknown): PublishedGraphProvenance | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  if (
+    typeof value.blobId !== "string"
+    || typeof value.publishedAt !== "string"
+    || value.network !== "testnet"
+    || value.contentType !== "application/x.frontier-flow+yaml"
+  ) {
+    return undefined;
+  }
+
+  return {
+    blobId: value.blobId,
+    blobObjectId: typeof value.blobObjectId === "string" ? value.blobObjectId : undefined,
+    network: "testnet",
+    publishedAt: value.publishedAt,
+    contentType: "application/x.frontier-flow+yaml",
   };
 }
 

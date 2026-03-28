@@ -3,7 +3,7 @@ import { authorableNodeDefinitions, createFlowNodeData, nodeDefinitions } from "
 import type { GraphFixture } from "../__fixtures__/graphs/smartTurretExtensionFixtures";
 import type { FlowEdge, FlowNode } from "../types/nodes";
 import { autoArrangeFlow } from "../utils/layoutFlow";
-import { getEdgeColor, getEdgeStrokeWidth } from "../utils/socketTypes";
+import { deriveFlowEdgePresentation } from "../utils/socketTypes";
 
 const GRID_COLUMNS = 4;
 const GRID_START_X = 96;
@@ -137,15 +137,9 @@ function createStyledFlowEdge(
   nodesById: ReadonlyMap<string, FlowNode>,
   connection: (typeof DEFAULT_FLOW_CONNECTIONS)[number],
 ): FlowEdge {
-  const sourceNode = nodesById.get(connection.source);
-
   return {
     ...connection,
-    animated: true,
-    style: {
-      stroke: getEdgeColor(sourceNode, connection.sourceHandle),
-      strokeWidth: getEdgeStrokeWidth(sourceNode, connection.sourceHandle),
-    },
+    ...deriveFlowEdgePresentation(connection, nodesById),
   };
 }
 

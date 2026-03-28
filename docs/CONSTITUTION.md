@@ -1,9 +1,9 @@
 ---
 title: Frontier Flow - Project Constitution
-version: 1.0.0
+version: 1.2.0
 status: active
 created: 2026-02-22
-updated: 2026-02-27
+updated: 2026-03-28
 author: Scetrov
 description: Absolute source of truth for all development, architectural decisions, and project conventions within frontier-flow.
 ---
@@ -111,7 +111,15 @@ Our application strictly adheres to the core aesthetic and theming principles ou
 
 ---
 
-## 9. Naming & Style Conventions
+## 9. Markdown Document Standards
+
+- **Backticked Paths & Filenames:** In Markdown, all repository paths and filenames must be wrapped in backticks.
+- **Numbered Headings:** All Markdown headings must use explicit numbering (for example, `# 1.`, `## 1.1.`, `### 1.1.1.`).
+- **Prettier Formatting:** Markdown files must be formatted with Prettier. This includes preserving Prettier-aligned table columns and ensuring every Markdown file ends with a trailing newline.
+
+---
+
+## 10. Naming & Style Conventions
 
 - **PascalCase** for React components, interfaces, classes, enums, and TS type aliases (e.g., `AggressionNode.tsx`).
 - **camelCase** for variable names, utility functions, and utility filenames (e.g., `codeGenerator.ts`).

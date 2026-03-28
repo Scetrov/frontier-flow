@@ -11,7 +11,7 @@ import type { FlowNode } from "../types/nodes";
 import type { ContractLibrary } from "../utils/contractStorage";
 import { CONTRACT_LIBRARY_STORAGE_KEY } from "../utils/contractStorage";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
-import { isValidFlowConnection } from "../utils/socketTypes";
+import { getEdgeColor, getEdgeStrokeWidth, isValidFlowConnection } from "../utils/socketTypes";
 
 const originalMatchMedia = window.matchMedia;
 
@@ -168,6 +168,84 @@ describe("CanvasWorkspace", () => {
       isSidebarOpen: true,
       activeView: "visual",
     });
+  });
+
+  it("keeps the draft contract name when opening and dismissing transfer actions", () => {
+    render(<CanvasWorkspace />);
+
+    fireEvent.change(screen.getByLabelText("Contract name"), { target: { value: "Draft Name" } });
+    fireEvent.click(screen.getByRole("button", { name: "Import YAML" }));
+
+    expect(screen.getByRole("dialog", { name: "Import YAML" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss graph transfer dialog" }));
+
+    expect(screen.queryByRole("dialog", { name: "Import YAML" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Contract name")).toHaveValue("Draft Name");
+  });
+
+  it("renders transfer actions alongside save controls", () => {
+    render(<CanvasWorkspace />);
+
+    expect(screen.getByRole("button", { name: "Save" }).querySelector(".ff-contract-bar__button-icon")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Save Copy" }).querySelector(".ff-contract-bar__button-icon")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Delete" }).querySelector(".ff-contract-bar__button-icon")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Import YAML" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import Walrus" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export YAML" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export Walrus" })).toBeDisabled();
+  });
+
+  it("keeps the active saved contract unchanged after an empty Walrus import attempt", async () => {
+    const defaultContractFlow = createDefaultContractFlow();
+
+    render(
+      <CanvasWorkspace
+        initialContractName="Starter Contract"
+        initialEdges={defaultContractFlow.edges}
+        initialNodes={defaultContractFlow.nodes}
+      />,
+    );
+
+    expect(screen.getByLabelText("Saved contract")).toHaveValue("Starter Contract");
+
+    fireEvent.click(screen.getByRole("button", { name: "Import Walrus" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Import From Walrus" })).getByRole("button", { name: "Import Walrus" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("Enter a Walrus blob id to import a graph.");
+    });
+
+    expect(screen.getByLabelText("Saved contract")).toHaveValue("Starter Contract");
+  });
+
+  it("recomputes restored edge colour and width from its source handle", () => {
+    const defaultContractFlow = createDefaultContractFlow();
+    const sourceNode = defaultContractFlow.nodes.find((node) => node.id === "default_aggression");
+    const targetNode = defaultContractFlow.nodes.find((node) => node.id === "default_add_to_queue");
+    const persistedEdge = defaultContractFlow.edges.find((edge) => edge.id === "default_edge_aggression_priority_add_to_queue");
+
+    if (sourceNode === undefined || targetNode === undefined || persistedEdge === undefined) {
+      throw new Error("Default contract flow fixtures are missing the required priority edge.");
+    }
+
+    const restored = restoreSavedFlow(
+      [sourceNode, targetNode],
+      [
+        {
+          ...persistedEdge,
+          animated: false,
+          style: { stroke: "rgb(0 0 0)", strokeWidth: 1 },
+        },
+      ],
+    );
+
+    expect(restored.edges).toHaveLength(1);
+    const restoredEdge = restored.edges[0];
+
+    expect(restoredEdge.animated).toBe(false);
+    expect(restoredEdge.style?.stroke).toBe(getEdgeColor(sourceNode, "priority"));
+    expect(restoredEdge.style?.strokeWidth).toBe(getEdgeStrokeWidth(sourceNode, "priority"));
   });
 
   it("renders an empty-state prompt before any node is dropped", () => {

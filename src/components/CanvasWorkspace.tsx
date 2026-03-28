@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, Dispatch, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, RefObject, SetStateAction } from "react";
+import type { CSSProperties, Dispatch, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, ReactNode, RefObject, SetStateAction } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -17,7 +17,7 @@ import {
   type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Check, LayoutGrid, Trash2, X } from "lucide-react";
+import { Check, Copy, Database, Download, FileInput, LayoutGrid, Save, Trash2, Upload, X } from "lucide-react";
 
 import { createFlowNodeData, getNodeDefinition } from "../data/node-definitions";
 import { seededExampleContracts } from "../data/exampleContracts";
@@ -36,22 +36,28 @@ import {
   createNamedFlowContract,
   createUniqueContractName,
   loadContractLibrary,
+  mergeImportedContract,
   sanitizeContractName,
   saveContractLibrary,
   type ContractLibrary,
   type NamedFlowContract,
+  type PublishedGraphProvenance,
   updateNamedFlowContract,
 } from "../utils/contractStorage";
 import { autoArrangeFlow } from "../utils/layoutFlow";
-import { getEdgeColor, getEdgeStrokeWidth, isValidFlowConnection } from "../utils/socketTypes";
+import { getEdgeColor, isValidFlowConnection } from "../utils/socketTypes";
 import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
 import { useAutoCompile } from "../hooks/useAutoCompile";
+import { useGraphTransfer, type GraphTransferState, type GraphTransferWalletBridge } from "../hooks/useGraphTransfer";
+import { deriveFlowEdgePresentation } from "../utils/socketTypes";
 
+import GraphTransferDialog from "./GraphTransferDialog";
 import { restoreSavedFlow } from "./restoreSavedFlow";
 import { NodeFieldEditingContext } from "../nodes/NodeFieldEditingContext";
 import DrawerHandle from "./DrawerHandle";
 
 interface CanvasWorkspaceProps {
+  readonly graphTransferWalletBridge?: GraphTransferWalletBridge;
   readonly initialContractName?: string;
   readonly initialNodes?: readonly FlowNode[];
   readonly initialEdges?: readonly FlowEdge[];
@@ -206,10 +212,15 @@ interface ContractDrawerProps {
   readonly isContractPanelOpen: boolean;
   readonly onCreateContractCopy: () => void;
   readonly onDeleteContract: () => void;
+  readonly onExportContract: () => void;
+  readonly onImportFromFile: () => void;
+  readonly onImportFromWalrus: () => void;
+  readonly onPublishContract: () => void;
   readonly onSaveAsContract: () => void;
   readonly onSelectContract: (contractName: string) => void;
   readonly onSetDraftContractName: (name: string) => void;
   readonly onTogglePanel: () => void;
+  readonly walletConnected: boolean;
 }
 
 function ContractDrawerHeader() {
@@ -219,6 +230,27 @@ function ContractDrawerHeader() {
       <h2 className="ff-contract-panel__title">Save / Load</h2>
       <p className="ff-contract-panel__copy">Manage local flow snapshots without taking canvas space away from the editor.</p>
     </div>
+  );
+}
+
+function ContractActionButton({
+  children,
+  className,
+  disabled,
+  icon: Icon,
+  onClick,
+}: {
+  readonly children: string;
+  readonly className?: string;
+  readonly disabled?: boolean;
+  readonly icon: typeof Save;
+  readonly onClick: () => void;
+}) {
+  return (
+    <button className={className ?? "ff-contract-bar__button"} disabled={disabled} type="button" onClick={onClick}>
+      <Icon aria-hidden="true" className="ff-contract-bar__button-icon" />
+      <span className="ff-contract-bar__button-label">{children}</span>
+    </button>
   );
 }
 
@@ -246,9 +278,14 @@ function ContractDrawerControls({
   draftContractName,
   onCreateContractCopy,
   onDeleteContract,
+  onExportContract,
+  onImportFromFile,
+  onImportFromWalrus,
+  onPublishContract,
   onSaveAsContract,
   onSelectContract,
   onSetDraftContractName,
+  walletConnected,
 }: Omit<ContractDrawerProps, "activeRemediationNotices" | "isContractPanelOpen" | "onTogglePanel">) {
   return (
     <div className="ff-contract-bar">
@@ -292,20 +329,38 @@ function ContractDrawerControls({
       </label>
 
       <div className="ff-contract-bar__actions">
-        <button className="ff-contract-bar__button" type="button" onClick={onSaveAsContract}>
+        <ContractActionButton icon={Save} onClick={onSaveAsContract}>
           Save
-        </button>
-        <button className="ff-contract-bar__button" type="button" onClick={onCreateContractCopy}>
+        </ContractActionButton>
+        <ContractActionButton icon={Copy} onClick={onCreateContractCopy}>
           Save Copy
-        </button>
-        <button
+        </ContractActionButton>
+        <ContractActionButton
           className="ff-contract-bar__button ff-contract-bar__button--danger"
-          type="button"
-          onClick={onDeleteContract}
           disabled={contractLibrary.contracts.length <= 1}
+          icon={Trash2}
+          onClick={onDeleteContract}
         >
           Delete
-        </button>
+        </ContractActionButton>
+      </div>
+
+      <div className="ff-contract-bar__transfer">
+        <p className="ff-contract-bar__label">Transfer</p>
+        <div className="ff-contract-bar__actions">
+          <ContractActionButton icon={FileInput} onClick={onImportFromFile}>
+            Import YAML
+          </ContractActionButton>
+          <ContractActionButton icon={Database} onClick={onImportFromWalrus}>
+            Import Walrus
+          </ContractActionButton>
+          <ContractActionButton icon={Download} onClick={onExportContract}>
+            Export YAML
+          </ContractActionButton>
+          <ContractActionButton disabled={!walletConnected} icon={Upload} onClick={onPublishContract}>
+            Export Walrus
+          </ContractActionButton>
+        </div>
       </div>
 
       <p className="ff-contract-bar__meta">Nodes, edges, and positions auto-save locally for the active contract.</p>
@@ -322,10 +377,15 @@ function ContractDrawer({
   isContractPanelOpen,
   onCreateContractCopy,
   onDeleteContract,
+  onExportContract,
+  onImportFromFile,
+  onImportFromWalrus,
+  onPublishContract,
   onSaveAsContract,
   onSelectContract,
   onSetDraftContractName,
   onTogglePanel,
+  walletConnected,
 }: ContractDrawerProps) {
   return (
     <div className="ff-canvas__drawer ff-canvas__drawer--left">
@@ -352,9 +412,14 @@ function ContractDrawer({
             draftContractName={draftContractName}
             onCreateContractCopy={onCreateContractCopy}
             onDeleteContract={onDeleteContract}
+            onExportContract={onExportContract}
+            onImportFromFile={onImportFromFile}
+            onImportFromWalrus={onImportFromWalrus}
+            onPublishContract={onPublishContract}
             onSaveAsContract={onSaveAsContract}
             onSelectContract={onSelectContract}
             onSetDraftContractName={onSetDraftContractName}
+            walletConnected={walletConnected}
           />
         </aside>
 
@@ -518,7 +583,19 @@ function CanvasContextMenu({ contextMenu, contextMenuRef, onAutoArrange, onDelet
 }
 
 function getActiveContractDescription(activeContract: NamedFlowContract): string {
-  return activeContract.description ?? (activeContract.isSeeded ? "Curated example contract." : "Local contract snapshot.");
+  if (activeContract.description !== undefined) {
+    return activeContract.description;
+  }
+
+  if (activeContract.isSeeded) {
+    return "Curated example contract.";
+  }
+
+  if (activeContract.walrusProvenance !== undefined) {
+    return `Local contract snapshot · Walrus ${activeContract.walrusProvenance.blobId}`;
+  }
+
+  return "Local contract snapshot.";
 }
 
 function useInitialLibrarySnapshot({
@@ -660,6 +737,54 @@ function useContractManager({
     setNodes(nextActiveContract.nodes);
     setEdges(nextActiveContract.edges);
   }, [contractLibrary, edges, nodes, setEdges, setNodes]);
+  const handleImportContract = useCallback((importedContract: NamedFlowContract) => {
+    const hydratedImported = hydrateContract(importedContract);
+    const synchronizedLibrary = withActiveContractSnapshot(contractLibrary, nodes, edges);
+    const currentContractSnapshot = synchronizedLibrary.contracts.find((contract) => contract.name === synchronizedLibrary.activeContractName);
+    const shouldActivateImportedContract = currentContractSnapshot === undefined
+      || !hasUnsavedCanvasChanges(currentContractSnapshot, nodes, edges)
+      || typeof window === "undefined"
+      || window.confirm("Replace the current canvas with the imported contract?");
+    const merged = mergeImportedContract({
+      activateImportedContract: shouldActivateImportedContract,
+      importedContract: hydratedImported.contract,
+      library: synchronizedLibrary,
+    });
+
+    setContractLibrary(merged.library);
+    setContractRemediationNotices((currentNotices) => ({
+      ...currentNotices,
+      [merged.importedContractName]: hydratedImported.remediationNotices,
+    }));
+
+    if (shouldActivateImportedContract) {
+      setDraftContractName(merged.importedContractName);
+      setNodes(merged.importedContract.nodes);
+      setEdges(merged.importedContract.edges);
+      requestAnimationFrame(() => {
+        void reactFlow.fitView({ duration: 200, padding: 0.24 });
+      });
+    }
+
+    return {
+      importedName: merged.importedContractName,
+      originalImportedName: merged.originalImportedContractName,
+    };
+  }, [contractLibrary, edges, nodes, reactFlow, setEdges, setNodes]);
+  const handleAttachWalrusProvenance = useCallback((provenance: PublishedGraphProvenance) => {
+    setContractLibrary((currentLibrary) => {
+      const synchronizedLibrary = withActiveContractSnapshot(currentLibrary, nodes, edges);
+
+      return {
+        ...synchronizedLibrary,
+        contracts: synchronizedLibrary.contracts.map((contract) =>
+          contract.name === synchronizedLibrary.activeContractName
+            ? updateNamedFlowContract(contract, nodes, edges, { preserveUpdatedAt: true, walrusProvenance: provenance })
+            : contract
+        ),
+      };
+    });
+  }, [edges, nodes]);
   useEffect(() => {
     if (mode === "persistent") {
       saveContractLibrary(typeof window === "undefined" ? undefined : window.localStorage, withActiveContractSnapshot(contractLibrary, nodes, edges));
@@ -674,7 +799,21 @@ function useContractManager({
       currentDraftContractName: draftContractName,
     });
   }, [draftContractName, mode]);
-  return { activeContract, activeContractDescription, activeRemediationNotices, contractLibrary, draftContractName, handleCreateContractCopy, handleDeleteContract, handleSaveAsContract, handleSelectContract, setContractRemediationNotices, setDraftContractName };
+  return {
+    activeContract,
+    activeContractDescription,
+    activeRemediationNotices,
+    contractLibrary,
+    draftContractName,
+    handleAttachWalrusProvenance,
+    handleCreateContractCopy,
+    handleDeleteContract,
+    handleImportContract,
+    handleSaveAsContract,
+    handleSelectContract,
+    setContractRemediationNotices,
+    setDraftContractName,
+  };
 }
 
 function useDeleteConfirmationEffects({
@@ -1000,10 +1139,15 @@ function useCanvasInteractions({
       return;
     }
 
-    const sourceNode = nodes.find((node) => node.id === connection.source);
-    const style = { stroke: getEdgeColor(sourceNode, connection.sourceHandle), strokeWidth: getEdgeStrokeWidth(sourceNode, connection.sourceHandle) };
+    const nodesById = new Map(nodes.map((node) => [node.id, node]));
+    const edgePresentation = deriveFlowEdgePresentation({
+      ...connection,
+      id: [connection.source, connection.sourceHandle ?? "source", connection.target, connection.targetHandle ?? "target", String(Date.now())].join("__"),
+      source: connection.source,
+      target: connection.target,
+    } as FlowEdge, nodesById);
     setContextMenu(null);
-    setEdges((currentEdges) => addEdge({ ...connection, animated: true, style }, currentEdges));
+    setEdges((currentEdges) => addEdge({ ...connection, ...edgePresentation }, currentEdges));
   }, [edges, nodes, setContextMenu, setEdges]);
   const handlePaneContextMenu = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -1184,6 +1328,7 @@ interface FlowEditorViewProps {
   readonly deleteEdgeById: (edgeId: string) => void;
   readonly draftContractName: string;
   readonly edges: readonly FlowEdge[];
+  readonly graphTransferState: GraphTransferState;
   readonly handleAutoArrange: () => void;
   readonly handleConnect: (connection: Connection) => void;
   readonly handleCreateContractCopy: () => void;
@@ -1192,8 +1337,12 @@ interface FlowEditorViewProps {
   readonly handleDragOver: (event: ReactDragEvent<HTMLDivElement>) => void;
   readonly handleDrop: (event: ReactDragEvent<HTMLDivElement>) => void;
   readonly handleEdgeContextMenu: (event: ReactMouseEvent, edge: FlowEdge) => void;
+  readonly handleExportContract: () => void;
+  readonly handleImportFromFile: () => void;
+  readonly handleImportFromWalrus: () => void;
   readonly handleNodeContextMenu: (event: ReactMouseEvent, node: FlowNode) => void;
   readonly handlePaneContextMenu: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  readonly handlePublishContract: () => void;
   readonly handleSaveAsContract: () => void;
   readonly handleSelectContract: (contractName: string) => void;
   readonly handleSelectedEdgeDeleteRequest: (edgeId: string, options?: { readonly immediate?: boolean }) => void;
@@ -1209,7 +1358,9 @@ interface FlowEditorViewProps {
   readonly setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
   readonly setDraftContractName: (name: string) => void;
   readonly setIsContractPanelOpen: Dispatch<SetStateAction<boolean>>;
+  readonly transferDialog: ReactNode;
   readonly validateConnection: (connection: Connection | Edge) => boolean;
+  readonly walletConnected: boolean;
 }
 
 function FlowEditorView({
@@ -1225,6 +1376,7 @@ function FlowEditorView({
   deleteEdgeById,
   draftContractName,
   edges,
+  graphTransferState,
   handleAutoArrange,
   handleConnect,
   handleCreateContractCopy,
@@ -1233,8 +1385,12 @@ function FlowEditorView({
   handleDragOver,
   handleDrop,
   handleEdgeContextMenu,
+  handleExportContract,
+  handleImportFromFile,
+  handleImportFromWalrus,
   handleNodeContextMenu,
   handlePaneContextMenu,
+  handlePublishContract,
   handleSaveAsContract,
   handleSelectContract,
   handleSelectedEdgeDeleteRequest,
@@ -1250,7 +1406,9 @@ function FlowEditorView({
   setContextMenu,
   setDraftContractName,
   setIsContractPanelOpen,
+  transferDialog,
   validateConnection,
+  walletConnected,
 }: FlowEditorViewProps) {
   return (
     <NodeFieldEditingContext.Provider value={compilationHandleNodeFieldsChange}>
@@ -1264,7 +1422,10 @@ function FlowEditorView({
             activeContract={activeContract} activeContractDescription={activeContractDescription} activeRemediationNotices={activeRemediationNotices}
             contractLibrary={contractLibrary} draftContractName={draftContractName} isContractPanelOpen={isContractPanelOpen}
             onCreateContractCopy={handleCreateContractCopy} onDeleteContract={handleDeleteContract} onSaveAsContract={handleSaveAsContract}
+            onExportContract={handleExportContract} onImportFromFile={handleImportFromFile} onImportFromWalrus={handleImportFromWalrus}
+            onPublishContract={handlePublishContract}
             onSelectContract={handleSelectContract} onSetDraftContractName={setDraftContractName} onTogglePanel={() => { setIsContractPanelOpen((open) => !open); }}
+            walletConnected={walletConnected}
           />
         ) : null}
         <ReactFlow<FlowNode, FlowEdge>
@@ -1297,6 +1458,7 @@ function FlowEditorView({
           ) : null}
         </ReactFlow>
         <CanvasContextMenu contextMenu={contextMenu} contextMenuRef={contextMenuRef} onAutoArrange={handleAutoArrange} onDeleteFromContextMenu={handleDeleteFromContextMenu} />
+        {graphTransferState.isOpen ? transferDialog : null}
       </div>
     </NodeFieldEditingContext.Provider>
   );
@@ -1306,6 +1468,7 @@ function FlowEditorView({
  * Restores saved nodes from the canonical catalogue and drops edges that no longer point to valid handles.
  */
 function FlowEditor({
+  graphTransferWalletBridge,
   initialContractName = "Starter Contract",
   initialNodes = [],
   initialEdges = [],
@@ -1322,12 +1485,33 @@ function FlowEditor({
   const { isDesktop, isContractPanelOpen, setIsContractPanelOpen } = useCanvasViewportState(mode);
   const reactFlow = useReactFlow<FlowNode, FlowEdge>();
   const contractManager = useContractManager({ initialLibrarySnapshot, mode, nodes, edges, reactFlow, setEdges, setNodes });
+  const graphTransfer = useGraphTransfer({
+    activeContract: contractManager.activeContract,
+    draftContractName: contractManager.draftContractName,
+    edges,
+    nodes,
+    onImportComplete: contractManager.handleImportContract,
+    onPublishComplete: contractManager.handleAttachWalrusProvenance,
+    walletBridge: graphTransferWalletBridge,
+  });
   const deleteManager = useDeleteManager({ setEdges, setNodes });
   const compilationState = useCanvasCompilationState({ clearNodeDeleteState: deleteManager.clearNodeDeleteState, deleteNodeById: deleteManager.deleteNodeById, draftContractName: contractManager.draftContractName, edges, handleNodeDeleteRequest: deleteManager.handleNodeDeleteRequest, nodeDeleteStates: deleteManager.nodeDeleteStates, nodes, onCompilationStateChange, setNodes });
   const selectionState = useCanvasSelectionState({ edges, nodes, selectedEdgeDeleteAnchor: deleteManager.selectedEdgeDeleteAnchor, setEdges, setNodes });
   const interactionHandlers = useCanvasInteractions({ deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, nodes, reactFlow, selectTarget: selectionState.selectTarget, setContextMenu: deleteManager.setContextMenu, setEdges, setNodes });
   useFlowEditorEffects({ contextMenu: deleteManager.contextMenu, contextMenuRef: deleteManager.contextMenuRef, deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, fallbackSelectedEdgeDeleteAnchor: selectionState.activeSelectedEdgeDeleteAnchor, focusedDiagnosticNodeId, focusedDiagnosticRequestKey, nodes, reactFlow, selectedTarget: selectionState.selectedTarget, setContextMenu: deleteManager.setContextMenu, setSelectedEdgeDeleteAnchor: deleteManager.setSelectedEdgeDeleteAnchor });
   useEffect(() => { onRemediationNoticesChange?.(contractManager.activeRemediationNotices); }, [contractManager.activeRemediationNotices, onRemediationNoticesChange]);
+  const transferDialog = (
+    <GraphTransferDialog
+      activeContract={contractManager.activeContract}
+      onDismiss={graphTransfer.dismiss}
+      onExport={graphTransfer.startExport}
+      onImportFromFile={graphTransfer.startImportFromFile}
+      onImportFromWalrus={graphTransfer.startImportFromWalrus}
+      onPublish={graphTransfer.startPublishToWalrus}
+      state={graphTransfer.state}
+      walletConnected={graphTransferWalletBridge?.walletConnected === true}
+    />
+  );
   return (
     <FlowEditorView
       activeContract={contractManager.activeContract} activeContractDescription={contractManager.activeContractDescription}
@@ -1335,20 +1519,26 @@ function FlowEditor({
       clearSelectedEdgeDeleteState={deleteManager.clearSelectedEdgeDeleteState} compilationHandleNodeFieldsChange={compilationState.handleNodeFieldsChange}
       contextMenu={deleteManager.contextMenu} contextMenuRef={deleteManager.contextMenuRef} contractLibrary={contractManager.contractLibrary}
       deleteEdgeById={deleteManager.deleteEdgeById} draftContractName={contractManager.draftContractName} edges={edges}
+      graphTransferState={graphTransfer.state}
       handleAutoArrange={interactionHandlers.handleAutoArrange} handleConnect={interactionHandlers.handleConnect} handleCreateContractCopy={contractManager.handleCreateContractCopy}
       handleDeleteContract={contractManager.handleDeleteContract} handleDeleteFromContextMenu={() => { interactionHandlers.handleDeleteFromContextMenu(deleteManager.contextMenu); }}
       handleDragOver={interactionHandlers.handleDragOver} handleDrop={interactionHandlers.handleDrop} handleEdgeContextMenu={interactionHandlers.handleEdgeContextMenu}
+      handleExportContract={() => { graphTransfer.open("export"); }} handleImportFromFile={() => { graphTransfer.open("import-file"); }}
+      handleImportFromWalrus={() => { graphTransfer.open("import-walrus"); }}
       handleNodeContextMenu={interactionHandlers.handleNodeContextMenu} handlePaneContextMenu={interactionHandlers.handlePaneContextMenu}
+      handlePublishContract={() => { graphTransfer.open("publish"); }}
       handleSaveAsContract={contractManager.handleSaveAsContract} handleSelectContract={contractManager.handleSelectContract}
       handleSelectedEdgeDeleteRequest={deleteManager.handleSelectedEdgeDeleteRequest} initialMode={mode} isContractPanelOpen={isContractPanelOpen}
       isDesktop={isDesktop} nodes={nodes} onEdgesChange={onEdgesChange} onNodesChange={onNodesChange} renderedNodes={compilationState.renderedNodes}
       selectedEdgeDeleteState={deleteManager.selectedEdgeDeleteState} selectedTarget={selectionState.selectedTarget} setContextMenu={deleteManager.setContextMenu}
-      setDraftContractName={contractManager.setDraftContractName} setIsContractPanelOpen={setIsContractPanelOpen} validateConnection={interactionHandlers.validateConnection}
+      setDraftContractName={contractManager.setDraftContractName} setIsContractPanelOpen={setIsContractPanelOpen} transferDialog={transferDialog}
+      validateConnection={interactionHandlers.validateConnection} walletConnected={graphTransferWalletBridge?.walletConnected === true}
     />
   );
 }
 
 function CanvasWorkspace({
+  graphTransferWalletBridge,
   initialContractName,
   initialNodes,
   initialEdges,
@@ -1363,6 +1553,7 @@ function CanvasWorkspace({
       <FlowEditor
         focusedDiagnosticNodeId={focusedDiagnosticNodeId}
         focusedDiagnosticRequestKey={focusedDiagnosticRequestKey}
+        graphTransferWalletBridge={graphTransferWalletBridge}
         initialContractName={initialContractName}
         initialEdges={initialEdges}
         initialNodes={initialNodes}
@@ -1376,10 +1567,16 @@ function CanvasWorkspace({
 
 export default CanvasWorkspace;
 
-function hydrateContract(name: string, nodes: readonly FlowNode[], edges: readonly FlowEdge[]) {
-  const restoredFlow = restoreSavedFlow(nodes, edges);
+function hydrateContract(contract: NamedFlowContract) {
+  const restoredFlow = restoreSavedFlow(contract.nodes, contract.edges);
   return {
-    contract: createNamedFlowContract(name, restoredFlow.nodes, restoredFlow.edges),
+    contract: createNamedFlowContract(contract.name, restoredFlow.nodes, restoredFlow.edges, {
+      description: contract.description,
+      id: contract.id,
+      isSeeded: contract.isSeeded,
+      updatedAt: contract.updatedAt,
+      walrusProvenance: contract.walrusProvenance,
+    }),
     remediationNotices: restoredFlow.remediationNotices,
   } satisfies HydratedContractSnapshot;
 }
@@ -1387,7 +1584,7 @@ function hydrateContract(name: string, nodes: readonly FlowNode[], edges: readon
 function hydrateLibraryContracts(library: ContractLibrary): HydratedContractLibrarySnapshot {
   const remediationNoticesByContractName: Record<string, readonly RemediationNotice[]> = {};
   const contracts = library.contracts.map((contract) => {
-    const hydratedContract = hydrateContract(contract.name, contract.nodes, contract.edges);
+    const hydratedContract = hydrateContract(contract);
     remediationNoticesByContractName[contract.name] = hydratedContract.remediationNotices;
 
     return createNamedFlowContract(contract.name, hydratedContract.contract.nodes, hydratedContract.contract.edges, {
@@ -1395,6 +1592,7 @@ function hydrateLibraryContracts(library: ContractLibrary): HydratedContractLibr
       description: contract.description,
       updatedAt: contract.updatedAt,
       isSeeded: contract.isSeeded,
+      walrusProvenance: contract.walrusProvenance,
     });
   });
 
@@ -1429,7 +1627,7 @@ function createInitialLibrarySnapshot(
 }
 
 function createPreviewLibrarySnapshot(fallbackContract: NamedFlowContract): HydratedContractLibrarySnapshot {
-  const hydratedContract = hydrateContract(fallbackContract.name, fallbackContract.nodes, fallbackContract.edges);
+  const hydratedContract = hydrateContract(fallbackContract);
 
   return {
     library: {
