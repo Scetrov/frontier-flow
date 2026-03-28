@@ -103,7 +103,7 @@ function SidebarFooterCta() {
   return (
     <div className="shrink-0 border-t border-[var(--ui-border-dark)] px-4 py-4 sm:px-5">
       <p className="font-heading text-[0.62rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
-        Jump Control
+        Colaborative Automation
       </p>
       <a
         className="group mt-3 flex items-center gap-3 px-3 py-3 text-left transition-colors"
@@ -117,7 +117,7 @@ function SidebarFooterCta() {
             themop.dev
           </span>
           <span className="mt-1 block text-xs leading-5 text-[var(--text-secondary)]">
-            Use Ministry of Passage in your gates for jump control.
+            Use Ministry of Passage in your gates and storage for collaborative automation.
           </span>
         </span>
       </a>
