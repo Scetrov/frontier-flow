@@ -73,6 +73,7 @@ interface TutorialOverlayProps {
 ### Rendering Contract
 
 When `isActive` is `true` and `targetRect` is not `null`:
+
 - Renders a fixed overlay at `z-60` covering the entire viewport
 - Renders a spotlight `<div>` at the `targetRect` position with `box-shadow` dimming
 - Renders a tooltip card at `z-61` adjacent to the spotlight, containing:
@@ -105,13 +106,13 @@ interface TutorialStepDefinition {
 
 ### Step Configuration
 
-| Ordinal | ID | Target Resolution | Drawer | Demo Node | Tooltip Pos |
-|---------|-----|-------------------|--------|-----------|-------------|
-| 1 | `"network-selector"` | `document.querySelector('[aria-label="Target network/server"]')` | `null` | `false` | `"bottom"` |
-| 2 | `"toolbox"` | `document.getElementById("node-toolbox")` | `"sidebar"` | `false` | `"left"` |
-| 3 | `"socket"` | `document.querySelector('.ff-node__socket')` | `null` | `true` | `"bottom"` |
-| 4 | `"save-load"` | `document.getElementById("saved-contract-controls")` | `"contract-panel"` | `false` | `"right"` |
-| 5 | `"view-navigation"` | `document.querySelector('.ff-header__nav')` | `null` | `false` | `"bottom"` |
+| Ordinal | ID                   | Target Resolution                                                | Drawer             | Demo Node | Tooltip Pos |
+| ------- | -------------------- | ---------------------------------------------------------------- | ------------------ | --------- | ----------- |
+| 1       | `"network-selector"` | `document.querySelector('[aria-label="Target network/server"]')` | `null`             | `false`   | `"bottom"`  |
+| 2       | `"toolbox"`          | `document.getElementById("node-toolbox")`                        | `"sidebar"`        | `false`   | `"left"`    |
+| 3       | `"socket"`           | `document.querySelector('.ff-node__socket')`                     | `null`             | `true`    | `"bottom"`  |
+| 4       | `"save-load"`        | `document.getElementById("saved-contract-controls")`             | `"contract-panel"` | `false`   | `"right"`   |
+| 5       | `"view-navigation"`  | `document.querySelector('.ff-header__nav')`                      | `null`             | `false`   | `"bottom"`  |
 
 ---
 

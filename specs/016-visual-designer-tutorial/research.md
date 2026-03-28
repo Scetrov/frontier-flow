@@ -11,12 +11,12 @@
 
 The spotlight effect requires dimming the entire viewport except a rectangular region around the highlighted element. Three techniques were evaluated:
 
-| Technique | Pros | Cons |
-|-----------|------|------|
-| CSS `box-shadow` with large spread | Single DOM element; GPU-composited; smooth transitions via CSS; simple `getBoundingClientRect()` mapping | Only rectangular highlights (acceptable for this use case) |
-| SVG clip-path with `<rect>` cutout | Supports arbitrary shapes; precise cutout | Extra SVG complexity; harder to animate between steps; path recalculation on resize |
-| `mix-blend-mode` overlay | Keeps underlying element fully interactive | Colour distortion; not reliable across browsers; contrast issues with dark theme |
-| Multiple overlay `<div>` panels (4 sides) | Element truly interactive (not covered) | Complex positioning; 4 elements to animate; tricky edge cases with scroll |
+| Technique                                 | Pros                                                                                                     | Cons                                                                                |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| CSS `box-shadow` with large spread        | Single DOM element; GPU-composited; smooth transitions via CSS; simple `getBoundingClientRect()` mapping | Only rectangular highlights (acceptable for this use case)                          |
+| SVG clip-path with `<rect>` cutout        | Supports arbitrary shapes; precise cutout                                                                | Extra SVG complexity; harder to animate between steps; path recalculation on resize |
+| `mix-blend-mode` overlay                  | Keeps underlying element fully interactive                                                               | Colour distortion; not reliable across browsers; contrast issues with dark theme    |
+| Multiple overlay `<div>` panels (4 sides) | Element truly interactive (not covered)                                                                  | Complex positioning; 4 elements to animate; tricky edge cases with scroll           |
 
 ### Implementation
 
@@ -29,7 +29,11 @@ The spotlight effect requires dimming the entire viewport except a rectangular r
   /* Box-shadow with large spread creates the dim effect */
   /* The element itself is positioned/sized to match the target */
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
-  transition: top 300ms ease, left 300ms ease, width 300ms ease, height 300ms ease;
+  transition:
+    top 300ms ease,
+    left 300ms ease,
+    width 300ms ease,
+    height 300ms ease;
 }
 ```
 
@@ -45,7 +49,7 @@ SVG clip-path was the runner-up. It allows non-rectangular cutouts but adds comp
 
 ### Decision: Manual positioning with `getBoundingClientRect()` + viewport-aware flipping
 
-### Rationale
+### 2.1. Rationale
 
 The tooltip must appear adjacent to the highlighted element without overlapping it and without overflowing the viewport. Existing modals in the codebase use fixed centering (`fixed inset-0 flex items-center justify-center`), but the tutorial tooltip must be anchored to specific elements.
 
@@ -58,6 +62,7 @@ The tooltip must appear adjacent to the highlighted element without overlapping 
 5. Clamp the tooltip's position to keep it within 8px of any viewport edge.
 
 Each tutorial step definition includes a `tooltipPosition` hint:
+
 - Step 1 (Network Selector): `"bottom"` — selector is at top of screen
 - Step 2 (Toolbox): `"left"` — toolbox is on the right side
 - Step 3 (Socket): `"bottom"` — sockets are on node edges
@@ -160,6 +165,7 @@ A simple boolean flag (`frontier-flow:tutorial-seen = "true"`) was considered bu
 ### Rationale
 
 Existing z-index stack:
+
 - `z-20`: Mobile sidebar overlay
 - `z-30`: Sidebar/right drawer
 - `z-40`: Header
@@ -183,15 +189,22 @@ The spotlight `<div>` moves between elements by updating its `top`, `left`, `wid
 
 ```css
 .ff-tutorial__spotlight {
-  transition: top 300ms ease, left 300ms ease, width 300ms ease, height 300ms ease;
+  transition:
+    top 300ms ease,
+    left 300ms ease,
+    width 300ms ease,
+    height 300ms ease;
 }
 
 .ff-tutorial__tooltip {
-  transition: opacity 200ms ease, transform 200ms ease;
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
 }
 ```
 
 Step transitions:
+
 1. Update spotlight position → CSS transition animates movement.
 2. Fade tooltip out (opacity 0) → update tooltip content + position → fade in (opacity 1).
 

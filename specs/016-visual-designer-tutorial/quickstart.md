@@ -9,15 +9,15 @@ This feature adds a 5-step guided tutorial overlay to the Visual Designer. It hi
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/types/tutorial.ts` | Type definitions (`TutorialStepId`, `TutorialStepDefinition`, `TutorialState`, `TutorialPersistedState`) |
-| `src/utils/tutorialSteps.ts` | Step definitions array with element resolvers and tooltip position hints |
-| `src/hooks/useTutorial.ts` | State machine hook — manages current step, persistence, auto-start, drawer expansion, demo node |
-| `src/components/TutorialOverlay.tsx` | Spotlight overlay + tooltip card + focus trapping + keyboard navigation |
-| `src/components/Header.tsx` | Modified — adds a "?" help button to restart the tutorial |
-| `src/App.tsx` | Modified — mounts `<TutorialOverlay />` and wires `useTutorial` |
-| `src/index.css` | Modified — adds `ff-tutorial__*` CSS classes |
+| File                                 | Purpose                                                                                                  |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `src/types/tutorial.ts`              | Type definitions (`TutorialStepId`, `TutorialStepDefinition`, `TutorialState`, `TutorialPersistedState`) |
+| `src/utils/tutorialSteps.ts`         | Step definitions array with element resolvers and tooltip position hints                                 |
+| `src/hooks/useTutorial.ts`           | State machine hook — manages current step, persistence, auto-start, drawer expansion, demo node          |
+| `src/components/TutorialOverlay.tsx` | Spotlight overlay + tooltip card + focus trapping + keyboard navigation                                  |
+| `src/components/Header.tsx`          | Modified — adds a "?" help button to restart the tutorial                                                |
+| `src/App.tsx`                        | Modified — mounts `<TutorialOverlay />` and wires `useTutorial`                                          |
+| `src/index.css`                      | Modified — adds `ff-tutorial__*` CSS classes                                                             |
 
 ## Architecture
 
@@ -77,6 +77,7 @@ bun run test:e2e -- --grep tutorial
 ## Design Decisions
 
 See [`research.md`](research.md) for detailed rationale on:
+
 - Spotlight technique (CSS `box-shadow` spread)
 - Tooltip positioning (manual `getBoundingClientRect()` + flip)
 - Focus trapping (reuse existing `trapFocusWithinPanel` pattern)

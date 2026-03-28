@@ -21,24 +21,24 @@ A 5-step guided tutorial overlay for the Visual Designer that highlights key UI 
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Principle | Status | Notes |
-|-----------|--------|-------|
-| I. Type Safety Above All | ✅ PASS | All tutorial types use discriminated unions and readonly props. No `any`. |
-| II. Visual Feedback is Paramount | ✅ PASS | Smooth transitions between steps; spotlight + dim overlay provides clear visual feedback. |
-| III. Domain-Driven Design | ✅ PASS | Tutorial steps reference domain concepts (nodes, sockets, flows). |
-| IV. Predictable Code Generation | N/A | Tutorial does not affect code generation pipeline. |
-| V. Security by Default | ✅ PASS | Tutorial messages are hardcoded string literals; no user input rendered unsanitised. |
-| VI. Test-First Quality | ✅ PASS | Unit tests for hook + overlay + positioning logic. Playwright E2E for full walkthrough. |
-| VII. Accessibility & Inclusion | ✅ PASS | Keyboard nav (Tab/Enter/Escape), focus trapping, ARIA live region for step announcements, WCAG 2.1 AA contrast. |
-| VIII. Durability & Maintainability | ✅ PASS | State persisted to `localStorage` via existing patterns. Single-responsibility modules. |
-| IX. Artifact Integrity & Lifecycle Separation | N/A | Tutorial does not affect compilation or deployment artifacts. |
-| Architecture Standards — Styling | ✅ PASS | Tailwind + CSS variables, `ff-tutorial__*` BEM classes, `border-radius: 0`. |
-| Architecture Standards — State | ✅ PASS | Local React hooks + localStorage. No global state library. |
-| Architecture Standards — Performance | ✅ PASS | Lightweight overlay; `getBoundingClientRect()` reads batched; CSS transitions for animation. |
-| Dev Workflow — Naming | ✅ PASS | `PascalCase` components, `camelCase` hooks/utils, `ff-tutorial` BEM prefix. |
-| Formatting Standards | ✅ PASS | Prettier + numbered headings in docs. |
+| Principle                                     | Status  | Notes                                                                                                           |
+| --------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| I. Type Safety Above All                      | ✅ PASS | All tutorial types use discriminated unions and readonly props. No `any`.                                       |
+| II. Visual Feedback is Paramount              | ✅ PASS | Smooth transitions between steps; spotlight + dim overlay provides clear visual feedback.                       |
+| III. Domain-Driven Design                     | ✅ PASS | Tutorial steps reference domain concepts (nodes, sockets, flows).                                               |
+| IV. Predictable Code Generation               | N/A     | Tutorial does not affect code generation pipeline.                                                              |
+| V. Security by Default                        | ✅ PASS | Tutorial messages are hardcoded string literals; no user input rendered unsanitised.                            |
+| VI. Test-First Quality                        | ✅ PASS | Unit tests for hook + overlay + positioning logic. Playwright E2E for full walkthrough.                         |
+| VII. Accessibility & Inclusion                | ✅ PASS | Keyboard nav (Tab/Enter/Escape), focus trapping, ARIA live region for step announcements, WCAG 2.1 AA contrast. |
+| VIII. Durability & Maintainability            | ✅ PASS | State persisted to `localStorage` via existing patterns. Single-responsibility modules.                         |
+| IX. Artifact Integrity & Lifecycle Separation | N/A     | Tutorial does not affect compilation or deployment artifacts.                                                   |
+| Architecture Standards — Styling              | ✅ PASS | Tailwind + CSS variables, `ff-tutorial__*` BEM classes, `border-radius: 0`.                                     |
+| Architecture Standards — State                | ✅ PASS | Local React hooks + localStorage. No global state library.                                                      |
+| Architecture Standards — Performance          | ✅ PASS | Lightweight overlay; `getBoundingClientRect()` reads batched; CSS transitions for animation.                    |
+| Dev Workflow — Naming                         | ✅ PASS | `PascalCase` components, `camelCase` hooks/utils, `ff-tutorial` BEM prefix.                                     |
+| Formatting Standards                          | ✅ PASS | Prettier + numbered headings in docs.                                                                           |
 
 **Gate result**: ALL PASS — no violations, no Complexity Tracking needed.
 
@@ -86,6 +86,7 @@ tests/e2e/
 ## Phase 0 Output Reference
 
 See [`research.md`](research.md) for:
+
 - Spotlight overlay technique decision (CSS `box-shadow` vs SVG clip-path vs `mix-blend-mode`)
 - Tooltip positioning strategy
 - Focus trapping approach
