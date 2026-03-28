@@ -2,6 +2,16 @@
 
 declare const __APP_VERSION__: string;
 
+interface ImportMetaEnv {
+	readonly VITE_WALRUS_UPLOAD_RELAY_URL?: string;
+	readonly VITE_WALRUS_UPLOAD_RELAY_TIP_MAX?: string;
+}
+
+declare module "@mysten/walrus-wasm/web/walrus_wasm_bg.wasm?url" {
+	const src: string;
+	export default src;
+}
+
 declare module "@zktx.io/sui-move-builder/lite" {
 	export interface ResolvedDependencies {
 		readonly files: string;

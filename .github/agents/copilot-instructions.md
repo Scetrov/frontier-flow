@@ -1,1 +1,1 @@
-- 014-deploy-grade-dependency-resolution: Added TypeScript 5.9 (strict, ES Modules, no `any`) + `@zktx.io/sui-move-builder` 0.2.8 (WASM), `@mysten/sui` 2.9.1, `@mysten/dapp-kit` 1.0.4, React 19
+- 015-graph-io-publish: Added TypeScript 5.9 (strict, ES Modules, no `any`) + React 19, `@xyflow/react` 12.10, `@mysten/sui` 2.9.1, `@mysten/dapp-kit` 1.0.4, `@mysten/walrus` 1.1.0, `yaml` for portable document encoding

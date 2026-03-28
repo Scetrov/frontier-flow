@@ -1,0 +1,27 @@
+version: 1
+kind: frontier-flow-graph
+exportedAt: 2026-03-28T12:00:00.000Z
+appVersion: 1.0.0
+contract:
+  name: Aggressor First
+  updatedAt: 2026-03-28T12:00:00.000Z
+  source:
+    channel: yaml-export
+graph:
+  nodes:
+    - id: aggression_1
+      type: aggression
+      position:
+        x: 0
+        y: 0
+      data:
+        type: aggression
+        label: Aggression
+        description: Aggression test node
+        color: var(--socket-any)
+        category: action
+        sockets: []
+  edges: []
+  summary:
+    nodeCount: 1
+    edgeCount: 0

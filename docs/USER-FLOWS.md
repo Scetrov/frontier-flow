@@ -16,8 +16,9 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 4. [Testing a Graph](#4-testing-a-graph)
 5. [Wallet Connection & Deployment](#5-wallet-connection--deployment)
 6. [Deployment Review & Recovery](#6-deployment-review--recovery)
-7. [GitHub Integration](#7-github-integration)
-8. [Error Recovery](#8-error-recovery)
+7. [Graph Transfer](#7-graph-transfer)
+8. [GitHub Integration](#8-github-integration)
+9. [Error Recovery](#9-error-recovery)
 
 ---
 
@@ -149,7 +150,26 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 
 ---
 
-## 7. GitHub Integration
+## 7. Graph Transfer
+
+### Scenario: User exports, imports, and republishes a saved graph from the contract drawer
+
+**Preconditions:** User is on the visual canvas; saved-contract drawer is visible; at least one saved contract exists.
+
+| Step | User Action | System Response | Acceptance Criteria |
+| ---- | ----------- | --------------- | ------------------- |
+| 1 | Open the saved-contract drawer | Save, Save Copy, Delete, Import YAML, Import Walrus, Export YAML, and Publish are visible together | Transfer actions appear in the same drawer section as local save controls |
+| 2 | Click `Export YAML` | Transfer dialog opens in export mode | Dialog title reads `Export YAML`; dismiss button receives focus |
+| 3 | Click `Download YAML` | Browser download begins | Downloaded file name ends with `.frontier-flow.yaml` |
+| 4 | Reopen transfer and choose `Import YAML` | File picker is available | Dialog accepts `.yaml` and `.yml` files |
+| 5 | Select a previously exported graph with an existing name collision | Graph is imported as a new saved contract | Existing saved and seeded contracts remain unchanged; imported contract gets a unique `(<n>)` suffix |
+| 6 | Click `Import Walrus` and submit an empty blob id | Inline validation error is shown | Active contract selection and draft name remain unchanged |
+| 7 | Connect a wallet and click `Publish` | Progress messages advance through register, upload, and certify states | Publish button is disabled without a wallet; success view shows the returned Walrus blob id |
+| 8 | Press `Escape` while the dialog is open | Dialog closes | Focus returns to the drawer workflow without mutating the current graph |
+
+---
+
+## 8. GitHub Integration
 
 ### Scenario: User saves graph to GitHub for persistence
 
@@ -171,7 +191,7 @@ description: Step-by-step user journeys and acceptance criteria for core Frontie
 
 ---
 
-## 8. Error Recovery
+## 9. Error Recovery
 
 ### Scenario: Compilation fails with an error
 

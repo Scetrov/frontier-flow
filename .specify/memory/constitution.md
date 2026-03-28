@@ -1,22 +1,14 @@
 <!--
   Sync Impact Report
   ===================
-  Version change: 1.0.0 → 1.1.0
-  Bump rationale: MINOR — materially expanded existing principles
-    (I, IV, V, VII) and added new Principle IX from ADR findings.
+  Version change: 1.1.0 → 1.2.0
+  Bump rationale: MINOR — added markdown formatting governance
+    requirements for repository documentation.
   Modified principles:
-    - I. Type Safety Above All → added strict type-checked linting
-      (ADR-006)
-    - IV. Predictable Code Generation → added IR-based pipeline
-      architecture, source-map traceability, phase isolation
-      (ADR-005)
-    - V. Security by Default → added WASM supply chain integrity
-      (ADR-003)
-    - VII. Accessibility & Inclusion → added automated axe-core
-      auditing in CI (ADR-007)
-  Added sections:
-    - IX. Artifact Integrity & Lifecycle Separation (ADR-008,
-      ADR-009)
+    - Formatting Standards → added markdown document rules for
+      numbered headings, backticked paths/filenames, and prettier
+      formatting.
+  Added sections: none
   Removed sections: none
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ no changes needed
@@ -171,7 +163,7 @@
 
 - **Runtime**: React 19, TypeScript 5.9 (strict), ES Modules.
 - **Build**: Vite (Rolldown fork), Bun (`bun dev`, `bun run
-  build`, `bun run lint`, `bun run test`).
+build`, `bun run lint`, `bun run test`).
 - **Graph Engine**: `@xyflow/react` (React Flow v12).
   React Flow usage SHOULD be abstracted behind wrapper hooks
   to contain the migration surface for future major version
@@ -245,6 +237,11 @@
 
 ## Formatting Standards
 
-- Use prettier to format markdown files and ensure there are no warnings.
+- Markdown paths and filenames MUST be wrapped in backticks.
+- Markdown headings MUST be numbered consistently (for example,
+  `# 1.`, `## 1.1.`, `### 1.1.1.`).
+- Markdown files MUST be formatted with prettier, including aligned
+  table columns where prettier supports them and a trailing newline
+  at end of file.
 
-**Version**: 1.1.0 | **Ratified**: 2026-02-22 | **Last Amended**: 2026-03-25
+**Version**: 1.2.0 | **Ratified**: 2026-02-22 | **Last Amended**: 2026-03-28

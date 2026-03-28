@@ -316,7 +316,19 @@ button,
   align-items: stretch;
 }
 
+.ff-contract-bar__transfer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--ui-border-dark);
+  padding-top: 0.75rem;
+}
+
 .ff-contract-bar__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   min-height: 2.5rem;
   padding: 0.65rem 0.9rem;
   font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
@@ -324,6 +336,17 @@ button,
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
+}
+
+.ff-contract-bar__button-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+}
+
+.ff-contract-bar__button-label {
+  display: inline-flex;
+  align-items: center;
 }
 
 .ff-contract-bar__button:hover {
@@ -374,6 +397,194 @@ button,
 .ff-contract-bar__button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.ff-transfer-dialog__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 8, 12, 0.7);
+  padding: 1rem;
+}
+
+.ff-transfer-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.ff-transfer-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(30rem, 100%);
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.96);
+  box-shadow: 0 20px 38px rgba(3, 6, 10, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.ff-transfer-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ff-transfer-dialog__eyebrow,
+.ff-transfer-dialog__label {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-transfer-dialog__title {
+  margin: 0.6rem 0 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cream-white);
+}
+
+.ff-transfer-dialog__dismiss,
+.ff-transfer-dialog__code {
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(26, 10, 10, 0.9);
+  color: var(--cream-white);
+  font: inherit;
+}
+
+.ff-transfer-dialog__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  padding: 0.55rem 0.8rem;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ff-transfer-dialog__body,
+.ff-transfer-dialog__section,
+.ff-transfer-dialog__result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ff-transfer-dialog__copy,
+.ff-transfer-dialog__detail {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.ff-transfer-dialog__status {
+  border: 1px solid var(--ui-border-dark);
+  padding: 0.8rem 0.9rem;
+  color: var(--cream-white);
+}
+
+.ff-transfer-dialog__status--error {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(96, 25, 25, 0.35);
+}
+
+.ff-transfer-dialog__status--success {
+  border-color: rgba(137, 223, 168, 0.35);
+  background: rgba(20, 54, 28, 0.35);
+}
+
+.ff-transfer-dialog__status--publishing,
+.ff-transfer-dialog__status--validating,
+.ff-transfer-dialog__status--importing,
+.ff-transfer-dialog__status--collecting-input {
+  background: rgba(255, 71, 0, 0.08);
+}
+
+.ff-transfer-dialog__code {
+  display: block;
+  overflow-x: auto;
+  padding: 0.7rem 0.8rem;
+}
+
+.ff-transfer-dialog__file-input {
+  padding-block: 0.45rem;
+}
+
+.ff-privacy-banner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--ui-border-dark);
+  background: rgba(16, 21, 31, 0.94);
+  padding: 0.85rem 1rem;
+}
+
+.ff-privacy-banner__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.ff-privacy-banner__eyebrow {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-privacy-banner__text {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.ff-privacy-banner__dismiss {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(255, 71, 0, 0.08);
+  color: var(--cream-white);
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ff-privacy-banner__dismiss:hover,
+.ff-privacy-banner__dismiss:focus-visible {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.16);
+}
+
+@media (max-width: 767px) {
+  .ff-privacy-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ff-privacy-banner__dismiss {
+    width: 100%;
+  }
 }
 
 .ff-header__button {

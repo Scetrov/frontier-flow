@@ -2,6 +2,7 @@ import { hydrateFlowNode } from "../data/node-definitions";
 import { getLegacyNodeMigrationRule, migrateLegacyNode } from "../data/nodeMigration";
 import type { CompilerDiagnostic } from "../compiler/types";
 import type { FlowEdge, FlowNode, RemediationNotice } from "../types/nodes";
+import { deriveFlowEdgePresentation } from "../utils/socketTypes";
 
 /**
  * Convert remediation notices from flow restoration into compiler diagnostics
@@ -75,11 +76,16 @@ export function restoreSavedFlow(
   });
 
   const restoredNodesById = new Map(restoredNodes.map((node) => [node.id, node]));
-  const restoredEdges = [...initialEdges, ...migratedEdges].filter(
-    (edge) =>
-      hasValidHandle(restoredNodesById.get(edge.source), edge.sourceHandle, "output") &&
-      hasValidHandle(restoredNodesById.get(edge.target), edge.targetHandle, "input"),
-  );
+  const restoredEdges = [...initialEdges, ...migratedEdges]
+    .filter(
+      (edge) =>
+        hasValidHandle(restoredNodesById.get(edge.source), edge.sourceHandle, "output") &&
+        hasValidHandle(restoredNodesById.get(edge.target), edge.targetHandle, "input"),
+    )
+    .map((edge) => ({
+      ...edge,
+      ...deriveFlowEdgePresentation(edge, restoredNodesById),
+    }));
 
   return {
     nodes: restoredNodes,
