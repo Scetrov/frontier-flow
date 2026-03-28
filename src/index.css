@@ -1023,7 +1023,7 @@ button,
   position: relative;
   z-index: 1;
   display: grid;
-  width: min(44rem, 100%);
+  width: min(100%, clamp(44rem, 38vw, 60rem));
   max-height: calc(100dvh - 3rem);
   gap: 1rem;
   border: 1px solid var(--ui-border-dark);
