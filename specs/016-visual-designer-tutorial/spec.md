@@ -5,6 +5,15 @@
 **Status**: Draft
 **Input**: User description: "I would like to make a tutorial for the Visual Designer that highlights the key areas for people to get started. For each one I want the rest of the screen to be dimmed except the element, there should be a next button to move to the next element and a dismiss to dismiss the entire tutorial."
 
+## Clarifications
+
+### Session 2026-03-28
+
+- Q: How should step 3 (socket highlighting) behave when no nodes exist on the canvas? → A: Place a temporary demo node on the canvas, highlight one of its sockets, and remove the node when the tutorial ends or advances past step 3.
+- Q: When the user navigates away from the Visual Designer view during the tutorial, should the tutorial pause (resumable) or dismiss entirely? → A: Dismiss entirely — the tutorial is lightweight enough to restart from scratch via the manual trigger.
+- Q: Where should the manual trigger to restart the tutorial be placed? → A: A help icon button (e.g., "?") in the header bar, consistent with the existing header layout.
+- Q: When should the tutorial auto-start for first-time users — immediately on page load, or after the canvas has rendered? → A: After the Visual Designer canvas has fully rendered, with a brief delay (~500 ms) so the user sees the interface before the overlay appears.
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--
@@ -91,9 +100,9 @@ The tutorial tooltip card shows which step the user is on and how many steps rem
 ### Edge Cases
 
 - What happens when the toolbox drawer is collapsed when the tutorial reaches step 2? The tutorial should ensure the toolbox is visible (expand it if needed) before highlighting it.
-- What happens when there are no nodes on the canvas and therefore no visible sockets when step 3 is reached? The tutorial should place a temporary example node on the canvas or highlight the socket area on the toolbox, so the user can see what a socket looks like.
+- What happens when there are no nodes on the canvas and therefore no visible sockets when step 3 is reached? The tutorial places a temporary demonstration node on the canvas, highlights one of its sockets, and removes the demo node when the tutorial advances past step 3 or is dismissed.
 - What happens if the Save/Load drawer is collapsed when step 4 is reached? The tutorial should expand it before highlighting.
-- What happens when the user navigates away from the Visual Designer view (e.g., switches to Code view) while the tutorial is active? The tutorial should pause or dismiss gracefully.
+- What happens when the user navigates away from the Visual Designer view (e.g., switches to Code view) while the tutorial is active? The tutorial dismisses entirely (does not pause). The user can restart it via the manual trigger in the header.
 - What happens if the browser window is very narrow and the tooltip would overflow the viewport? The tooltip should reposition (e.g., flip sides or move below) to remain fully visible.
 - What happens if the user refreshes the page mid-tutorial? The tutorial state is lost and the user is not shown the tutorial again (it counts as seen), but they can manually re-trigger it.
 
@@ -111,16 +120,16 @@ The tutorial tooltip card shows which step the user is on and how many steps rem
   5. Visual/Code/Deploy/Authorize navigation with message "Once your flow is complete, move on to review the code and Deploy from here"
 - **FR-004**: System MUST transition smoothly between steps when the user clicks "Next", moving the highlight and tooltip to the next element.
 - **FR-005**: System MUST dismiss the entire tutorial immediately when the user clicks "Dismiss" at any step, removing the overlay and restoring full interactivity.
-- **FR-006**: System MUST automatically start the tutorial on the first visit to the application when no prior tutorial completion state exists.
+- **FR-006**: System MUST automatically start the tutorial on the first visit to the application when no prior tutorial completion state exists, beginning after the Visual Designer canvas has fully rendered with a brief delay (~500 ms).
 - **FR-007**: System MUST persist a flag indicating the tutorial has been seen so it does not auto-start on subsequent visits.
-- **FR-008**: System MUST provide a manual trigger (e.g., a help/tutorial button in the header or an accessible location) to restart the tutorial at any time.
+- **FR-008**: System MUST provide a help icon button (e.g., "?") in the header bar to restart the tutorial at any time, placed consistently with the existing header layout.
 - **FR-009**: System MUST support keyboard navigation: Tab to move focus between tooltip buttons, Enter/Space to activate the focused button, Escape to dismiss.
 - **FR-010**: System MUST ensure the highlighted element appears visually elevated above the dimming overlay (at full opacity/brightness, not covered by the overlay).
 - **FR-011**: System MUST ensure the tooltip card does not overlap the highlighted element and remains within the viewport boundaries.
 - **FR-012**: System MUST ensure drawers or panels required for a tutorial step (Toolbox, Save/Load) are expanded/visible before highlighting them.
-- **FR-013**: System MUST provide an appropriate visual representation for the socket step (step 3) even when no nodes are present on the canvas — for example, by placing a temporary demonstration node.
+- **FR-013**: System MUST place a temporary demonstration node on the canvas for the socket step (step 3) when no nodes are present, highlight one of its sockets, and remove the demo node when the tutorial advances past step 3 or is dismissed.
 - **FR-014**: System MUST announce each tutorial step to screen readers, including step number, total steps, and the description text.
-- **FR-015**: System MUST gracefully handle the tutorial when the user navigates away from the Visual Designer view — pausing or dismissing the tutorial.
+- **FR-015**: System MUST dismiss the tutorial entirely when the user navigates away from the Visual Designer view. The tutorial does not pause or resume — the user can restart it via the header help button.
 - **FR-016**: System MUST display a step progress indicator (e.g., "Step N of 5" or equivalent dots/bar) within the tooltip card.
 
 ### Key Entities
