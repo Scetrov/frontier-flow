@@ -17,7 +17,7 @@ A 5-step guided tutorial overlay for the Visual Designer that highlights key UI 
 **Project Type**: Web application (Vite + React SPA)
 **Performance Goals**: Overlay renders in < 16 ms per step transition (no jank), animation at 60fps
 **Constraints**: Zero external tour/walkthrough libraries; must use existing design system; no `border-radius`; WCAG 2.1 AA compliance
-**Scale/Scope**: 5 tutorial steps, ~8 source files (4 new, 4 modified), ~3 new test files
+**Scale/Scope**: 5 tutorial steps, ~9 source files (4 new, 5 modified), ~3 new test files
 
 ## 1.3. Constitution Check
 
@@ -62,7 +62,7 @@ src/
 ├── components/
 │   ├── Header.tsx                  # MODIFIED — add tutorial help button
 │   ├── TutorialOverlay.tsx         # NEW — overlay + spotlight + tooltip
-│   └── CanvasWorkspace.tsx         # MODIFIED — wire tutorial demo node logic
+│   └── CanvasWorkspace.tsx         # MODIFIED — add demo node insertion/removal callback props
 ├── hooks/
 │   └── useTutorial.ts              # NEW — tutorial state machine + localStorage
 ├── utils/

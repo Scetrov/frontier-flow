@@ -101,7 +101,7 @@ The tutorial tooltip card shows which step the user is on and how many steps rem
 
 - What happens when the toolbox drawer is collapsed when the tutorial reaches step 2? The tutorial should ensure the toolbox is visible (expand it if needed) before highlighting it.
 - What happens when there are no nodes on the canvas and therefore no visible sockets when step 3 is reached? The tutorial places a temporary demonstration node on the canvas, highlights one of its sockets, and removes the demo node when the tutorial advances past step 3 or is dismissed.
-- What happens if the Save/Load drawer is collapsed when step 4 is reached? The tutorial should expand it before highlighting.
+- What happens if the Save/Load drawer (`contract-panel`) is collapsed when step 4 is reached? The tutorial should expand it before highlighting.
 - What happens when the user navigates away from the Visual Designer view (e.g., switches to Code view) while the tutorial is active? The tutorial dismisses entirely (does not pause). The user can restart it via the manual trigger in the header.
 - What happens if the browser window is very narrow and the tooltip would overflow the viewport? The tooltip should reposition (e.g., flip sides or move below) to remain fully visible.
 - What happens if the user refreshes the page mid-tutorial? The tutorial state is lost and the user is not shown the tutorial again (it counts as seen), but they can manually re-trigger it.
@@ -151,10 +151,10 @@ The tutorial tooltip card shows which step the user is on and how many steps rem
 
 ### 1.5.1. Measurable Outcomes
 
-- **SC-001**: 90% of first-time users are presented with the tutorial automatically upon their first visit.
+- **SC-001** *(post-launch metric — requires analytics instrumentation)*: 90% of first-time users are presented with the tutorial automatically upon their first visit.
 - **SC-002**: Users can complete the full 5-step tutorial in under 60 seconds.
-- **SC-003**: 80% of users who start the tutorial complete all 5 steps (do not dismiss early).
+- **SC-003** *(post-launch metric — requires analytics instrumentation)*: 80% of users who start the tutorial complete all 5 steps (do not dismiss early).
 - **SC-004**: The tutorial is fully navigable via keyboard alone, with all interactive elements reachable via Tab and activatable via Enter/Space.
 - **SC-005**: All tutorial tooltip text meets WCAG 2.1 AA contrast requirements (minimum 4.5:1 ratio against its background).
 - **SC-006**: The tutorial overlay and tooltip reposition correctly when the viewport is resized, with no content overflowing or being clipped outside the visible area.
-- **SC-007**: Users who complete the tutorial demonstrate faster time-to-first-flow (placing their first node on the canvas) compared to users who skip it — target: 25% reduction in time-to-first-action.
+- **SC-007** *(post-launch metric — requires analytics instrumentation)*: Users who complete the tutorial demonstrate faster time-to-first-flow (placing their first node on the canvas) compared to users who skip it — target: 25% reduction in time-to-first-action.
