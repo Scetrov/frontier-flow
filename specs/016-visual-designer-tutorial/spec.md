@@ -1,27 +1,27 @@
-# Feature Specification: Visual Designer Guided Tutorial
+# 1. Feature Specification: Visual Designer Guided Tutorial
 
 **Feature Branch**: `016-visual-designer-tutorial`
 **Created**: 2026-03-28
 **Status**: Draft
 **Input**: User description: "I would like to make a tutorial for the Visual Designer that highlights the key areas for people to get started. For each one I want the rest of the screen to be dimmed except the element, there should be a next button to move to the next element and a dismiss to dismiss the entire tutorial."
 
-## Clarifications
+## 1.1. Clarifications
 
-### Session 2026-03-28
+### 1.1.1. Session 2026-03-28
 
 - Q: How should step 3 (socket highlighting) behave when no nodes exist on the canvas? → A: Place a temporary demo node on the canvas, highlight one of its sockets, and remove the node when the tutorial ends or advances past step 3.
 - Q: When the user navigates away from the Visual Designer view during the tutorial, should the tutorial pause (resumable) or dismiss entirely? → A: Dismiss entirely — the tutorial is lightweight enough to restart from scratch via the manual trigger.
 - Q: Where should the manual trigger to restart the tutorial be placed? → A: A help icon button (e.g., "?") in the header bar, consistent with the existing header layout.
 - Q: When should the tutorial auto-start for first-time users — immediately on page load, or after the canvas has rendered? → A: After the Visual Designer canvas has fully rendered, with a brief delay (~500 ms) so the user sees the interface before the overlay appears.
 
-## User Scenarios & Testing *(mandatory)*
+## 1.2. User Scenarios & Testing *(mandatory)*
 
 <!--
   User stories are prioritised as user journeys ordered by importance.
   Each story is independently testable and delivers standalone value.
 -->
 
-### User Story 1 — Step-by-Step Guided Walkthrough (Priority: P1)
+### 1.2.1. User Story 1 — Step-by-Step Guided Walkthrough (Priority: P1)
 
 A first-time user opens Frontier Flow and is offered a guided tutorial that walks them through the five key interface areas one at a time. At each step, the rest of the screen dims behind a semi-transparent overlay while the highlighted element remains fully visible and interactive-looking. A tooltip card explains what the highlighted element does, with "Next" and "Dismiss" buttons. The user advances through all five steps in sequence, gaining enough understanding to begin building a flow.
 
@@ -47,7 +47,7 @@ A first-time user opens Frontier Flow and is offered a guided tutorial that walk
 
 ---
 
-### User Story 2 — Tutorial Trigger and Auto-Start for New Users (Priority: P2)
+### 1.2.2. User Story 2 — Tutorial Trigger and Auto-Start for New Users (Priority: P2)
 
 A first-time visitor to Frontier Flow is automatically offered the guided tutorial on their first visit. The tutorial can also be manually triggered at any time from the interface (e.g., via a help button or menu option). A returning user who has already completed or dismissed the tutorial is not shown it again automatically but can re-trigger it manually.
 
@@ -64,7 +64,7 @@ A first-time visitor to Frontier Flow is automatically offered the guided tutori
 
 ---
 
-### User Story 3 — Accessible and Responsive Tutorial Experience (Priority: P3)
+### 1.2.3. User Story 3 — Accessible and Responsive Tutorial Experience (Priority: P3)
 
 The tutorial overlay and tooltip are fully accessible and responsive. Users navigating with a keyboard can advance or dismiss the tutorial using keyboard controls. The tutorial adapts to different viewport sizes, ensuring the tooltip and highlight remain correctly positioned. Screen readers announce each tutorial step.
 
@@ -82,7 +82,7 @@ The tutorial overlay and tooltip are fully accessible and responsive. Users navi
 
 ---
 
-### User Story 4 — Step Progress Indication (Priority: P4)
+### 1.2.4. User Story 4 — Step Progress Indication (Priority: P4)
 
 The tutorial tooltip card shows which step the user is on and how many steps remain (e.g., "Step 2 of 5"), giving the user a clear sense of progress through the tutorial.
 
@@ -97,7 +97,7 @@ The tutorial tooltip card shows which step the user is on and how many steps rem
 
 ---
 
-### Edge Cases
+### 1.2.5. Edge Cases
 
 - What happens when the toolbox drawer is collapsed when the tutorial reaches step 2? The tutorial should ensure the toolbox is visible (expand it if needed) before highlighting it.
 - What happens when there are no nodes on the canvas and therefore no visible sockets when step 3 is reached? The tutorial places a temporary demonstration node on the canvas, highlights one of its sockets, and removes the demo node when the tutorial advances past step 3 or is dismissed.
@@ -106,9 +106,9 @@ The tutorial tooltip card shows which step the user is on and how many steps rem
 - What happens if the browser window is very narrow and the tooltip would overflow the viewport? The tooltip should reposition (e.g., flip sides or move below) to remain fully visible.
 - What happens if the user refreshes the page mid-tutorial? The tutorial state is lost and the user is not shown the tutorial again (it counts as seen), but they can manually re-trigger it.
 
-## Requirements *(mandatory)*
+## 1.3. Requirements *(mandatory)*
 
-### Functional Requirements
+### 1.3.1. Functional Requirements
 
 - **FR-001**: System MUST display a full-screen semi-transparent overlay that dims the entire interface except the currently highlighted element during each tutorial step.
 - **FR-002**: System MUST show a tooltip card adjacent to the highlighted element containing: the description text for that step, a step progress indicator, a "Next" button (or "Finish" on the last step), and a "Dismiss" button.
@@ -131,14 +131,15 @@ The tutorial tooltip card shows which step the user is on and how many steps rem
 - **FR-014**: System MUST announce each tutorial step to screen readers, including step number, total steps, and the description text.
 - **FR-015**: System MUST dismiss the tutorial entirely when the user navigates away from the Visual Designer view. The tutorial does not pause or resume — the user can restart it via the header help button.
 - **FR-016**: System MUST display a step progress indicator (e.g., "Step N of 5" or equivalent dots/bar) within the tooltip card.
+- **FR-017**: System MUST skip a tutorial step and advance to the next if the target element cannot be resolved after 3 retry attempts (100ms apart), ensuring the tutorial does not stall on an unmountable element.
 
-### Key Entities
+### 1.3.2. Key Entities
 
 - **Tutorial Step**: Represents a single step in the guided walkthrough. Has an ordinal position, a target element identifier, a description message, and optional tooltip positioning hints.
 - **Tutorial State**: Represents the user's progress and history with the tutorial. Tracks whether the tutorial has been seen/completed and, optionally, which step was last viewed.
 - **Tutorial Overlay**: The visual layer that dims the screen and highlights the active element. It is the container for the tooltip card and spotlight cutout.
 
-## Assumptions
+## 1.4. Assumptions
 
 - The tutorial persists its "seen" state in the browser's local storage (consistent with how Frontier Flow already persists user preferences like saved flows).
 - The tutorial is specific to the Visual Designer view and does not cover other views (Code, Deploy, Authorize) — step 5 only points the user to those views.
@@ -146,9 +147,9 @@ The tutorial tooltip card shows which step the user is on and how many steps rem
 - The tutorial overlay does not block essential background operations (e.g., wallet connections, network requests).
 - The Toolbox and Save/Load drawers can be programmatically expanded when needed by the tutorial.
 
-## Success Criteria *(mandatory)*
+## 1.5. Success Criteria *(mandatory)*
 
-### Measurable Outcomes
+### 1.5.1. Measurable Outcomes
 
 - **SC-001**: 90% of first-time users are presented with the tutorial automatically upon their first visit.
 - **SC-002**: Users can complete the full 5-step tutorial in under 60 seconds.

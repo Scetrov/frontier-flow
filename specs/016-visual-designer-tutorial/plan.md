@@ -1,13 +1,13 @@
-# Implementation Plan: Visual Designer Guided Tutorial
+# 1. Implementation Plan: Visual Designer Guided Tutorial
 
 **Branch**: `016-visual-designer-tutorial` | **Date**: 2026-03-28 | **Spec**: [`spec.md`](spec.md)
 **Input**: Feature specification from `specs/016-visual-designer-tutorial/spec.md`
 
-## Summary
+## 1.1. Summary
 
 A 5-step guided tutorial overlay for the Visual Designer that highlights key UI areas (network selector, toolbox, sockets, save/load, view navigation) one at a time, dimming the rest of the screen. Built as a pure TypeScript + HTML + CSS feature within the existing React component architecture — no third-party tour library — using a custom `useTutorial` hook for state, a `TutorialOverlay` component for the spotlight and tooltip rendering, and `localStorage` for persistence.
 
-## Technical Context
+## 1.2. Technical Context
 
 **Language/Version**: TypeScript 5.9 (strict, no `any`), ES Modules, HTML, CSS
 **Primary Dependencies**: React 19, `@xyflow/react` (React Flow v12), Tailwind CSS 4
@@ -17,9 +17,9 @@ A 5-step guided tutorial overlay for the Visual Designer that highlights key UI 
 **Project Type**: Web application (Vite + React SPA)
 **Performance Goals**: Overlay renders in < 16 ms per step transition (no jank), animation at 60fps
 **Constraints**: Zero external tour/walkthrough libraries; must use existing design system; no `border-radius`; WCAG 2.1 AA compliance
-**Scale/Scope**: 5 tutorial steps, ~6 new/modified source files, ~3 new test files
+**Scale/Scope**: 5 tutorial steps, ~8 source files (4 new, 4 modified), ~3 new test files
 
-## Constitution Check
+## 1.3. Constitution Check
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
@@ -42,9 +42,9 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 **Gate result**: ALL PASS — no violations, no Complexity Tracking needed.
 
-## Project Structure
+## 1.4. Project Structure
 
-### Documentation (this feature)
+### 1.4.1. Documentation (this feature)
 
 ```text
 specs/016-visual-designer-tutorial/
@@ -55,7 +55,7 @@ specs/016-visual-designer-tutorial/
 └── tasks.md             # Phase 2 output (via /speckit.tasks)
 ```
 
-### Source Code (repository root)
+### 1.4.2. Source Code (repository root)
 
 ```text
 src/
@@ -83,7 +83,7 @@ tests/e2e/
 
 **Structure Decision**: Tutorial is a cross-cutting UI concern that touches Header (help button), CanvasWorkspace (demo node), and App (overlay mount point). New components live alongside existing components in `src/components/`. The hook, types, and step configuration are in their respective established directories.
 
-## Phase 0 Output Reference
+## 1.5. Phase 0 Output Reference
 
 See [`research.md`](research.md) for:
 
@@ -93,7 +93,7 @@ See [`research.md`](research.md) for:
 - Demo node insertion/cleanup
 - `localStorage` key schema
 
-## Phase 1 Output Reference
+## 1.6. Phase 1 Output Reference
 
 See [`data-model.md`](data-model.md) for entity definitions and state transitions.
 See [`quickstart.md`](quickstart.md) for developer onboarding to this feature.

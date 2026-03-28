@@ -36,7 +36,8 @@ Runtime state for the active tutorial session. Managed by the `useTutorial` hook
 | `isActive`         | `boolean`         | Whether the tutorial overlay is currently displayed     |
 | `currentStepIndex` | `number` (0–4)    | Index into the ordered step array                       |
 | `targetRect`       | `DOMRect \| null` | Bounding rectangle of the currently highlighted element |
-| `tooltipVisible`   | `boolean`         | Controls tooltip fade-in/out during step transitions    |
+
+> **Note**: Tooltip fade-in/out visibility is managed as component-internal state within `TutorialOverlay`, not in the hook-level `TutorialState`. See research §7.2 for transition timing (200ms ease).
 
 ### 1.4. `TutorialPersistedState`
 
@@ -64,7 +65,6 @@ Persisted to `localStorage` under key `frontier-flow:tutorial`.
         │  isActive = true                         │
         │  currentStepIndex = N                    │
         │  targetRect = measured rect              │
-        │  tooltipVisible = true                   │
         └──────┬──────────────┬───────────────────┘
                │              │
      ┌─────────┘              └──────────┐
@@ -88,23 +88,23 @@ Persisted to `localStorage` under key `frontier-flow:tutorial`.
 
 ### Transition Rules
 
-| Trigger                                  | From            | To                              | Side Effects                                                                      |
-| ---------------------------------------- | --------------- | ------------------------------- | --------------------------------------------------------------------------------- |
-| First visit + canvas ready + 500ms delay | INACTIVE        | STEP 0 ACTIVE                   | Expand required drawers; insert demo node if needed                               |
-| Click help button                        | INACTIVE        | STEP 0 ACTIVE                   | Expand required drawers; insert demo node if needed                               |
-| Click "Next" (step < 4)                  | STEP N ACTIVE   | TRANSITIONING → STEP N+1 ACTIVE | Clean up demo node from step 2 if advancing past it; expand drawers for next step |
-| Click "Next" on step 4 (last)            | STEP 4 ACTIVE   | DISMISSED                       | Persist `hasSeenTutorial = true`; clean up demo node if present                   |
-| Click "Dismiss"                          | Any ACTIVE step | DISMISSED                       | Persist `hasSeenTutorial = true`; clean up demo node if present                   |
-| Press Escape                             | Any ACTIVE step | DISMISSED                       | Same as Dismiss                                                                   |
-| Navigate away from Visual view           | Any ACTIVE step | DISMISSED                       | Same as Dismiss                                                                   |
-| Window resize / scroll                   | Any ACTIVE step | Same step (rect updated)        | Recalculate `targetRect`                                                          |
+| Trigger                                  | From            | To                              | Side Effects                                                                                |
+| ---------------------------------------- | --------------- | ------------------------------- | ------------------------------------------------------------------------------------------- |
+| First visit + canvas ready + 500ms delay | INACTIVE        | STEP 0 ACTIVE                   | Persist `hasSeenTutorial = true`; expand required drawers; insert demo node if needed       |
+| Click help button                        | INACTIVE        | STEP 0 ACTIVE                   | Persist `hasSeenTutorial = true`; expand required drawers; insert demo node if needed       |
+| Click "Next" (step < 4)                  | STEP N ACTIVE   | TRANSITIONING → STEP N+1 ACTIVE | Clean up demo node from step 3 (index 2) if advancing past it; expand drawers for next step |
+| Click "Next" on step 4 (last)            | STEP 4 ACTIVE   | DISMISSED                       | Persist `hasSeenTutorial = true`; clean up demo node if present                             |
+| Click "Dismiss"                          | Any ACTIVE step | DISMISSED                       | Persist `hasSeenTutorial = true`; clean up demo node if present                             |
+| Press Escape                             | Any ACTIVE step | DISMISSED                       | Same as Dismiss                                                                             |
+| Navigate away from Visual view           | Any ACTIVE step | DISMISSED                       | Same as Dismiss                                                                             |
+| Window resize / scroll                   | Any ACTIVE step | Same step (rect updated)        | Recalculate `targetRect`                                                                    |
 
 ## 3. Relationships
 
 ```text
 TutorialStepDefinition[5] ──(ordinal order)──▶ TutorialState.currentStepIndex
                                                      │
-TutorialState ──(persist on dismiss/finish)──▶ TutorialPersistedState (localStorage)
+TutorialState ──(persist on start/dismiss/finish)──▶ TutorialPersistedState (localStorage)
                                                      │
 TutorialPersistedState ──(read on mount)──▶ auto-start decision (if !hasSeenTutorial)
 ```

@@ -81,6 +81,7 @@ When `isActive` is `true` and `targetRect` is not `null`:
   - Progress indicator (`"Step {currentStepIndex + 1} of {totalSteps}"`)
   - "Next" button (or "Finish" on last step)
   - "Dismiss" button
+- Tooltip card fades in/out with CSS opacity/transform transitions (200ms ease) during step changes
 - Traps focus within the tooltip (Tab cycles between Next and Dismiss)
 - Calls `onDismiss` when Escape is pressed
 
@@ -134,7 +135,8 @@ interface TutorialStepDefinition {
 ### Behaviour
 
 - **Read on mount**: If key absent or unparseable → default `{ version: 1, hasSeenTutorial: false }`.
-- **Write on dismiss/finish**: Set `hasSeenTutorial: true`.
+- **Write on start**: Set `hasSeenTutorial: true` when the tutorial begins (auto-start or manual trigger), ensuring a mid-tutorial page refresh counts as “seen” and prevents auto-start on reload.
+- **Write on dismiss/finish**: Set `hasSeenTutorial: true` (idempotent — already set on start).
 - **Version mismatch**: If `version !== 1` → reset to defaults.
 
 ---
