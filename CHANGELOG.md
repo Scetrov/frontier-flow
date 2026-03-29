@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.9.0](https://github.com/Scetrov/frontier-flow/compare/v0.7.0...v0.9.0) (2026-03-29)
+
+
+### Features
+
+* add visual designer tutorial ([#18](https://github.com/Scetrov/frontier-flow/issues/18)) ([9ba44ae](https://github.com/Scetrov/frontier-flow/commit/9ba44ae6c85ec0d591ce846b6bbc77c8c59357eb))
+
+## [0.8.0](https://github.com/Scetrov/frontier-flow/compare/v0.7.0...v0.8.0) (2026-03-29)
+
+
+### Features
+
+* add visual designer tutorial ([#18](https://github.com/Scetrov/frontier-flow/issues/18)) ([9ba44ae](https://github.com/Scetrov/frontier-flow/commit/9ba44ae6c85ec0d591ce846b6bbc77c8c59357eb))
+
 ## [0.7.0](https://github.com/Scetrov/frontier-flow/compare/v0.5.1...v0.7.0) (2026-03-28)
 
 
