@@ -15,12 +15,12 @@ interface TemplateBuilder {
 }
 
 function resolveTemplateKind(graph: IRGraph): TemplateKind | null {
-  switch (graph.requestedModuleName) {
+  switch (graph.moduleName) {
     case "turret_aggressor_first":
     case "turret_low_hp_finisher":
     case "turret_player_screen":
     case "turret_size_priority":
-      return graph.requestedModuleName;
+      return graph.moduleName;
     default:
       return null;
   }
@@ -304,12 +304,12 @@ function emitPlayerScreenTemplate(builder: TemplateBuilder): void {
 
 function emitSizePriorityTemplate(builder: TemplateBuilder): void {
   emitCommonPreamble(builder);
-  pushLine(builder, "    const GROUP_CORVETTE: u64 = 31;", "getGroupId");
-  pushLine(builder, "    const GROUP_FRIGATE: u64 = 237;", "getGroupId");
-  pushLine(builder, "    const GROUP_DESTROYER: u64 = 25;", "getGroupId");
-  pushLine(builder, "    const GROUP_CRUISER: u64 = 420;", "getGroupId");
-  pushLine(builder, "    const GROUP_BATTLECRUISER: u64 = 26;", "getGroupId");
-  pushLine(builder, "    const GROUP_BATTLESHIP: u64 = 419;", "getGroupId");
+  pushLine(builder, "    const GROUP_SHUTTLE: u64 = 31;", "getGroupId");
+  pushLine(builder, "    const GROUP_CORVETTE: u64 = 237;", "getGroupId");
+  pushLine(builder, "    const GROUP_FRIGATE: u64 = 25;", "getGroupId");
+  pushLine(builder, "    const GROUP_DESTROYER: u64 = 420;", "getGroupId");
+  pushLine(builder, "    const GROUP_CRUISER: u64 = 26;", "getGroupId");
+  pushLine(builder, "    const GROUP_COMBAT_BATTLECRUISER: u64 = 419;", "getGroupId");
   pushLine(builder, "    const TIER_WEIGHT: u64 = 3_000;", "sizeTierBonus");
   pushLine(builder, "    const STARTED_ATTACK_BONUS: u64 = 10_000;", "aggression");
   pushLine(builder, "    const AGGRESSOR_BONUS: u64 = 4_000;", "aggression");
@@ -345,12 +345,12 @@ function emitSizePriorityTemplate(builder: TemplateBuilder): void {
   pushLine(builder, "    }");
   pushBlankLine(builder);
   pushLine(builder, "    fun tier_for_group(group_id: u64): u64 {");
-  pushLine(builder, "        if (group_id == GROUP_BATTLESHIP) { 6 }", "getGroupId");
-  pushLine(builder, "        else if (group_id == GROUP_BATTLECRUISER) { 5 }", "getGroupId");
-  pushLine(builder, "        else if (group_id == GROUP_CRUISER) { 4 }", "getGroupId");
-  pushLine(builder, "        else if (group_id == GROUP_DESTROYER) { 3 }", "getGroupId");
-  pushLine(builder, "        else if (group_id == GROUP_FRIGATE) { 2 }", "getGroupId");
-  pushLine(builder, "        else if (group_id == GROUP_CORVETTE) { 1 }", "getGroupId");
+  pushLine(builder, "        if (group_id == GROUP_COMBAT_BATTLECRUISER) { 6 }", "getGroupId");
+  pushLine(builder, "        else if (group_id == GROUP_CRUISER) { 5 }", "getGroupId");
+  pushLine(builder, "        else if (group_id == GROUP_DESTROYER) { 4 }", "getGroupId");
+  pushLine(builder, "        else if (group_id == GROUP_FRIGATE) { 3 }", "getGroupId");
+  pushLine(builder, "        else if (group_id == GROUP_CORVETTE) { 2 }", "getGroupId");
+  pushLine(builder, "        else if (group_id == GROUP_SHUTTLE) { 1 }", "getGroupId");
   pushLine(builder, "        else { 1 }", "getGroupId");
   pushLine(builder, "    }");
   pushBlankLine(builder);

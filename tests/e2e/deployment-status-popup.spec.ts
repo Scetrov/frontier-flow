@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { expectNoAccessibilityViolations } from "./fixtures/accessibility";
 import { clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
-import { getCompilationStatusButton, openDeployWorkflow, selectDeploymentTarget } from "./fixtures/workflow";
+import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
 
 test("shows signing-stage cancellation details in the status popup", async ({ page }) => {
   await clearStorageAndMarkTutorialSeen(page);
@@ -39,8 +39,8 @@ test("preserves the earlier blocked attempt after a later successful deployment"
   const compilationStatus = getCompilationStatusButton(page);
   await expect(compilationStatus).toContainText("Compiled");
 
-  await openDeployWorkflow(page);
-  await page.getByRole("button", { name: /(?:Deploy|Upgrade) local/ }).click();
+  await selectDeploymentTarget(page, "local");
+  await page.getByRole("button", { name: /^Deploy localnet:0x[a-f0-9]{4}\.\.\.$/i }).click();
   const blockedModal = page.getByRole("dialog", { name: "Deployment blocked" });
   await expect(blockedModal).toBeVisible();
   await blockedModal.getByRole("button", { name: "Dismiss" }).click({ force: true });

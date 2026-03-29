@@ -21,12 +21,12 @@ module builder_extensions::graph_to_move_supported {
     const HULL_BREAK_BONUS_MULTIPLIER: u64 = 5;
     const TIER_WEIGHT: u64 = 3_000;
 
-    const GROUP_CORVETTE: u64 = 31;
-    const GROUP_FRIGATE: u64 = 237;
-    const GROUP_DESTROYER: u64 = 25;
-    const GROUP_CRUISER: u64 = 420;
-    const GROUP_BATTLECRUISER: u64 = 26;
-    const GROUP_BATTLESHIP: u64 = 419;
+    const GROUP_SHUTTLE: u64 = 31;
+    const GROUP_CORVETTE: u64 = 237;
+    const GROUP_FRIGATE: u64 = 25;
+    const GROUP_DESTROYER: u64 = 420;
+    const GROUP_CRUISER: u64 = 26;
+    const GROUP_COMBAT_BATTLECRUISER: u64 = 419;
 
     public struct TargetCandidateArg has copy, drop, store {
         item_id: u64,
@@ -45,12 +45,12 @@ module builder_extensions::graph_to_move_supported {
     public struct TurretAuth has drop {}
 
     fun tier_for_group(group_id: u64): u64 {
-        if (group_id == GROUP_BATTLESHIP) { 6 }
-        else if (group_id == GROUP_BATTLECRUISER) { 5 }
-        else if (group_id == GROUP_CRUISER) { 4 }
-        else if (group_id == GROUP_DESTROYER) { 3 }
-        else if (group_id == GROUP_FRIGATE) { 2 }
-        else if (group_id == GROUP_CORVETTE) { 1 }
+        if (group_id == GROUP_COMBAT_BATTLECRUISER) { 6 }
+        else if (group_id == GROUP_CRUISER) { 5 }
+        else if (group_id == GROUP_DESTROYER) { 4 }
+        else if (group_id == GROUP_FRIGATE) { 3 }
+        else if (group_id == GROUP_CORVETTE) { 2 }
+        else if (group_id == GROUP_SHUTTLE) { 1 }
         else { 1 }
     }
 

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
-import { getCodeViewButton, getCompilationStatusButton, getTargetDisplayLabel, openDeployWorkflow, selectDeploymentTarget } from "./fixtures/workflow";
+import { getCodeViewButton, getCompilationStatusButton, getTargetDisplayLabel, selectDeploymentTarget } from "./fixtures/workflow";
 
 test("blocks stillness deployment when no wallet is connected", async ({ page }) => {
   await clearStorageAndMarkTutorialSeen(page);
@@ -42,7 +42,7 @@ test("blocks local deployment when the local target is unavailable", async ({ pa
   await expect(compilationStatus).toContainText("Compiled");
   const localTargetLabel = getTargetDisplayLabel("local");
 
-  await openDeployWorkflow(page);
+  await selectDeploymentTarget(page, "local");
   await page.getByRole("button", { name: /^Deploy localnet:0x[a-f0-9]{4}\.\.\.$/i }).click();
 
   const blockedModal = page.getByRole("dialog", { name: "Deployment blocked" });

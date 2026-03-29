@@ -296,4 +296,28 @@ describe("compilePipeline", () => {
     await expect(compilationPromise).rejects.toMatchObject({ name: "AbortError" });
     expect(vi.mocked(compileMove)).toHaveBeenCalledTimes(1);
   });
+
+  it.each(compileableSmartTurretExtensions)(
+    "selects the reference template for $extensionId when compiled via display name",
+    async ({ contractName, fixture }) => {
+      const flow = createFlowFromFixture(fixture);
+      const result = await compilePipeline({
+        nodes: flow.nodes,
+        edges: flow.edges,
+        moduleName: contractName,
+      });
+
+      expect(result.status.state).toBe("compiled");
+      expect(result.artifact?.moduleName).toBe(fixture.moduleName);
+      expect(result.artifact?.moveSource).toContain(`module builder_extensions::${fixture.moduleName}`);
+
+      // All reference templates must include the critical safety rules
+      // that the world contract's default turret logic enforces
+      const moveSource = result.artifact?.moveSource ?? "";
+      expect(moveSource).toContain("owner_character_id");
+      expect(moveSource).toContain("BEHAVIOUR_STOPPED_ATTACK");
+      expect(moveSource).toContain("return (0, false)");
+      expect(moveSource).toContain("BEHAVIOUR_STARTED_ATTACK");
+    },
+  );
 });
