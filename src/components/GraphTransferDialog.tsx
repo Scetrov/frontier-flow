@@ -15,6 +15,8 @@ interface GraphTransferDialogProps {
   readonly onExport: () => Promise<void>;
 }
 
+const ACTION_BUTTON_CLASS_NAME = "ff-contract-bar__button ff-contract-bar__button--with-icon";
+
 function getDialogTitle(mode: GraphTransferMode | null): string {
   switch (mode) {
     case "import-file":
@@ -30,6 +32,131 @@ function getDialogTitle(mode: GraphTransferMode | null): string {
   }
 }
 
+function ExportModePanel({ contractName, status, onExport }: {
+  readonly contractName: string;
+  readonly status: GraphTransferState["status"];
+  readonly onExport: () => Promise<void>;
+}) {
+  return (
+    <section className="ff-transfer-dialog__section">
+      <p className="ff-transfer-dialog__copy">Download the active contract as a portable YAML document.</p>
+      <p className="ff-transfer-dialog__detail">Contract: {contractName}</p>
+      <button className={ACTION_BUTTON_CLASS_NAME} disabled={status === "publishing" || status === "validating"} onClick={() => { void onExport(); }} type="button">
+        <Download aria-hidden="true" className="ff-contract-bar__button-icon" />
+        <span className="ff-contract-bar__button-label">Download YAML</span>
+      </button>
+    </section>
+  );
+}
+
+function ImportFileModePanel({ onImportFromFile }: {
+  readonly onImportFromFile: (file: File) => Promise<void>;
+}) {
+  const fileInputId = useId();
+
+  return (
+    <section className="ff-transfer-dialog__section">
+      <p className="ff-transfer-dialog__copy">Select a previously exported Frontier Flow YAML file.</p>
+      <label className="ff-contract-bar__field" htmlFor={fileInputId}>
+        <span className="ff-contract-bar__label">Graph document</span>
+        <input
+          accept=".yaml,.yml,text/yaml,application/x-yaml,application/x.frontier-flow+yaml"
+          className="ff-contract-bar__input ff-transfer-dialog__file-input"
+          id={fileInputId}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file !== undefined) {
+              void onImportFromFile(file);
+            }
+            event.currentTarget.value = "";
+          }}
+          type="file"
+        />
+      </label>
+    </section>
+  );
+}
+
+function ImportWalrusModePanel({ status, onImportFromWalrus }: {
+  readonly status: GraphTransferState["status"];
+  readonly onImportFromWalrus: (blobId: string) => Promise<void>;
+}) {
+  const [walrusReference, setWalrusReference] = useState("");
+
+  return (
+    <section className="ff-transfer-dialog__section">
+      <p className="ff-transfer-dialog__copy">Enter a Walrus blob id to restore a published graph into the local contract library.</p>
+      <label className="ff-contract-bar__field">
+        <span className="ff-contract-bar__label">Walrus blob id</span>
+        <input
+          aria-label="Walrus blob id"
+          className="ff-contract-bar__input"
+          onChange={(event) => { setWalrusReference(event.target.value); }}
+          placeholder="blob id"
+          type="text"
+          value={walrusReference}
+        />
+      </label>
+      <button className={ACTION_BUTTON_CLASS_NAME} disabled={status === "validating" || status === "importing"} onClick={() => { void onImportFromWalrus(walrusReference); }} type="button">
+        <Database aria-hidden="true" className="ff-contract-bar__button-icon" />
+        <span className="ff-contract-bar__button-label">Import Walrus</span>
+      </button>
+    </section>
+  );
+}
+
+function PublishModePanel({ contractName, walletConnected, status, onPublish }: {
+  readonly contractName: string;
+  readonly walletConnected: boolean;
+  readonly status: GraphTransferState["status"];
+  readonly onPublish: () => Promise<void>;
+}) {
+  return (
+    <section className="ff-transfer-dialog__section">
+      <p className="ff-transfer-dialog__copy">Export the active contract to Walrus and store a reusable blob reference on the current local contract.</p>
+      <p className="ff-transfer-dialog__detail">Contract: {contractName}</p>
+      <p className="ff-transfer-dialog__detail">Wallet: {walletConnected ? "Connected" : "Not connected"}</p>
+      <button className={ACTION_BUTTON_CLASS_NAME} disabled={!walletConnected || status === "publishing"} onClick={() => { void onPublish(); }} type="button">
+        <Upload aria-hidden="true" className="ff-contract-bar__button-icon" />
+        <span className="ff-contract-bar__button-label">Export Walrus</span>
+      </button>
+    </section>
+  );
+}
+
+function TransferResults({ state }: { readonly state: GraphTransferState }) {
+  return (
+    <>
+      {state.message !== null ? (
+        <div aria-live="polite" className={`ff-transfer-dialog__status ff-transfer-dialog__status--${state.status}`} role="status">
+          {state.message}
+        </div>
+      ) : null}
+
+      {state.result?.walrusReference !== undefined ? (
+        <div className="ff-transfer-dialog__result">
+          <p className="ff-transfer-dialog__label">Walrus blob id</p>
+          <code className="ff-transfer-dialog__code">{state.result.walrusReference.blobId}</code>
+        </div>
+      ) : null}
+
+      {state.result?.importedName !== undefined ? (
+        <div className="ff-transfer-dialog__result">
+          <p className="ff-transfer-dialog__label">Imported contract</p>
+          <code className="ff-transfer-dialog__code">{state.result.importedName}</code>
+        </div>
+      ) : null}
+
+      {state.result?.downloadName !== undefined ? (
+        <div className="ff-transfer-dialog__result">
+          <p className="ff-transfer-dialog__label">Downloaded file</p>
+          <code className="ff-transfer-dialog__code">{state.result.downloadName}</code>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export default function GraphTransferDialog({
   activeContract,
   walletConnected,
@@ -42,10 +169,6 @@ export default function GraphTransferDialog({
 }: GraphTransferDialogProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const dismissRef = useRef<HTMLButtonElement | null>(null);
-  const [walrusReference, setWalrusReference] = useState("");
-  const fileInputId = useId();
-
-  const actionButtonClassName = "ff-contract-bar__button ff-contract-bar__button--with-icon";
 
   useEffect(() => {
     if (!state.isOpen) {
@@ -93,98 +216,11 @@ export default function GraphTransferDialog({
         </div>
 
         <div className="ff-transfer-dialog__body">
-          {state.mode === "export" ? (
-            <section className="ff-transfer-dialog__section">
-              <p className="ff-transfer-dialog__copy">Download the active contract as a portable YAML document.</p>
-              <p className="ff-transfer-dialog__detail">Contract: {activeContract.name}</p>
-              <button className={actionButtonClassName} disabled={state.status === "publishing" || state.status === "validating"} onClick={() => { void onExport(); }} type="button">
-                <Download aria-hidden="true" className="ff-contract-bar__button-icon" />
-                <span className="ff-contract-bar__button-label">Download YAML</span>
-              </button>
-            </section>
-          ) : null}
-
-          {state.mode === "import-file" ? (
-            <section className="ff-transfer-dialog__section">
-              <p className="ff-transfer-dialog__copy">Select a previously exported Frontier Flow YAML file.</p>
-              <label className="ff-contract-bar__field" htmlFor={fileInputId}>
-                <span className="ff-contract-bar__label">Graph document</span>
-                <input
-                  accept=".yaml,.yml,text/yaml,application/x-yaml,application/x.frontier-flow+yaml"
-                  className="ff-contract-bar__input ff-transfer-dialog__file-input"
-                  id={fileInputId}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file !== undefined) {
-                      void onImportFromFile(file);
-                    }
-                    event.currentTarget.value = "";
-                  }}
-                  type="file"
-                />
-              </label>
-            </section>
-          ) : null}
-
-          {state.mode === "import-walrus" ? (
-            <section className="ff-transfer-dialog__section">
-              <p className="ff-transfer-dialog__copy">Enter a Walrus blob id to restore a published graph into the local contract library.</p>
-              <label className="ff-contract-bar__field">
-                <span className="ff-contract-bar__label">Walrus blob id</span>
-                <input
-                  aria-label="Walrus blob id"
-                  className="ff-contract-bar__input"
-                  onChange={(event) => { setWalrusReference(event.target.value); }}
-                  placeholder="blob id"
-                  type="text"
-                  value={walrusReference}
-                />
-              </label>
-              <button className={actionButtonClassName} disabled={state.status === "validating" || state.status === "importing"} onClick={() => { void onImportFromWalrus(walrusReference); }} type="button">
-                <Database aria-hidden="true" className="ff-contract-bar__button-icon" />
-                <span className="ff-contract-bar__button-label">Import Walrus</span>
-              </button>
-            </section>
-          ) : null}
-
-          {state.mode === "publish" ? (
-            <section className="ff-transfer-dialog__section">
-              <p className="ff-transfer-dialog__copy">Export the active contract to Walrus and store a reusable blob reference on the current local contract.</p>
-              <p className="ff-transfer-dialog__detail">Contract: {activeContract.name}</p>
-              <p className="ff-transfer-dialog__detail">Wallet: {walletConnected ? "Connected" : "Not connected"}</p>
-              <button className={actionButtonClassName} disabled={!walletConnected || state.status === "publishing"} onClick={() => { void onPublish(); }} type="button">
-                <Upload aria-hidden="true" className="ff-contract-bar__button-icon" />
-                <span className="ff-contract-bar__button-label">Export Walrus</span>
-              </button>
-            </section>
-          ) : null}
-
-          {state.message !== null ? (
-            <div aria-live="polite" className={`ff-transfer-dialog__status ff-transfer-dialog__status--${state.status}`} role="status">
-              {state.message}
-            </div>
-          ) : null}
-
-          {state.result?.walrusReference !== undefined ? (
-            <div className="ff-transfer-dialog__result">
-              <p className="ff-transfer-dialog__label">Walrus blob id</p>
-              <code className="ff-transfer-dialog__code">{state.result.walrusReference.blobId}</code>
-            </div>
-          ) : null}
-
-          {state.result?.importedName !== undefined ? (
-            <div className="ff-transfer-dialog__result">
-              <p className="ff-transfer-dialog__label">Imported contract</p>
-              <code className="ff-transfer-dialog__code">{state.result.importedName}</code>
-            </div>
-          ) : null}
-
-          {state.result?.downloadName !== undefined ? (
-            <div className="ff-transfer-dialog__result">
-              <p className="ff-transfer-dialog__label">Downloaded file</p>
-              <code className="ff-transfer-dialog__code">{state.result.downloadName}</code>
-            </div>
-          ) : null}
+          {state.mode === "export" ? <ExportModePanel contractName={activeContract.name} onExport={onExport} status={state.status} /> : null}
+          {state.mode === "import-file" ? <ImportFileModePanel onImportFromFile={onImportFromFile} /> : null}
+          {state.mode === "import-walrus" ? <ImportWalrusModePanel onImportFromWalrus={onImportFromWalrus} status={state.status} /> : null}
+          {state.mode === "publish" ? <PublishModePanel contractName={activeContract.name} onPublish={onPublish} status={state.status} walletConnected={walletConnected} /> : null}
+          <TransferResults state={state} />
         </div>
       </div>
     </div>

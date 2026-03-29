@@ -163,7 +163,27 @@ export function parsePortableGraphDocument(request: ParsePortableGraphDocumentRe
   };
 }
 
-function ensurePortableGraphDocument(value: unknown, sourceLabel: string): PortableGraphDocument {
+interface ValidatedDocumentEnvelope {
+  readonly contract: Record<string, unknown>;
+  readonly graph: Record<string, unknown>;
+  readonly exportedAt: string;
+  readonly appVersion: string;
+}
+
+interface ValidatedContractSection {
+  readonly name: string;
+  readonly description: string | undefined;
+  readonly updatedAt: string;
+  readonly source: { readonly channel: PortableGraphSource["channel"] };
+}
+
+interface ValidatedGraphSection {
+  readonly nodes: PortableGraphNode[];
+  readonly edges: PortableGraphEdge[];
+  readonly summary: GraphSummary;
+}
+
+function validateDocumentEnvelope(value: unknown, sourceLabel: string): ValidatedDocumentEnvelope {
   if (!isRecord(value)) {
     throw new PortableGraphParseError(`Could not parse ${sourceLabel} as a portable graph document.`);
   }
@@ -186,10 +206,23 @@ function ensurePortableGraphDocument(value: unknown, sourceLabel: string): Porta
     throw new PortableGraphParseError(`${sourceLabel} is missing contract or graph sections.`);
   }
 
+  return { contract, graph, exportedAt: value.exportedAt, appVersion: value.appVersion };
+}
+
+function validateContractSection(contract: Record<string, unknown>, sourceLabel: string): ValidatedContractSection {
   if (typeof contract.name !== "string" || typeof contract.updatedAt !== "string" || !isRecord(contract.source) || typeof contract.source.channel !== "string") {
     throw new PortableGraphParseError(`${sourceLabel} has invalid contract metadata.`);
   }
 
+  return {
+    name: contract.name,
+    description: typeof contract.description === "string" ? contract.description : undefined,
+    updatedAt: contract.updatedAt,
+    source: { channel: parseSourceChannel(contract.source.channel) },
+  };
+}
+
+function validateGraphSection(graph: Record<string, unknown>, sourceLabel: string): ValidatedGraphSection {
   if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges) || !isRecord(graph.summary)) {
     throw new PortableGraphParseError(`${sourceLabel} has invalid graph content.`);
   }
@@ -206,27 +239,21 @@ function ensurePortableGraphDocument(value: unknown, sourceLabel: string): Porta
     throw new PortableGraphValidationError(`${sourceLabel} graph summary does not match the exported node or edge count.`);
   }
 
+  return { nodes, edges, summary: { nodeCount: summary.nodeCount, edgeCount: summary.edgeCount } };
+}
+
+function ensurePortableGraphDocument(value: unknown, sourceLabel: string): PortableGraphDocument {
+  const envelope = validateDocumentEnvelope(value, sourceLabel);
+  const contract = validateContractSection(envelope.contract, sourceLabel);
+  const graph = validateGraphSection(envelope.graph, sourceLabel);
+
   return {
     version: 1,
     kind: "frontier-flow-graph",
-    exportedAt: value.exportedAt,
-    appVersion: value.appVersion,
-    contract: {
-      name: contract.name,
-      description: typeof contract.description === "string" ? contract.description : undefined,
-      updatedAt: contract.updatedAt,
-      source: {
-        channel: parseSourceChannel(contract.source.channel),
-      },
-    },
-    graph: {
-      nodes,
-      edges,
-      summary: {
-        nodeCount: summary.nodeCount,
-        edgeCount: summary.edgeCount,
-      },
-    },
+    exportedAt: envelope.exportedAt,
+    appVersion: envelope.appVersion,
+    contract,
+    graph,
   };
 }
 

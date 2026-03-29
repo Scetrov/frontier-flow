@@ -11,6 +11,7 @@ import ToolboxNodePreview from "./ToolboxNodePreview";
 
 interface SidebarProps {
   readonly definitions?: readonly NodeDefinition[];
+  readonly onRegisterSidebarVisibility?: (setSidebarOpen: (open: boolean) => void) => void;
 }
 
 const categoryOrder = ["event-trigger", "static-data", "data-extractor", "logic-gate", "action"] as const;
@@ -244,7 +245,7 @@ function SidebarDrawer({
   );
 }
 
-function Sidebar({ definitions = authorableNodeDefinitions }: SidebarProps) {
+function Sidebar({ definitions = authorableNodeDefinitions, onRegisterSidebarVisibility }: SidebarProps) {
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
   const [isOpen, setIsOpen] = useState(
     () => loadUiState(typeof window === "undefined" ? undefined : window.localStorage).isSidebarOpen,
@@ -288,6 +289,12 @@ function Sidebar({ definitions = authorableNodeDefinitions }: SidebarProps) {
   useEffect(() => {
     mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, { isSidebarOpen: isOpen });
   }, [isOpen]);
+
+  useEffect(() => {
+    onRegisterSidebarVisibility?.((open) => {
+      setIsOpen(open);
+    });
+  }, [onRegisterSidebarVisibility]);
 
   return (
     <>

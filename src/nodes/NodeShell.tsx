@@ -34,11 +34,16 @@ function getDeprecationMessage(deprecation: NonNullable<FlowNodeData["deprecatio
   return `${statusLabel} ${deprecation.reason}${remediationMessage}`;
 }
 
-function SocketGlyph({ socket, mode }: { readonly socket: SocketDefinition; readonly mode: "canvas" | "toolbox" }) {
+function SocketGlyph({ nodeId, socket, mode }: { readonly nodeId: string; readonly socket: SocketDefinition; readonly mode: "canvas" | "toolbox" }) {
   const isOutput = socket.direction === "output";
 
   return (
-    <div className={`ff-node__socket ff-node__socket--${socket.position} ff-node__socket--${socket.direction}`}>
+    <div
+      className={`ff-node__socket ff-node__socket--${socket.position} ff-node__socket--${socket.direction}`}
+      data-node-id={nodeId}
+      data-socket-direction={socket.direction}
+      data-socket-id={socket.id}
+    >
       {isOutput ? <span className="ff-node__socket-label">{socket.label}</span> : null}
       {mode === "canvas" ? (
         <Handle
@@ -63,10 +68,12 @@ function SocketGlyph({ socket, mode }: { readonly socket: SocketDefinition; read
 }
 
 function SocketRow({
+  nodeId,
   sockets,
   mode,
   position,
 }: {
+  readonly nodeId: string;
   readonly sockets: readonly SocketDefinition[];
   readonly mode: "canvas" | "toolbox";
   readonly position: "top" | "bottom";
@@ -78,17 +85,17 @@ function SocketRow({
   return (
     <div className={`ff-node__row ff-node__row--${position}`}>
       {sockets.map((socket) => (
-        <SocketGlyph key={socket.id} mode={mode} socket={socket} />
+        <SocketGlyph key={socket.id} mode={mode} nodeId={nodeId} socket={socket} />
       ))}
     </div>
   );
 }
 
-function SocketColumn({ sockets, mode, side }: { readonly sockets: readonly SocketDefinition[]; readonly mode: "canvas" | "toolbox"; readonly side: "left" | "right" }) {
+function SocketColumn({ nodeId, sockets, mode, side }: { readonly nodeId: string; readonly sockets: readonly SocketDefinition[]; readonly mode: "canvas" | "toolbox"; readonly side: "left" | "right" }) {
   return (
     <div className={`ff-node__column ff-node__column--${side}`}>
       {sockets.map((socket) => (
-        <SocketGlyph key={socket.id} mode={mode} socket={socket} />
+        <SocketGlyph key={socket.id} mode={mode} nodeId={nodeId} socket={socket} />
       ))}
     </div>
   );
@@ -425,9 +432,9 @@ function NodeShell({
   }, [isDeleteConfirming]);
 
   return (
-    <div className={getNodeClassName(shape, selected, mode)} style={nodeStyle} {...nodeValidationAttributes}>
+    <div className={getNodeClassName(shape, selected, mode)} data-node-id={nodeId} data-node-type={nodeData.type} style={nodeStyle} {...nodeValidationAttributes}>
       <div className={getNodeSurfaceClassName(shape)}>
-        <SocketRow mode={mode} position="top" sockets={topSockets} />
+        <SocketRow mode={mode} nodeId={nodeId} position="top" sockets={topSockets} />
 
         <NodeHeader
           confirmDeleteButtonRef={confirmDeleteButtonRef}
@@ -452,11 +459,11 @@ function NodeShell({
         <NodeSupplementalDescriptions nodeData={nodeData} />
 
         <div className="ff-node__body">
-          <SocketColumn mode={mode} side="left" sockets={leftSockets} />
-          <SocketColumn mode={mode} side="right" sockets={rightSockets} />
+          <SocketColumn mode={mode} nodeId={nodeId} side="left" sockets={leftSockets} />
+          <SocketColumn mode={mode} nodeId={nodeId} side="right" sockets={rightSockets} />
         </div>
 
-        <SocketRow mode={mode} position="bottom" sockets={bottomSockets} />
+        <SocketRow mode={mode} nodeId={nodeId} position="bottom" sockets={bottomSockets} />
       </div>
     </div>
   );

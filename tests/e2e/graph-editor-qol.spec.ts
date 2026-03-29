@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
+
 async function dropNode(page: Page, label: string, clientX: number, clientY: number) {
   const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
   const source = page.getByRole("button", { exact: true, name: label }).first();
@@ -20,6 +22,7 @@ async function ensureCategoryExpanded(page: Page, categoryLabel: string) {
 test("supports graph-editor QoL deletion and taxonomy flows", async ({ page, isMobile }) => {
   test.skip(isMobile, "Desktop graph QoL validation only.");
 
+  await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/");
 
   expect(await page.getByRole("heading", { level: 3 }).allTextContents()).toEqual([

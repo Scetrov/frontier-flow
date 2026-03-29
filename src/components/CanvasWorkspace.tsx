@@ -50,6 +50,7 @@ import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
 import { useAutoCompile } from "../hooks/useAutoCompile";
 import { useGraphTransfer, type GraphTransferState, type GraphTransferWalletBridge } from "../hooks/useGraphTransfer";
 import { deriveFlowEdgePresentation } from "../utils/socketTypes";
+import { TUTORIAL_DEMO_NODE_ID } from "../utils/tutorialSteps";
 
 import GraphTransferDialog from "./GraphTransferDialog";
 import { restoreSavedFlow } from "./restoreSavedFlow";
@@ -64,12 +65,15 @@ interface CanvasWorkspaceProps {
   readonly mode?: "persistent" | "preview";
   readonly focusedDiagnosticNodeId?: string | null;
   readonly focusedDiagnosticRequestKey?: number;
+  readonly onRegisterContractPanelVisibility?: (setContractPanelOpen: (open: boolean) => void) => void;
   readonly onCompilationStateChange?: (
     status: CompilationStatus,
     diagnostics: readonly CompilerDiagnostic[],
     sourceCode: string | null,
     artifactMoveSource?: string | null,
   ) => void;
+  readonly onInsertDemoNode?: (insertDemoNode: () => void) => void;
+  readonly onRemoveDemoNode?: (removeDemoNode: () => void) => void;
   readonly onRemediationNoticesChange?: (notices: readonly RemediationNotice[]) => void;
 }
 
@@ -651,6 +655,114 @@ type UseContractManagerOptions = {
   readonly setNodes: SetFlowNodes;
 };
 
+function selectContract(input: {
+  readonly contractName: string;
+  readonly contractLibrary: ContractLibrary;
+  readonly nodes: readonly FlowNode[];
+  readonly edges: readonly FlowEdge[];
+  readonly setContractLibrary: Dispatch<SetStateAction<ContractLibrary>>;
+  readonly setDraftContractName: Dispatch<SetStateAction<string>>;
+  readonly setNodes: SetFlowNodes;
+  readonly setEdges: SetFlowEdges;
+  readonly reactFlow: ReturnType<typeof useReactFlow<FlowNode, FlowEdge>>;
+}): void {
+  const { contractName, contractLibrary, nodes, edges, setContractLibrary, setDraftContractName, setNodes, setEdges, reactFlow } = input;
+  const currentContractSnapshot = contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName);
+  if (
+    contractName !== contractLibrary.activeContractName
+    && currentContractSnapshot !== undefined
+    && hasUnsavedCanvasChanges(currentContractSnapshot, nodes, edges)
+    && typeof window !== "undefined"
+    && !window.confirm("Replace the current unsaved canvas changes with the selected contract?")
+  ) {
+    return;
+  }
+
+  const nextContract = withActiveContractSnapshot(contractLibrary, nodes, edges).contracts.find((contract) => contract.name === contractName);
+  if (nextContract === undefined) {
+    return;
+  }
+
+  setContractLibrary((currentLibrary) => ({ ...withActiveContractSnapshot(currentLibrary, nodes, edges), activeContractName: contractName }));
+  setDraftContractName(contractName);
+  setNodes(nextContract.nodes);
+  setEdges(nextContract.edges);
+  requestAnimationFrame(() => {
+    void reactFlow.fitView({ duration: 200, padding: 0.24 });
+  });
+}
+
+function importContract(input: {
+  readonly importedContract: NamedFlowContract;
+  readonly contractLibrary: ContractLibrary;
+  readonly nodes: readonly FlowNode[];
+  readonly edges: readonly FlowEdge[];
+  readonly setContractLibrary: Dispatch<SetStateAction<ContractLibrary>>;
+  readonly setContractRemediationNotices: Dispatch<SetStateAction<Readonly<Record<string, readonly RemediationNotice[]>>>>;
+  readonly setDraftContractName: Dispatch<SetStateAction<string>>;
+  readonly setNodes: SetFlowNodes;
+  readonly setEdges: SetFlowEdges;
+  readonly reactFlow: ReturnType<typeof useReactFlow<FlowNode, FlowEdge>>;
+}): { readonly importedName: string; readonly originalImportedName?: string } {
+  const { importedContract, contractLibrary, nodes, edges, setContractLibrary, setContractRemediationNotices, setDraftContractName, setNodes, setEdges, reactFlow } = input;
+  const hydratedImported = hydrateContract(importedContract);
+  const synchronizedLibrary = withActiveContractSnapshot(contractLibrary, nodes, edges);
+  const currentContractSnapshot = synchronizedLibrary.contracts.find((contract) => contract.name === synchronizedLibrary.activeContractName);
+  const shouldActivateImportedContract = currentContractSnapshot === undefined
+    || !hasUnsavedCanvasChanges(currentContractSnapshot, nodes, edges)
+    || typeof window === "undefined"
+    || window.confirm("Replace the current canvas with the imported contract?");
+  const merged = mergeImportedContract({
+    activateImportedContract: shouldActivateImportedContract,
+    importedContract: hydratedImported.contract,
+    library: synchronizedLibrary,
+  });
+
+  setContractLibrary(merged.library);
+  setContractRemediationNotices((currentNotices) => ({
+    ...currentNotices,
+    [merged.importedContractName]: hydratedImported.remediationNotices,
+  }));
+
+  if (shouldActivateImportedContract) {
+    setDraftContractName(merged.importedContractName);
+    setNodes(merged.importedContract.nodes);
+    setEdges(merged.importedContract.edges);
+    requestAnimationFrame(() => {
+      void reactFlow.fitView({ duration: 200, padding: 0.24 });
+    });
+  }
+
+  return {
+    importedName: merged.importedContractName,
+    originalImportedName: merged.originalImportedContractName,
+  };
+}
+
+function useContractPersistence(input: {
+  readonly mode: NonNullable<CanvasWorkspaceProps["mode"]>;
+  readonly contractLibrary: ContractLibrary;
+  readonly nodes: readonly FlowNode[];
+  readonly edges: readonly FlowEdge[];
+  readonly draftContractName: string;
+}): void {
+  const { mode, contractLibrary, nodes, edges, draftContractName } = input;
+  useEffect(() => {
+    if (mode === "persistent") {
+      saveContractLibrary(typeof window === "undefined" ? undefined : window.localStorage, withActiveContractSnapshot(contractLibrary, nodes, edges));
+    }
+  }, [contractLibrary, edges, mode, nodes]);
+  useEffect(() => {
+    if (mode !== "persistent") {
+      return;
+    }
+
+    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, {
+      currentDraftContractName: draftContractName,
+    });
+  }, [draftContractName, mode]);
+}
+
 function useContractManager({
   initialLibrarySnapshot,
   mode,
@@ -667,29 +779,7 @@ function useContractManager({
   const activeContractDescription = getActiveContractDescription(activeContract);
   const [draftContractName, setDraftContractName] = useState(activeContract.name);
   const handleSelectContract = useCallback((contractName: string) => {
-    const currentContractSnapshot = contractLibrary.contracts.find((contract) => contract.name === contractLibrary.activeContractName);
-    if (
-      contractName !== contractLibrary.activeContractName
-      && currentContractSnapshot !== undefined
-      && hasUnsavedCanvasChanges(currentContractSnapshot, nodes, edges)
-      && typeof window !== "undefined"
-      && !window.confirm("Replace the current unsaved canvas changes with the selected contract?")
-    ) {
-      return;
-    }
-
-    const nextContract = withActiveContractSnapshot(contractLibrary, nodes, edges).contracts.find((contract) => contract.name === contractName);
-    if (nextContract === undefined) {
-      return;
-    }
-
-    setContractLibrary((currentLibrary) => ({ ...withActiveContractSnapshot(currentLibrary, nodes, edges), activeContractName: contractName }));
-    setDraftContractName(contractName);
-    setNodes(nextContract.nodes);
-    setEdges(nextContract.edges);
-    requestAnimationFrame(() => {
-      void reactFlow.fitView({ duration: 200, padding: 0.24 });
-    });
+    selectContract({ contractName, contractLibrary, nodes, edges, setContractLibrary, setDraftContractName, setNodes, setEdges, reactFlow });
   }, [contractLibrary, edges, nodes, reactFlow, setEdges, setNodes]);
   const handleSaveAsContract = useCallback(() => {
     const normalizedName = sanitizeContractName(draftContractName);
@@ -737,39 +827,8 @@ function useContractManager({
     setNodes(nextActiveContract.nodes);
     setEdges(nextActiveContract.edges);
   }, [contractLibrary, edges, nodes, setEdges, setNodes]);
-  const handleImportContract = useCallback((importedContract: NamedFlowContract) => {
-    const hydratedImported = hydrateContract(importedContract);
-    const synchronizedLibrary = withActiveContractSnapshot(contractLibrary, nodes, edges);
-    const currentContractSnapshot = synchronizedLibrary.contracts.find((contract) => contract.name === synchronizedLibrary.activeContractName);
-    const shouldActivateImportedContract = currentContractSnapshot === undefined
-      || !hasUnsavedCanvasChanges(currentContractSnapshot, nodes, edges)
-      || typeof window === "undefined"
-      || window.confirm("Replace the current canvas with the imported contract?");
-    const merged = mergeImportedContract({
-      activateImportedContract: shouldActivateImportedContract,
-      importedContract: hydratedImported.contract,
-      library: synchronizedLibrary,
-    });
-
-    setContractLibrary(merged.library);
-    setContractRemediationNotices((currentNotices) => ({
-      ...currentNotices,
-      [merged.importedContractName]: hydratedImported.remediationNotices,
-    }));
-
-    if (shouldActivateImportedContract) {
-      setDraftContractName(merged.importedContractName);
-      setNodes(merged.importedContract.nodes);
-      setEdges(merged.importedContract.edges);
-      requestAnimationFrame(() => {
-        void reactFlow.fitView({ duration: 200, padding: 0.24 });
-      });
-    }
-
-    return {
-      importedName: merged.importedContractName,
-      originalImportedName: merged.originalImportedContractName,
-    };
+  const handleImportContract = useCallback((contract: NamedFlowContract) => {
+    return importContract({ importedContract: contract, contractLibrary, nodes, edges, setContractLibrary, setContractRemediationNotices, setDraftContractName, setNodes, setEdges, reactFlow });
   }, [contractLibrary, edges, nodes, reactFlow, setEdges, setNodes]);
   const handleAttachWalrusProvenance = useCallback((provenance: PublishedGraphProvenance) => {
     setContractLibrary((currentLibrary) => {
@@ -785,20 +844,7 @@ function useContractManager({
       };
     });
   }, [edges, nodes]);
-  useEffect(() => {
-    if (mode === "persistent") {
-      saveContractLibrary(typeof window === "undefined" ? undefined : window.localStorage, withActiveContractSnapshot(contractLibrary, nodes, edges));
-    }
-  }, [contractLibrary, edges, mode, nodes]);
-  useEffect(() => {
-    if (mode !== "persistent") {
-      return;
-    }
-
-    mergeUiState(typeof window === "undefined" ? undefined : window.localStorage, {
-      currentDraftContractName: draftContractName,
-    });
-  }, [draftContractName, mode]);
+  useContractPersistence({ mode, contractLibrary, nodes, edges, draftContractName });
   return {
     activeContract,
     activeContractDescription,
@@ -1464,6 +1510,60 @@ function FlowEditorView({
   );
 }
 
+function useFlowEditorDemoNode(input: {
+  readonly nodes: readonly FlowNode[];
+  readonly onInsertDemoNode: CanvasWorkspaceProps["onInsertDemoNode"];
+  readonly onRegisterContractPanelVisibility: CanvasWorkspaceProps["onRegisterContractPanelVisibility"];
+  readonly onRemoveDemoNode: CanvasWorkspaceProps["onRemoveDemoNode"];
+  readonly reactFlow: ReturnType<typeof useReactFlow<FlowNode, FlowEdge>>;
+  readonly setEdges: SetFlowEdges;
+  readonly setIsContractPanelOpen: (open: boolean) => void;
+  readonly setNodes: SetFlowNodes;
+}): void {
+  const { nodes, onInsertDemoNode, onRegisterContractPanelVisibility, onRemoveDemoNode, reactFlow, setEdges, setIsContractPanelOpen, setNodes } = input;
+  const handleSetContractPanelOpen = useCallback((open: boolean) => {
+    setIsContractPanelOpen(open);
+  }, [setIsContractPanelOpen]);
+  const handleInsertDemoNode = useCallback(() => {
+    if (nodes.length > 0 || nodes.some((node) => node.id === TUTORIAL_DEMO_NODE_ID)) {
+      return;
+    }
+
+    const definition = getNodeDefinition("aggression");
+    if (definition === undefined) {
+      return;
+    }
+
+    setNodes((currentNodes) => currentNodes.some((node) => node.id === TUTORIAL_DEMO_NODE_ID)
+      ? currentNodes
+      : currentNodes.concat({
+          id: TUTORIAL_DEMO_NODE_ID,
+          type: definition.type,
+          position: { x: 180, y: 180 },
+          data: createFlowNodeData(definition),
+        } satisfies FlowNode));
+    requestAnimationFrame(() => {
+      void reactFlow.fitView({ duration: 200, padding: 0.3 });
+    });
+  }, [nodes, reactFlow, setNodes]);
+  const handleRemoveDemoNode = useCallback(() => {
+    setNodes((currentNodes) => currentNodes.filter((node) => node.id !== TUTORIAL_DEMO_NODE_ID));
+    setEdges((currentEdges) => currentEdges.filter((edge) => edge.source !== TUTORIAL_DEMO_NODE_ID && edge.target !== TUTORIAL_DEMO_NODE_ID));
+  }, [setEdges, setNodes]);
+
+  useEffect(() => {
+    onRegisterContractPanelVisibility?.(handleSetContractPanelOpen);
+  }, [handleSetContractPanelOpen, onRegisterContractPanelVisibility]);
+
+  useEffect(() => {
+    onInsertDemoNode?.(handleInsertDemoNode);
+  }, [handleInsertDemoNode, onInsertDemoNode]);
+
+  useEffect(() => {
+    onRemoveDemoNode?.(handleRemoveDemoNode);
+  }, [handleRemoveDemoNode, onRemoveDemoNode]);
+}
+
 /**
  * Restores saved nodes from the canonical catalogue and drops edges that no longer point to valid handles.
  */
@@ -1475,7 +1575,10 @@ function FlowEditor({
   mode = "persistent",
   focusedDiagnosticNodeId,
   focusedDiagnosticRequestKey = 0,
+  onRegisterContractPanelVisibility,
   onCompilationStateChange,
+  onInsertDemoNode,
+  onRemoveDemoNode,
   onRemediationNoticesChange,
 }: CanvasWorkspaceProps) {
   const initialLibrarySnapshot = useInitialLibrarySnapshot({ initialContractName, initialEdges, initialNodes, mode });
@@ -1500,6 +1603,8 @@ function FlowEditor({
   const interactionHandlers = useCanvasInteractions({ deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, nodes, reactFlow, selectTarget: selectionState.selectTarget, setContextMenu: deleteManager.setContextMenu, setEdges, setNodes });
   useFlowEditorEffects({ contextMenu: deleteManager.contextMenu, contextMenuRef: deleteManager.contextMenuRef, deleteEdgeById: deleteManager.deleteEdgeById, deleteNodeById: deleteManager.deleteNodeById, edges, fallbackSelectedEdgeDeleteAnchor: selectionState.activeSelectedEdgeDeleteAnchor, focusedDiagnosticNodeId, focusedDiagnosticRequestKey, nodes, reactFlow, selectedTarget: selectionState.selectedTarget, setContextMenu: deleteManager.setContextMenu, setSelectedEdgeDeleteAnchor: deleteManager.setSelectedEdgeDeleteAnchor });
   useEffect(() => { onRemediationNoticesChange?.(contractManager.activeRemediationNotices); }, [contractManager.activeRemediationNotices, onRemediationNoticesChange]);
+  useFlowEditorDemoNode({ nodes, onInsertDemoNode, onRegisterContractPanelVisibility, onRemoveDemoNode, reactFlow, setEdges, setIsContractPanelOpen, setNodes });
+
   const transferDialog = (
     <GraphTransferDialog
       activeContract={contractManager.activeContract}
@@ -1545,7 +1650,10 @@ function CanvasWorkspace({
   mode,
   focusedDiagnosticNodeId,
   focusedDiagnosticRequestKey,
+  onRegisterContractPanelVisibility,
   onCompilationStateChange,
+  onInsertDemoNode,
+  onRemoveDemoNode,
   onRemediationNoticesChange,
 }: CanvasWorkspaceProps) {
   return (
@@ -1558,7 +1666,10 @@ function CanvasWorkspace({
         initialEdges={initialEdges}
         initialNodes={initialNodes}
         mode={mode}
+        onRegisterContractPanelVisibility={onRegisterContractPanelVisibility}
         onCompilationStateChange={onCompilationStateChange}
+        onInsertDemoNode={onInsertDemoNode}
+        onRemoveDemoNode={onRemoveDemoNode}
         onRemediationNoticesChange={onRemediationNoticesChange}
       />
     </ReactFlowProvider>

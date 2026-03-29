@@ -1,1 +1,1 @@
-- 015-graph-io-publish: Added TypeScript 5.9 (strict, ES Modules, no `any`) + React 19, `@xyflow/react` 12.10, `@mysten/sui` 2.9.1, `@mysten/dapp-kit` 1.0.4, `@mysten/walrus` 1.1.0, `yaml` for portable document encoding
+- 016-visual-designer-tutorial: Added TypeScript 5.9 (strict, no `any`), ES Modules, HTML, CSS + React 19, `@xyflow/react` (React Flow v12), Tailwind CSS 4

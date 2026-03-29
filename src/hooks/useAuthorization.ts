@@ -101,6 +101,30 @@ interface AuthorizationOperation {
   readonly turretObjectIds: readonly string[];
 }
 
+function buildEffectiveResolveAuthorizationTargetFn(
+  resolveAuthorizationTargetFn: UseAuthorizationOptions["resolveAuthorizationTargetFn"],
+  fetchCharacterIdFn: typeof fetchAuthorizationCharacterId,
+  fetchOwnerCapFn: typeof fetchOwnerCap,
+): (input: FetchOwnerCapInput) => Promise<AuthorizationTargetLookup> {
+  if (resolveAuthorizationTargetFn !== undefined) {
+    return resolveAuthorizationTargetFn;
+  }
+
+  if (fetchCharacterIdFn !== fetchAuthorizationCharacterId || fetchOwnerCapFn !== fetchOwnerCap) {
+    return async (input: FetchOwnerCapInput): Promise<AuthorizationTargetLookup> => {
+      const characterId = await resolveAuthorizationCharacterId(input.deploymentState, fetchCharacterIdFn, input.walletAddress);
+      const ownerCapId = await fetchOwnerCapFn(input);
+
+      return {
+        characterId,
+        ownerCapId,
+      };
+    };
+  }
+
+  return fetchAuthorizationTarget;
+}
+
 /**
  * Execute turret authorization transactions sequentially while tracking per-turret progress.
  */
@@ -132,18 +156,10 @@ export function useAuthorization({
   const deploymentKey = deploymentState === null
     ? null
     : `${deploymentState.targetId}:${deploymentState.packageId}:${deploymentState.moduleName}`;
-  const effectiveResolveAuthorizationTargetFn = resolveAuthorizationTargetFn
-    ?? (fetchCharacterIdFn !== fetchAuthorizationCharacterId || fetchOwnerCapFn !== fetchOwnerCap
-      ? async (input: FetchOwnerCapInput): Promise<AuthorizationTargetLookup> => {
-          const characterId = await resolveAuthorizationCharacterId(input.deploymentState, fetchCharacterIdFn, input.walletAddress);
-          const ownerCapId = await fetchOwnerCapFn(input);
-
-          return {
-            characterId,
-            ownerCapId,
-          };
-        }
-      : fetchAuthorizationTarget);
+  const effectiveResolveAuthorizationTargetFn = useMemo(
+    () => buildEffectiveResolveAuthorizationTargetFn(resolveAuthorizationTargetFn, fetchCharacterIdFn, fetchOwnerCapFn),
+    [fetchCharacterIdFn, fetchOwnerCapFn, resolveAuthorizationTargetFn],
+  );
 
   const cancelAuthorization = () => {
     activeOperationIdRef.current += 1;

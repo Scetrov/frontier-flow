@@ -1,11 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+import { clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
 import { getCodeViewButton, getCompilationStatusButton, getTargetDisplayLabel, openDeployWorkflow, selectDeploymentTarget } from "./fixtures/workflow";
 
 test("blocks stillness deployment when no wallet is connected", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
 
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_wallet=disconnected");
 
@@ -35,9 +34,7 @@ test("blocks stillness deployment when no wallet is connected", async ({ page })
 });
 
 test("blocks local deployment when the local target is unavailable", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
 
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_local_deploy_ready=0");
 
@@ -69,9 +66,7 @@ test("blocks local deployment when the local target is unavailable", async ({ pa
 });
 
 test("surfaces failed deployments as non-successful and keeps retry guidance visible", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
 
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_wallet=connected&ff_mock_deploy_fail=1&ff_mock_deploy_stage_delay_ms=80");
 
@@ -96,9 +91,7 @@ test("surfaces failed deployments as non-successful and keeps retry guidance vis
 });
 
 test("surfaces unresolved deployments as non-successful and preserves confirmation evidence", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
 
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_wallet=connected&ff_mock_deploy_unresolved=1&ff_mock_deploy_stage_delay_ms=80");
 

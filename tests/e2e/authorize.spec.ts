@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { SEEN_TUTORIAL_STORAGE_STATE, TUTORIAL_STORAGE_KEY } from "./fixtures/storage";
 import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
 
 const CONNECTED_ADDRESS = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
@@ -38,8 +39,9 @@ test("runs the full turret authorization workflow and refreshes the list after c
   test.skip(isMobile, "Desktop authorization workflow coverage only.");
 
   await page.addInitScript(
-    ({ address, storageKey, walletName }) => {
+    ({ address, storageKey, tutorialState, tutorialStorageKey, walletName }) => {
       window.localStorage.clear();
+      window.localStorage.setItem(tutorialStorageKey, JSON.stringify(tutorialState));
 
       const account = {
         address,
@@ -91,6 +93,8 @@ test("runs the full turret authorization workflow and refreshes the list after c
     {
       address: CONNECTED_ADDRESS,
       storageKey: WALLET_STORAGE_KEY,
+      tutorialState: SEEN_TUTORIAL_STORAGE_STATE,
+      tutorialStorageKey: TUTORIAL_STORAGE_KEY,
       walletName: WALLET_NAME,
     },
   );

@@ -97,6 +97,28 @@ function AuthorizeDeploymentField(input: {
   );
 }
 
+const COPY_BUTTON_CLASS_NAME = "inline-flex shrink-0 items-center border border-[var(--ui-border-dark)] bg-[rgba(20,10,10,0.52)] px-2 py-1 font-heading text-[0.62rem] uppercase tracking-[0.18em] text-[var(--text-secondary)] transition-colors hover:border-[var(--brand-orange)] hover:text-[var(--cream-white)] disabled:cursor-default disabled:hover:border-[var(--ui-border-dark)] disabled:hover:text-[var(--text-secondary)]";
+
+function CopyFieldButton({ field, copiedField, onCopy }: {
+  readonly field: "package" | "wallet";
+  readonly copiedField: "package" | "wallet" | null;
+  readonly onCopy: () => void;
+}) {
+  const isCopied = copiedField === field;
+  const label = field === "package" ? "package id" : "wallet address";
+
+  return (
+    <button
+      aria-label={isCopied ? `Copied ${label}` : `Copy ${label}`}
+      className={COPY_BUTTON_CLASS_NAME}
+      onClick={onCopy}
+      type="button"
+    >
+      {isCopied ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
 function AuthorizeDeploymentPanel(input: {
   readonly deploymentState: StoredDeploymentState | null;
   readonly walletAddress: string | null | undefined;
@@ -126,10 +148,9 @@ function AuthorizeDeploymentPanel(input: {
   const packageHref = deploymentState === null
     ? null
     : getSuiScanHref(deploymentState.targetId, "object", deploymentState.packageId);
-  const walletHref = deploymentState === null || walletAddress === null || walletAddress === undefined
-    ? null
-    : getSuiScanHref(deploymentState.targetId, "account", walletAddress);
-  const actionClassName = "inline-flex shrink-0 items-center border border-[var(--ui-border-dark)] bg-[rgba(20,10,10,0.52)] px-2 py-1 font-heading text-[0.62rem] uppercase tracking-[0.18em] text-[var(--text-secondary)] transition-colors hover:border-[var(--brand-orange)] hover:text-[var(--cream-white)] disabled:cursor-default disabled:hover:border-[var(--ui-border-dark)] disabled:hover:text-[var(--text-secondary)]";
+  const walletHref = deploymentState !== null && walletAddress != null
+    ? getSuiScanHref(deploymentState.targetId, "account", walletAddress)
+    : null;
 
   return (
     <aside className="border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.78)] p-5">
@@ -144,16 +165,7 @@ function AuthorizeDeploymentPanel(input: {
         <dl className="mt-4 grid gap-3 text-sm text-[var(--text-secondary)]">
           <AuthorizeDeploymentField
             action={(
-              <button
-                aria-label={copiedField === "package" ? "Copied package id" : "Copy package id"}
-                className={actionClassName}
-                onClick={() => {
-                  void handleCopy("package", deploymentState.packageId);
-                }}
-                type="button"
-              >
-                {copiedField === "package" ? "Copied" : "Copy"}
-              </button>
+              <CopyFieldButton copiedField={copiedField} field="package" onCopy={() => { void handleCopy("package", deploymentState.packageId); }} />
             )}
             href={packageHref}
             label="Package"
@@ -163,16 +175,7 @@ function AuthorizeDeploymentPanel(input: {
           <AuthorizeDeploymentField label="Target" value={deploymentState.targetId} />
           <AuthorizeDeploymentField
             action={walletAddress ? (
-              <button
-                aria-label={copiedField === "wallet" ? "Copied wallet address" : "Copy wallet address"}
-                className={actionClassName}
-                onClick={() => {
-                  void handleCopy("wallet", walletAddress);
-                }}
-                type="button"
-              >
-                {copiedField === "wallet" ? "Copied" : "Copy"}
-              </button>
+              <CopyFieldButton copiedField={copiedField} field="wallet" onCopy={() => { void handleCopy("wallet", walletAddress); }} />
             ) : undefined}
             href={walletHref}
             label="Wallet"

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
+
 async function dropNode(page: Page, label: string, clientX: number, clientY: number) {
   const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
   const source = page.getByRole("button", { name: label, exact: true }).first();
@@ -44,9 +46,7 @@ async function selectSavedContractAndWaitForDialog(page: Page, contractLabel: st
 }
 
 test("shows seeded example contracts in the load panel on a clean workspace", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/");
 
   const contractOptions = page.locator('select[aria-label="Saved contract"] option');
@@ -58,9 +58,7 @@ test("shows seeded example contracts in the load panel on a clean workspace", as
 test("asks before replacing unsaved canvas work with a seeded example contract", async ({ page, isMobile }) => {
   test.skip(isMobile, "Desktop load-panel replacement coverage only.");
 
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/");
 
   await ensureCategoryExpanded(page, "Event Trigger");

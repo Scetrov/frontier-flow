@@ -332,16 +332,26 @@ function extractTurretIdFromOwnerCap(content: unknown): string | null {
   return isSuiAddress(turretId) ? turretId : null;
 }
 
+function resolveExtensionIdentityFields(
+  rawTypeName: string | null,
+  rawPackageId: string | null,
+  rawModuleName: string | null,
+): { readonly packageId: string | null; readonly moduleName: string | null; readonly typeName: string | null } {
+  const derivedTypeParts = parseTypeName(rawTypeName);
+  const packageId = rawPackageId ?? derivedTypeParts?.packageId ?? null;
+  const moduleName = rawModuleName ?? derivedTypeParts?.moduleName ?? null;
+  const typeName = buildExtensionTypeName(rawTypeName, packageId, moduleName);
+
+  return { packageId, moduleName, typeName };
+}
+
 function getExtensionIdentity(content: unknown): { readonly packageId: string; readonly moduleName: string; readonly typeName: string } | null {
   const rawTypeName = findFirstStringAtKeys(content, ["typeName", "type_name", "authorizationType", "authorization_type"])
     ?? extractTypeNameWrapperValue(content)
     ?? findFirstTypeNameLikeValue(content);
   const rawPackageId = normalizeSuiAddress(findFirstStringAtKeys(content, ["packageId", "package_id"]));
   const rawModuleName = findFirstStringAtKeys(content, ["moduleName", "module_name"]);
-  const derivedTypeParts = parseTypeName(rawTypeName);
-  const packageId = rawPackageId ?? derivedTypeParts?.packageId ?? null;
-  const moduleName = rawModuleName ?? derivedTypeParts?.moduleName ?? null;
-  const typeName = buildExtensionTypeName(rawTypeName, packageId, moduleName);
+  const { packageId, moduleName, typeName } = resolveExtensionIdentityFields(rawTypeName, rawPackageId, rawModuleName);
 
   if (packageId === null || moduleName === null || typeName === null) {
     return null;
@@ -380,6 +390,15 @@ function parseTypeName(typeName: string | null): { readonly packageId: string; r
   return { packageId, moduleName };
 }
 
+function tryExtractTypeNameField(current: Record<string, unknown>): string | null {
+  if (current.type !== MOVE_TYPE_NAME_WRAPPER) {
+    return null;
+  }
+
+  const fields = current.fields;
+  return isRecord(fields) && typeof fields.name === "string" ? fields.name : null;
+}
+
 function extractTypeNameWrapperValue(content: unknown): string | null {
   const visited = new Set<object>();
   const queue: unknown[] = [content];
@@ -405,12 +424,9 @@ function extractTypeNameWrapperValue(content: unknown): string | null {
       continue;
     }
 
-    if (current.type === MOVE_TYPE_NAME_WRAPPER) {
-      const fields = current.fields;
-
-      if (isRecord(fields) && typeof fields.name === "string") {
-        return fields.name;
-      }
+    const extracted = tryExtractTypeNameField(current);
+    if (extracted !== null) {
+      return extracted;
     }
 
     for (const value of Object.values(current)) {
@@ -451,6 +467,11 @@ function normalizeSuiAddress(value: string | null): string | null {
   return isSuiAddress(prefixedValue) ? prefixedValue : null;
 }
 
+function isMatchingTurretAuthTypeName(value: string): string | null {
+  const normalizedTypeName = normalizeTypeName(value);
+  return normalizedTypeName !== null && normalizedTypeName.endsWith("::TurretAuth") ? normalizedTypeName : null;
+}
+
 function findFirstTypeNameLikeValue(content: unknown): string | null {
   const visited = new Set<object>();
   const queue: unknown[] = [content];
@@ -459,10 +480,9 @@ function findFirstTypeNameLikeValue(content: unknown): string | null {
     const current = queue.shift();
 
     if (typeof current === "string") {
-      const normalizedTypeName = normalizeTypeName(current);
-
-      if (normalizedTypeName !== null && normalizedTypeName.endsWith("::TurretAuth")) {
-        return normalizedTypeName;
+      const match = isMatchingTurretAuthTypeName(current);
+      if (match !== null) {
+        return match;
       }
 
       continue;
