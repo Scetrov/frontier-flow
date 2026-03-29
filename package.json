@@ -12,6 +12,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "debug:turret-priority-mcve": "bun run ./scripts/debug-turret-priority-mcve.ts",
     "debug:remote-deploy-grade-mcve": "bun run ./scripts/debug-remote-deploy-grade-mcve.ts",
     "build": "tsc -b && vite build",
     "build:with-world-contracts": "bun run fetch:world-contracts && bun run build",
