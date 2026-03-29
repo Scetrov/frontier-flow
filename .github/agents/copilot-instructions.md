@@ -1,1 +1,1 @@
-- 016-visual-designer-tutorial: Added TypeScript 5.9 (strict, no `any`), ES Modules, HTML, CSS + React 19, `@xyflow/react` (React Flow v12), Tailwind CSS 4
+- 018-simulate-turret-inputs: Added TypeScript 5.9 (strict, ES Modules) + React 19, Tailwind CSS 4, `@mysten/sui` (`bcs`, `jsonRpc`, `transactions`), `@mysten/dapp-kit`, existing authorization/turret GraphQL utilities
