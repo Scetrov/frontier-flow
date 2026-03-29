@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCurrentAccount, useCurrentWallet, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 
 import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, DeploymentTargetId } from "./compiler/types";
@@ -13,11 +13,13 @@ import PrivacyNoticeBanner from "./components/PrivacyNoticeBanner";
 import type { PrimaryView } from "./components/Header";
 import MoveSourcePanel from "./components/MoveSourcePanel";
 import Sidebar from "./components/Sidebar";
+import TutorialOverlay from "./components/TutorialOverlay";
 import VisualDeploymentTargetSelector from "./components/VisualDeploymentTargetSelector";
 import { seededExampleContracts } from "./data/exampleContracts";
 import { subscribeToLocalEnvironmentChanges } from "./data/localEnvironment";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
 import { useDeployment } from "./hooks/useDeployment";
+import { useTutorial } from "./hooks/useTutorial";
 import type { GraphTransferWalletBridge } from "./hooks/useGraphTransfer";
 import type { RemediationNotice } from "./types/nodes";
 import type { StoredDeploymentState } from "./types/authorization";
@@ -60,7 +62,11 @@ interface AppMainContentProps {
     nextSourceCode: string | null,
     artifactMoveSource?: string | null,
   ) => void;
+  readonly onRegisterContractPanelVisibility: (setContractPanelOpen: (open: boolean) => void) => void;
+  readonly onRegisterInsertDemoNode: (insertDemoNode: () => void) => void;
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
+  readonly onRegisterRemoveDemoNode: (removeDemoNode: () => void) => void;
+  readonly onRegisterSidebarVisibility: (setSidebarOpen: (open: boolean) => void) => void;
   readonly onSelectedDeploymentTargetChange: (target: DeploymentTargetId) => void;
   readonly selectedDeploymentTarget: DeploymentTargetId;
 }
@@ -69,7 +75,11 @@ interface VisualWorkspaceViewProps {
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
   readonly graphTransferWalletBridge: GraphTransferWalletBridge;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
+  readonly onRegisterContractPanelVisibility: (setContractPanelOpen: (open: boolean) => void) => void;
+  readonly onRegisterInsertDemoNode: (insertDemoNode: () => void) => void;
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
+  readonly onRegisterRemoveDemoNode: (removeDemoNode: () => void) => void;
+  readonly onRegisterSidebarVisibility: (setSidebarOpen: (open: boolean) => void) => void;
   readonly onSelectedDeploymentTargetChange: (target: DeploymentTargetId) => void;
   readonly selectedDeploymentTarget: DeploymentTargetId;
 }
@@ -90,11 +100,17 @@ interface StandardAppLayoutProps {
   readonly onDismissPrivacyNotice: () => void;
   readonly onMoveRebuild: () => Promise<void>;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
+  readonly onRegisterContractPanelVisibility: (setContractPanelOpen: (open: boolean) => void) => void;
+  readonly onRegisterInsertDemoNode: (insertDemoNode: () => void) => void;
   readonly onRemediationNoticesChange: (notices: readonly RemediationNotice[]) => void;
+  readonly onRegisterRemoveDemoNode: (removeDemoNode: () => void) => void;
+  readonly onRegisterSidebarVisibility: (setSidebarOpen: (open: boolean) => void) => void;
   readonly onSelectDiagnostic: (nodeId: string) => void;
+  readonly onStartTutorial: () => void;
   readonly onViewChange: (view: PrimaryView) => void;
   readonly remediationNotices: readonly RemediationNotice[];
   readonly selectedDeploymentTarget: DeploymentTargetId;
+  readonly tutorialOverlay: React.ReactNode;
   readonly transientStatusMessage: {
     readonly tone: "error" | "info" | "success";
     readonly text: string;
@@ -206,7 +222,11 @@ function VisualWorkspaceView({
   focusedDiagnosticSelection,
   graphTransferWalletBridge,
   onCompilationStateChange,
+  onRegisterContractPanelVisibility,
+  onRegisterInsertDemoNode,
   onRemediationNoticesChange,
+  onRegisterRemoveDemoNode,
+  onRegisterSidebarVisibility,
   onSelectedDeploymentTargetChange,
   selectedDeploymentTarget,
 }: VisualWorkspaceViewProps) {
@@ -229,11 +249,14 @@ function VisualWorkspaceView({
           initialContractName={defaultContractName}
           initialEdges={defaultContractFlow.edges}
           initialNodes={defaultContractFlow.nodes}
+          onRegisterContractPanelVisibility={onRegisterContractPanelVisibility}
           onCompilationStateChange={onCompilationStateChange}
+          onInsertDemoNode={onRegisterInsertDemoNode}
+          onRemoveDemoNode={onRegisterRemoveDemoNode}
           onRemediationNoticesChange={onRemediationNoticesChange}
         />
       </section>
-      <Sidebar />
+      <Sidebar onRegisterSidebarVisibility={onRegisterSidebarVisibility} />
     </div>
   );
 }
@@ -256,7 +279,11 @@ function AppMainContent({
   moveSourceCode,
   onMoveRebuild,
   onCompilationStateChange,
+  onRegisterContractPanelVisibility,
+  onRegisterInsertDemoNode,
   onRemediationNoticesChange,
+  onRegisterRemoveDemoNode,
+  onRegisterSidebarVisibility,
   onSelectedDeploymentTargetChange,
   selectedDeploymentTarget,
 }: AppMainContentProps) {
@@ -266,7 +293,11 @@ function AppMainContent({
         focusedDiagnosticSelection={focusedDiagnosticSelection}
         graphTransferWalletBridge={graphTransferWalletBridge}
         onCompilationStateChange={onCompilationStateChange}
+        onRegisterContractPanelVisibility={onRegisterContractPanelVisibility}
+        onRegisterInsertDemoNode={onRegisterInsertDemoNode}
         onRemediationNoticesChange={onRemediationNoticesChange}
+        onRegisterRemoveDemoNode={onRegisterRemoveDemoNode}
+        onRegisterSidebarVisibility={onRegisterSidebarVisibility}
         onSelectedDeploymentTargetChange={onSelectedDeploymentTargetChange}
         selectedDeploymentTarget={selectedDeploymentTarget}
       />
@@ -358,11 +389,17 @@ function StandardAppLayout({
   onDismissPrivacyNotice,
   onMoveRebuild,
   onCompilationStateChange,
+  onRegisterContractPanelVisibility,
+  onRegisterInsertDemoNode,
   onRemediationNoticesChange,
+  onRegisterRemoveDemoNode,
+  onRegisterSidebarVisibility,
   onSelectDiagnostic,
+  onStartTutorial,
   onViewChange,
   remediationNotices,
   selectedDeploymentTarget,
+  tutorialOverlay,
   transientStatusMessage,
 }: StandardAppLayoutProps) {
   return (
@@ -376,6 +413,7 @@ function StandardAppLayout({
         onDetectedDeploymentTarget={(targetId) => {
           deployment.setSelectedTarget(targetId);
         }}
+        onStartTutorial={isKitchenSinkRoute ? undefined : onStartTutorial}
         onViewChange={isKitchenSinkRoute ? undefined : onViewChange}
         selectedDeploymentTarget={deployment.selectedTarget}
       />
@@ -397,12 +435,17 @@ function StandardAppLayout({
             moveSourceCode={moveSourceCode}
             onMoveRebuild={onMoveRebuild}
             onCompilationStateChange={onCompilationStateChange}
+            onRegisterContractPanelVisibility={onRegisterContractPanelVisibility}
+            onRegisterInsertDemoNode={onRegisterInsertDemoNode}
             onRemediationNoticesChange={onRemediationNoticesChange}
+            onRegisterRemoveDemoNode={onRegisterRemoveDemoNode}
+            onRegisterSidebarVisibility={onRegisterSidebarVisibility}
             onSelectedDeploymentTargetChange={deployment.setSelectedTarget}
             selectedDeploymentTarget={selectedDeploymentTarget}
           />
         </main>
       )}
+      {tutorialOverlay}
       {isPrivacyNoticeVisible ? <PrivacyNoticeBanner onDismiss={onDismissPrivacyNotice} /> : null}
       <Footer
         deploymentStatus={deployment.deploymentStatus}
@@ -646,6 +689,10 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
   const currentAccount = useCurrentAccount();
   const { isConnected } = useCurrentWallet();
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
+  const setSidebarOpenRef = useRef<(open: boolean) => void>(() => undefined);
+  const setContractPanelOpenRef = useRef<(open: boolean) => void>(() => undefined);
+  const insertDemoNodeRef = useRef<() => void>(() => undefined);
+  const removeDemoNodeRef = useRef<() => void>(() => undefined);
   const [isPrivacyNoticeVisible, setIsPrivacyNoticeVisible] = useState(() => shouldShowPrivacyNotice(getBrowserStorage()));
   const initialAppState = useMemo(() => getInitialAppState(), []);
   const {
@@ -679,6 +726,27 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     acknowledgePrivacyNotice(getBrowserStorage());
     setIsPrivacyNoticeVisible(false);
   }, []);
+  const handleSetTutorialDrawerVisibility = useCallback((drawer: "sidebar" | "contract-panel", open: boolean) => {
+    if (drawer === "sidebar") {
+      setSidebarOpenRef.current(open);
+      return;
+    }
+
+    setContractPanelOpenRef.current(open);
+  }, []);
+  const handleInsertTutorialDemoNode = useCallback(() => {
+    insertDemoNodeRef.current();
+  }, []);
+  const handleRemoveTutorialDemoNode = useCallback(() => {
+    removeDemoNodeRef.current();
+  }, []);
+  const tutorial = useTutorial({
+    activeView: resolvedActiveView,
+    isCanvasReady: resolvedActiveView === "visual",
+    onSetDrawerVisibility: handleSetTutorialDrawerVisibility,
+    onInsertDemoNode: handleInsertTutorialDemoNode,
+    onRemoveDemoNode: handleRemoveTutorialDemoNode,
+  });
 
   useEffect(() => subscribeToLocalEnvironmentChanges(() => {
     setLocalEnvironmentRevision((currentValue) => currentValue + 1);
@@ -701,11 +769,35 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       onDismissPrivacyNotice={handleDismissPrivacyNotice}
       onMoveRebuild={onMoveRebuild}
       onCompilationStateChange={onCompilationStateChange}
+      onRegisterContractPanelVisibility={(setContractPanelOpen) => {
+        setContractPanelOpenRef.current = setContractPanelOpen;
+      }}
+      onRegisterInsertDemoNode={(insertDemoNode) => {
+        insertDemoNodeRef.current = insertDemoNode;
+      }}
       onRemediationNoticesChange={setRemediationNotices}
+      onRegisterRemoveDemoNode={(removeDemoNode) => {
+        removeDemoNodeRef.current = removeDemoNode;
+      }}
+      onRegisterSidebarVisibility={(setSidebarOpen) => {
+        setSidebarOpenRef.current = setSidebarOpen;
+      }}
       onSelectDiagnostic={onSelectDiagnostic}
+      onStartTutorial={tutorial.start}
       onViewChange={setActiveView}
       remediationNotices={remediationNotices}
       selectedDeploymentTarget={selectedDeploymentTarget}
+      tutorialOverlay={(
+        <TutorialOverlay
+          currentStep={tutorial.currentStep}
+          currentStepIndex={tutorial.currentStepIndex}
+          isActive={tutorial.isActive}
+          onDismiss={tutorial.dismiss}
+          onNext={tutorial.next}
+          targetRect={tutorial.targetRect}
+          totalSteps={tutorial.totalSteps}
+        />
+      )}
       transientStatusMessage={transientStatusMessage}
     />
   );

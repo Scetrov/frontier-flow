@@ -418,6 +418,161 @@ button,
   padding: 0;
 }
 
+.ff-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ff-header__help-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(26, 10, 10, 0.9);
+  color: var(--cream-white);
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.ff-header__help-button:hover,
+.ff-header__help-button:focus-visible {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.12);
+  color: var(--brand-orange);
+}
+
+.ff-tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.ff-tutorial__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 12, 0.28);
+}
+
+.ff-tutorial__spotlight {
+  position: fixed;
+  border: 1px solid rgba(255, 71, 0, 0.75);
+  background: transparent;
+  box-shadow: 0 0 0 9999px rgba(5, 8, 12, 0.72);
+  transition:
+    top 300ms ease,
+    left 300ms ease,
+    width 300ms ease,
+    height 300ms ease;
+}
+
+.ff-tutorial__panel {
+  position: fixed;
+  z-index: 61;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  border: 1px solid var(--brand-orange);
+  background: rgba(16, 21, 31, 0.96);
+  color: var(--cream-white);
+  padding: 1rem;
+  box-shadow: 0 20px 38px rgba(3, 6, 10, 0.38);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+
+.ff-tutorial__panel--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ff-tutorial__eyebrow {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-tutorial__title {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.92rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ff-tutorial__message {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.ff-tutorial__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ff-tutorial__button {
+  min-height: 2.5rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(26, 10, 10, 0.85);
+  color: var(--cream-white);
+  padding: 0.65rem 0.9rem;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ff-tutorial__button:hover,
+.ff-tutorial__button:focus-visible {
+  border-color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.12);
+}
+
+.ff-tutorial__button--primary {
+  border-color: var(--brand-orange);
+}
+
+.ff-tutorial__progress-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ff-tutorial__progress-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid var(--ui-border-dark);
+  background: rgba(250, 250, 229, 0.12);
+}
+
+.ff-tutorial__progress-dot--active {
+  border-color: var(--brand-orange);
+  background: var(--brand-orange);
+}
+
+.ff-tutorial__target {
+  position: relative !important;
+  z-index: 60 !important;
+}
+
 .ff-transfer-dialog {
   position: relative;
   z-index: 1;

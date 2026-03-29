@@ -61,6 +61,22 @@ describe("Header", () => {
     expect(screen.getByRole("button", { name: "Visual" })).toHaveAttribute("aria-current", "page");
   });
 
+  it("renders a tutorial help button and forwards its callback", () => {
+    const onStartTutorial = vi.fn();
+
+    render(<Header activeView="visual" onStartTutorial={onStartTutorial} onViewChange={() => undefined} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Start tutorial" }));
+
+    expect(onStartTutorial).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the tutorial help button outside the visual designer view", () => {
+    render(<Header activeView="move" onStartTutorial={() => undefined} onViewChange={() => undefined} />);
+
+    expect(screen.queryByRole("button", { name: "Start tutorial" })).not.toBeInTheDocument();
+  });
+
   it("disables the Authorize tab until a deployment is available", () => {
     render(<Header activeView="visual" canAccessDeploy={true} canAccessMove={true} hasAuthorizeAccess={false} onViewChange={() => undefined} />);
 

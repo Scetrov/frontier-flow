@@ -11,12 +11,15 @@ interface HeaderProps {
   readonly hasAuthorizeAccess?: boolean;
   readonly isCompiling?: boolean;
   readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
+  readonly onStartTutorial?: () => void;
   readonly onViewChange?: (view: PrimaryView) => void;
   readonly selectedDeploymentTarget?: DeploymentTargetId;
 }
 
 interface HeaderActionsProps {
+  readonly activeView: PrimaryView;
   readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
+  readonly onStartTutorial?: () => void;
   readonly selectedDeploymentTarget: DeploymentTargetId;
 }
 
@@ -148,9 +151,20 @@ function ViewNavigation({
   );
 }
 
-function HeaderActions({ onDetectedDeploymentTarget, selectedDeploymentTarget }: HeaderActionsProps) {
+function HeaderActions({ activeView, onDetectedDeploymentTarget, onStartTutorial, selectedDeploymentTarget }: HeaderActionsProps) {
   return (
     <div className="ff-header__actions">
+      {activeView === "visual" && onStartTutorial !== undefined ? (
+        <button
+          aria-label="Start tutorial"
+          className="ff-header__help-button"
+          onClick={onStartTutorial}
+          title="Start tutorial"
+          type="button"
+        >
+          ?
+        </button>
+      ) : null}
       <WalletStatus onDetectedDeploymentTarget={onDetectedDeploymentTarget} selectedDeploymentTarget={selectedDeploymentTarget} />
     </div>
   );
@@ -163,6 +177,7 @@ function Header({
   hasAuthorizeAccess = false,
   isCompiling = false,
   onDetectedDeploymentTarget,
+  onStartTutorial,
   onViewChange,
   selectedDeploymentTarget = "local",
 }: HeaderProps) {
@@ -198,7 +213,7 @@ function Header({
           />
         ) : null}
 
-        <HeaderActions onDetectedDeploymentTarget={onDetectedDeploymentTarget} selectedDeploymentTarget={selectedDeploymentTarget} />
+        <HeaderActions activeView={activeView} onDetectedDeploymentTarget={onDetectedDeploymentTarget} onStartTutorial={onStartTutorial} selectedDeploymentTarget={selectedDeploymentTarget} />
       </div>
     </header>
   );
