@@ -151,16 +151,21 @@ function TutorialProgressDots({ currentStepIndex, totalSteps }: { readonly curre
   );
 }
 
-function TutorialOverlay({ currentStep, currentStepIndex, isActive, onDismiss, onNext, targetRect, totalSteps }: TutorialOverlayProps) {
+interface ActiveTutorialOverlayProps {
+  readonly currentStep: TutorialStepDefinition;
+  readonly currentStepIndex: number;
+  readonly onDismiss: () => void;
+  readonly onNext: () => void;
+  readonly targetRect: DOMRect;
+  readonly totalSteps: number;
+}
+
+function ActiveTutorialOverlay({ currentStep, currentStepIndex, onDismiss, onNext, targetRect, totalSteps }: ActiveTutorialOverlayProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [visibleStepId, setVisibleStepId] = useState<TutorialStepDefinition["id"] | null>(null);
-  const stepAnnouncement = currentStep === null ? "" : `Step ${String(currentStepIndex + 1)} of ${String(totalSteps)}. ${currentStep.message}`;
+  const stepAnnouncement = `Step ${String(currentStepIndex + 1)} of ${String(totalSteps)}. ${currentStep.message}`;
 
   useEffect(() => {
-    if (!isActive || currentStep === null || targetRect === null) {
-      return;
-    }
-
     const timeoutId = window.setTimeout(() => {
       setVisibleStepId(currentStep.id);
       panelRef.current?.focus();
@@ -169,13 +174,9 @@ function TutorialOverlay({ currentStep, currentStepIndex, isActive, onDismiss, o
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [currentStep, currentStep?.id, isActive, targetRect]);
+  }, [currentStep.id]);
 
   useEffect(() => {
-    if (!isActive || currentStep === null || targetRect === null) {
-      return;
-    }
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -192,13 +193,9 @@ function TutorialOverlay({ currentStep, currentStepIndex, isActive, onDismiss, o
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [currentStep, isActive, onDismiss, targetRect]);
+  }, [onDismiss]);
 
   const tooltipStyle = useMemo(() => {
-    if (currentStep === null || targetRect === null) {
-      return null;
-    }
-
     const coordinates = getTooltipCoordinates(targetRect, currentStep.tooltipPosition);
 
     return {
@@ -207,10 +204,6 @@ function TutorialOverlay({ currentStep, currentStepIndex, isActive, onDismiss, o
       width: `min(${String(TOOLTIP_WIDTH_PX)}px, calc(100vw - ${String(VIEWPORT_PADDING_PX * 2)}px))`,
     };
   }, [currentStep, targetRect]);
-
-  if (!isActive || currentStep === null || targetRect === null || tooltipStyle === null) {
-    return null;
-  }
 
   const isTooltipVisible = visibleStepId === currentStep.id;
   const isLastStep = currentStepIndex === totalSteps - 1;
@@ -236,7 +229,7 @@ function TutorialOverlay({ currentStep, currentStepIndex, isActive, onDismiss, o
       >
         <p className="ff-tutorial__eyebrow">Visual Designer tutorial</p>
         <h2 className="ff-tutorial__title" id="ff-tutorial-title">Step {String(currentStepIndex + 1)} of {String(totalSteps)}</h2>
-        <p aria-live="polite" className="ff-tutorial__message">{currentStep.message}</p>
+        <p className="ff-tutorial__message">{currentStep.message}</p>
         <TutorialProgressDots currentStepIndex={currentStepIndex} totalSteps={totalSteps} />
         <div className="ff-tutorial__actions">
           <button className="ff-tutorial__button ff-tutorial__button--primary" onClick={onNext} type="button">
@@ -249,6 +242,23 @@ function TutorialOverlay({ currentStep, currentStepIndex, isActive, onDismiss, o
         <div className="sr-only" aria-live="polite">{stepAnnouncement}</div>
       </div>
     </div>
+  );
+}
+
+function TutorialOverlay({ currentStep, currentStepIndex, isActive, onDismiss, onNext, targetRect, totalSteps }: TutorialOverlayProps) {
+  if (!isActive || currentStep === null || targetRect === null) {
+    return null;
+  }
+
+  return (
+    <ActiveTutorialOverlay
+      currentStep={currentStep}
+      currentStepIndex={currentStepIndex}
+      onDismiss={onDismiss}
+      onNext={onNext}
+      targetRect={targetRect}
+      totalSteps={totalSteps}
+    />
   );
 }
 

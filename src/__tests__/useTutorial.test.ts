@@ -251,4 +251,31 @@ describe("useTutorial", () => {
     expect(result.current.targetRect?.width).toBe(180);
     expect(result.current.targetRect?.height).toBe(64);
   });
+
+  it("cancels pending debounced resize work during cleanup", () => {
+    const networkSelector = document.createElement("button");
+    networkSelector.setAttribute("aria-label", "Target network/server");
+    setBoundingRect(networkSelector, { left: 24, top: 20, width: 100, height: 40 });
+    document.body.append(networkSelector);
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+
+    const { result, unmount } = renderTutorialHook();
+
+    act(() => {
+      result.current.start();
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    const clearTimeoutCallsBeforeCleanup = clearTimeoutSpy.mock.calls.length;
+
+    act(() => {
+      unmount();
+    });
+
+    expect(clearTimeoutSpy.mock.calls.length).toBeGreaterThan(clearTimeoutCallsBeforeCleanup);
+    clearTimeoutSpy.mockRestore();
+  });
 });

@@ -121,10 +121,12 @@ function syncDrawerVisibilityForStep(
   }
 }
 
-function debounce(callback: () => void, delayMs: number): () => void {
+type DebouncedCallback = (() => void) & { cancel: () => void };
+
+function debounce(callback: () => void, delayMs: number): DebouncedCallback {
   let timeoutId: number | null = null;
 
-  return () => {
+  const debounced = () => {
     if (timeoutId !== null) {
       window.clearTimeout(timeoutId);
     }
@@ -134,6 +136,15 @@ function debounce(callback: () => void, delayMs: number): () => void {
       callback();
     }, delayMs);
   };
+
+  debounced.cancel = () => {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+
+  return debounced;
 }
 
 function removeTutorialTargetClass(targetRef: { current: HTMLElement | null }): void {
@@ -151,6 +162,12 @@ function applyTutorialTargetClass(targetRef: { current: HTMLElement | null }, el
   targetRef.current = element;
 }
 
+/**
+ * Manages the lifecycle of the Visual Designer onboarding tutorial.
+ *
+ * Persists tutorial completion, auto-starts once the canvas is ready,
+ * and coordinates drawer visibility plus demo-node setup for guided steps.
+ */
 export function useTutorial({ activeView, isCanvasReady, onInsertDemoNode, onRemoveDemoNode, onSetDrawerVisibility }: UseTutorialOptions): UseTutorialReturn {
   const [state, setState] = useState<TutorialState>({ status: "inactive", currentStepIndex: -1, targetRect: null });
   const [hasSeenTutorial, setHasSeenTutorial] = useState(() => loadPersistedState(getBrowserStorage()).hasSeenTutorial);
@@ -305,6 +322,7 @@ export function useTutorial({ activeView, isCanvasReady, onInsertDemoNode, onRem
     return () => {
       window.removeEventListener("resize", handleViewportChange);
       window.removeEventListener("scroll", handleViewportChange, true);
+      recalculateTargetRect.cancel();
     };
   }, [state.status]);
 

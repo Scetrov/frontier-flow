@@ -68,6 +68,7 @@ describe("TutorialOverlay", () => {
     expect(screen.getByRole("button", { name: "Dismiss" })).toBeVisible();
     expect(document.querySelectorAll(".ff-tutorial__progress-dot")).toHaveLength(5);
     expect(document.querySelectorAll(".ff-tutorial__progress-dot--active")).toHaveLength(1);
+    expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
   });
 
   it("positions the spotlight from the target rect with padding", () => {
@@ -219,6 +220,58 @@ describe("TutorialOverlay", () => {
         onDismiss={() => undefined}
         onNext={() => undefined}
         targetRect={new DOMRect(420, 60, 180, 200)}
+        totalSteps={5}
+      />,
+    );
+
+    expect(screen.getByRole("dialog")).not.toHaveClass("ff-tutorial__panel--visible");
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(screen.getByRole("dialog")).toHaveClass("ff-tutorial__panel--visible");
+  });
+
+  it("resets the visibility transition after the tutorial is deactivated", () => {
+    const { rerender } = render(
+      <TutorialOverlay
+        currentStep={createStep({ id: "network-selector" })}
+        currentStepIndex={0}
+        isActive={true}
+        onDismiss={() => undefined}
+        onNext={() => undefined}
+        targetRect={new DOMRect(40, 60, 180, 50)}
+        totalSteps={5}
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(screen.getByRole("dialog")).toHaveClass("ff-tutorial__panel--visible");
+
+    rerender(
+      <TutorialOverlay
+        currentStep={null}
+        currentStepIndex={-1}
+        isActive={false}
+        onDismiss={() => undefined}
+        onNext={() => undefined}
+        targetRect={null}
+        totalSteps={5}
+      />,
+    );
+
+    rerender(
+      <TutorialOverlay
+        currentStep={createStep({ id: "network-selector" })}
+        currentStepIndex={0}
+        isActive={true}
+        onDismiss={() => undefined}
+        onNext={() => undefined}
+        targetRect={new DOMRect(40, 60, 180, 50)}
         totalSteps={5}
       />,
     );
