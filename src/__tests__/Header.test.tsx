@@ -18,8 +18,9 @@ describe("Header", () => {
     expect(screen.getByRole("button", { name: "Code" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Deploy" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Authorize" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Simulate" })).toBeVisible();
     expect(screen.getByText("Wallet Status Slot")).toBeVisible();
-    expect(screen.getAllByText("▶")).toHaveLength(3);
+    expect(screen.getAllByText("▶")).toHaveLength(4);
   });
 
   it("disables the move and deploy tabs until automatic compile has settled", () => {
@@ -54,10 +55,12 @@ describe("Header", () => {
     fireEvent.click(screen.getByRole("button", { name: "Code" }));
     fireEvent.click(screen.getByRole("button", { name: "Deploy" }));
     fireEvent.click(screen.getByRole("button", { name: "Authorize" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simulate" }));
 
     expect(onViewChange).toHaveBeenCalledWith("move");
     expect(onViewChange).toHaveBeenCalledWith("deploy");
     expect(onViewChange).toHaveBeenCalledWith("authorize");
+    expect(onViewChange).toHaveBeenCalledWith("simulate");
     expect(screen.getByRole("button", { name: "Visual" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -81,10 +84,14 @@ describe("Header", () => {
     render(<Header activeView="visual" canAccessDeploy={true} canAccessMove={true} hasAuthorizeAccess={false} onViewChange={() => undefined} />);
 
     const authorizeButton = screen.getByRole("button", { name: "Authorize" });
+    const simulateButton = screen.getByRole("button", { name: "Simulate" });
 
     expect(authorizeButton).toBeDisabled();
     expect(authorizeButton).toHaveAttribute("aria-disabled", "true");
     expect(authorizeButton).toHaveAttribute("title", "Deploy a contract first");
+    expect(simulateButton).toBeDisabled();
+    expect(simulateButton).toHaveAttribute("aria-disabled", "true");
+    expect(simulateButton).toHaveAttribute("title", "Deploy a contract first");
   });
 
   it("does not surface lifecycle automation actions outside the current feature scope", () => {

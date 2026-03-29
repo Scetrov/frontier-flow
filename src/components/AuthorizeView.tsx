@@ -8,10 +8,15 @@ import { useTurretSimulation } from "../hooks/useTurretSimulation";
 import { useTurretList } from "../hooks/useTurretList";
 import AuthorizationProgressModal from "./AuthorizationProgressModal";
 import AuthorizeTurretList from "./AuthorizeTurretList";
+import type { PrimaryView } from "./Header";
 import TurretSimulationModal from "./TurretSimulationModal";
 
+type AuthorizeWorkflowView = Extract<PrimaryView, "authorize" | "simulate">;
+
 interface AuthorizeViewProps {
+  readonly activeView?: AuthorizeWorkflowView;
   readonly deploymentState: StoredDeploymentState | null;
+  readonly onViewChange?: (view: PrimaryView) => void;
 }
 
 interface AuthorizeViewPanelProps {
@@ -28,6 +33,7 @@ interface AuthorizeViewPrimaryPanelProps {
   readonly handleAuthorize: () => void;
   readonly handleSelectionChange: (turretIds: readonly string[]) => void;
   readonly listInstanceKey: number;
+  readonly onViewChange?: (view: PrimaryView) => void;
   readonly selectedTurretIds: readonly string[];
   readonly turretList: ReturnType<typeof useTurretList>;
   readonly turretSimulation: ReturnType<typeof useTurretSimulation>;
@@ -44,17 +50,39 @@ function getAuthorizeDeploymentKey(deploymentState: StoredDeploymentState | null
     : `${deploymentState.targetId}:${deploymentState.packageId}:${deploymentState.moduleName}`;
 }
 
-function AuthorizeViewHeader() {
+function getAuthorizeViewHeaderCopy(activeView: AuthorizeWorkflowView): {
+  readonly eyebrow: string;
+  readonly summary: string;
+  readonly title: string;
+} {
+  if (activeView === "simulate") {
+    return {
+      eyebrow: "Deployment Simulation",
+      summary: "Review a live turret context, adjust the candidate draft, and run a non-mutating extension simulation before authorizing on-chain.",
+      title: "Simulate Turrets",
+    };
+  }
+
+  return {
+    eyebrow: "Deployment Authorization",
+    summary: "Select owned turrets, confirm the active extension state, and stage the authorization batch for the deployed contract.",
+    title: "Authorize Turrets",
+  };
+}
+
+function AuthorizeViewHeader({ activeView }: { readonly activeView: AuthorizeWorkflowView }) {
+  const copy = getAuthorizeViewHeaderCopy(activeView);
+
   return (
     <header className="flex flex-col gap-2 border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.68)] p-5">
       <p className="font-heading text-[0.68rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
-        Deployment Authorization
+        {copy.eyebrow}
       </p>
       <h1 className="font-heading text-xl uppercase tracking-[0.14em] text-[var(--cream-white)] sm:text-2xl">
-        Authorize Turrets
+        {copy.title}
       </h1>
       <p className="max-w-3xl text-sm text-[var(--text-secondary)]">
-        Select owned turrets, confirm the active extension state, and stage the authorization batch for the deployed contract.
+        {copy.summary}
       </p>
     </header>
   );
@@ -354,6 +382,7 @@ function AuthorizeViewPrimaryPanel({
   handleAuthorize,
   handleSelectionChange,
   listInstanceKey,
+  onViewChange,
   selectedTurretIds,
   turretList,
   turretSimulation,
@@ -375,6 +404,7 @@ function AuthorizeViewPrimaryPanel({
               deploymentState,
               turret,
             });
+            onViewChange?.("simulate");
           }}
           onSelectionChange={handleSelectionChange}
           turrets={turretList.turrets}
@@ -401,16 +431,42 @@ function AuthorizeViewPrimaryPanel({
   );
 }
 
-function AuthorizeSimulationOverlay(input: {
+function AuthorizeSimulationEmptyState({ onViewChange }: {
+  readonly onViewChange?: (view: PrimaryView) => void;
+}) {
+  return (
+    <div className="ff-authorize-view__state-card">
+      <div>
+        <h2 className="ff-authorize-view__state-title">Simulation Context Required</h2>
+        <p className="ff-authorize-view__state-copy">
+          Open a turret from the Authorize roster to review live deployment context and run a non-mutating simulation.
+        </p>
+      </div>
+      <button className="ff-authorize-view__action" onClick={() => { onViewChange?.("authorize"); }} type="button">
+        Open Authorize
+      </button>
+    </div>
+  );
+}
+
+function AuthorizeSimulationPanel(input: {
+  readonly onViewChange?: (view: PrimaryView) => void;
   readonly turretList: ReturnType<typeof useTurretList>;
   readonly turretSimulation: ReturnType<typeof useTurretSimulation>;
 }) {
-  const { turretList, turretSimulation } = input;
+  const { onViewChange, turretList, turretSimulation } = input;
+
+  if (turretSimulation.session.status === "closed") {
+    return <AuthorizeSimulationEmptyState onViewChange={onViewChange} />;
+  }
 
   return (
     <TurretSimulationModal
       onApplySuggestion={turretSimulation.applySuggestion}
-      onClose={turretSimulation.closeSimulation}
+      closeLabel="Back to Authorize"
+      onClose={() => {
+        onViewChange?.("authorize");
+      }}
       onLoadSuggestions={(field, query) => {
         void turretSimulation.loadSuggestions(field, query);
       }}
@@ -428,7 +484,7 @@ function AuthorizeSimulationOverlay(input: {
   );
 }
 
-function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
+function AuthorizeView({ activeView = "authorize", deploymentState, onViewChange }: AuthorizeViewProps) {
   const account = useCurrentAccount();
   const currentWallet = useCurrentWallet();
   const suiClient = useSuiClient();
@@ -459,23 +515,28 @@ function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
   } = useAuthorizeViewSelection({ authorization, deploymentKey, turretList });
 
   return (
-    <section aria-label="Authorize view" className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
+    <section aria-label={activeView === "simulate" ? "Simulate view" : "Authorize view"} className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
       <div className="ff-authorize-view">
-        <AuthorizeViewHeader />
+        <AuthorizeViewHeader activeView={activeView} />
 
         <div className="ff-authorize-view__grid">
           <div className="ff-authorize-view__primary">
-            <AuthorizeViewPrimaryPanel
-              authorization={authorization}
-              deploymentKey={deploymentKey}
-              deploymentState={deploymentState}
-              handleAuthorize={handleAuthorize}
-              handleSelectionChange={handleSelectionChange}
-              listInstanceKey={listInstanceKey}
-              selectedTurretIds={selectedTurretIds}
-              turretList={turretList}
-              turretSimulation={turretSimulation}
-            />
+            {activeView === "simulate" ? (
+              <AuthorizeSimulationPanel onViewChange={onViewChange} turretList={turretList} turretSimulation={turretSimulation} />
+            ) : (
+              <AuthorizeViewPrimaryPanel
+                authorization={authorization}
+                deploymentKey={deploymentKey}
+                deploymentState={deploymentState}
+                handleAuthorize={handleAuthorize}
+                handleSelectionChange={handleSelectionChange}
+                listInstanceKey={listInstanceKey}
+                onViewChange={onViewChange}
+                selectedTurretIds={selectedTurretIds}
+                turretList={turretList}
+                turretSimulation={turretSimulation}
+              />
+            )}
           </div>
 
           <AuthorizeDeploymentPanel deploymentState={deploymentState} walletAddress={account?.address} />
@@ -489,7 +550,6 @@ function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
         }}
         progress={authorization.progress}
       />
-      <AuthorizeSimulationOverlay turretList={turretList} turretSimulation={turretSimulation} />
     </section>
   );
 }

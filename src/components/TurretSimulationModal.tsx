@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 import type {
   SimulationFieldKey,
@@ -12,6 +12,7 @@ import { formatAddress } from "../utils/formatAddress";
 
 interface TurretSimulationModalProps {
   readonly onApplySuggestion?: (suggestion: SimulationSuggestion) => void;
+  readonly closeLabel?: string;
   readonly onClose: () => void;
   readonly onLoadSuggestions?: (field: SimulationFieldKey, query?: string) => void;
   readonly onRefreshContext?: () => void;
@@ -35,94 +36,6 @@ function parseOptionalInteger(value: string): number | null {
 
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
-}
-
-function getFocusableElements(panel: HTMLElement | null): HTMLElement[] {
-  if (panel === null) {
-    return [];
-  }
-
-  return Array.from(
-    panel.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    ),
-  );
-}
-
-function trapFocusWithinPanel(
-  event: KeyboardEvent,
-  panel: HTMLElement | null,
-  fallbackElement: HTMLButtonElement | null,
-): void {
-  const focusableElements = getFocusableElements(panel);
-
-  if (focusableElements.length === 0) {
-    event.preventDefault();
-    fallbackElement?.focus();
-    return;
-  }
-
-  const firstElement = focusableElements[0];
-  const lastElement = focusableElements[focusableElements.length - 1];
-  const activeElement = document.activeElement;
-
-  if (event.shiftKey && activeElement === firstElement) {
-    event.preventDefault();
-    lastElement.focus();
-    return;
-  }
-
-  if (!event.shiftKey && activeElement === lastElement) {
-    event.preventDefault();
-    firstElement.focus();
-  }
-}
-
-function useModalFocusManagement(input: {
-  readonly closeButtonRef: React.RefObject<HTMLButtonElement | null>;
-  readonly isOpen: boolean;
-  readonly onClose: () => void;
-  readonly panelRef: React.RefObject<HTMLElement | null>;
-}) {
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-  const { closeButtonRef, isOpen, onClose, panelRef } = input;
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeButtonRef.current?.focus();
-
-    return () => {
-      previousFocusRef.current?.focus();
-    };
-  }, [closeButtonRef, isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-
-      if (event.key === "Tab") {
-        trapFocusWithinPanel(event, panelRef.current, closeButtonRef.current);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [closeButtonRef, isOpen, onClose, panelRef]);
 }
 
 function SessionStatusBadge({ session }: { readonly session: TurretSimulationSession }) {
@@ -278,11 +191,11 @@ function getContextFields(session: TurretSimulationSession): ReadonlyArray<{ rea
 }
 
 function TurretSimulationHeader(input: {
-  readonly closeButtonRef: React.RefObject<HTMLButtonElement | null>;
+  readonly closeLabel: string;
   readonly onClose: () => void;
   readonly session: TurretSimulationSession;
 }) {
-  const { closeButtonRef, onClose, session } = input;
+  const { closeLabel, onClose, session } = input;
 
   return (
     <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.74)] px-5 py-4">
@@ -301,8 +214,8 @@ function TurretSimulationHeader(input: {
         </p>
       </div>
 
-      <button className="ff-header__button" onClick={onClose} ref={closeButtonRef} type="button">
-        Close
+      <button className="ff-header__button" onClick={onClose} type="button">
+        {closeLabel}
       </button>
     </header>
   );
@@ -575,11 +488,12 @@ function TurretSimulationFeedback(input: { readonly session: TurretSimulationSes
 }
 
 function TurretSimulationFooter(input: {
+  readonly closeLabel: string;
   readonly onClose: () => void;
   readonly onRunSimulation?: () => void;
   readonly session: TurretSimulationSession;
 }) {
-  const { onClose, onRunSimulation, session } = input;
+  const { closeLabel, onClose, onRunSimulation, session } = input;
 
   return (
     <div className="mt-auto flex flex-wrap items-center justify-end gap-3 border-t border-[var(--ui-border-dark)] pt-4">
@@ -587,7 +501,7 @@ function TurretSimulationFooter(input: {
         {session.draft.isComplete ? "Draft is ready for execution wiring." : "Remote suggestions are optional. You can manually fill any unresolved field."}
       </p>
       <button className="ff-authorize-view__action" onClick={onClose} type="button">
-        Close
+        {closeLabel}
       </button>
       <button
         className="ff-authorize-view__action ff-authorize-view__action--primary"
@@ -602,7 +516,7 @@ function TurretSimulationFooter(input: {
 }
 
 function TurretSimulationDraftPanel(input: TurretSimulationModalProps) {
-  const { onApplySuggestion, onClose, onLoadSuggestions, onRunSimulation, onSetLookupQuery, onUpdateField, session } = input;
+  const { closeLabel = "Close", onApplySuggestion, onClose, onLoadSuggestions, onRunSimulation, onSetLookupQuery, onUpdateField, session } = input;
 
   return (
     <section className="grid gap-4 border border-[var(--ui-border-dark)] bg-[rgba(10,15,20,0.86)] p-4">
@@ -628,15 +542,16 @@ function TurretSimulationDraftPanel(input: TurretSimulationModalProps) {
       />
       <TurretSimulationDraftFields onUpdateField={onUpdateField} session={session} />
       <TurretSimulationFeedback session={session} />
-      <TurretSimulationFooter onClose={onClose} onRunSimulation={onRunSimulation} session={session} />
+      <TurretSimulationFooter closeLabel={closeLabel} onClose={onClose} onRunSimulation={onRunSimulation} session={session} />
     </section>
   );
 }
 
 /**
- * Present the row-scoped turret simulation shell and current context status.
+ * Present the active turret simulation workspace inside the authorize workflow.
  */
 function TurretSimulationModal({
+  closeLabel = "Close",
   onApplySuggestion,
   onClose,
   onLoadSuggestions,
@@ -646,57 +561,33 @@ function TurretSimulationModal({
   onUpdateField,
   session,
 }: TurretSimulationModalProps) {
-  const isOpen = session.status !== "closed";
-  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const panelRef = useRef<HTMLElement | null>(null);
-
-  useModalFocusManagement({
-    closeButtonRef,
-    isOpen,
-    onClose,
-    panelRef,
-  });
-
-  if (!isOpen || session.turret === null || session.deploymentState === null || session.turretObjectId === null) {
+  if (session.status === "closed" || session.turret === null || session.deploymentState === null || session.turretObjectId === null) {
     return null;
   }
 
   return (
-    <div
-      aria-hidden={false}
-      className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(4,6,10,0.7)] p-4 backdrop-blur-[2px]"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
-      role="presentation"
+    <section
+      aria-describedby="turret-simulation-description"
+      aria-labelledby="turret-simulation-title"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden border border-[var(--ui-border-dark)] bg-[rgba(16,21,31,0.97)] shadow-[0_24px_60px_rgba(0,0,0,0.28)]"
     >
-      <section
-        aria-describedby="turret-simulation-description"
-        aria-labelledby="turret-simulation-title"
-        aria-modal="true"
-        className="flex max-h-[min(42rem,100%)] w-full max-w-4xl flex-col overflow-hidden border border-[var(--ui-border-dark)] bg-[rgba(16,21,31,0.97)] shadow-[0_24px_60px_rgba(0,0,0,0.45)]"
-        ref={panelRef}
-        role="dialog"
-      >
-        <TurretSimulationHeader closeButtonRef={closeButtonRef} onClose={onClose} session={session} />
+      <TurretSimulationHeader closeLabel={closeLabel} onClose={onClose} session={session} />
 
-        <div className="grid gap-5 overflow-y-auto px-5 py-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-          <TurretSimulationContextPanel onRefreshContext={onRefreshContext} session={session} />
-          <TurretSimulationDraftPanel
-            onApplySuggestion={onApplySuggestion}
-            onClose={onClose}
-            onLoadSuggestions={onLoadSuggestions}
-            onRefreshContext={onRefreshContext}
-            onRunSimulation={onRunSimulation}
-            onSetLookupQuery={onSetLookupQuery}
-            onUpdateField={onUpdateField}
-            session={session}
-          />
-        </div>
-      </section>
-    </div>
+      <div className="grid flex-1 gap-5 overflow-y-auto px-5 py-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <TurretSimulationContextPanel onRefreshContext={onRefreshContext} session={session} />
+        <TurretSimulationDraftPanel
+          closeLabel={closeLabel}
+          onApplySuggestion={onApplySuggestion}
+          onClose={onClose}
+          onLoadSuggestions={onLoadSuggestions}
+          onRefreshContext={onRefreshContext}
+          onRunSimulation={onRunSimulation}
+          onSetLookupQuery={onSetLookupQuery}
+          onUpdateField={onUpdateField}
+          session={session}
+        />
+      </div>
+    </section>
   );
 }
 

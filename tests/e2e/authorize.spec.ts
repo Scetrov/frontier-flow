@@ -343,21 +343,22 @@ test("runs the full turret authorization workflow and refreshes the list after c
 
   await expect(page.getByText("Shield Bastion")).toBeVisible();
   await page.getByRole("button", { name: "Simulate turret Shield Bastion" }).click();
+  await expect(page.getByRole("button", { name: "Simulate", exact: true })).toHaveAttribute("aria-current", "page");
 
-  const simulationModal = page.getByRole("dialog", { name: "Shield Bastion" });
-  await expect(simulationModal).toBeVisible();
-  await expect(simulationModal.getByText(CHARACTER_ID)).toBeVisible();
-  await simulationModal.getByLabel("Item Id").fill("900001");
-  await simulationModal.getByLabel("Type Id").fill("900002");
-  await simulationModal.getByLabel("Group Id").fill("25");
-  await simulationModal.getByLabel("Character Id").fill("42");
-  await simulationModal.getByLabel("Character Tribe").fill("7");
-  await simulationModal.getByRole("button", { name: "Run Simulation" }).click();
+  await expect(page.getByRole("heading", { name: "Shield Bastion" })).toBeVisible();
+  await expect(page.getByText(CHARACTER_ID)).toBeVisible();
+  await page.getByLabel("Item Id").fill("900001");
+  await page.getByLabel("Type Id").fill("900002");
+  await page.getByLabel("Group Id").fill("25");
+  await page.getByLabel("Character Id").fill("42");
+  await page.getByLabel("Character Tribe").fill("7");
+  await page.getByRole("button", { name: "Run Simulation" }).click();
 
-  await expect(simulationModal.getByText("Simulation Results")).toBeVisible();
-  await expect(simulationModal.getByRole("cell", { name: SIMULATED_PRIORITY_WEIGHT })).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(simulationModal).toBeHidden();
+  await expect(page.getByText("Simulation Results")).toBeVisible();
+  await expect(page.getByRole("cell", { name: SIMULATED_PRIORITY_WEIGHT })).toBeVisible();
+
+  await page.getByRole("button", { name: "Authorize", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Authorize", exact: true })).toHaveAttribute("aria-current", "page");
 
   await page.getByRole("checkbox", { name: "Shield Bastion" }).check({ force: true });
   await expect(page.getByText("This will replace the current extension")).toBeVisible();

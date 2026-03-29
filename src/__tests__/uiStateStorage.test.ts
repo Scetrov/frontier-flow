@@ -118,6 +118,29 @@ describe("uiStateStorage", () => {
     });
   });
 
+  it("restores the simulate view when it is persisted", () => {
+    window.localStorage.setItem(
+      UI_STATE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeView: "simulate",
+        currentDraftContractName: "simulate_ready_contract",
+        selectedDeploymentTarget: "testnet:stillness",
+        isSidebarOpen: true,
+        isContractPanelOpen: false,
+      }),
+    );
+
+    expect(loadUiState(window.localStorage)).toEqual({
+      version: 1,
+      activeView: "simulate",
+      currentDraftContractName: "simulate_ready_contract",
+      selectedDeploymentTarget: "testnet:stillness",
+      isSidebarOpen: true,
+      isContractPanelOpen: false,
+    });
+  });
+
   it("merges partial updates with the stored snapshot", () => {
     window.localStorage.setItem(
       UI_STATE_STORAGE_KEY,

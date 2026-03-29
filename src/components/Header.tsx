@@ -2,7 +2,7 @@ import logoUrl from "../../assets/favicon@32px.png";
 import type { DeploymentTargetId } from "../compiler/types";
 import WalletStatus from "./WalletStatus";
 
-export type PrimaryView = "visual" | "move" | "deploy" | "authorize";
+export type PrimaryView = "visual" | "move" | "deploy" | "authorize" | "simulate";
 
 interface HeaderProps {
   readonly activeView?: PrimaryView;
@@ -144,6 +144,23 @@ function ViewNavigation({
         label="Authorize"
         onClick={() => {
           onViewChange("authorize");
+        }}
+        tooltip={!canAuthorize ? "Deploy a contract first" : undefined}
+      />
+      <WorkflowSeparator />
+      <NavigationButton
+        active={activeView === "simulate"}
+        disabled={!canAuthorize}
+        icon={(
+          <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 11.5L6.5 8L8.6 10.1L14.8 3.9" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+            <path d="M11.8 3.9H14.8V6.9" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+            <path d="M3 3.5H8.2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+          </svg>
+        )}
+        label="Simulate"
+        onClick={() => {
+          onViewChange("simulate");
         }}
         tooltip={!canAuthorize ? "Deploy a contract first" : undefined}
       />

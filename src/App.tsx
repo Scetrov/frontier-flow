@@ -68,6 +68,7 @@ interface AppMainContentProps {
   readonly onRegisterRemoveDemoNode: (removeDemoNode: () => void) => void;
   readonly onRegisterSidebarVisibility: (setSidebarOpen: (open: boolean) => void) => void;
   readonly onSelectedDeploymentTargetChange: (target: DeploymentTargetId) => void;
+  readonly onViewChange: (view: PrimaryView) => void;
   readonly selectedDeploymentTarget: DeploymentTargetId;
 }
 
@@ -196,7 +197,7 @@ function getInitialAppState(): InitialAppState {
     : null;
 
   return {
-    activeView: uiState.activeView === "authorize" && nextDeploymentState === null ? "visual" : uiState.activeView,
+    activeView: (uiState.activeView === "authorize" || uiState.activeView === "simulate") && nextDeploymentState === null ? "visual" : uiState.activeView,
     compilationSnapshot: nextCompilationSnapshot,
     selectedDeploymentTarget: uiState.selectedDeploymentTarget,
   };
@@ -285,6 +286,7 @@ function AppMainContent({
   onRegisterRemoveDemoNode,
   onRegisterSidebarVisibility,
   onSelectedDeploymentTargetChange,
+  onViewChange,
   selectedDeploymentTarget,
 }: AppMainContentProps) {
   if (activeView === "visual") {
@@ -308,8 +310,8 @@ function AppMainContent({
     return <DeployWorkflowView deployment={deployment} />;
   }
 
-  if (activeView === "authorize") {
-    return <AuthorizeView deploymentState={authorizeDeploymentState} />;
+  if (activeView === "authorize" || activeView === "simulate") {
+    return <AuthorizeView activeView={activeView} deploymentState={authorizeDeploymentState} onViewChange={onViewChange} />;
   }
 
   return <MoveSourceView displayStatus={displayStatus} moveSourceCode={moveSourceCode} onMoveRebuild={onMoveRebuild} />;
@@ -362,7 +364,7 @@ function resolveActiveView(input: {
   readonly authorizeDeploymentState: StoredDeploymentState | null;
   readonly canAccessCompiledWorkflow: boolean;
 }): PrimaryView {
-  if (input.activeView === "authorize" && input.authorizeDeploymentState === null) {
+  if ((input.activeView === "authorize" || input.activeView === "simulate") && input.authorizeDeploymentState === null) {
     return input.canAccessCompiledWorkflow ? "deploy" : "visual";
   }
 
@@ -441,6 +443,7 @@ function StandardAppLayout({
             onRegisterRemoveDemoNode={onRegisterRemoveDemoNode}
             onRegisterSidebarVisibility={onRegisterSidebarVisibility}
             onSelectedDeploymentTargetChange={deployment.setSelectedTarget}
+            onViewChange={onViewChange}
             selectedDeploymentTarget={selectedDeploymentTarget}
           />
         </main>

@@ -5,7 +5,7 @@ import TurretSimulationModal from "../components/TurretSimulationModal";
 import { createSimulationCandidateDraft, createSimulationSession, simulationDeploymentState } from "../test/turretSimulationFixtures";
 
 describe("TurretSimulationModal", () => {
-  it("renders the selected turret and deployment context in an accessible dialog", () => {
+  it("renders the selected turret and deployment context inside the simulation workspace", () => {
     render(
       <TurretSimulationModal
         onClose={() => undefined}
@@ -14,7 +14,7 @@ describe("TurretSimulationModal", () => {
       />,
     );
 
-    expect(screen.getByRole("dialog", { name: "Perimeter Lancer" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Perimeter Lancer" })).toBeVisible();
     expect(screen.getByText("Turret Simulation")).toBeVisible();
     expect(screen.getByText(simulationDeploymentState.packageId)).toBeVisible();
     expect(screen.getByText("Review the selected turret context before running a non-mutating extension simulation.")).toBeVisible();
@@ -41,7 +41,7 @@ describe("TurretSimulationModal", () => {
     expect(handleRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it("closes when escape is pressed", () => {
+  it("forwards the close action", () => {
     const handleClose = vi.fn();
 
     render(
@@ -52,7 +52,7 @@ describe("TurretSimulationModal", () => {
       />,
     );
 
-    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
 
     expect(handleClose).toHaveBeenCalledTimes(1);
   });

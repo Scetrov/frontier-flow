@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   useCurrentAccount as useCurrentAccountHook,
@@ -8,6 +9,7 @@ import type {
 
 import type { AuthorizationProgressState, StoredDeploymentState, TurretInfo } from "../types/authorization";
 import AuthorizeView from "../components/AuthorizeView";
+import type { PrimaryView } from "../components/Header";
 import type { UseAuthorizationResult } from "../hooks/useAuthorization";
 import type { UseTurretListResult } from "../hooks/useTurretList";
 import type { FetchOwnerCapInput } from "../utils/authorizationTransaction";
@@ -18,6 +20,7 @@ type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
 type SuiClient = ReturnType<typeof useSuiClientHook>;
 type DevInspectTransactionBlock = SuiClient["devInspectTransactionBlock"];
+type AuthorizeWorkflowView = Extract<PrimaryView, "authorize" | "simulate">;
 
 const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
 const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
@@ -155,6 +158,26 @@ function createSuiClient(overrides: Partial<SuiClient> = {}): SuiClient {
   } as SuiClient;
 }
 
+function AuthorizeViewHarness(input: {
+  readonly deploymentState: StoredDeploymentState | null;
+  readonly initialView?: AuthorizeWorkflowView;
+}) {
+  const { deploymentState, initialView = "authorize" } = input;
+  const [activeView, setActiveView] = useState<AuthorizeWorkflowView>(initialView);
+
+  return (
+    <AuthorizeView
+      activeView={activeView}
+      deploymentState={deploymentState}
+      onViewChange={(view) => {
+        if (view === "authorize" || view === "simulate") {
+          setActiveView(view);
+        }
+      }}
+    />
+  );
+}
+
 beforeEach(() => {
   mockUseCurrentAccount.mockReturnValue(connectedAccount);
   mockUseCurrentWallet.mockReturnValue(connectedWallet);
@@ -232,7 +255,7 @@ describe("AuthorizeView", () => {
     expect(screen.getByRole("button", { name: "Authorize Selected" })).toBeEnabled();
   });
 
-  it("opens a row-scoped simulation modal without changing turret selection", () => {
+  it("navigates into the simulate tab without changing turret selection", () => {
     mockUseTurretList.mockReturnValue({
       status: "success",
       turrets: turretFixtures,
@@ -240,16 +263,19 @@ describe("AuthorizeView", () => {
       refresh: vi.fn(),
     });
 
-    render(<AuthorizeView deploymentState={deploymentState} />);
-
-    const selectableTurret = screen.getByRole("checkbox", { name: /Perimeter Lancer/i });
+    render(<AuthorizeViewHarness deploymentState={deploymentState} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Perimeter Lancer" });
+    expect(screen.getByRole("heading", { name: "Simulate Turrets" })).toBeVisible();
+    expect(screen.getAllByText(deploymentState.packageId).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Authorize Selected" })).not.toBeInTheDocument();
 
-    expect(dialog).toBeVisible();
-    expect(within(dialog).getByText(deploymentState.packageId)).toBeVisible();
+    fireEvent.click(screen.getAllByRole("button", { name: "Back to Authorize" })[0]);
+
+    const selectableTurret = screen.getByRole("checkbox", { name: /Perimeter Lancer/i });
+
+    expect(screen.getByRole("heading", { name: "Authorize Turrets" })).toBeVisible();
     expect(selectableTurret).not.toBeChecked();
     expect(screen.getByRole("button", { name: "Authorize Selected" })).toBeDisabled();
   });
@@ -262,7 +288,7 @@ describe("AuthorizeView", () => {
       refresh: vi.fn(),
     });
 
-    render(<AuthorizeView deploymentState={deploymentState} />);
+    render(<AuthorizeViewHarness deploymentState={deploymentState} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
 
@@ -292,7 +318,7 @@ describe("AuthorizeView", () => {
       refresh: vi.fn(),
     });
 
-    render(<AuthorizeView deploymentState={deploymentState} />);
+    render(<AuthorizeViewHarness deploymentState={deploymentState} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
 
@@ -326,7 +352,7 @@ describe("AuthorizeView", () => {
       refresh: vi.fn(),
     });
 
-    render(<AuthorizeView deploymentState={deploymentState} />);
+    render(<AuthorizeViewHarness deploymentState={deploymentState} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
 
@@ -349,7 +375,7 @@ describe("AuthorizeView", () => {
     expect(screen.getByLabelText("Item Id")).toHaveValue("900001");
   });
 
-  it("marks the simulation modal as stale when the deployment context changes", () => {
+  it("marks the simulation workspace as stale when the deployment context changes", () => {
     mockUseTurretList.mockReturnValue({
       status: "success",
       turrets: turretFixtures,
@@ -357,13 +383,27 @@ describe("AuthorizeView", () => {
       refresh: vi.fn(),
     });
 
-    const { rerender } = render(<AuthorizeView deploymentState={deploymentState} />);
+    const { rerender } = render(<AuthorizeViewHarness deploymentState={deploymentState} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
 
-    rerender(<AuthorizeView deploymentState={{ ...deploymentState, targetId: "testnet:utopia" }} />);
+    rerender(<AuthorizeViewHarness deploymentState={{ ...deploymentState, targetId: "testnet:utopia" }} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("Deployment context changed");
+  });
+
+  it("renders an empty simulation state when no turret session is active", () => {
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: turretFixtures,
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AuthorizeViewHarness deploymentState={deploymentState} initialView="simulate" />);
+
+    expect(screen.getByText("Simulation Context Required")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Open Authorize" })).toBeVisible();
   });
 
   it("passes the connected wallet and deployment state into the turret hooks", () => {

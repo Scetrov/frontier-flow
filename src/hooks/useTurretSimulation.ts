@@ -590,7 +590,7 @@ function useContextRefresher(input: {
 }
 
 /**
- * Keep row-scoped simulation modal state synchronized with the live authorize context.
+ * Keep authorize workflow simulation state synchronized with the live deployment context.
  */
 export function useTurretSimulation({
   deploymentKey,
