@@ -30,7 +30,7 @@ describe("uiStateStorage", () => {
       version: 1,
       activeView: "visual",
       currentDraftContractName: null,
-      selectedDeploymentTarget: "local",
+      selectedDeploymentTarget: "testnet:stillness",
       isSidebarOpen: true,
       isContractPanelOpen: true,
     });
@@ -43,7 +43,7 @@ describe("uiStateStorage", () => {
       version: 1,
       activeView: "visual",
       currentDraftContractName: null,
-      selectedDeploymentTarget: "local",
+      selectedDeploymentTarget: "testnet:stillness",
       isSidebarOpen: true,
       isContractPanelOpen: true,
     });
@@ -171,7 +171,7 @@ describe("uiStateStorage", () => {
       version: 1,
       activeView: "visual",
       currentDraftContractName: "turret_priority_v3",
-      selectedDeploymentTarget: "local",
+      selectedDeploymentTarget: "testnet:stillness",
       isSidebarOpen: true,
       isContractPanelOpen: true,
     });
@@ -195,7 +195,7 @@ describe("uiStateStorage", () => {
       version: 1,
       activeView: "visual",
       currentDraftContractName: null,
-      selectedDeploymentTarget: "local",
+      selectedDeploymentTarget: "testnet:stillness",
       isSidebarOpen: false,
       isContractPanelOpen: false,
     });

@@ -59,7 +59,7 @@ function createDefaultUiState(): UiState {
     version: 1,
     activeView: "visual",
     currentDraftContractName: null,
-    selectedDeploymentTarget: "local",
+    selectedDeploymentTarget: "testnet:stillness",
     isSidebarOpen: isDesktop,
     isContractPanelOpen: isDesktop,
   };
