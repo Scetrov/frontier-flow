@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
 import { getCompilationStatusButton, getTargetDisplayLabel, selectDeploymentTarget } from "./fixtures/workflow";
 
 for (const scenario of [
@@ -15,9 +16,7 @@ for (const scenario of [
   },
 ] as const) {
   test(`shows staged deployment progress for ${scenario.target} and keeps evidence after dismissal`, async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.clear();
-    });
+    await clearStorageAndMarkTutorialSeen(page);
 
     await page.goto(`/${scenario.search}`);
 

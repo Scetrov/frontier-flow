@@ -1,12 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 import { expectNoAccessibilityViolations } from "./fixtures/accessibility";
+import { clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
 import { getCompilationStatusButton, openDeployWorkflow, selectDeploymentTarget } from "./fixtures/workflow";
 
 test("shows signing-stage cancellation details in the status popup", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
 
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_wallet=connected&ff_mock_deploy_reject=1&ff_mock_deploy_stage_delay_ms=0");
 
@@ -33,9 +32,7 @@ test("shows signing-stage cancellation details in the status popup", async ({ pa
 });
 
 test("preserves the earlier blocked attempt after a later successful deployment", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
 
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_wallet=connected&ff_local_deploy_ready=0&ff_mock_deploy_stage_delay_ms=0");
 

@@ -2,20 +2,17 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { CONTRACT_LIBRARY_STORAGE_KEY } from "../../src/utils/contractStorage";
 import { expectNoAccessibilityViolations } from "./fixtures/accessibility";
+import { SEEN_TUTORIAL_STORAGE_STATE, TUTORIAL_STORAGE_KEY, clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
 import { getCodeViewButton, getCompilationStatusButton } from "./fixtures/workflow";
 import { referenceGraphFixtures, type GraphFixtureEdge, type GraphFixtureNode } from "./referenceGraphFixtures";
 
 async function prepareCompilationPage(page: Page) {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=600&ff_idle_ms=120");
 }
 
 async function prepareCompilationPageWithQuery(page: Page, query: string) {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
   await page.goto(`/${query}`);
 }
 
@@ -34,11 +31,17 @@ async function prepareCompilationPageWithLibrary(
   },
 ) {
   await page.addInitScript(
-    ({ storageKey, storageLibrary }) => {
+    ({ storageKey, storageLibrary, tutorialState, tutorialStorageKey }) => {
       window.localStorage.clear();
+      window.localStorage.setItem(tutorialStorageKey, JSON.stringify(tutorialState));
       window.localStorage.setItem(storageKey, JSON.stringify(storageLibrary));
     },
-    { storageKey: CONTRACT_LIBRARY_STORAGE_KEY, storageLibrary: library },
+    {
+      storageKey: CONTRACT_LIBRARY_STORAGE_KEY,
+      storageLibrary: library,
+      tutorialState: SEEN_TUTORIAL_STORAGE_STATE,
+      tutorialStorageKey: TUTORIAL_STORAGE_KEY,
+    },
   );
   await page.goto(`/${query}`);
 }

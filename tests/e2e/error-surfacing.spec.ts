@@ -1,13 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { SEEN_TUTORIAL_STORAGE_STATE, TUTORIAL_STORAGE_KEY, clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
+
 function getCompilationStatusButton(page: Page) {
   return page.locator('.ff-compilation-status__button[aria-controls="compilation-diagnostics"]');
 }
 
 async function prepareCompilationPage(page: Page) {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-  });
+  await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=600&ff_idle_ms=120");
 }
 
@@ -47,6 +47,12 @@ test("surfaces invalid disconnected nodes and returns to compiled after removal"
 
   await page.evaluate(() => {
     window.localStorage.clear();
+  });
+  await page.evaluate(({ tutorialState, tutorialStorageKey }) => {
+    window.localStorage.setItem(tutorialStorageKey, JSON.stringify(tutorialState));
+  }, {
+    tutorialState: SEEN_TUTORIAL_STORAGE_STATE,
+    tutorialStorageKey: TUTORIAL_STORAGE_KEY,
   });
   await page.reload();
 

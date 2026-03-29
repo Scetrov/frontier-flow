@@ -1,3 +1,4 @@
+import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { PrimaryView } from "../components/Header";
@@ -57,6 +58,17 @@ function createDefaultPersistedState(): TutorialPersistedState {
   };
 }
 
+function isValidPersistedState(value: unknown): value is TutorialPersistedState {
+  return (
+    typeof value === "object"
+    && value !== null
+    && "version" in value
+    && "hasSeenTutorial" in value
+    && value.version === STORAGE_VERSION
+    && typeof value.hasSeenTutorial === "boolean"
+  );
+}
+
 function loadPersistedState(storage: Storage | undefined): TutorialPersistedState {
   const rawValue = storage?.getItem(TUTORIAL_STORAGE_KEY);
   if (rawValue === null || rawValue === undefined) {
@@ -65,15 +77,8 @@ function loadPersistedState(storage: Storage | undefined): TutorialPersistedStat
 
   try {
     const parsedValue: unknown = JSON.parse(rawValue);
-    if (
-      typeof parsedValue === "object"
-      && parsedValue !== null
-      && "version" in parsedValue
-      && "hasSeenTutorial" in parsedValue
-      && parsedValue.version === STORAGE_VERSION
-      && typeof parsedValue.hasSeenTutorial === "boolean"
-    ) {
-      return parsedValue as TutorialPersistedState;
+    if (isValidPersistedState(parsedValue)) {
+      return parsedValue;
     }
   } catch {
     return createDefaultPersistedState();
@@ -162,6 +167,164 @@ function applyTutorialTargetClass(targetRef: { current: HTMLElement | null }, el
   targetRef.current = element;
 }
 
+function useTutorialTargetMeasurement(input: {
+  readonly currentStep: (typeof TUTORIAL_STEPS)[number] | null;
+  readonly activeTargetRef: { current: HTMLElement | null };
+  readonly drawerVisibilityRef: { current: TutorialDrawerVisibility | null };
+  readonly onInsertDemoNode: () => void;
+  readonly onSetDrawerVisibility: UseTutorialOptions["onSetDrawerVisibility"];
+  readonly setState: React.Dispatch<React.SetStateAction<TutorialState>>;
+  readonly skipStepRef: { readonly current: () => void };
+  readonly status: TutorialState["status"];
+}): void {
+  const { currentStep, activeTargetRef, drawerVisibilityRef, onInsertDemoNode, onSetDrawerVisibility, setState, skipStepRef, status } = input;
+
+  useEffect(() => {
+    if (status !== "active" || currentStep === null) {
+      removeTutorialTargetClass(activeTargetRef);
+      return;
+    }
+
+    if (drawerVisibilityRef.current === null) {
+      drawerVisibilityRef.current = getPersistedDrawerVisibility(getBrowserStorage());
+    }
+
+    syncDrawerVisibilityForStep(currentStep, drawerVisibilityRef.current, onSetDrawerVisibility);
+
+    if (currentStep.requiresDemoNode) {
+      onInsertDemoNode();
+    }
+
+    let cancelled = false;
+    const timeoutIds: number[] = [];
+
+    const measureTarget = (attempt: number) => {
+      if (cancelled) {
+        return;
+      }
+
+      const element = currentStep.resolveTarget();
+      if (element !== null) {
+        applyTutorialTargetClass(activeTargetRef, element);
+        setState((currentState) => currentState.status === "active"
+          ? { ...currentState, targetRect: element.getBoundingClientRect() }
+          : currentState);
+        return;
+      }
+
+      if (attempt >= MAX_RETRIES - 1) {
+        timeoutIds.push(window.setTimeout(() => {
+          if (!cancelled) {
+            skipStepRef.current();
+          }
+        }, RETRY_DELAY_MS));
+        return;
+      }
+
+      timeoutIds.push(window.setTimeout(() => {
+        measureTarget(attempt + 1);
+      }, RETRY_DELAY_MS));
+    };
+
+    measureTarget(0);
+
+    return () => {
+      cancelled = true;
+      for (const timeoutId of timeoutIds) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [activeTargetRef, currentStep, drawerVisibilityRef, onInsertDemoNode, onSetDrawerVisibility, setState, skipStepRef, status]);
+}
+
+function useTutorialViewportTracking(input: {
+  readonly activeTargetRef: { readonly current: HTMLElement | null };
+  readonly setState: React.Dispatch<React.SetStateAction<TutorialState>>;
+  readonly status: TutorialState["status"];
+}): void {
+  const { activeTargetRef, setState, status } = input;
+
+  useEffect(() => {
+    if (status !== "active") {
+      return;
+    }
+
+    const recalculateTargetRect = debounce(() => {
+      const element = activeTargetRef.current;
+      if (element === null) {
+        return;
+      }
+
+      setState((currentState) => currentState.status === "active"
+        ? { ...currentState, targetRect: element.getBoundingClientRect() }
+        : currentState);
+    }, RETRY_DELAY_MS);
+
+    const handleViewportChange = () => {
+      recalculateTargetRect();
+    };
+
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+      recalculateTargetRect.cancel();
+    };
+  }, [activeTargetRef, setState, status]);
+}
+
+function useTutorialLifecycleEffects(input: {
+  readonly activeTargetRef: { current: HTMLElement | null };
+  readonly activeView: PrimaryView;
+  readonly dismiss: () => void;
+  readonly drawerVisibilityRef: { current: TutorialDrawerVisibility | null };
+  readonly hasSeenTutorial: boolean;
+  readonly isCanvasReady: boolean;
+  readonly onSetDrawerVisibility: UseTutorialOptions["onSetDrawerVisibility"];
+  readonly start: () => void;
+  readonly status: TutorialState["status"];
+}): void {
+  const { activeTargetRef, activeView, dismiss, drawerVisibilityRef, hasSeenTutorial, isCanvasReady, onSetDrawerVisibility, start, status } = input;
+
+  useEffect(() => {
+    if (status !== "active" || activeView === "visual") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      dismiss();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [activeView, dismiss, status]);
+
+  useEffect(() => {
+    if (hasSeenTutorial || !isCanvasReady || activeView !== "visual" || status === "active") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      start();
+    }, AUTO_START_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [activeView, hasSeenTutorial, isCanvasReady, start, status]);
+
+  useEffect(() => () => {
+    removeTutorialTargetClass(activeTargetRef);
+    if (drawerVisibilityRef.current !== null) {
+      restoreDrawerVisibility(drawerVisibilityRef.current, onSetDrawerVisibility);
+      drawerVisibilityRef.current = null;
+    }
+  }, [activeTargetRef, drawerVisibilityRef, onSetDrawerVisibility]);
+}
+
 /**
  * Manages the lifecycle of the Visual Designer onboarding tutorial.
  *
@@ -239,128 +402,9 @@ export function useTutorial({ activeView, isCanvasReady, onInsertDemoNode, onRem
     skipStepRef.current = next;
   }, [next]);
 
-  useEffect(() => {
-    if (state.status !== "active" || currentStep === null) {
-      removeTutorialTargetClass(activeTargetRef);
-      return;
-    }
-
-    if (drawerVisibilityRef.current === null) {
-      drawerVisibilityRef.current = getPersistedDrawerVisibility(getBrowserStorage());
-    }
-
-    syncDrawerVisibilityForStep(currentStep, drawerVisibilityRef.current, onSetDrawerVisibility);
-
-    if (currentStep.requiresDemoNode) {
-      onInsertDemoNode();
-    }
-
-    let cancelled = false;
-    const timeoutIds: number[] = [];
-
-    const measureTarget = (attempt: number) => {
-      if (cancelled) {
-        return;
-      }
-
-      const element = currentStep.resolveTarget();
-      if (element !== null) {
-        applyTutorialTargetClass(activeTargetRef, element);
-        setState((currentState) => currentState.status === "active"
-          ? { ...currentState, targetRect: element.getBoundingClientRect() }
-          : currentState);
-        return;
-      }
-
-      if (attempt >= MAX_RETRIES - 1) {
-        timeoutIds.push(window.setTimeout(() => {
-          if (!cancelled) {
-            skipStepRef.current();
-          }
-        }, RETRY_DELAY_MS));
-        return;
-      }
-
-      timeoutIds.push(window.setTimeout(() => {
-        measureTarget(attempt + 1);
-      }, RETRY_DELAY_MS));
-    };
-
-    measureTarget(0);
-
-    return () => {
-      cancelled = true;
-      for (const timeoutId of timeoutIds) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [currentStep, onInsertDemoNode, onSetDrawerVisibility, state.status]);
-
-  useEffect(() => {
-    if (state.status !== "active") {
-      return;
-    }
-
-    const recalculateTargetRect = debounce(() => {
-      const element = activeTargetRef.current;
-      if (element === null) {
-        return;
-      }
-
-      setState((currentState) => currentState.status === "active"
-        ? { ...currentState, targetRect: element.getBoundingClientRect() }
-        : currentState);
-    }, RETRY_DELAY_MS);
-
-    const handleViewportChange = () => {
-      recalculateTargetRect();
-    };
-
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("scroll", handleViewportChange, true);
-
-    return () => {
-      window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener("scroll", handleViewportChange, true);
-      recalculateTargetRect.cancel();
-    };
-  }, [state.status]);
-
-  useEffect(() => {
-    if (state.status !== "active" || activeView === "visual") {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      dismiss();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [activeView, dismiss, state.status]);
-
-  useEffect(() => {
-    if (hasSeenTutorial || !isCanvasReady || activeView !== "visual" || state.status === "active") {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      start();
-    }, AUTO_START_DELAY_MS);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [activeView, hasSeenTutorial, isCanvasReady, start, state.status]);
-
-  useEffect(() => () => {
-    removeTutorialTargetClass(activeTargetRef);
-    if (drawerVisibilityRef.current !== null) {
-      restoreDrawerVisibility(drawerVisibilityRef.current, onSetDrawerVisibility);
-      drawerVisibilityRef.current = null;
-    }
-  }, [onSetDrawerVisibility]);
+  useTutorialTargetMeasurement({ currentStep, activeTargetRef, drawerVisibilityRef, onInsertDemoNode, onSetDrawerVisibility, setState, skipStepRef, status: state.status });
+  useTutorialViewportTracking({ activeTargetRef, setState, status: state.status });
+  useTutorialLifecycleEffects({ activeTargetRef, activeView, dismiss, drawerVisibilityRef, hasSeenTutorial, isCanvasReady, onSetDrawerVisibility, start, status: state.status });
 
   return useMemo(() => ({
     isActive: state.status === "active",

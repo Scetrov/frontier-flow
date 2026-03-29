@@ -684,15 +684,35 @@ function useStandardAppController(initialAppState: InitialAppState): StandardApp
   };
 }
 
+function useTutorialBridge(resolvedActiveView: PrimaryView) {
+  const setSidebarOpenRef = useRef<(open: boolean) => void>(() => undefined);
+  const setContractPanelOpenRef = useRef<(open: boolean) => void>(() => undefined);
+  const insertDemoNodeRef = useRef<() => void>(() => undefined);
+  const removeDemoNodeRef = useRef<() => void>(() => undefined);
+  const handleSetTutorialDrawerVisibility = useCallback((drawer: "sidebar" | "contract-panel", open: boolean) => {
+    if (drawer === "sidebar") {
+      setSidebarOpenRef.current(open);
+      return;
+    }
+
+    setContractPanelOpenRef.current(open);
+  }, []);
+  const tutorial = useTutorial({
+    activeView: resolvedActiveView,
+    isCanvasReady: resolvedActiveView === "visual",
+    onSetDrawerVisibility: handleSetTutorialDrawerVisibility,
+    onInsertDemoNode: useCallback(() => { insertDemoNodeRef.current(); }, []),
+    onRemoveDemoNode: useCallback(() => { removeDemoNodeRef.current(); }, []),
+  });
+
+  return { tutorial, setSidebarOpenRef, setContractPanelOpenRef, insertDemoNodeRef, removeDemoNodeRef };
+}
+
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
   const [, setLocalEnvironmentRevision] = useState(0);
   const currentAccount = useCurrentAccount();
   const { isConnected } = useCurrentWallet();
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
-  const setSidebarOpenRef = useRef<(open: boolean) => void>(() => undefined);
-  const setContractPanelOpenRef = useRef<(open: boolean) => void>(() => undefined);
-  const insertDemoNodeRef = useRef<() => void>(() => undefined);
-  const removeDemoNodeRef = useRef<() => void>(() => undefined);
   const [isPrivacyNoticeVisible, setIsPrivacyNoticeVisible] = useState(() => shouldShowPrivacyNotice(getBrowserStorage()));
   const initialAppState = useMemo(() => getInitialAppState(), []);
   const {
@@ -726,27 +746,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     acknowledgePrivacyNotice(getBrowserStorage());
     setIsPrivacyNoticeVisible(false);
   }, []);
-  const handleSetTutorialDrawerVisibility = useCallback((drawer: "sidebar" | "contract-panel", open: boolean) => {
-    if (drawer === "sidebar") {
-      setSidebarOpenRef.current(open);
-      return;
-    }
-
-    setContractPanelOpenRef.current(open);
-  }, []);
-  const handleInsertTutorialDemoNode = useCallback(() => {
-    insertDemoNodeRef.current();
-  }, []);
-  const handleRemoveTutorialDemoNode = useCallback(() => {
-    removeDemoNodeRef.current();
-  }, []);
-  const tutorial = useTutorial({
-    activeView: resolvedActiveView,
-    isCanvasReady: resolvedActiveView === "visual",
-    onSetDrawerVisibility: handleSetTutorialDrawerVisibility,
-    onInsertDemoNode: handleInsertTutorialDemoNode,
-    onRemoveDemoNode: handleRemoveTutorialDemoNode,
-  });
+  const { tutorial, setSidebarOpenRef, setContractPanelOpenRef, insertDemoNodeRef, removeDemoNodeRef } = useTutorialBridge(resolvedActiveView);
 
   useEffect(() => subscribeToLocalEnvironmentChanges(() => {
     setLocalEnvironmentRevision((currentValue) => currentValue + 1);

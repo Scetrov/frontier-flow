@@ -64,24 +64,19 @@ function trapFocusWithinPanel(event: KeyboardEvent, panel: HTMLElement | null): 
     event.preventDefault();
     const nextIndex = (activeIndex + (event.shiftKey ? -1 : 1) + focusableElements.length) % focusableElements.length;
     focusableElements[nextIndex]?.focus();
-    return;
-  }
-
-  if (event.shiftKey && activeElement === firstElement) {
-    event.preventDefault();
-    lastElement.focus();
-    return;
-  }
-
-  if (!event.shiftKey && activeElement === lastElement) {
-    event.preventDefault();
-    firstElement.focus();
   }
 }
 
+function getViewportDimensions(): { readonly width: number; readonly height: number } {
+  if (typeof window === "undefined") {
+    return { width: 1280, height: 720 };
+  }
+
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
 function getTooltipCoordinates(targetRect: DOMRect, preferredPosition: TutorialStepDefinition["tooltipPosition"]) {
-  const viewportWidth = typeof window === "undefined" ? 1280 : window.innerWidth;
-  const viewportHeight = typeof window === "undefined" ? 720 : window.innerHeight;
+  const { width: viewportWidth, height: viewportHeight } = getViewportDimensions();
 
   const centeredLeft = clamp(
     targetRect.left + (targetRect.width / 2) - (TOOLTIP_WIDTH_PX / 2),

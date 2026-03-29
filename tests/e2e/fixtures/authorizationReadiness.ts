@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { CONTRACT_LIBRARY_STORAGE_KEY, sanitizeContractName } from "../../../src/utils/contractStorage";
+import { SEEN_TUTORIAL_STORAGE_STATE, TUTORIAL_STORAGE_KEY } from "./storage";
 
 import { referenceGraphFixtures } from "../referenceGraphFixtures";
 
@@ -22,8 +23,9 @@ export async function openAuthorizationReadinessPage(page: Page, contractName = 
   const activeContract = contracts.find((entry) => entry.name === requestedContractName) ?? contracts[0];
 
   await page.addInitScript(
-    ({ storageKey, activeContractName, storageContracts }) => {
+    ({ storageKey, activeContractName, storageContracts, tutorialState, tutorialStorageKey }) => {
       window.localStorage.clear();
+      window.localStorage.setItem(tutorialStorageKey, JSON.stringify(tutorialState));
       window.localStorage.setItem(
         storageKey,
         JSON.stringify({
@@ -37,6 +39,8 @@ export async function openAuthorizationReadinessPage(page: Page, contractName = 
       storageKey: CONTRACT_LIBRARY_STORAGE_KEY,
       activeContractName: activeContract.name,
       storageContracts: contracts,
+      tutorialState: SEEN_TUTORIAL_STORAGE_STATE,
+      tutorialStorageKey: TUTORIAL_STORAGE_KEY,
     },
   );
 
