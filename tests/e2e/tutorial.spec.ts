@@ -79,7 +79,7 @@ test("only shows tutorial help in the visual designer view", async ({ page }) =>
 test("does not auto-start when already seen and can be restarted from the header", async ({ page }) => {
   await prepareTutorialPage(page, { hasSeenTutorial: true });
 
-  await page.waitForTimeout(700);
+  await expect(page.getByRole("button", { name: "Start tutorial" })).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Start tutorial" }).click();

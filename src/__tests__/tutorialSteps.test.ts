@@ -61,9 +61,14 @@ describe("tutorial step definitions", () => {
     toolbox.id = "node-toolbox";
     document.body.append(toolbox);
 
+    const viewport = document.createElement("div");
+    viewport.className = "react-flow__viewport";
+
     const genericSocket = document.createElement("div");
     genericSocket.className = "ff-node__socket";
-    document.body.append(genericSocket);
+    genericSocket.setAttribute("data-socket-direction", "output");
+    viewport.append(genericSocket);
+    document.body.append(viewport);
 
     const saveLoad = document.createElement("aside");
     saveLoad.id = "saved-contract-controls";
@@ -80,10 +85,23 @@ describe("tutorial step definitions", () => {
     expect(TUTORIAL_STEPS[4].resolveTarget()).toBe(navigation);
   });
 
+  it("ignores sockets that are rendered outside the React Flow viewport", () => {
+    const toolboxPreviewSocket = document.createElement("div");
+    toolboxPreviewSocket.className = "ff-node__socket";
+    toolboxPreviewSocket.setAttribute("data-socket-direction", "output");
+    document.body.append(toolboxPreviewSocket);
+
+    expect(TUTORIAL_STEPS[2].resolveTarget()).toBeNull();
+  });
+
   it("prefers the demo-node socket when one is present", () => {
+    const viewport = document.createElement("div");
+    viewport.className = "react-flow__viewport";
+
     const genericSocket = document.createElement("div");
     genericSocket.className = "ff-node__socket";
-    document.body.append(genericSocket);
+    genericSocket.setAttribute("data-socket-direction", "output");
+    viewport.append(genericSocket);
 
     const demoNode = document.createElement("div");
     demoNode.setAttribute("data-node-id", "tutorial-demo-node");
@@ -91,7 +109,8 @@ describe("tutorial step definitions", () => {
     demoSocket.className = "ff-node__socket";
     demoSocket.setAttribute("data-socket-direction", "output");
     demoNode.append(demoSocket);
-    document.body.append(demoNode);
+    viewport.append(demoNode);
+    document.body.append(viewport);
 
     expect(TUTORIAL_STEPS[2].resolveTarget()).toBe(demoSocket);
   });

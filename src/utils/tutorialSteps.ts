@@ -14,8 +14,9 @@ function getSocketTarget(): HTMLElement | null {
     return null;
   }
 
-  return doc.querySelector<HTMLElement>('[data-node-id="tutorial-demo-node"] .ff-node__socket[data-socket-direction="output"]')
-    ?? doc.querySelector<HTMLElement>(".ff-node__socket");
+  return doc.querySelector<HTMLElement>('.react-flow__viewport [data-node-id="tutorial-demo-node"] .ff-node__socket[data-socket-direction="output"]')
+    ?? doc.querySelector<HTMLElement>('.react-flow__viewport .ff-node__socket[data-socket-direction="output"]')
+    ?? null;
 }
 
 /**

@@ -211,7 +211,6 @@ function ActiveTutorialOverlay({ currentStep, currentStepIndex, onDismiss, onNex
 
   return (
     <div className="ff-tutorial" data-testid="tutorial-overlay-root">
-      <div className="ff-tutorial__backdrop" />
       <div className="ff-tutorial__spotlight" style={spotlightStyle} />
       <div
         aria-labelledby="ff-tutorial-title"

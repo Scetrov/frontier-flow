@@ -45,7 +45,7 @@ describe("TutorialOverlay", () => {
   });
 
   it("renders the spotlight, progress, dots, and actions when active", () => {
-    render(
+    const { container } = render(
       <TutorialOverlay
         currentStep={createStep()}
         currentStepIndex={1}
@@ -69,6 +69,7 @@ describe("TutorialOverlay", () => {
     expect(document.querySelectorAll(".ff-tutorial__progress-dot")).toHaveLength(5);
     expect(document.querySelectorAll(".ff-tutorial__progress-dot--active")).toHaveLength(1);
     expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+    expect(container.querySelector(".ff-tutorial__backdrop")).toBeNull();
   });
 
   it("positions the spotlight from the target rect with padding", () => {

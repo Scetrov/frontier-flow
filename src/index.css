@@ -457,12 +457,6 @@ button,
   pointer-events: none;
 }
 
-.ff-tutorial__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(5, 8, 12, 0.28);
-}
-
 .ff-tutorial__spotlight {
   position: fixed;
   border: 1px solid rgba(255, 71, 0, 0.75);
