@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   useCurrentAccount as useCurrentAccountHook,
@@ -10,16 +10,23 @@ import type { AuthorizationProgressState, StoredDeploymentState, TurretInfo } fr
 import AuthorizeView from "../components/AuthorizeView";
 import type { UseAuthorizationResult } from "../hooks/useAuthorization";
 import type { UseTurretListResult } from "../hooks/useTurretList";
+import type { FetchOwnerCapInput } from "../utils/authorizationTransaction";
+import { createDevInspectErrorResponse, createDevInspectSuccessResponse } from "../test/turretSimulationMocks";
+import { encodeSimulationPriorityEntries } from "../utils/turretSimulationCodec";
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
 type SuiClient = ReturnType<typeof useSuiClientHook>;
+type DevInspectTransactionBlock = SuiClient["devInspectTransactionBlock"];
 
 const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
 const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
 const mockUseSuiClient = vi.fn<() => SuiClient>();
 const mockUseTurretList = vi.fn<(input: unknown) => UseTurretListResult>();
 const mockUseAuthorization = vi.fn<(input: unknown) => UseAuthorizationResult>();
+const { mockFetchSimulationOwnerCharacterId } = vi.hoisted(() => ({
+  mockFetchSimulationOwnerCharacterId: vi.fn<(input: FetchOwnerCapInput) => Promise<string>>(),
+}));
 
 vi.mock("@mysten/dapp-kit", () => ({
   useCurrentAccount: () => mockUseCurrentAccount(),
@@ -34,6 +41,15 @@ vi.mock("../hooks/useTurretList", () => ({
 vi.mock("../hooks/useAuthorization", () => ({
   useAuthorization: (input: unknown) => mockUseAuthorization(input),
 }));
+
+vi.mock("../utils/authorizationTransaction", async () => {
+  const actual = await vi.importActual<typeof import("../utils/authorizationTransaction")>("../utils/authorizationTransaction");
+
+  return {
+    ...actual,
+    fetchSimulationOwnerCharacterId: (input: FetchOwnerCapInput) => mockFetchSimulationOwnerCharacterId(input),
+  };
+});
 
 const deploymentState: StoredDeploymentState = {
   version: 1,
@@ -132,11 +148,20 @@ function createAuthorizationResult(overrides: Partial<UseAuthorizationResult> = 
   } as UseAuthorizationResult;
 }
 
+function createSuiClient(overrides: Partial<SuiClient> = {}): SuiClient {
+  return {
+    devInspectTransactionBlock: vi.fn<DevInspectTransactionBlock>(() => Promise.resolve(createDevInspectSuccessResponse([]))),
+    ...overrides,
+  } as SuiClient;
+}
+
 beforeEach(() => {
   mockUseCurrentAccount.mockReturnValue(connectedAccount);
   mockUseCurrentWallet.mockReturnValue(connectedWallet);
-  mockUseSuiClient.mockReturnValue({} as SuiClient);
+  mockUseSuiClient.mockReturnValue(createSuiClient());
   mockUseAuthorization.mockReturnValue(createAuthorizationResult());
+  mockFetchSimulationOwnerCharacterId.mockReset();
+  mockFetchSimulationOwnerCharacterId.mockResolvedValue("0xownercharacter");
 });
 
 describe("AuthorizeView", () => {
@@ -205,6 +230,140 @@ describe("AuthorizeView", () => {
 
     expect(selectableTurret).toBeChecked();
     expect(screen.getByRole("button", { name: "Authorize Selected" })).toBeEnabled();
+  });
+
+  it("opens a row-scoped simulation modal without changing turret selection", () => {
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: turretFixtures,
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AuthorizeView deploymentState={deploymentState} />);
+
+    const selectableTurret = screen.getByRole("checkbox", { name: /Perimeter Lancer/i });
+
+    fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Perimeter Lancer" });
+
+    expect(dialog).toBeVisible();
+    expect(within(dialog).getByText(deploymentState.packageId)).toBeVisible();
+    expect(selectableTurret).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "Authorize Selected" })).toBeDisabled();
+  });
+
+  it("hydrates the simulation modal with the turret owner character lookup", async () => {
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: turretFixtures,
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AuthorizeView deploymentState={deploymentState} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("0xownercharacter")).toBeVisible();
+    });
+
+    expect(mockFetchSimulationOwnerCharacterId).toHaveBeenCalledWith(expect.objectContaining({
+      deploymentState,
+      turretObjectId: "0x111",
+      walletAddress: connectedWalletAddress,
+    }));
+    expect(screen.getByLabelText("HP Ratio")).toHaveValue("100");
+  });
+
+  it("runs a simulation and renders decoded priority results", async () => {
+    const returnedBytes = encodeSimulationPriorityEntries([{
+      targetItemId: "900001",
+      priorityWeight: "120",
+    }]);
+    const devInspectTransactionBlock = vi.fn<DevInspectTransactionBlock>(() => Promise.resolve(createDevInspectSuccessResponse(Array.from(returnedBytes))));
+    mockUseSuiClient.mockReturnValue(createSuiClient({ devInspectTransactionBlock }));
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: turretFixtures,
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AuthorizeView deploymentState={deploymentState} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("0xownercharacter")).toBeVisible();
+    });
+
+    fireEvent.change(screen.getByLabelText("Item Id"), { target: { value: "900001" } });
+    fireEvent.change(screen.getByLabelText("Type Id"), { target: { value: "900002" } });
+    fireEvent.change(screen.getByLabelText("Group Id"), { target: { value: "25" } });
+    fireEvent.change(screen.getByLabelText("Character Id"), { target: { value: "42" } });
+    fireEvent.change(screen.getByLabelText("Character Tribe"), { target: { value: "7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run Simulation" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Simulation Results")).toBeVisible();
+    });
+
+    expect(screen.getByRole("cell", { name: "120" })).toBeVisible();
+    expect(devInspectTransactionBlock).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves the draft and renders execution failures when the simulation fails", async () => {
+    mockUseSuiClient.mockReturnValue(createSuiClient({
+      devInspectTransactionBlock: vi.fn<DevInspectTransactionBlock>(() => Promise.resolve(createDevInspectErrorResponse("MoveAbort"))),
+    }));
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: turretFixtures,
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AuthorizeView deploymentState={deploymentState} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("0xownercharacter")).toBeVisible();
+    });
+
+    fireEvent.change(screen.getByLabelText("Item Id"), { target: { value: "900001" } });
+    fireEvent.change(screen.getByLabelText("Type Id"), { target: { value: "900002" } });
+    fireEvent.change(screen.getByLabelText("Group Id"), { target: { value: "25" } });
+    fireEvent.change(screen.getByLabelText("Character Id"), { target: { value: "42" } });
+    fireEvent.change(screen.getByLabelText("Character Tribe"), { target: { value: "7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run Simulation" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Simulation Error")).toBeVisible();
+    });
+
+    expect(screen.getByText("MoveAbort")).toBeVisible();
+    expect(screen.getByLabelText("Item Id")).toHaveValue("900001");
+  });
+
+  it("marks the simulation modal as stale when the deployment context changes", () => {
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: turretFixtures,
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    const { rerender } = render(<AuthorizeView deploymentState={deploymentState} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
+
+    rerender(<AuthorizeView deploymentState={{ ...deploymentState, targetId: "testnet:utopia" }} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Deployment context changed");
   });
 
   it("passes the connected wallet and deployment state into the turret hooks", () => {

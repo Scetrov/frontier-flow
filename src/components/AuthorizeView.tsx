@@ -4,9 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { StoredDeploymentState } from "../types/authorization";
 import { getDeploymentTarget } from "../data/deploymentTargets";
 import { useAuthorization } from "../hooks/useAuthorization";
+import { useTurretSimulation } from "../hooks/useTurretSimulation";
 import { useTurretList } from "../hooks/useTurretList";
 import AuthorizationProgressModal from "./AuthorizationProgressModal";
 import AuthorizeTurretList from "./AuthorizeTurretList";
+import TurretSimulationModal from "./TurretSimulationModal";
 
 interface AuthorizeViewProps {
   readonly deploymentState: StoredDeploymentState | null;
@@ -19,12 +21,24 @@ interface AuthorizeViewPanelProps {
   readonly status: ReturnType<typeof useTurretList>["status"];
 }
 
+interface AuthorizeViewPrimaryPanelProps {
+  readonly authorization: ReturnType<typeof useAuthorization>;
+  readonly deploymentKey: string | null;
+  readonly deploymentState: StoredDeploymentState | null;
+  readonly handleAuthorize: () => void;
+  readonly handleSelectionChange: (turretIds: readonly string[]) => void;
+  readonly listInstanceKey: number;
+  readonly selectedTurretIds: readonly string[];
+  readonly turretList: ReturnType<typeof useTurretList>;
+  readonly turretSimulation: ReturnType<typeof useTurretSimulation>;
+}
+
 interface AuthorizeViewSelectionState {
   readonly deploymentKey: string | null;
   readonly turretIds: readonly string[];
 }
 
-function getDeploymentKey(deploymentState: StoredDeploymentState | null): string | null {
+function getAuthorizeDeploymentKey(deploymentState: StoredDeploymentState | null): string | null {
   return deploymentState === null
     ? null
     : `${deploymentState.targetId}:${deploymentState.packageId}:${deploymentState.moduleName}`;
@@ -333,6 +347,87 @@ function AuthorizeViewStatePanel({ deploymentState, errorMessage, onRetry, statu
   );
 }
 
+function AuthorizeViewPrimaryPanel({
+  authorization,
+  deploymentKey,
+  deploymentState,
+  handleAuthorize,
+  handleSelectionChange,
+  listInstanceKey,
+  selectedTurretIds,
+  turretList,
+  turretSimulation,
+}: AuthorizeViewPrimaryPanelProps) {
+  const hasTurrets = turretList.status === "success" && turretList.turrets.length > 0;
+
+  if (hasTurrets) {
+    return (
+      <>
+        <AuthorizeTurretList
+          key={`${deploymentKey ?? "no-deployment"}:${String(listInstanceKey)}`}
+          onSimulate={(turret) => {
+            if (deploymentState === null || deploymentKey === null) {
+              return;
+            }
+
+            turretSimulation.openSimulation({
+              deploymentKey,
+              deploymentState,
+              turret,
+            });
+          }}
+          onSelectionChange={handleSelectionChange}
+          turrets={turretList.turrets}
+        />
+        <AuthorizeViewActions
+          isAuthorizing={authorization.isAuthorizing}
+          onAuthorize={handleAuthorize}
+          selectedTurretCount={selectedTurretIds.length}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <AuthorizeViewStatePanel
+        deploymentState={deploymentState}
+        errorMessage={turretList.errorMessage}
+        onRetry={turretList.refresh}
+        status={turretList.status}
+      />
+      <AuthorizeViewActions isAuthorizing={authorization.isAuthorizing} onAuthorize={handleAuthorize} selectedTurretCount={0} />
+    </>
+  );
+}
+
+function AuthorizeSimulationOverlay(input: {
+  readonly turretList: ReturnType<typeof useTurretList>;
+  readonly turretSimulation: ReturnType<typeof useTurretSimulation>;
+}) {
+  const { turretList, turretSimulation } = input;
+
+  return (
+    <TurretSimulationModal
+      onApplySuggestion={turretSimulation.applySuggestion}
+      onClose={turretSimulation.closeSimulation}
+      onLoadSuggestions={(field, query) => {
+        void turretSimulation.loadSuggestions(field, query);
+      }}
+      onRefreshContext={() => {
+        turretList.refresh();
+        void turretSimulation.refreshContext();
+      }}
+      onRunSimulation={() => {
+        void turretSimulation.runSimulation();
+      }}
+      onSetLookupQuery={turretSimulation.setLookupQuery}
+      onUpdateField={turretSimulation.updateField}
+      session={turretSimulation.session}
+    />
+  );
+}
+
 function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
   const account = useCurrentAccount();
   const currentWallet = useCurrentWallet();
@@ -347,7 +442,14 @@ function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
     currentWallet,
     suiClient,
   });
-  const deploymentKey = getDeploymentKey(deploymentState);
+  const deploymentKey = getAuthorizeDeploymentKey(deploymentState);
+  const turretSimulation = useTurretSimulation({
+    deploymentKey,
+    deploymentState,
+    suiClient,
+    turrets: turretList.turrets,
+    walletAddress: account?.address ?? null,
+  });
   const {
     handleAuthorize,
     handleDismissProgress,
@@ -363,33 +465,17 @@ function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
 
         <div className="ff-authorize-view__grid">
           <div className="ff-authorize-view__primary">
-            {turretList.status === "success" && turretList.turrets.length > 0 ? (
-              <>
-                <AuthorizeTurretList
-                  key={`${deploymentKey ?? "no-deployment"}:${String(listInstanceKey)}`}
-                  onSelectionChange={handleSelectionChange}
-                  turrets={turretList.turrets}
-                />
-                <AuthorizeViewActions
-                  isAuthorizing={authorization.isAuthorizing}
-                  onAuthorize={handleAuthorize}
-                  selectedTurretCount={selectedTurretIds.length}
-                />
-              </>
-            ) : null}
-            {!(turretList.status === "success" && turretList.turrets.length > 0) ? (
-              <>
-                <AuthorizeViewStatePanel
-                  deploymentState={deploymentState}
-                  errorMessage={turretList.errorMessage}
-                  onRetry={() => {
-                    turretList.refresh();
-                  }}
-                  status={turretList.status}
-                />
-                <AuthorizeViewActions isAuthorizing={authorization.isAuthorizing} onAuthorize={handleAuthorize} selectedTurretCount={0} />
-              </>
-            ) : null}
+            <AuthorizeViewPrimaryPanel
+              authorization={authorization}
+              deploymentKey={deploymentKey}
+              deploymentState={deploymentState}
+              handleAuthorize={handleAuthorize}
+              handleSelectionChange={handleSelectionChange}
+              listInstanceKey={listInstanceKey}
+              selectedTurretIds={selectedTurretIds}
+              turretList={turretList}
+              turretSimulation={turretSimulation}
+            />
           </div>
 
           <AuthorizeDeploymentPanel deploymentState={deploymentState} walletAddress={account?.address} />
@@ -403,6 +489,7 @@ function AuthorizeView({ deploymentState }: AuthorizeViewProps) {
         }}
         progress={authorization.progress}
       />
+      <AuthorizeSimulationOverlay turretList={turretList} turretSimulation={turretSimulation} />
     </section>
   );
 }

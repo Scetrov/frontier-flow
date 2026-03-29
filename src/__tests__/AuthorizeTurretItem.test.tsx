@@ -43,4 +43,23 @@ describe("AuthorizeTurretItem", () => {
 
     expect(handleToggle).toHaveBeenCalledTimes(1);
   });
+
+  it("opens simulation without toggling the checkbox", () => {
+    const handleToggle = vi.fn();
+    const handleSimulate = vi.fn();
+
+    render(
+      <AuthorizeTurretItem
+        checked={false}
+        onSimulate={handleSimulate}
+        onToggle={handleToggle}
+        turret={replacementTurret}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Simulate turret Shield Bastion" }));
+
+    expect(handleSimulate).toHaveBeenCalledWith(replacementTurret);
+    expect(handleToggle).not.toHaveBeenCalled();
+  });
 });

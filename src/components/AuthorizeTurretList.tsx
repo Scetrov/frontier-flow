@@ -4,6 +4,7 @@ import type { TurretInfo } from "../types/authorization";
 import AuthorizeTurretItem from "./AuthorizeTurretItem";
 
 interface AuthorizeTurretListProps {
+  readonly onSimulate?: (turret: TurretInfo) => void;
   readonly onSelectionChange?: (selectedTurretIds: readonly string[]) => void;
   readonly turrets: readonly TurretInfo[];
 }
@@ -11,7 +12,7 @@ interface AuthorizeTurretListProps {
 /**
  * Render the selectable turret roster and keep the actionable selection in sync.
  */
-function AuthorizeTurretList({ onSelectionChange, turrets }: AuthorizeTurretListProps) {
+function AuthorizeTurretList({ onSelectionChange, onSimulate, turrets }: AuthorizeTurretListProps) {
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const selectableTurretIds = useMemo(
     () => turrets.filter((turret) => !turret.currentExtension?.isCurrentDeployment).map((turret) => turret.objectId),
@@ -64,6 +65,7 @@ function AuthorizeTurretList({ onSelectionChange, turrets }: AuthorizeTurretList
               checked={checked}
               disabled={disabled}
               key={turret.objectId}
+              onSimulate={onSimulate}
               onToggle={() => {
                 if (disabled) {
                   return;

@@ -26,6 +26,26 @@ export interface UseTurretListResult {
 }
 
 /**
+ * Build the live turret-list request key used by the authorize screen.
+ */
+export function getTurretListRequestKey(input: {
+  readonly deploymentState: StoredDeploymentState | null;
+  readonly refreshToken: number;
+  readonly walletAddress: string | null;
+}): string | null {
+  if (input.deploymentState === null || input.walletAddress === null) {
+    return null;
+  }
+
+  return [
+    input.deploymentState.targetId,
+    input.deploymentState.packageId,
+    input.walletAddress,
+    String(input.refreshToken),
+  ].join(":");
+}
+
+/**
  * Load the connected wallet's turrets for the active deployment target.
  */
 export function useTurretList({ deploymentState, walletAddress, fetchTurretsFn = fetchTurrets }: UseTurretListOptions): UseTurretListResult {
@@ -36,13 +56,11 @@ export function useTurretList({ deploymentState, walletAddress, fetchTurretsFn =
     turrets: [],
     errorMessage: null,
   });
-  const requestKey = useMemo(() => {
-    if (deploymentState === null || walletAddress === null) {
-      return null;
-    }
-
-    return [deploymentState.targetId, deploymentState.packageId, walletAddress, String(refreshToken)].join(":");
-  }, [deploymentState, refreshToken, walletAddress]);
+  const requestKey = useMemo(() => getTurretListRequestKey({
+    deploymentState,
+    refreshToken,
+    walletAddress,
+  }), [deploymentState, refreshToken, walletAddress]);
 
   useEffect(() => {
     if (requestKey === null || deploymentState === null || walletAddress === null) {

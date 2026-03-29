@@ -225,6 +225,13 @@ export async function fetchOwnerCap(input: FetchOwnerCapInput): Promise<string> 
   return (await fetchAuthorizationTarget(input)).ownerCapId;
 }
 
+/**
+ * Resolve the owner character object id used by turret simulation execution.
+ */
+export async function fetchSimulationOwnerCharacterId(input: FetchOwnerCapInput): Promise<string> {
+  return (await fetchAuthorizationTarget(input)).characterId;
+}
+
 function validateFetchOwnerCapInput(input: FetchOwnerCapInput): void {
   if (!isSuiAddress(input.turretObjectId)) {
     throw new Error("Turret id must be a valid Sui object id.");
