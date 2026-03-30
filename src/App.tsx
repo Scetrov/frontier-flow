@@ -3,18 +3,11 @@ import { useCurrentAccount, useCurrentWallet, useSignAndExecuteTransaction } fro
 
 import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, DeploymentTargetId } from "./compiler/types";
 import AlphaBanner from "./components/AlphaBanner";
-import AuthorizeView from "./components/AuthorizeView";
-import CanvasWorkspace from "./components/CanvasWorkspace";
-import DeployWorkflowView from "./components/DeployWorkflowView";
 import DeploymentProgressModal from "./components/DeploymentProgressModal";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import PrivacyNoticeBanner from "./components/PrivacyNoticeBanner";
 import type { PrimaryView } from "./components/Header";
-import MoveSourcePanel from "./components/MoveSourcePanel";
-import Sidebar from "./components/Sidebar";
-import TutorialOverlay from "./components/TutorialOverlay";
-import VisualDeploymentTargetSelector from "./components/VisualDeploymentTargetSelector";
 import { seededExampleContracts } from "./data/exampleContracts";
 import { subscribeToLocalEnvironmentChanges } from "./data/localEnvironment";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
@@ -33,8 +26,15 @@ import { loadUiState, mergeUiState } from "./utils/uiStateStorage";
 
 const defaultContractFlow = createDefaultContractFlow();
 const defaultContractName = "Starter Contract";
+const AuthorizeView = lazy(() => import("./components/AuthorizeView"));
+const CanvasWorkspace = lazy(() => import("./components/CanvasWorkspace"));
+const DeployWorkflowView = lazy(() => import("./components/DeployWorkflowView"));
 const KitchenSinkPage = lazy(() => import("./components/KitchenSinkPage"));
 const IconPreviewPage = lazy(() => import("./components/IconPreviewPage"));
+const MoveSourcePanel = lazy(() => import("./components/MoveSourcePanel"));
+const Sidebar = lazy(() => import("./components/Sidebar"));
+const TutorialOverlay = lazy(() => import("./components/TutorialOverlay"));
+const VisualDeploymentTargetSelector = lazy(() => import("./components/VisualDeploymentTargetSelector"));
 
 interface InitialAppState {
   readonly activeView: PrimaryView;
@@ -68,6 +68,7 @@ interface AppMainContentProps {
   readonly onRegisterRemoveDemoNode: (removeDemoNode: () => void) => void;
   readonly onRegisterSidebarVisibility: (setSidebarOpen: (open: boolean) => void) => void;
   readonly onSelectedDeploymentTargetChange: (target: DeploymentTargetId) => void;
+  readonly onViewChange: (view: PrimaryView) => void;
   readonly selectedDeploymentTarget: DeploymentTargetId;
 }
 
@@ -155,6 +156,10 @@ interface MoveRebuildStateSetters {
   readonly setTransientStatusMessage: (message: TransientStatusMessage) => void;
 }
 
+function MainContentFallback(props: { readonly ariaLabel: string }) {
+  return <div aria-label={props.ariaLabel} className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]" />;
+}
+
 function getBrowserStorage(): Storage | undefined {
   return typeof window === "undefined" ? undefined : window.localStorage;
 }
@@ -196,7 +201,7 @@ function getInitialAppState(): InitialAppState {
     : null;
 
   return {
-    activeView: uiState.activeView === "authorize" && nextDeploymentState === null ? "visual" : uiState.activeView,
+    activeView: (uiState.activeView === "authorize" || uiState.activeView === "simulate") && nextDeploymentState === null ? "visual" : uiState.activeView,
     compilationSnapshot: nextCompilationSnapshot,
     selectedDeploymentTarget: uiState.selectedDeploymentTarget,
   };
@@ -231,41 +236,45 @@ function VisualWorkspaceView({
   selectedDeploymentTarget,
 }: VisualWorkspaceViewProps) {
   return (
-    <div className="flex flex-1 min-h-0 overflow-hidden">
-      <section
-        aria-label="Node editor canvas"
-        className="relative flex-1 overflow-hidden border-y border-[var(--ui-border-dark)]"
-      >
-        <div className="ff-visual-target-selector__anchor">
-          <VisualDeploymentTargetSelector
-            onTargetChange={onSelectedDeploymentTargetChange}
-            selectedTarget={selectedDeploymentTarget}
+    <Suspense fallback={<MainContentFallback ariaLabel="Visual workspace loading" />}>
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <section
+          aria-label="Node editor canvas"
+          className="relative flex-1 overflow-hidden border-y border-[var(--ui-border-dark)]"
+        >
+          <div className="ff-visual-target-selector__anchor">
+            <VisualDeploymentTargetSelector
+              onTargetChange={onSelectedDeploymentTargetChange}
+              selectedTarget={selectedDeploymentTarget}
+            />
+          </div>
+          <CanvasWorkspace
+            focusedDiagnosticNodeId={focusedDiagnosticSelection?.nodeId ?? null}
+            focusedDiagnosticRequestKey={focusedDiagnosticSelection?.requestKey ?? 0}
+            graphTransferWalletBridge={graphTransferWalletBridge}
+            initialContractName={defaultContractName}
+            initialEdges={defaultContractFlow.edges}
+            initialNodes={defaultContractFlow.nodes}
+            onRegisterContractPanelVisibility={onRegisterContractPanelVisibility}
+            onCompilationStateChange={onCompilationStateChange}
+            onInsertDemoNode={onRegisterInsertDemoNode}
+            onRemoveDemoNode={onRegisterRemoveDemoNode}
+            onRemediationNoticesChange={onRemediationNoticesChange}
           />
-        </div>
-        <CanvasWorkspace
-          focusedDiagnosticNodeId={focusedDiagnosticSelection?.nodeId ?? null}
-          focusedDiagnosticRequestKey={focusedDiagnosticSelection?.requestKey ?? 0}
-          graphTransferWalletBridge={graphTransferWalletBridge}
-          initialContractName={defaultContractName}
-          initialEdges={defaultContractFlow.edges}
-          initialNodes={defaultContractFlow.nodes}
-          onRegisterContractPanelVisibility={onRegisterContractPanelVisibility}
-          onCompilationStateChange={onCompilationStateChange}
-          onInsertDemoNode={onRegisterInsertDemoNode}
-          onRemoveDemoNode={onRegisterRemoveDemoNode}
-          onRemediationNoticesChange={onRemediationNoticesChange}
-        />
-      </section>
-      <Sidebar onRegisterSidebarVisibility={onRegisterSidebarVisibility} />
-    </div>
+        </section>
+        <Sidebar onRegisterSidebarVisibility={onRegisterSidebarVisibility} />
+      </div>
+    </Suspense>
   );
 }
 
 function MoveSourceView({ displayStatus, moveSourceCode, onMoveRebuild }: Pick<AppMainContentProps, "displayStatus" | "moveSourceCode" | "onMoveRebuild">) {
   return (
-    <div className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
-      <MoveSourcePanel onRebuild={onMoveRebuild} sourceCode={moveSourceCode} status={displayStatus} />
-    </div>
+    <Suspense fallback={<MainContentFallback ariaLabel="Move source loading" />}>
+      <div className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
+        <MoveSourcePanel onRebuild={onMoveRebuild} sourceCode={moveSourceCode} status={displayStatus} />
+      </div>
+    </Suspense>
   );
 }
 
@@ -285,6 +294,7 @@ function AppMainContent({
   onRegisterRemoveDemoNode,
   onRegisterSidebarVisibility,
   onSelectedDeploymentTargetChange,
+  onViewChange,
   selectedDeploymentTarget,
 }: AppMainContentProps) {
   if (activeView === "visual") {
@@ -305,11 +315,19 @@ function AppMainContent({
   }
 
   if (activeView === "deploy") {
-    return <DeployWorkflowView deployment={deployment} />;
+    return (
+      <Suspense fallback={<MainContentFallback ariaLabel="Deploy workflow loading" />}>
+        <DeployWorkflowView deployment={deployment} />
+      </Suspense>
+    );
   }
 
-  if (activeView === "authorize") {
-    return <AuthorizeView deploymentState={authorizeDeploymentState} />;
+  if (activeView === "authorize" || activeView === "simulate") {
+    return (
+      <Suspense fallback={<MainContentFallback ariaLabel="Authorize workflow loading" />}>
+        <AuthorizeView activeView={activeView} deploymentState={authorizeDeploymentState} onViewChange={onViewChange} />
+      </Suspense>
+    );
   }
 
   return <MoveSourceView displayStatus={displayStatus} moveSourceCode={moveSourceCode} onMoveRebuild={onMoveRebuild} />;
@@ -362,7 +380,7 @@ function resolveActiveView(input: {
   readonly authorizeDeploymentState: StoredDeploymentState | null;
   readonly canAccessCompiledWorkflow: boolean;
 }): PrimaryView {
-  if (input.activeView === "authorize" && input.authorizeDeploymentState === null) {
+  if ((input.activeView === "authorize" || input.activeView === "simulate") && input.authorizeDeploymentState === null) {
     return input.canAccessCompiledWorkflow ? "deploy" : "visual";
   }
 
@@ -441,6 +459,7 @@ function StandardAppLayout({
             onRegisterRemoveDemoNode={onRegisterRemoveDemoNode}
             onRegisterSidebarVisibility={onRegisterSidebarVisibility}
             onSelectedDeploymentTargetChange={deployment.setSelectedTarget}
+            onViewChange={onViewChange}
             selectedDeploymentTarget={selectedDeploymentTarget}
           />
         </main>
@@ -788,15 +807,19 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       remediationNotices={remediationNotices}
       selectedDeploymentTarget={selectedDeploymentTarget}
       tutorialOverlay={(
-        <TutorialOverlay
-          currentStep={tutorial.currentStep}
-          currentStepIndex={tutorial.currentStepIndex}
-          isActive={tutorial.isActive}
-          onDismiss={tutorial.dismiss}
-          onNext={tutorial.next}
-          targetRect={tutorial.targetRect}
-          totalSteps={tutorial.totalSteps}
-        />
+        tutorial.isActive || tutorial.currentStep !== null ? (
+          <Suspense fallback={null}>
+            <TutorialOverlay
+              currentStep={tutorial.currentStep}
+              currentStepIndex={tutorial.currentStepIndex}
+              isActive={tutorial.isActive}
+              onDismiss={tutorial.dismiss}
+              onNext={tutorial.next}
+              targetRect={tutorial.targetRect}
+              totalSteps={tutorial.totalSteps}
+            />
+          </Suspense>
+        ) : null
       )}
       transientStatusMessage={transientStatusMessage}
     />

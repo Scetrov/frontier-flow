@@ -188,7 +188,7 @@ describe("App", () => {
     );
   });
 
-  it("restores the persisted move view when a matching compilation snapshot exists", () => {
+  it("restores the persisted move view when a matching compilation snapshot exists", async () => {
     const artifact = createGeneratedArtifactStub({
       moduleName: "starter_contract",
       moveSource: "module builder_extensions::starter_contract {}",
@@ -224,10 +224,10 @@ describe("App", () => {
         activeView: "move",
       }),
     );
-    expect(screen.getByText("Move Source Slot")).toBeInTheDocument();
+    expect(await screen.findByText("Move Source Slot")).toBeInTheDocument();
   });
 
-  it("lets Move reopen from visual while the matching cached build is available", () => {
+  it("lets Move reopen from visual while the matching cached build is available", async () => {
     const artifact = createGeneratedArtifactStub({
       moduleName: "starter_contract",
       moveSource: "module builder_extensions::starter_contract {}",
@@ -250,7 +250,7 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
 
-    expect(screen.getByText("Move Source Slot")).toBeInTheDocument();
+    expect(await screen.findByText("Move Source Slot")).toBeInTheDocument();
   });
 
   it("falls back from authorize to visual when no valid deployment state exists", () => {

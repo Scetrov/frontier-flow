@@ -24,7 +24,7 @@ function AlphaBanner() {
           target="_blank"
         >
           GitHub
-        </a>.
+        </a>. This project is open source and contributions are welcome! EVE Frontier is a registered trademark of CCP hf. All rights reserved in all jurisdictions. Frontier Flow is not affiliated with CCP hf.
       </p>
       <button
         aria-label="Dismiss alpha notice"

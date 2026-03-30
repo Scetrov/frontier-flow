@@ -9,8 +9,8 @@ import { loadUiState } from "../utils/uiStateStorage";
 
 const TUTORIAL_STORAGE_KEY = "frontier-flow:tutorial";
 const STORAGE_VERSION = 1;
-const RETRY_DELAY_MS = 100;
-const MAX_RETRIES = 3;
+export const RETRY_DELAY_MS = 100;
+export const MAX_RETRIES = 20;
 const AUTO_START_DELAY_MS = 500;
 
 export interface UseTutorialOptions {

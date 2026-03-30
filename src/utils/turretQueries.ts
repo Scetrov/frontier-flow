@@ -51,6 +51,13 @@ interface FetchTurretsInput {
   readonly fetchFn?: typeof fetch;
 }
 
+export interface FetchTurretByIdInput {
+  readonly deploymentState: StoredDeploymentState;
+  readonly turretId: string;
+  readonly signal?: AbortSignal;
+  readonly fetchFn?: typeof fetch;
+}
+
 const TESTNET_GRAPHQL_ENDPOINT = "https://graphql.testnet.sui.io/graphql";
 const GRAPHQL_PAGE_SIZE = 50;
 const MOVE_TYPE_NAME_WRAPPER = "0x1::type_name::TypeName";
@@ -172,6 +179,27 @@ export async function fetchTurrets(input: FetchTurretsInput): Promise<readonly T
   return getAuthorizationMockEnvironment().enabled
     ? overlayMockAuthorizedTurrets(resolvedTurrets, input.deploymentState)
     : resolvedTurrets;
+}
+
+/**
+ * Refresh a single turret object for simulation and stale-context checks.
+ */
+export async function fetchTurretById(input: FetchTurretByIdInput): Promise<TurretInfo | null> {
+  const endpoint = getTurretGraphQlEndpoint(input.deploymentState.targetId);
+
+  if (endpoint === null) {
+    throw new Error("Turret authorization is only available for published testnet deployments.");
+  }
+
+  const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
+
+  return loadTurretInfo({
+    deploymentState: input.deploymentState,
+    endpoint,
+    fetchFn,
+    signal: input.signal,
+    turretId: input.turretId,
+  });
 }
 
 async function loadTurretInfo(input: {

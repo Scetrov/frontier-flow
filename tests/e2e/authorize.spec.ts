@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 import { SEEN_TUTORIAL_STORAGE_STATE, TUTORIAL_STORAGE_KEY } from "./fixtures/storage";
 import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
+import { createDevInspectSuccessResponse } from "../../src/test/turretSimulationMocks";
+import { encodeSimulationPriorityEntries } from "../../src/utils/turretSimulationCodec";
 
 const CONNECTED_ADDRESS = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 const CHARACTER_ID = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -11,6 +13,12 @@ const LEGACY_PACKAGE_ID = "0xddddddddddddddddddddddddddddddddddddddddddddddddddd
 const LEGACY_MODULE_NAME = "legacy_extension";
 const WALLET_NAME = "Mock Sui Wallet";
 const WALLET_STORAGE_KEY = "frontier-flow:sui-wallet";
+const SIMULATED_TARGET_ITEM_ID = "900001";
+const SIMULATED_PRIORITY_WEIGHT = "120";
+const SIMULATED_TYPE_ID = "900002";
+const SIMULATED_GROUP_ID = "25";
+const SIMULATED_CHARACTER_ID = "42";
+const SIMULATED_CHARACTER_TRIBE = "7";
 
 function createGraphQlResponse() {
   return {
@@ -166,7 +174,7 @@ test("runs the full turret authorization workflow and refreshes the list after c
       return;
     }
 
-    if (query.includes("query PlayerProfile")) {
+    if (query.includes("query PlayerProfiles")) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -177,13 +185,38 @@ test("runs the full turret authorization workflow and refreshes the list after c
                 nodes: [{
                   contents: {
                     json: {
-                      fields: {
-                        character_id: CHARACTER_ID,
-                        name: "Mock Capsuleer",
-                      },
+                      character_id: CHARACTER_ID,
                     },
                   },
                 }],
+              },
+            },
+          },
+        }),
+      });
+      return;
+    }
+
+    if (query.includes("query Character")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            object: {
+              asMoveObject: {
+                contents: {
+                  json: {
+                    key: {
+                      item_id: Number(SIMULATED_CHARACTER_ID),
+                      tenant: "utopia",
+                    },
+                    tribe_id: Number(SIMULATED_CHARACTER_TRIBE),
+                    metadata: {
+                      name: "Mock Capsuleer",
+                    },
+                  },
+                },
               },
             },
           },
@@ -199,8 +232,37 @@ test("runs the full turret authorization workflow and refreshes the list after c
     });
   });
 
+  await page.route("https://world-api-stillness.live.tech.evefrontier.com/v2/ships", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [{
+          id: Number(SIMULATED_TYPE_ID),
+          name: "Mock Frigate",
+          classId: Number(SIMULATED_GROUP_ID),
+          className: "Frigate",
+        }],
+      }),
+    });
+  });
+
+  await page.route("https://world-api-stillness.live.tech.evefrontier.com/v2/tribes", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [{
+          id: Number(SIMULATED_CHARACTER_TRIBE),
+          name: "Sepharim",
+          nameShort: "SEP",
+        }],
+      }),
+    });
+  });
+
   await page.route(/https:\/\/fullnode\.testnet\.sui\.io.*/, async (route) => {
-    const body = route.request().postDataJSON() as { id: number | string; method?: string };
+    const body = route.request().postDataJSON() as { id: number | string; method?: string; params?: unknown[] };
     const response = { jsonrpc: "2.0", id: body.id };
 
     switch (body.method) {
@@ -219,6 +281,95 @@ test("runs the full turret authorization workflow and refreshes the list after c
           }),
         });
         return;
+      case "sui_multiGetObjects":
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ...response,
+            result: [TURRET_ID, CHARACTER_ID].map((objectId) => ({
+              data: {
+                digest: "11111111111111111111111111111111",
+                objectId,
+                owner: { AddressOwner: CONNECTED_ADDRESS },
+                type: "0x2::object::Object",
+                version: "1",
+              },
+            })),
+          }),
+        });
+        return;
+      case "sui_getNormalizedMoveFunction": {
+        const params = Array.isArray(body.params) ? body.params : [];
+        const moduleName = typeof params[1] === "string" ? params[1] : "";
+        const functionName = typeof params[2] === "string" ? params[2] : "";
+        const turretType = {
+          Struct: {
+            address: "0x2",
+            module: "turret",
+            name: "Turret",
+            typeArguments: [],
+          },
+        };
+        const characterType = {
+          Struct: {
+            address: "0x2",
+            module: "character",
+            name: "Character",
+            typeArguments: [],
+          },
+        };
+        const onlineReceiptType = {
+          Struct: {
+            address: "0x2",
+            module: "turret",
+            name: "OnlineReceipt",
+            typeArguments: [],
+          },
+        };
+
+        const result = moduleName === "turret" && functionName === "verify_online"
+          ? {
+              isEntry: false,
+              parameters: [{ Reference: turretType }],
+              return: [onlineReceiptType],
+              typeParameters: [],
+              visibility: "Public",
+            }
+          : {
+              isEntry: false,
+              parameters: [{ Reference: turretType }, { Reference: characterType }, { Vector: "U8" }, onlineReceiptType],
+              return: [{ Vector: "U8" }],
+              typeParameters: [],
+              visibility: "Public",
+            };
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ...response,
+            result,
+          }),
+        });
+        return;
+      }
+      case "sui_devInspectTransactionBlock": {
+        const returnedBytes = encodeSimulationPriorityEntries([{
+          targetItemId: SIMULATED_TARGET_ITEM_ID,
+          priorityWeight: SIMULATED_PRIORITY_WEIGHT,
+        }]);
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ...response,
+            result: createDevInspectSuccessResponse(Array.from(returnedBytes)),
+          }),
+        });
+        return;
+      }
       default:
         await route.fulfill({
           status: 200,
@@ -249,6 +400,24 @@ test("runs the full turret authorization workflow and refreshes the list after c
   await expect(page.getByRole("heading", { name: "Authorize Turrets" })).toBeVisible();
 
   await expect(page.getByText("Shield Bastion")).toBeVisible();
+  await page.getByRole("button", { name: "Simulate turret Shield Bastion" }).click();
+  await expect(page.getByRole("button", { name: "Simulate", exact: true })).toHaveAttribute("aria-current", "page");
+
+  await expect(page.getByRole("heading", { name: "Shield Bastion" })).toBeVisible();
+  await expect(page.getByText(CHARACTER_ID)).toBeVisible();
+  await expect(page.getByLabel("Type Id")).toHaveValue(SIMULATED_TYPE_ID);
+  await expect(page.getByLabel("Group Id")).toHaveValue(SIMULATED_GROUP_ID);
+  await expect(page.getByLabel("Character Id")).toHaveValue(SIMULATED_CHARACTER_ID);
+  await expect(page.getByLabel("Character Tribe")).toHaveValue(SIMULATED_CHARACTER_TRIBE);
+  await page.getByLabel("Item Id").fill("900001");
+  await page.getByRole("button", { name: "Run Simulation" }).click();
+
+  await expect(page.getByText("Simulation Results")).toBeVisible();
+  await expect(page.getByRole("cell", { name: SIMULATED_PRIORITY_WEIGHT })).toBeVisible();
+
+  await page.getByRole("button", { name: "Authorize", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Authorize", exact: true })).toHaveAttribute("aria-current", "page");
+
   await page.getByRole("checkbox", { name: "Shield Bastion" }).check({ force: true });
   await expect(page.getByText("This will replace the current extension")).toBeVisible();
   await page.getByRole("button", { name: "Authorize Selected" }).click();

@@ -4,6 +4,7 @@ import { formatAddress } from "../utils/formatAddress";
 interface AuthorizeTurretItemProps {
   readonly checked: boolean;
   readonly disabled?: boolean;
+  readonly onSimulate?: (turret: TurretInfo) => void;
   readonly onToggle: () => void;
   readonly showReplacementWarning?: boolean;
   readonly turret: TurretInfo;
@@ -35,7 +36,7 @@ function getBadgeLabel(turret: TurretInfo): string {
 /**
  * Render a single turret row with a sci-fi checkbox and extension badge.
  */
-function AuthorizeTurretItem({ checked, disabled = false, onToggle, showReplacementWarning = false, turret }: AuthorizeTurretItemProps) {
+function AuthorizeTurretItem({ checked, disabled = false, onSimulate, onToggle, showReplacementWarning = false, turret }: AuthorizeTurretItemProps) {
   const title = turret.displayName ?? formatAddress(turret.objectId);
 
   return (
@@ -55,8 +56,22 @@ function AuthorizeTurretItem({ checked, disabled = false, onToggle, showReplacem
       <span className="ff-authorize-turret-item__body">
         <span className="ff-authorize-turret-item__title-row">
           <span className="ff-authorize-turret-item__title">{title}</span>
-          <span className={getBadgeClassName(turret)}>
-            {getBadgeLabel(turret)}
+          <span className="flex items-center gap-2">
+            <span className={getBadgeClassName(turret)}>
+              {getBadgeLabel(turret)}
+            </span>
+            <button
+              aria-label={`Simulate turret ${title}`}
+              className="ff-authorize-view__action h-auto min-h-0 px-3 py-2 font-heading text-[0.62rem] uppercase tracking-[0.16em]"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onSimulate?.(turret);
+              }}
+              type="button"
+            >
+              Simulate
+            </button>
           </span>
         </span>
         <span className="ff-authorize-turret-item__meta">{formatAddress(turret.objectId)}</span>

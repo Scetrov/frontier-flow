@@ -22,6 +22,7 @@ describe("resolveLocalPublishModules", () => {
       ],
     });
     const verifyCompilerIntegrity = vi.fn(() => Promise.resolve());
+    const prewarmCompilerWasm = vi.fn(() => Promise.resolve());
     const initMoveCompiler = vi.fn(() => Promise.resolve());
     const buildMovePackage = vi.fn(() => Promise.resolve({
       modules: ["AQID", "BAUG"],
@@ -29,6 +30,7 @@ describe("resolveLocalPublishModules", () => {
 
     await expect(resolveLocalPublishModules(artifact, {
       verifyCompilerIntegrity,
+      prewarmCompilerWasm,
       loadCompilerModule: () => Promise.resolve({
         initMoveCompiler,
         buildMovePackage,
@@ -36,6 +38,7 @@ describe("resolveLocalPublishModules", () => {
     })).resolves.toEqual([new Uint8Array([4, 5, 6])]);
 
     expect(verifyCompilerIntegrity).toHaveBeenCalledTimes(1);
+    expect(prewarmCompilerWasm).toHaveBeenCalledTimes(1);
     expect(initMoveCompiler).toHaveBeenCalledTimes(1);
     expect(buildMovePackage).toHaveBeenCalledTimes(1);
   });

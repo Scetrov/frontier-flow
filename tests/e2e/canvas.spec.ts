@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { clearStorageAndMarkTutorialSeen } from "./fixtures/storage";
+
 const contractLibraryStorageKey = "frontier-flow:contracts";
 
 async function dropNode(page: Page, label: string, clientX: number, clientY: number) {
@@ -31,8 +33,10 @@ async function seedContractLibrary(page: Page, library: unknown) {
 test("drops representative contract nodes onto the canvas", async ({ page, isMobile }) => {
   test.skip(isMobile, "Desktop drag and drop coverage only.");
 
+  await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/");
   const workspace = page.getByTestId("canvas-workspace");
+  await expect(page.getByRole("button", { name: "Data Extractor category" })).toBeVisible();
 
   await dropNode(page, "Aggression", 220, 180);
   await ensureCategoryExpanded(page, "Data Extractor");
@@ -51,7 +55,9 @@ test("drops representative contract nodes onto the canvas", async ({ page, isMob
 test("authors primitive targeting rules without retired bundled nodes in the toolbox", async ({ page, isMobile }) => {
   test.skip(isMobile, "Desktop drag and drop coverage only.");
 
+  await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/");
+  await expect(page.getByRole("button", { name: "Logic category" })).toBeVisible();
 
   await ensureCategoryExpanded(page, "Logic");
 
@@ -71,6 +77,7 @@ test("authors primitive targeting rules without retired bundled nodes in the too
 });
 
 test("auto-migrates legacy bundled same-tribe contracts into primitive nodes on load", async ({ page }) => {
+  await clearStorageAndMarkTutorialSeen(page);
   await seedContractLibrary(page, {
     version: 2,
     activeContractName: "Legacy Same Tribe",
@@ -107,6 +114,7 @@ test("auto-migrates legacy bundled same-tribe contracts into primitive nodes on 
 });
 
 test("shows a visible remediation notice for unsupported legacy content", async ({ page }) => {
+  await clearStorageAndMarkTutorialSeen(page);
   await seedContractLibrary(page, {
     version: 2,
     activeContractName: "Unsupported Legacy",

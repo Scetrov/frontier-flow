@@ -24,8 +24,10 @@ test("supports graph-editor QoL deletion and taxonomy flows", async ({ page, isM
 
   await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/");
+  const toolbox = page.locator("#node-toolbox");
+  await expect(page.getByRole("button", { name: "Data Extractor category" })).toBeVisible();
 
-  expect(await page.getByRole("heading", { level: 3 }).allTextContents()).toEqual([
+  expect(await toolbox.getByRole("heading", { level: 3 }).allTextContents()).toEqual([
     "Event Trigger",
     "Static Data",
     "Data Extractor",
