@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-03-29
-**Feature**: [spec.md](/home/scetrov/source/frontier-flow/specs/018-simulate-turret-inputs/spec.md)
+**Feature**: [`spec.md`](../spec.md)
 
 ## Content Quality
 

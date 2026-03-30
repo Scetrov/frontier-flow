@@ -68,8 +68,6 @@ Expected result:
 bun run test:run -- src/__tests__/turretSimulationCodec.test.ts
 bun run test:run -- src/__tests__/turretSimulationExecution.test.ts
 bun run test:run -- src/__tests__/turretSimulationQueries.test.ts
-bun run test:run -- src/__tests__/turretSimulationCodec.test.ts
-bun run test:run -- src/__tests__/turretSimulationExecution.test.ts
 bun run test:run -- src/__tests__/TurretSimulationModal.test.tsx
 bun run test:run -- src/__tests__/AuthorizeView.test.tsx
 ```

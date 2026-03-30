@@ -160,4 +160,31 @@ describe("turretSimulationReferenceData", () => {
     expect(result.tribeOptions).toEqual([]);
     expect(result.errorMessages).toEqual(["Could not load tribes from World API. Request failed with status 503"]);
   });
+
+  it("treats non-object World API JSON payloads as empty collections", async () => {
+    resetSimulationReferenceDataCacheForTests();
+
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(createJsonResponse("not-an-object"))
+      .mockResolvedValueOnce(createJsonResponse(null))
+      .mockResolvedValueOnce(createJsonResponse({
+        data: {
+          address: {
+            objects: {
+              nodes: [],
+            },
+          },
+        },
+      }));
+
+    const result = await loadSimulationReferenceData({
+      deploymentState: simulationDeploymentState,
+      fetchFn,
+      walletAddress: "0x1234",
+    });
+
+    expect(result.shipOptions).toEqual([]);
+    expect(result.tribeOptions).toEqual([]);
+    expect(result.errorMessages).toEqual([]);
+  });
 });

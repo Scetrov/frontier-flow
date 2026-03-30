@@ -48,12 +48,12 @@ interface AuthorizeContractSelectorProps {
   readonly selectedDeploymentKey: string | null;
 }
 
-interface AuthorizeSimulationSelectorPanelProps extends AuthorizeContractSelectorProps {
+interface AuthorizeSimulationSelectorPanelProps {
   readonly deploymentState: StoredDeploymentState | null;
   readonly onRetry: () => void;
   readonly onTurretChange: (turretObjectId: string) => void;
-  readonly selectedTurretObjectId: string | null;
   readonly turretList: ReturnType<typeof useTurretList>;
+  readonly selectedTurretObjectId: string | null;
 }
 
 interface AuthorizeViewSelectionState {
@@ -123,7 +123,7 @@ function getAuthorizeViewHeaderCopy(activeView: AuthorizeWorkflowView): {
   if (activeView === "simulate") {
     return {
       eyebrow: "Deployment Simulation",
-      summary: "Review a live turret context, adjust the candidate draft, and run a non-mutating extension simulation before authorizing on-chain.",
+      summary: "Select a turret you own from the dropdown and execute the active contract as the EVE Frontier gameserver would.",
       title: "Simulate Turrets",
     };
   }
@@ -135,20 +135,32 @@ function getAuthorizeViewHeaderCopy(activeView: AuthorizeWorkflowView): {
   };
 }
 
-function AuthorizeViewHeader({ activeView }: { readonly activeView: AuthorizeWorkflowView }) {
+function AuthorizeViewHeader(input: {
+  readonly activeView: AuthorizeWorkflowView;
+  readonly simulationControl?: React.ReactNode;
+}) {
+  const { activeView, simulationControl } = input;
   const copy = getAuthorizeViewHeaderCopy(activeView);
+  const hasSimulationControl = simulationControl !== undefined;
 
   return (
-    <header className="flex flex-col gap-2 border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.68)] p-5">
-      <p className="font-heading text-[0.68rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
-        {copy.eyebrow}
-      </p>
-      <h1 className="font-heading text-xl uppercase tracking-[0.14em] text-[var(--cream-white)] sm:text-2xl">
-        {copy.title}
-      </h1>
-      <p className="max-w-3xl text-sm text-[var(--text-secondary)]">
-        {copy.summary}
-      </p>
+    <header className={`border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.68)] p-5 ${hasSimulationControl ? "xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)] xl:items-start xl:gap-6" : "flex flex-col gap-2"}`}>
+      <div className="flex min-w-0 flex-col gap-2">
+        <p className="font-heading text-[0.68rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
+          {copy.eyebrow}
+        </p>
+        <h1 className="font-heading text-xl uppercase tracking-[0.14em] text-[var(--cream-white)] sm:text-2xl">
+          {copy.title}
+        </h1>
+        <p className="max-w-3xl text-sm text-[var(--text-secondary)]">
+          {copy.summary}
+        </p>
+      </div>
+      {simulationControl ? (
+        <div className="pt-4 xl:min-w-0 xl:pt-0">
+          {simulationControl}
+        </div>
+      ) : null}
     </header>
   );
 }
@@ -228,6 +240,7 @@ function CopyFieldButton({ field, copiedField, onCopy }: {
 
 function AuthorizeSelectField(input: {
   readonly ariaLabel: string;
+  readonly controlId: string;
   readonly disabled?: boolean;
   readonly helperText?: React.ReactNode;
   readonly label: string;
@@ -241,14 +254,14 @@ function AuthorizeSelectField(input: {
 }) {
   return (
     <div className="grid gap-2">
-      <label className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]" htmlFor={input.ariaLabel}>
+      <label className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]" htmlFor={input.controlId}>
         {input.label}
       </label>
       <select
         aria-label={input.ariaLabel}
         className="min-h-11 min-w-0 w-full border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.92)] px-3 py-2 font-mono text-xs leading-5 text-[var(--cream-white)] whitespace-normal outline-none transition-colors focus:border-[var(--brand-orange)]"
         disabled={input.disabled}
-        id={input.ariaLabel}
+        id={input.controlId}
         onChange={(event) => {
           input.onChange?.(event.currentTarget.value);
         }}
@@ -290,6 +303,7 @@ function AuthorizeContractSelector({
   return (
     <AuthorizeSelectField
       ariaLabel="Authorize Contract"
+      controlId="authorize-contract"
       disabled={contracts.length === 0 || isLoading}
       helperText={helperText}
       label="Contract"
@@ -588,7 +602,7 @@ function AuthorizeSimulationEmptyState(input: {
         <div>
           <h2 className="ff-authorize-view__state-title">Simulation Context Required</h2>
           <p className="ff-authorize-view__state-copy">
-            Select a deployed contract to load the turret roster for simulation.
+            A live deployment is required before you can load the turret roster for simulation.
           </p>
         </div>
       </div>
@@ -602,7 +616,7 @@ function AuthorizeSimulationEmptyState(input: {
         <div>
           <h2 className="ff-authorize-view__state-title">Loading turrets</h2>
           <p className="ff-authorize-view__state-copy">
-            Querying the selected contract for wallet-owned turrets.
+            Querying the active deployment for wallet-owned turrets.
           </p>
         </div>
       </div>
@@ -628,7 +642,7 @@ function AuthorizeSimulationEmptyState(input: {
       <div>
         <h2 className="ff-authorize-view__state-title">Simulation Context Required</h2>
         <p className="ff-authorize-view__state-copy">
-          Select a turret from the roster above to review live deployment context and run a non-mutating simulation.
+          Select a turret from the dropdown above to review live deployment context and run a non-mutating simulation.
         </p>
       </div>
       <button className="ff-authorize-view__action" onClick={() => { onViewChange?.("authorize"); }} type="button">
@@ -639,52 +653,54 @@ function AuthorizeSimulationEmptyState(input: {
 }
 
 function AuthorizeSimulationSelectorPanel({
-  contracts,
   deploymentState,
-  errorMessage,
-  isLoading,
-  onChange,
   onRetry,
   onTurretChange,
-  selectedDeploymentKey,
   selectedTurretObjectId,
   turretList,
 }: AuthorizeSimulationSelectorPanelProps) {
   const selectedTurret = turretList.turrets.find((turret) => turret.objectId === selectedTurretObjectId) ?? null;
   const turretHelperText = turretList.errorMessage ?? (selectedTurret === null ? null : selectedTurret.objectId);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const shouldShowSelector = selectedTurret === null || isExpanded;
 
   return (
-    <section className="grid gap-4 border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.68)] p-4 xl:p-5">
-      <div className="grid gap-1">
-        <h3 className="font-heading text-sm uppercase tracking-[0.16em] text-[var(--cream-white)]">
-          Simulation Context
-        </h3>
-        <p className="text-sm text-[var(--text-secondary)]">
-          Choose the deployed contract and turret to inspect before running a live simulation.
-        </p>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <AuthorizeContractSelector
-          contracts={contracts}
-          errorMessage={errorMessage}
-          isLoading={isLoading}
-          onChange={onChange}
-          selectedDeploymentKey={selectedDeploymentKey}
-        />
+    <div className="grid gap-4">
+      {!shouldShowSelector ? (
+        <div className="grid gap-3 border border-[rgba(250,250,229,0.14)] bg-[rgba(10,6,6,0.54)] px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div className="grid gap-1 min-w-0">
+            <span className="font-heading text-[0.62rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">
+              Selected Turret
+            </span>
+            <span className="font-mono text-sm text-[var(--cream-white)] break-words">
+              {getTurretOptionLabel(selectedTurret)}
+            </span>
+            <span className="text-xs text-[var(--text-secondary)] break-all">
+              {selectedTurret.objectId}
+            </span>
+          </div>
+          <button className="ff-authorize-view__action" onClick={() => { setIsExpanded(true); }} type="button">
+            Change Turret
+          </button>
+        </div>
+      ) : (
         <AuthorizeSelectField
           ariaLabel="Simulation Turret"
+          controlId="simulation-turret"
           disabled={deploymentState === null || turretList.status === "loading" || turretList.turrets.length === 0}
           helperText={turretHelperText}
           label="Turret"
-          onChange={onTurretChange}
+          onChange={(turretObjectId) => {
+            setIsExpanded(false);
+            onTurretChange(turretObjectId);
+          }}
           options={turretList.turrets.map((turret) => ({
             label: `${getTurretOptionLabel(turret)} (${turret.objectId})`,
             value: turret.objectId,
           }))}
           placeholder={
             deploymentState === null
-              ? "Select a contract first"
+              ? "Deployment required"
               : turretList.status === "loading"
                 ? "Loading turrets..."
                 : turretList.turrets.length === 0
@@ -693,7 +709,7 @@ function AuthorizeSimulationSelectorPanel({
           }
           value={selectedTurretObjectId ?? ""}
         />
-      </div>
+      )}
 
       {turretList.status === "error" ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border border-[rgba(255,166,0,0.28)] bg-[rgba(255,166,0,0.1)] px-4 py-3 text-sm text-[#ffd38d]" role="alert">
@@ -703,46 +719,25 @@ function AuthorizeSimulationSelectorPanel({
           </button>
         </div>
       ) : null}
-    </section>
+    </div>
   );
 }
 
 function AuthorizeSimulationPanel(input: {
-  readonly contractSelector: AuthorizeContractSelectorProps;
   readonly deploymentState: StoredDeploymentState | null;
   readonly onViewChange?: (view: PrimaryView) => void;
-  readonly onSelectTurret: (turretObjectId: string) => void;
-  readonly selectedTurretObjectId: string | null;
   readonly turretList: ReturnType<typeof useTurretList>;
   readonly turretSimulation: ReturnType<typeof useTurretSimulation>;
-  readonly walletAddress: string | null | undefined;
 }) {
   const {
-    contractSelector,
     deploymentState,
     onViewChange,
-    onSelectTurret,
-    selectedTurretObjectId,
     turretList,
     turretSimulation,
-    walletAddress,
   } = input;
 
   return (
     <div className="grid gap-4">
-      <AuthorizeSimulationSelectorPanel
-        contracts={contractSelector.contracts}
-        deploymentState={deploymentState}
-        errorMessage={contractSelector.errorMessage}
-        isLoading={contractSelector.isLoading}
-        onChange={contractSelector.onChange}
-        onRetry={turretList.refresh}
-        onTurretChange={onSelectTurret}
-        selectedDeploymentKey={contractSelector.selectedDeploymentKey}
-        selectedTurretObjectId={selectedTurretObjectId}
-        turretList={turretList}
-      />
-
       {turretSimulation.session.status === "closed" ? (
         <AuthorizeSimulationEmptyState
           deploymentState={deploymentState}
@@ -753,14 +748,6 @@ function AuthorizeSimulationPanel(input: {
         />
       ) : (
         <TurretSimulationModal
-          deploymentPanel={(
-            <AuthorizeDeploymentPanel
-              className="p-4 xl:p-5"
-              contractSelector={contractSelector}
-              deploymentState={turretSimulation.session.deploymentState}
-              walletAddress={walletAddress}
-            />
-          )}
           onApplySuggestion={turretSimulation.applySuggestion}
           onClose={() => {
             onViewChange?.("authorize");
@@ -911,20 +898,27 @@ function AuthorizeView({ activeView = "authorize", deploymentState, onViewChange
   return (
     <section aria-label={activeView === "simulate" ? "Simulate view" : "Authorize view"} className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
       <div className={`ff-authorize-view${activeView === "simulate" ? " ff-authorize-view--simulate" : ""}`}>
-        <AuthorizeViewHeader activeView={activeView} />
+        <AuthorizeViewHeader
+          activeView={activeView}
+          simulationControl={activeView === "simulate" ? (
+            <AuthorizeSimulationSelectorPanel
+              deploymentState={selectedDeploymentState}
+              onRetry={turretList.refresh}
+              onTurretChange={handleOpenSimulation}
+              selectedTurretObjectId={selectedSimulationTurretId}
+              turretList={turretList}
+            />
+          ) : undefined}
+        />
 
         <div className={`ff-authorize-view__grid${activeView === "simulate" ? " ff-authorize-view__grid--simulate" : ""}`}>
           <div className="ff-authorize-view__primary">
             {activeView === "simulate" ? (
               <AuthorizeSimulationPanel
-                contractSelector={contractSelector}
                 deploymentState={selectedDeploymentState}
                 onViewChange={onViewChange}
-                onSelectTurret={handleOpenSimulation}
-                selectedTurretObjectId={selectedSimulationTurretId}
                 turretList={turretList}
                 turretSimulation={turretSimulation}
-                walletAddress={account?.address}
               />
             ) : (
               <AuthorizeViewPrimaryPanel

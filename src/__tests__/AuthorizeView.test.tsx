@@ -323,9 +323,30 @@ describe("AuthorizeView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
 
     expect(screen.getByRole("heading", { name: "Simulate Turrets" })).toBeVisible();
-    expect(screen.getAllByText(deploymentState.packageId).length).toBeGreaterThan(0);
+    expect(screen.getByText("Select a turret you own from the dropdown and execute the active contract as the EVE Frontier gameserver would.")).toBeVisible();
+    expect(screen.getByText("Selected Turret")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Change Turret" })).toBeVisible();
+    expect(screen.queryByLabelText("Simulation Turret")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Authorize Contract")).not.toBeInTheDocument();
+    expect(screen.queryByText("Active Deployment")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Authorize Selected" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Back to Authorize" })).not.toBeInTheDocument();
+  });
+
+  it("expands the compact simulation context when changing the selected turret", () => {
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: turretFixtures,
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AuthorizeViewHarness deploymentState={deploymentState} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change Turret" }));
+
+    expect(screen.getByLabelText("Simulation Turret")).toBeVisible();
   });
 
   it("hydrates the simulation modal with the turret owner character lookup", async () => {
@@ -451,6 +472,7 @@ describe("AuthorizeView", () => {
     render(<AuthorizeViewHarness deploymentState={deploymentState} initialView="simulate" />);
 
     expect(screen.getByText("Simulation Context Required")).toBeVisible();
+    expect(screen.getByLabelText("Simulation Turret")).toBeVisible();
     expect(screen.getByRole("button", { name: "Open Authorize" })).toBeVisible();
   });
 

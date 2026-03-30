@@ -58,11 +58,11 @@ function validateRatioFields(candidate: SimulationCandidateDraft, fieldErrors: S
 }
 
 function validateCharacterFields(candidate: SimulationCandidateDraft, fieldErrors: SimulationFieldErrors): void {
-  if (!isU32(candidate.characterId)) {
+  if (candidate.characterId !== null && !isU32(candidate.characterId)) {
     fieldErrors.characterId = "Character id must be a non-negative integer within u32 range.";
   }
 
-  if (!isU32(candidate.characterTribe)) {
+  if (candidate.characterTribe !== null && !isU32(candidate.characterTribe)) {
     fieldErrors.characterTribe = "Character tribe must be a non-negative integer within u32 range.";
   }
 }

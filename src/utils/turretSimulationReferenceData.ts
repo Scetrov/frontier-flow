@@ -320,7 +320,13 @@ async function getWorldApiCollection<TValue>(input: {
     throw new Error(`Request failed with status ${String(response.status)}`);
   }
 
-  const payload = await response.json() as WorldApiCollectionResponse<TValue>;
+  const rawPayload: unknown = await response.json();
+
+  if (!isRecord(rawPayload)) {
+    return [];
+  }
+
+  const payload = rawPayload as WorldApiCollectionResponse<TValue>;
   const data = payload.data;
 
   return Array.isArray(data) ? data as readonly TValue[] : [];

@@ -15,7 +15,6 @@ import { createEmptySimulationReferenceData } from "../types/turretSimulation";
 import { formatAddress } from "../utils/formatAddress";
 
 interface TurretSimulationModalProps {
-  readonly deploymentPanel?: React.ReactNode;
   readonly onApplySuggestion?: (suggestion: SimulationSuggestion) => void;
   readonly closeLabel?: string;
   readonly onClose: () => void;
@@ -149,7 +148,7 @@ function DraftInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`min-w-0 w-full border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.92)] px-3 py-2 font-mono text-xs text-[var(--cream-white)] outline-none transition-colors focus:border-[var(--brand-orange)] ${props.className ?? ""}`.trim()}
+      className={`h-10 min-w-0 w-full border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.92)] px-3 py-2 font-mono text-xs leading-5 text-[var(--cream-white)] outline-none transition-colors focus:border-[var(--brand-orange)] ${props.className ?? ""}`.trim()}
     />
   );
 }
@@ -158,7 +157,7 @@ function DraftSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className={`min-w-0 w-full max-w-full border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.92)] px-3 py-2 font-mono text-xs text-[var(--cream-white)] outline-none transition-colors focus:border-[var(--brand-orange)] ${props.className ?? ""}`.trim()}
+      className={`h-10 min-w-0 w-full max-w-full border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.92)] px-3 py-2 font-mono text-xs leading-5 text-[var(--cream-white)] outline-none transition-colors focus:border-[var(--brand-orange)] ${props.className ?? ""}`.trim()}
     />
   );
 }
@@ -910,7 +909,6 @@ function TurretSimulationDraftPanel(input: TurretSimulationModalProps) {
  */
 function TurretSimulationModal({
   closeLabel,
-  deploymentPanel,
   onApplySuggestion,
   onClose,
   onLoadSuggestions,
@@ -948,7 +946,6 @@ function TurretSimulationModal({
         </div>
         <div className="flex min-w-0 flex-col gap-5 xl:w-80 xl:shrink-0">
           <TurretSimulationContextPanel onRefreshContext={onRefreshContext} session={session} />
-          {deploymentPanel}
         </div>
       </div>
     </section>
