@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## [Patches]
+### [0.9.3](https://github.com/Scetrov/frontier-flow/compare/v0.9.2...v0.9.3) (2026-03-30)
+
+
+### Features
+
+* **simulation:** add turret simulation workflow and supporting fixes ([#22](https://github.com/Scetrov/frontier-flow/issues/22)) ([3affa2b](https://github.com/Scetrov/frontier-flow/commit/3affa2b4e507388e9e22b09cb029b404691189a9))
 
 ### [0.9.2](https://github.com/Scetrov/frontier-flow/compare/v0.9.1...v0.9.2) (2026-03-29)
 
