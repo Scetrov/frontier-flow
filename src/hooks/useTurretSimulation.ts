@@ -5,15 +5,19 @@ import { useEffect } from "react";
 
 import type { StoredDeploymentState, TurretInfo } from "../types/authorization";
 import {
+  createEmptySimulationReferenceData,
   createEmptySimulationSuggestionState,
   createClosedTurretSimulationSession,
   createEmptySimulationInputDraft,
   type OpenTurretSimulationInput,
   type SimulationCandidateDraft,
+  type SimulationCharacterOption,
   type SimulationFieldKey,
   type SimulationFieldSource,
   type SimulationFieldSourceMap,
   type SimulationFieldValue,
+  type SimulationReferenceDataPayload,
+  type SimulationShipOption,
   type SimulationSuggestion,
   type TurretSimulationSession,
   type UseTurretSimulationResult,
@@ -22,6 +26,7 @@ import { formatAddress } from "../utils/formatAddress";
 import { fetchSimulationOwnerCharacterId } from "../utils/authorizationTransaction";
 import { runTurretSimulation } from "../utils/turretSimulationExecution";
 import { fetchSimulationSuggestions } from "../utils/turretSimulationQueries";
+import { loadSimulationReferenceData } from "../utils/turretSimulationReferenceData";
 import { isSimulationDraftComplete, validateSimulationDraft } from "../utils/turretSimulationValidation";
 
 type SuiClient = ReturnType<typeof useSuiClientHook>;
@@ -33,11 +38,18 @@ interface UseTurretSimulationOptions {
   readonly walletAddress: string | null;
   readonly fetchSimulationOwnerCharacterIdFn?: typeof fetchSimulationOwnerCharacterId;
   readonly fetchSimulationSuggestionsFn?: typeof fetchSimulationSuggestions;
+  readonly loadSimulationReferenceDataFn?: typeof loadSimulationReferenceData;
   readonly runTurretSimulationFn?: typeof runTurretSimulation;
   readonly suiClient: Pick<SuiClient, "devInspectTransactionBlock">;
 }
 
 type SessionStateSetter = Dispatch<SetStateAction<TurretSimulationSession>>;
+
+interface DraftHydrationAccumulator {
+  readonly candidate: SimulationCandidateDraft;
+  readonly fieldSources: SimulationFieldSourceMap;
+  readonly hasUpdates: boolean;
+}
 
 function getTurretTitle(turret: TurretInfo): string {
   return turret.displayName ?? formatAddress(turret.objectId);
@@ -214,6 +226,133 @@ function createOpenSimulationSession(input: {
     turretObjectId: input.turret.objectId,
     turretTitle: getTurretTitle(input.turret),
   };
+}
+
+function hydrateDraftFromReferenceData(
+  currentSession: TurretSimulationSession,
+  referenceData: Pick<SimulationReferenceDataPayload, "characterOptions" | "shipOptions">,
+): TurretSimulationSession {
+  if (currentSession.status === "closed") {
+    return currentSession;
+  }
+
+  const hydratedDraft = hydrateCharacterFields(
+    hydrateShipFields(
+      createDraftHydrationAccumulator(currentSession),
+      getSelectedShipOption(referenceData.shipOptions, currentSession.draft.candidate.typeId),
+    ),
+    getSelectedCharacterOption(referenceData.characterOptions, currentSession.draft.candidate.characterId),
+  );
+
+  if (!hydratedDraft.hasUpdates) {
+    return currentSession;
+  }
+
+  return {
+    ...currentSession,
+    ...updateDraftSession(currentSession, {
+      candidate: hydratedDraft.candidate,
+      fieldSources: hydratedDraft.fieldSources,
+    }),
+  };
+}
+
+function createDraftHydrationAccumulator(session: TurretSimulationSession): DraftHydrationAccumulator {
+  return {
+    candidate: session.draft.candidate,
+    fieldSources: session.draft.fieldSources,
+    hasUpdates: false,
+  };
+}
+
+function applyHydratedField<TKey extends SimulationFieldKey>(
+  accumulator: DraftHydrationAccumulator,
+  key: TKey,
+  value: SimulationFieldValue<TKey>,
+  source: SimulationFieldSource,
+): DraftHydrationAccumulator {
+  return {
+    candidate: {
+      ...accumulator.candidate,
+      [key]: value,
+    },
+    fieldSources: {
+      ...accumulator.fieldSources,
+      [key]: source,
+    },
+    hasUpdates: true,
+  };
+}
+
+function hydrateShipFields(
+  accumulator: DraftHydrationAccumulator,
+  selectedShip: SimulationShipOption | null,
+): DraftHydrationAccumulator {
+  if (selectedShip === null) {
+    return accumulator;
+  }
+
+  let nextAccumulator = accumulator;
+
+  if (nextAccumulator.fieldSources.typeId === "default" && nextAccumulator.candidate.typeId.trim().length === 0) {
+    nextAccumulator = applyHydratedField(nextAccumulator, "typeId", selectedShip.typeId, "world-api");
+  }
+
+  if (
+    (nextAccumulator.fieldSources.groupId === "default" || nextAccumulator.fieldSources.groupId === "world-api")
+    && nextAccumulator.candidate.groupId !== selectedShip.groupId
+  ) {
+    nextAccumulator = applyHydratedField(nextAccumulator, "groupId", selectedShip.groupId, "world-api");
+  }
+
+  return nextAccumulator;
+}
+
+function hydrateCharacterFields(
+  accumulator: DraftHydrationAccumulator,
+  selectedCharacter: SimulationCharacterOption | null,
+): DraftHydrationAccumulator {
+  if (selectedCharacter === null) {
+    return accumulator;
+  }
+
+  let nextAccumulator = accumulator;
+
+  if (nextAccumulator.fieldSources.characterId === "default" && nextAccumulator.candidate.characterId === null) {
+    nextAccumulator = applyHydratedField(nextAccumulator, "characterId", selectedCharacter.characterId, "graphql");
+  }
+
+  if (
+    selectedCharacter.characterTribe !== null
+    && (nextAccumulator.fieldSources.characterTribe === "default" || nextAccumulator.fieldSources.characterTribe === "graphql")
+    && nextAccumulator.candidate.characterTribe !== selectedCharacter.characterTribe
+  ) {
+    nextAccumulator = applyHydratedField(nextAccumulator, "characterTribe", selectedCharacter.characterTribe, "graphql");
+  }
+
+  return nextAccumulator;
+}
+
+function getSelectedShipOption(
+  shipOptions: readonly SimulationShipOption[],
+  currentTypeId: string,
+): SimulationShipOption | null {
+  if (shipOptions.length === 0) {
+    return null;
+  }
+
+  return shipOptions.find((option) => option.typeId === currentTypeId) ?? shipOptions[0];
+}
+
+function getSelectedCharacterOption(
+  characterOptions: readonly SimulationCharacterOption[],
+  currentCharacterId: number | null,
+): SimulationCharacterOption | null {
+  if (characterOptions.length === 0) {
+    return null;
+  }
+
+  return characterOptions.find((option) => option.characterId === currentCharacterId) ?? characterOptions[0];
 }
 
 function useOwnerCharacterHydrationEffect(input: {
@@ -589,6 +728,78 @@ function useContextRefresher(input: {
   }, [setSession, walletAddress]);
 }
 
+function useSimulationReferenceDataState(input: {
+  readonly loadSimulationReferenceDataFn: typeof loadSimulationReferenceData;
+  readonly setSession: SessionStateSetter;
+  readonly session: TurretSimulationSession;
+  readonly walletAddress: string | null;
+}) {
+  const { loadSimulationReferenceDataFn, setSession, session, walletAddress } = input;
+  const [referenceData, setReferenceData] = useState(createEmptySimulationReferenceData);
+  const { closeSimulation: baseCloseSimulation, openSimulation: baseOpenSimulation } = useSimulationLifecycle({ setSession, walletAddress });
+
+  const openSimulation = useCallback((openInput: OpenTurretSimulationInput) => {
+    setReferenceData({
+      ...createEmptySimulationReferenceData(),
+      isLoading: true,
+    });
+    baseOpenSimulation(openInput);
+  }, [baseOpenSimulation]);
+
+  const closeSimulation = useCallback(() => {
+    setReferenceData(createEmptySimulationReferenceData());
+    baseCloseSimulation();
+  }, [baseCloseSimulation]);
+
+  useEffect(() => {
+    if (session.status === "closed") {
+      return;
+    }
+
+    let isActive = true;
+
+    void loadSimulationReferenceDataFn({
+      deploymentState: session.deploymentState,
+      walletAddress,
+    }).then((loadedReferenceData) => {
+      if (!isActive) {
+        return;
+      }
+
+      setReferenceData({
+        characterOptions: loadedReferenceData.characterOptions,
+        isLoading: false,
+        loadErrorMessage: loadedReferenceData.errorMessages[0] ?? null,
+        shipOptions: loadedReferenceData.shipOptions,
+        tribeOptions: loadedReferenceData.tribeOptions,
+      });
+      setSession((currentSession) => hydrateDraftFromReferenceData(currentSession, loadedReferenceData));
+    }).catch((error: unknown) => {
+      if (!isActive) {
+        return;
+      }
+
+      setReferenceData({
+        characterOptions: [],
+        isLoading: false,
+        loadErrorMessage: error instanceof Error ? error.message : "Could not load simulation reference data.",
+        shipOptions: [],
+        tribeOptions: [],
+      });
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [loadSimulationReferenceDataFn, session.deploymentState, session.openedAt, session.status, setSession, walletAddress]);
+
+  return {
+    closeSimulation,
+    openSimulation,
+    referenceData,
+  };
+}
+
 /**
  * Keep authorize workflow simulation state synchronized with the live deployment context.
  */
@@ -599,6 +810,7 @@ export function useTurretSimulation({
   walletAddress,
   fetchSimulationOwnerCharacterIdFn = fetchSimulationOwnerCharacterId,
   fetchSimulationSuggestionsFn = fetchSimulationSuggestions,
+  loadSimulationReferenceDataFn = loadSimulationReferenceData,
   runTurretSimulationFn = runTurretSimulation,
   suiClient,
 }: UseTurretSimulationOptions): UseTurretSimulationResult {
@@ -611,7 +823,12 @@ export function useTurretSimulation({
     turrets,
   }), [deploymentKey, deploymentState, session, turrets]);
 
-  const { closeSimulation, openSimulation } = useSimulationLifecycle({ setSession, walletAddress });
+  const { closeSimulation, openSimulation, referenceData } = useSimulationReferenceDataState({
+    loadSimulationReferenceDataFn,
+    session,
+    setSession,
+    walletAddress,
+  });
 
   useOwnerCharacterHydrationEffect({
     fetchSimulationOwnerCharacterIdFn,
@@ -647,6 +864,7 @@ export function useTurretSimulation({
     isOpen: resolvedSession.status !== "closed",
     loadSuggestions,
     openSimulation,
+    referenceData,
     refreshContext,
     runSimulation,
     setLookupQuery,

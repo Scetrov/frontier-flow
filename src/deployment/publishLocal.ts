@@ -2,7 +2,12 @@ import { requestSuiFromFaucetV2, getFaucetHost } from "@mysten/sui/faucet";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
-import { loadMoveBuilderLite, moveBuilderLiteWasmUrl, verifyMoveBuilderLiteIntegrity } from "../compiler/moveBuilderLite";
+import {
+  loadMoveBuilderLite,
+  moveBuilderLiteWasmUrl,
+  prewarmMoveBuilderLiteWasm,
+  verifyMoveBuilderLiteIntegrity,
+} from "../compiler/moveBuilderLite";
 import { prepareArtifactManifestForTarget } from "../compiler/emitter";
 import type { DeploymentTarget, GeneratedContractArtifact, PackageReferenceBundle } from "../compiler/types";
 
@@ -29,6 +34,7 @@ interface LocalPublishCompilerModule {
 
 interface LocalPublishDependencies {
   readonly loadCompilerModule?: () => Promise<LocalPublishCompilerModule>;
+  readonly prewarmCompilerWasm?: (wasm: string | URL) => Promise<void>;
   readonly verifyCompilerIntegrity?: () => Promise<void>;
 }
 
@@ -82,8 +88,10 @@ export async function resolveLocalPublishModules(
 
   const verifyCompilerIntegrity = dependencies.verifyCompilerIntegrity ?? verifyMoveBuilderLiteIntegrity;
   const loadCompilerModule = dependencies.loadCompilerModule ?? loadMoveBuilderLite;
+  const prewarmCompilerWasm = dependencies.prewarmCompilerWasm ?? prewarmMoveBuilderLiteWasm;
   await verifyCompilerIntegrity();
   const compilerModule = await loadCompilerModule();
+  await prewarmCompilerWasm(moveBuilderLiteWasmUrl);
   await compilerModule.initMoveCompiler({ wasm: moveBuilderLiteWasmUrl });
   const result = await compilerModule.buildMovePackage({
     files: createArtifactFileMap(artifact),

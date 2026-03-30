@@ -1,5 +1,6 @@
 import type { StoredDeploymentState, TurretInfo } from "../types/authorization";
 import {
+  DEFAULT_SIMULATION_ITEM_ID,
   createClosedTurretSimulationSession,
   createEmptySimulationInputDraft,
   type SimulationCandidateDraft,
@@ -29,7 +30,7 @@ export function createSimulationCandidateDraft(
   overrides: Partial<SimulationCandidateDraft> = {},
 ): SimulationCandidateDraft {
   return {
-    itemId: "",
+    itemId: DEFAULT_SIMULATION_ITEM_ID,
     typeId: "",
     groupId: "",
     characterId: null,

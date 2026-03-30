@@ -6,6 +6,7 @@ import type {
   SimulationSuggestion,
 } from "../types/turretSimulation";
 import { fetchTurretById, getTurretGraphQlEndpoint } from "./turretQueries";
+import { extractCharacterNameFromCharacterContent } from "./characterProfile";
 
 interface GraphQlError {
   readonly message?: string;
@@ -29,6 +30,10 @@ interface SimulationObjectResponse {
 interface PlayerProfileResponse {
   readonly address?: {
     readonly objects?: {
+      readonly pageInfo?: {
+        readonly hasNextPage?: boolean;
+        readonly endCursor?: string | null;
+      } | null;
       readonly nodes?: ReadonlyArray<{
         readonly address?: unknown;
         readonly contents?: {
@@ -36,6 +41,33 @@ interface PlayerProfileResponse {
         } | null;
       }>;
     } | null;
+  } | null;
+}
+
+interface CharacterObjectResponse {
+  readonly object?: {
+    readonly asMoveObject?: {
+      readonly contents?: {
+        readonly json?: unknown;
+      } | null;
+    } | null;
+  } | null;
+}
+
+interface CharacterSearchResponse {
+  readonly objects?: {
+    readonly pageInfo?: {
+      readonly hasNextPage?: boolean;
+      readonly endCursor?: string | null;
+    } | null;
+    readonly nodes?: ReadonlyArray<{
+      readonly address?: unknown;
+      readonly asMoveObject?: {
+        readonly contents?: {
+          readonly json?: unknown;
+        } | null;
+      } | null;
+    }>;
   } | null;
 }
 
@@ -55,9 +87,17 @@ export interface FetchSimulationSuggestionsResult {
   readonly refreshedTurret: TurretInfo | null;
 }
 
-const PLAYER_PROFILE_QUERY = `query PlayerProfiles($owner: SuiAddress!, $type: String!) {
+const GRAPHQL_PAGE_SIZE = 50;
+const MAX_GRAPHQL_PAGES = 20;
+const CHARACTER_SUGGESTION_LIMIT = 12;
+
+const PLAYER_PROFILE_QUERY = `query PlayerProfiles($owner: SuiAddress!, $type: String!, $after: String) {
   address(address: $owner) {
-    objects(filter: { type: $type }, first: 50) {
+    objects(filter: { type: $type }, first: ${String(GRAPHQL_PAGE_SIZE)}, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         address
         contents {
@@ -73,6 +113,33 @@ const OBJECT_QUERY = `query SimulationObject($id: SuiAddress!) {
     asMoveObject {
       contents {
         json
+      }
+    }
+  }
+}`;
+
+const CHARACTER_QUERY = `query Character($id: SuiAddress!) {
+  object(address: $id) {
+    asMoveObject {
+      contents {
+        json
+      }
+    }
+  }
+}`;
+
+const CHARACTER_OBJECTS_QUERY = `query Characters($type: String!, $after: String) {
+  objects(filter: { type: $type }, first: ${String(GRAPHQL_PAGE_SIZE)}, after: $after) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    nodes {
+      address
+      asMoveObject {
+        contents {
+          json
+        }
       }
     }
   }
@@ -129,6 +196,7 @@ async function loadSuggestionCandidates(input: {
       endpoint: input.endpoint,
       fetchFn: input.fetchFn,
       field: input.input.field,
+      query: input.trimmedQuery,
       signal: input.input.signal,
       walletAddress: input.input.walletAddress,
     }));
@@ -152,7 +220,7 @@ async function loadSuggestionCandidates(input: {
 }
 
 function shouldLoadCharacterSuggestions(field: SimulationFieldKey, trimmedQuery: string): field is "characterId" | "characterTribe" {
-  return (field === "characterId" || field === "characterTribe") && trimmedQuery.length === 0;
+  return field === "characterId" || (field === "characterTribe" && trimmedQuery.length === 0);
 }
 
 async function fetchObjectSuggestion(input: {
@@ -211,6 +279,7 @@ async function fetchCharacterSuggestions(input: {
   readonly endpoint: string;
   readonly fetchFn: typeof fetch;
   readonly field: "characterId" | "characterTribe";
+  readonly query: string;
   readonly signal?: AbortSignal;
   readonly walletAddress: string;
 }): Promise<readonly SimulationSuggestion[]> {
@@ -220,40 +289,211 @@ async function fetchCharacterSuggestions(input: {
     return [];
   }
 
+  if (input.field === "characterId" && input.query.length > 0) {
+    return fetchGlobalCharacterSuggestions({
+      deploymentState: input.deploymentState,
+      endpoint: input.endpoint,
+      fetchFn: input.fetchFn,
+      field: "characterId",
+      query: input.query,
+      signal: input.signal,
+    });
+  }
+
   const bundle = getPackageReferenceBundle(targetId);
-  const data = await postGraphQl<PlayerProfileResponse>({
+  const nodes = await loadAllPlayerProfileNodes({
     endpoint: input.endpoint,
     fetchFn: input.fetchFn,
-    query: PLAYER_PROFILE_QUERY,
+    owner: input.walletAddress,
     signal: input.signal,
-    variables: {
-      owner: input.walletAddress,
-      type: `${bundle.originalWorldPackageId}::character::PlayerProfile`,
-    },
+    type: `${bundle.originalWorldPackageId}::character::PlayerProfile`,
   });
-  const nodes = data.address?.objects?.nodes ?? [];
 
-  return nodes.flatMap((node) => {
-    const content = node.contents?.json;
-    const characterId = findFirstIntegerAtKeys(content, ["character_id", "characterId"]);
-    const characterTribe = findFirstIntegerAtKeys(content, ["character_tribe", "characterTribe", "tribe_id", "tribeId", "tribe"]);
+  const suggestions: Array<SimulationSuggestion | null> = await Promise.all(nodes.map(async (node): Promise<SimulationSuggestion | null> => {
+    const characterObjectId = findFirstStringAtKeys(node.contents?.json, ["character_id", "characterId"]);
 
-    if (characterId === null) {
-      return [];
+    if (!isSuiAddress(characterObjectId)) {
+      return null;
     }
 
-    return [{
+    const characterContent = await fetchCharacterContent({
+      endpoint: input.endpoint,
+      fetchFn: input.fetchFn,
+      id: characterObjectId,
+      signal: input.signal,
+    });
+    return buildCharacterSuggestion({
+      content: characterContent,
       field: input.field,
-      label: `Character ${String(characterId)}`,
-      value: String(input.field === "characterTribe" ? (characterTribe ?? "") : characterId),
-      description: characterTribe === null ? null : `Tribe ${String(characterTribe)}`,
-      derivedFields: {
-        characterId,
-        characterTribe,
-      },
-      sourceObjectId: typeof node.address === "string" ? node.address : null,
-    } satisfies SimulationSuggestion];
-  }).filter((suggestion) => suggestion.value.trim().length > 0);
+      sourceObjectId: characterObjectId,
+    });
+  }));
+
+  return suggestions.filter((suggestion): suggestion is SimulationSuggestion => suggestion !== null && suggestion.value.trim().length > 0);
+}
+
+async function fetchGlobalCharacterSuggestions(input: {
+  readonly deploymentState: StoredDeploymentState;
+  readonly endpoint: string;
+  readonly fetchFn: typeof fetch;
+  readonly field: "characterId";
+  readonly query: string;
+  readonly signal?: AbortSignal;
+}): Promise<readonly SimulationSuggestion[]> {
+  const bundle = getPackageReferenceBundle(input.deploymentState.targetId);
+  const characterType = `${bundle.originalWorldPackageId}::character::Character`;
+  const normalizedQuery = input.query.trim().toLowerCase();
+  const suggestions: SimulationSuggestion[] = [];
+  const seenKeys = new Set<string>();
+  let after: string | null = null;
+
+  for (let page = 0; page < MAX_GRAPHQL_PAGES; page += 1) {
+    const response: CharacterSearchResponse = await postGraphQl<CharacterSearchResponse>({
+      endpoint: input.endpoint,
+      fetchFn: input.fetchFn,
+      query: CHARACTER_OBJECTS_QUERY,
+      signal: input.signal,
+      variables: after === null ? { type: characterType } : { after, type: characterType },
+    });
+
+    for (const node of response.objects?.nodes ?? []) {
+      const sourceObjectId = typeof node.address === "string" ? node.address : null;
+      const suggestion = buildCharacterSuggestion({
+        content: node.asMoveObject?.contents?.json,
+        field: input.field,
+        sourceObjectId,
+      });
+
+      if (suggestion === null || !matchesCharacterSuggestion(suggestion, normalizedQuery)) {
+        continue;
+      }
+
+      const dedupeKey = `${suggestion.value}:${suggestion.sourceObjectId ?? suggestion.label}`;
+      if (seenKeys.has(dedupeKey)) {
+        continue;
+      }
+
+      seenKeys.add(dedupeKey);
+      suggestions.push(suggestion);
+
+      if (suggestions.length >= CHARACTER_SUGGESTION_LIMIT) {
+        return suggestions;
+      }
+    }
+
+    const pageInfo = response.objects?.pageInfo ?? null;
+    if (pageInfo?.hasNextPage !== true || typeof pageInfo.endCursor !== "string") {
+      break;
+    }
+
+    after = pageInfo.endCursor;
+  }
+
+  return suggestions;
+}
+
+function buildCharacterSuggestion(input: {
+  readonly content: unknown;
+  readonly field: "characterId" | "characterTribe";
+  readonly sourceObjectId: string | null;
+}): SimulationSuggestion | null {
+  const characterId = findFirstIntegerAtKeys(input.content, ["item_id", "itemId"]);
+  const characterTribe = findFirstIntegerAtKeys(input.content, ["character_tribe", "characterTribe", "tribe_id", "tribeId", "tribe"]);
+  const characterName = extractCharacterNameFromCharacterContent(input.content);
+  const characterTenant = findFirstStringAtKeys(input.content, ["tenant"]);
+
+  if (characterId === null) {
+    return null;
+  }
+
+  const description = [
+    characterName === null ? null : `Name ${characterName}`,
+    characterTenant === null ? null : `Tenant ${characterTenant}`,
+    characterTribe === null ? null : `Tribe ${String(characterTribe)}`,
+  ].filter((part): part is string => part !== null).join(" · ");
+
+  return {
+    field: input.field,
+    label: characterName === null ? `Character ${String(characterId)}` : `${characterName} (${String(characterId)})`,
+    value: String(input.field === "characterTribe" ? (characterTribe ?? "") : characterId),
+    description: description.length === 0 ? null : description,
+    derivedFields: {
+      characterId,
+      characterTribe,
+    },
+    sourceObjectId: input.sourceObjectId,
+  } satisfies SimulationSuggestion;
+}
+
+function matchesCharacterSuggestion(suggestion: SimulationSuggestion, normalizedQuery: string): boolean {
+  if (normalizedQuery.length === 0) {
+    return true;
+  }
+
+  return [
+    suggestion.label,
+    suggestion.value,
+    suggestion.description,
+    suggestion.sourceObjectId,
+  ].some((value) => value !== null && value.toLowerCase().includes(normalizedQuery));
+}
+
+async function fetchCharacterContent(input: {
+  readonly endpoint: string;
+  readonly fetchFn: typeof fetch;
+  readonly id: string;
+  readonly signal?: AbortSignal;
+}): Promise<unknown> {
+  const response = await postGraphQl<CharacterObjectResponse>({
+    endpoint: input.endpoint,
+    fetchFn: input.fetchFn,
+    query: CHARACTER_QUERY,
+    signal: input.signal,
+    variables: { id: input.id },
+  });
+
+  return response.object?.asMoveObject?.contents?.json;
+}
+
+async function loadAllPlayerProfileNodes(input: {
+  readonly endpoint: string;
+  readonly fetchFn: typeof fetch;
+  readonly owner: string;
+  readonly signal?: AbortSignal;
+  readonly type: string;
+}): Promise<ReadonlyArray<NonNullable<NonNullable<NonNullable<PlayerProfileResponse["address"]>["objects"]>["nodes"]>[number]>> {
+  const nodes: Array<NonNullable<NonNullable<NonNullable<PlayerProfileResponse["address"]>["objects"]>["nodes"]>[number]> = [];
+  let after: string | null = null;
+
+  for (let page = 0; page < MAX_GRAPHQL_PAGES; page += 1) {
+    const response: PlayerProfileResponse = await postGraphQl<PlayerProfileResponse>({
+      endpoint: input.endpoint,
+      fetchFn: input.fetchFn,
+      query: PLAYER_PROFILE_QUERY,
+      signal: input.signal,
+      variables: after === null
+        ? {
+            owner: input.owner,
+            type: input.type,
+          }
+        : {
+            after,
+            owner: input.owner,
+            type: input.type,
+          },
+    });
+
+    nodes.push(...(response.address?.objects?.nodes ?? []));
+
+    const pageInfo: NonNullable<NonNullable<PlayerProfileResponse["address"]>["objects"]>["pageInfo"] = response.address?.objects?.pageInfo;
+    if (pageInfo?.hasNextPage !== true || typeof pageInfo.endCursor !== "string") {
+      break;
+    }
+
+    after = pageInfo.endCursor;
+  }
+
+  return nodes;
 }
 
 async function postGraphQl<TData>(input: {
@@ -425,6 +665,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isSuiAddress(value: string): boolean {
-  return /^0x[0-9a-f]+$/iu.test(value);
+function isSuiAddress(value: string | null): value is string {
+  return value !== null && /^0x[0-9a-f]+$/iu.test(value);
 }

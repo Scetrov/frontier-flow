@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { StoredDeploymentState } from "../types/authorization";
 import { getDeploymentTarget } from "../data/deploymentTargets";
 import { useAuthorization } from "../hooks/useAuthorization";
+import { useAuthorizationContracts } from "../hooks/useAuthorizationContracts";
 import { useTurretSimulation } from "../hooks/useTurretSimulation";
 import { useTurretList } from "../hooks/useTurretList";
+import { formatAddress } from "../utils/formatAddress";
 import AuthorizationProgressModal from "./AuthorizationProgressModal";
 import AuthorizeTurretList from "./AuthorizeTurretList";
 import type { PrimaryView } from "./Header";
@@ -31,12 +33,27 @@ interface AuthorizeViewPrimaryPanelProps {
   readonly deploymentKey: string | null;
   readonly deploymentState: StoredDeploymentState | null;
   readonly handleAuthorize: () => void;
+  readonly handleOpenSimulation: (turretObjectId: string) => void;
   readonly handleSelectionChange: (turretIds: readonly string[]) => void;
   readonly listInstanceKey: number;
-  readonly onViewChange?: (view: PrimaryView) => void;
   readonly selectedTurretIds: readonly string[];
   readonly turretList: ReturnType<typeof useTurretList>;
-  readonly turretSimulation: ReturnType<typeof useTurretSimulation>;
+}
+
+interface AuthorizeContractSelectorProps {
+  readonly contracts: readonly StoredDeploymentState[];
+  readonly errorMessage: string | null;
+  readonly isLoading: boolean;
+  readonly onChange?: (deploymentKey: string) => void;
+  readonly selectedDeploymentKey: string | null;
+}
+
+interface AuthorizeSimulationSelectorPanelProps extends AuthorizeContractSelectorProps {
+  readonly deploymentState: StoredDeploymentState | null;
+  readonly onRetry: () => void;
+  readonly onTurretChange: (turretObjectId: string) => void;
+  readonly selectedTurretObjectId: string | null;
+  readonly turretList: ReturnType<typeof useTurretList>;
 }
 
 interface AuthorizeViewSelectionState {
@@ -48,6 +65,54 @@ function getAuthorizeDeploymentKey(deploymentState: StoredDeploymentState | null
   return deploymentState === null
     ? null
     : `${deploymentState.targetId}:${deploymentState.packageId}:${deploymentState.moduleName}`;
+}
+
+function getContractOptionLabel(deploymentState: StoredDeploymentState): string {
+  const deploymentAgeLabel = getDeploymentAgeLabel(deploymentState.deployedAt);
+
+  return deploymentAgeLabel === null
+    ? `${deploymentState.contractName} · ${deploymentState.moduleName}`
+    : `${deploymentState.contractName} · ${deploymentState.moduleName} (${deploymentAgeLabel})`;
+}
+
+function getDeploymentAgeLabel(deployedAt: string): string | null {
+  const deployedAtMs = Date.parse(deployedAt);
+
+  if (!Number.isFinite(deployedAtMs) || deployedAtMs <= 0) {
+    return null;
+  }
+
+  const elapsedMs = Date.now() - deployedAtMs;
+
+  if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
+    return null;
+  }
+
+  const elapsedHours = Math.floor(elapsedMs / (60 * 60 * 1000));
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  const remainingHours = elapsedHours % 24;
+
+  if (elapsedDays > 0) {
+    return remainingHours > 0
+      ? `deployed ${String(elapsedDays)}d ${String(remainingHours)}h ago`
+      : `deployed ${String(elapsedDays)}d ago`;
+  }
+
+  if (elapsedHours > 0) {
+    return `deployed ${String(elapsedHours)}h ago`;
+  }
+
+  const elapsedMinutes = Math.floor(elapsedMs / (60 * 1000));
+
+  if (elapsedMinutes > 0) {
+    return `deployed ${String(elapsedMinutes)}m ago`;
+  }
+
+  return "deployed just now";
+}
+
+function getTurretOptionLabel(turret: { readonly displayName: string | null; readonly objectId: string }): string {
+  return turret.displayName ?? formatAddress(turret.objectId);
 }
 
 function getAuthorizeViewHeaderCopy(activeView: AuthorizeWorkflowView): {
@@ -161,11 +226,91 @@ function CopyFieldButton({ field, copiedField, onCopy }: {
   );
 }
 
+function AuthorizeSelectField(input: {
+  readonly ariaLabel: string;
+  readonly disabled?: boolean;
+  readonly helperText?: React.ReactNode;
+  readonly label: string;
+  readonly onChange?: (value: string) => void;
+  readonly options: readonly {
+    readonly label: string;
+    readonly value: string;
+  }[];
+  readonly placeholder: string;
+  readonly value: string;
+}) {
+  return (
+    <div className="grid gap-2">
+      <label className="font-heading text-[0.68rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]" htmlFor={input.ariaLabel}>
+        {input.label}
+      </label>
+      <select
+        aria-label={input.ariaLabel}
+        className="min-h-11 min-w-0 w-full border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.92)] px-3 py-2 font-mono text-xs leading-5 text-[var(--cream-white)] whitespace-normal outline-none transition-colors focus:border-[var(--brand-orange)]"
+        disabled={input.disabled}
+        id={input.ariaLabel}
+        onChange={(event) => {
+          input.onChange?.(event.currentTarget.value);
+        }}
+        value={input.value}
+      >
+        <option value="">{input.placeholder}</option>
+        {input.options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {input.helperText ? (
+        <div className="grid gap-1 break-words text-xs text-[var(--text-secondary)]">
+          {input.helperText}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AuthorizeContractSelector({
+  contracts,
+  errorMessage,
+  isLoading,
+  onChange,
+  selectedDeploymentKey,
+}: AuthorizeContractSelectorProps) {
+  const selectedContract = contracts.find((contract) => getAuthorizeDeploymentKey(contract) === selectedDeploymentKey) ?? null;
+  const helperText = errorMessage ?? (selectedContract === null
+    ? null
+    : (
+        <>
+          <span>{getContractOptionLabel(selectedContract)}</span>
+          <span className="break-all">{selectedContract.packageId} on {selectedContract.targetId}</span>
+        </>
+      ));
+
+  return (
+    <AuthorizeSelectField
+      ariaLabel="Authorize Contract"
+      disabled={contracts.length === 0 || isLoading}
+      helperText={helperText}
+      label="Contract"
+      onChange={onChange}
+      options={contracts.map((contract) => ({
+        label: getContractOptionLabel(contract),
+        value: getAuthorizeDeploymentKey(contract) ?? "",
+      }))}
+      placeholder={isLoading ? "Loading wallet contracts..." : contracts.length === 0 ? "No deployed contracts available" : "Select a contract"}
+      value={selectedDeploymentKey ?? ""}
+    />
+  );
+}
+
 function AuthorizeDeploymentPanel(input: {
+  readonly className?: string;
+  readonly contractSelector: AuthorizeContractSelectorProps;
   readonly deploymentState: StoredDeploymentState | null;
   readonly walletAddress: string | null | undefined;
 }) {
-  const { deploymentState, walletAddress } = input;
+  const { className, contractSelector, deploymentState, walletAddress } = input;
   const [copiedField, setCopiedField] = useState<"package" | "wallet" | null>(null);
 
   useEffect(() => {
@@ -195,16 +340,23 @@ function AuthorizeDeploymentPanel(input: {
     : null;
 
   return (
-    <aside className="border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.78)] p-5">
+    <aside className={`grid content-start gap-4 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.72)] p-5 ${className ?? ""}`.trim()}>
       <h2 className="font-heading text-sm uppercase tracking-[0.16em] text-[var(--cream-white)]">
         Active Deployment
       </h2>
+      <AuthorizeContractSelector
+        contracts={contractSelector.contracts}
+        errorMessage={contractSelector.errorMessage}
+        isLoading={contractSelector.isLoading}
+        onChange={contractSelector.onChange}
+        selectedDeploymentKey={contractSelector.selectedDeploymentKey}
+      />
       {deploymentState === null ? (
-        <p className="mt-3 text-sm text-[var(--text-secondary)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           No valid deployed contract is available for authorization.
         </p>
       ) : (
-        <dl className="mt-4 grid gap-3 text-sm text-[var(--text-secondary)]">
+        <dl className="grid gap-4 text-sm text-[var(--text-secondary)]">
           <AuthorizeDeploymentField
             action={(
               <CopyFieldButton copiedField={copiedField} field="package" onCopy={() => { void handleCopy("package", deploymentState.packageId); }} />
@@ -380,12 +532,11 @@ function AuthorizeViewPrimaryPanel({
   deploymentKey,
   deploymentState,
   handleAuthorize,
+  handleOpenSimulation,
   handleSelectionChange,
   listInstanceKey,
-  onViewChange,
   selectedTurretIds,
   turretList,
-  turretSimulation,
 }: AuthorizeViewPrimaryPanelProps) {
   const hasTurrets = turretList.status === "success" && turretList.turrets.length > 0;
 
@@ -395,16 +546,7 @@ function AuthorizeViewPrimaryPanel({
         <AuthorizeTurretList
           key={`${deploymentKey ?? "no-deployment"}:${String(listInstanceKey)}`}
           onSimulate={(turret) => {
-            if (deploymentState === null || deploymentKey === null) {
-              return;
-            }
-
-            turretSimulation.openSimulation({
-              deploymentKey,
-              deploymentState,
-              turret,
-            });
-            onViewChange?.("simulate");
+            handleOpenSimulation(turret.objectId);
           }}
           onSelectionChange={handleSelectionChange}
           turrets={turretList.turrets}
@@ -431,15 +573,62 @@ function AuthorizeViewPrimaryPanel({
   );
 }
 
-function AuthorizeSimulationEmptyState({ onViewChange }: {
+function AuthorizeSimulationEmptyState(input: {
+  readonly deploymentState: StoredDeploymentState | null;
+  readonly errorMessage: string | null;
+  readonly onRetry: () => void;
   readonly onViewChange?: (view: PrimaryView) => void;
+  readonly turretListStatus: ReturnType<typeof useTurretList>["status"];
 }) {
+  const { deploymentState, errorMessage, onRetry, onViewChange, turretListStatus } = input;
+
+  if (deploymentState === null) {
+    return (
+      <div className="ff-authorize-view__state-card">
+        <div>
+          <h2 className="ff-authorize-view__state-title">Simulation Context Required</h2>
+          <p className="ff-authorize-view__state-copy">
+            Select a deployed contract to load the turret roster for simulation.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (turretListStatus === "loading") {
+    return (
+      <div className="ff-authorize-view__state-card" role="status">
+        <span aria-hidden="true" className="ff-authorize-view__spinner" />
+        <div>
+          <h2 className="ff-authorize-view__state-title">Loading turrets</h2>
+          <p className="ff-authorize-view__state-copy">
+            Querying the selected contract for wallet-owned turrets.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (turretListStatus === "error") {
+    return (
+      <div className="ff-authorize-view__state-card ff-authorize-view__state-card--error">
+        <div>
+          <h2 className="ff-authorize-view__state-title">Turret query failed</h2>
+          <p className="ff-authorize-view__state-copy">{errorMessage ?? "Failed to load turrets."}</p>
+        </div>
+        <button className="ff-authorize-view__action" onClick={onRetry} type="button">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="ff-authorize-view__state-card">
       <div>
         <h2 className="ff-authorize-view__state-title">Simulation Context Required</h2>
         <p className="ff-authorize-view__state-copy">
-          Open a turret from the Authorize roster to review live deployment context and run a non-mutating simulation.
+          Select a turret from the roster above to review live deployment context and run a non-mutating simulation.
         </p>
       </div>
       <button className="ff-authorize-view__action" onClick={() => { onViewChange?.("authorize"); }} type="button">
@@ -449,38 +638,149 @@ function AuthorizeSimulationEmptyState({ onViewChange }: {
   );
 }
 
-function AuthorizeSimulationPanel(input: {
-  readonly onViewChange?: (view: PrimaryView) => void;
-  readonly turretList: ReturnType<typeof useTurretList>;
-  readonly turretSimulation: ReturnType<typeof useTurretSimulation>;
-}) {
-  const { onViewChange, turretList, turretSimulation } = input;
-
-  if (turretSimulation.session.status === "closed") {
-    return <AuthorizeSimulationEmptyState onViewChange={onViewChange} />;
-  }
+function AuthorizeSimulationSelectorPanel({
+  contracts,
+  deploymentState,
+  errorMessage,
+  isLoading,
+  onChange,
+  onRetry,
+  onTurretChange,
+  selectedDeploymentKey,
+  selectedTurretObjectId,
+  turretList,
+}: AuthorizeSimulationSelectorPanelProps) {
+  const selectedTurret = turretList.turrets.find((turret) => turret.objectId === selectedTurretObjectId) ?? null;
+  const turretHelperText = turretList.errorMessage ?? (selectedTurret === null ? null : selectedTurret.objectId);
 
   return (
-    <TurretSimulationModal
-      onApplySuggestion={turretSimulation.applySuggestion}
-      closeLabel="Back to Authorize"
-      onClose={() => {
-        onViewChange?.("authorize");
-      }}
-      onLoadSuggestions={(field, query) => {
-        void turretSimulation.loadSuggestions(field, query);
-      }}
-      onRefreshContext={() => {
-        turretList.refresh();
-        void turretSimulation.refreshContext();
-      }}
-      onRunSimulation={() => {
-        void turretSimulation.runSimulation();
-      }}
-      onSetLookupQuery={turretSimulation.setLookupQuery}
-      onUpdateField={turretSimulation.updateField}
-      session={turretSimulation.session}
-    />
+    <section className="grid gap-4 border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.68)] p-4 xl:p-5">
+      <div className="grid gap-1">
+        <h3 className="font-heading text-sm uppercase tracking-[0.16em] text-[var(--cream-white)]">
+          Simulation Context
+        </h3>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Choose the deployed contract and turret to inspect before running a live simulation.
+        </p>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <AuthorizeContractSelector
+          contracts={contracts}
+          errorMessage={errorMessage}
+          isLoading={isLoading}
+          onChange={onChange}
+          selectedDeploymentKey={selectedDeploymentKey}
+        />
+        <AuthorizeSelectField
+          ariaLabel="Simulation Turret"
+          disabled={deploymentState === null || turretList.status === "loading" || turretList.turrets.length === 0}
+          helperText={turretHelperText}
+          label="Turret"
+          onChange={onTurretChange}
+          options={turretList.turrets.map((turret) => ({
+            label: `${getTurretOptionLabel(turret)} (${turret.objectId})`,
+            value: turret.objectId,
+          }))}
+          placeholder={
+            deploymentState === null
+              ? "Select a contract first"
+              : turretList.status === "loading"
+                ? "Loading turrets..."
+                : turretList.turrets.length === 0
+                  ? "No turrets available"
+                  : "Select a turret"
+          }
+          value={selectedTurretObjectId ?? ""}
+        />
+      </div>
+
+      {turretList.status === "error" ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border border-[rgba(255,166,0,0.28)] bg-[rgba(255,166,0,0.1)] px-4 py-3 text-sm text-[#ffd38d]" role="alert">
+          <span>{turretList.errorMessage ?? "Failed to load turrets."}</span>
+          <button className="ff-authorize-view__action" onClick={onRetry} type="button">
+            Retry
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function AuthorizeSimulationPanel(input: {
+  readonly contractSelector: AuthorizeContractSelectorProps;
+  readonly deploymentState: StoredDeploymentState | null;
+  readonly onViewChange?: (view: PrimaryView) => void;
+  readonly onSelectTurret: (turretObjectId: string) => void;
+  readonly selectedTurretObjectId: string | null;
+  readonly turretList: ReturnType<typeof useTurretList>;
+  readonly turretSimulation: ReturnType<typeof useTurretSimulation>;
+  readonly walletAddress: string | null | undefined;
+}) {
+  const {
+    contractSelector,
+    deploymentState,
+    onViewChange,
+    onSelectTurret,
+    selectedTurretObjectId,
+    turretList,
+    turretSimulation,
+    walletAddress,
+  } = input;
+
+  return (
+    <div className="grid gap-4">
+      <AuthorizeSimulationSelectorPanel
+        contracts={contractSelector.contracts}
+        deploymentState={deploymentState}
+        errorMessage={contractSelector.errorMessage}
+        isLoading={contractSelector.isLoading}
+        onChange={contractSelector.onChange}
+        onRetry={turretList.refresh}
+        onTurretChange={onSelectTurret}
+        selectedDeploymentKey={contractSelector.selectedDeploymentKey}
+        selectedTurretObjectId={selectedTurretObjectId}
+        turretList={turretList}
+      />
+
+      {turretSimulation.session.status === "closed" ? (
+        <AuthorizeSimulationEmptyState
+          deploymentState={deploymentState}
+          errorMessage={turretList.errorMessage}
+          onRetry={turretList.refresh}
+          onViewChange={onViewChange}
+          turretListStatus={turretList.status}
+        />
+      ) : (
+        <TurretSimulationModal
+          deploymentPanel={(
+            <AuthorizeDeploymentPanel
+              className="p-4 xl:p-5"
+              contractSelector={contractSelector}
+              deploymentState={turretSimulation.session.deploymentState}
+              walletAddress={walletAddress}
+            />
+          )}
+          onApplySuggestion={turretSimulation.applySuggestion}
+          onClose={() => {
+            onViewChange?.("authorize");
+          }}
+          onLoadSuggestions={(field, query) => {
+            void turretSimulation.loadSuggestions(field, query);
+          }}
+          onRefreshContext={() => {
+            turretList.refresh();
+            void turretSimulation.refreshContext();
+          }}
+          onRunSimulation={() => {
+            void turretSimulation.runSimulation();
+          }}
+          onUpdateField={turretSimulation.updateField}
+          referenceData={turretSimulation.referenceData}
+          session={turretSimulation.session}
+        />
+      )}
+    </div>
   );
 }
 
@@ -488,20 +788,63 @@ function AuthorizeView({ activeView = "authorize", deploymentState, onViewChange
   const account = useCurrentAccount();
   const currentWallet = useCurrentWallet();
   const suiClient = useSuiClient();
+  const authorizationContracts = useAuthorizationContracts({
+    fallbackDeploymentState: deploymentState,
+    suiClient,
+    targetId: deploymentState === null ? null : deploymentState.targetId,
+    walletAddress: account?.address ?? null,
+  });
+  const [requestedDeploymentKey, setRequestedDeploymentKey] = useState<string | null>(getAuthorizeDeploymentKey(deploymentState));
+  const [rawSelectedSimulationTurretId, setRawSelectedSimulationTurretId] = useState<string | null>(null);
+  const selectedDeploymentKey = useMemo(() => {
+    if (authorizationContracts.contracts.length === 0) {
+      return null;
+    }
+
+    if (
+      requestedDeploymentKey !== null
+      && authorizationContracts.contracts.some((contract) => getAuthorizeDeploymentKey(contract) === requestedDeploymentKey)
+    ) {
+      return requestedDeploymentKey;
+    }
+
+    const fallbackDeploymentKey = getAuthorizeDeploymentKey(deploymentState);
+
+    if (
+      fallbackDeploymentKey !== null
+      && authorizationContracts.contracts.some((contract) => getAuthorizeDeploymentKey(contract) === fallbackDeploymentKey)
+    ) {
+      return fallbackDeploymentKey;
+    }
+
+    const firstAvailableContract = authorizationContracts.contracts[0];
+    return getAuthorizeDeploymentKey(firstAvailableContract);
+  }, [authorizationContracts.contracts, deploymentState, requestedDeploymentKey]);
+  const selectedDeploymentState = useMemo(() => {
+    if (authorizationContracts.contracts.length === 0) {
+      return deploymentState;
+    }
+
+    const matchingContract = authorizationContracts.contracts.find(
+      (contract) => getAuthorizeDeploymentKey(contract) === selectedDeploymentKey,
+    );
+
+    return matchingContract === undefined ? authorizationContracts.contracts[0] : matchingContract;
+  }, [authorizationContracts.contracts, deploymentState, selectedDeploymentKey]);
   const turretList = useTurretList({
-    deploymentState,
+    deploymentState: selectedDeploymentState,
     walletAddress: account?.address ?? null,
   });
   const authorization = useAuthorization({
-    deploymentState,
+    deploymentState: selectedDeploymentState,
     walletAccount: account,
     currentWallet,
     suiClient,
   });
-  const deploymentKey = getAuthorizeDeploymentKey(deploymentState);
+  const deploymentKey = getAuthorizeDeploymentKey(selectedDeploymentState);
   const turretSimulation = useTurretSimulation({
     deploymentKey,
-    deploymentState,
+    deploymentState: selectedDeploymentState,
     suiClient,
     turrets: turretList.turrets,
     walletAddress: account?.address ?? null,
@@ -513,33 +856,94 @@ function AuthorizeView({ activeView = "authorize", deploymentState, onViewChange
     listInstanceKey,
     selectedTurretIds,
   } = useAuthorizeViewSelection({ authorization, deploymentKey, turretList });
+  const selectedSimulationTurretId = useMemo(() => {
+    if (rawSelectedSimulationTurretId === null) {
+      return null;
+    }
+
+    return turretList.turrets.some((turret) => turret.objectId === rawSelectedSimulationTurretId)
+      ? rawSelectedSimulationTurretId
+      : null;
+  }, [rawSelectedSimulationTurretId, turretList.turrets]);
+
+  const handleContractSelectionChange = useCallback((nextDeploymentKey: string) => {
+    const normalizedDeploymentKey = nextDeploymentKey.trim();
+
+    setRequestedDeploymentKey(normalizedDeploymentKey.length === 0 ? null : normalizedDeploymentKey);
+    setRawSelectedSimulationTurretId(null);
+    turretSimulation.closeSimulation();
+  }, [turretSimulation]);
+
+  const handleOpenSimulation = useCallback((turretObjectId: string) => {
+    if (selectedDeploymentState === null) {
+      return;
+    }
+
+    const nextDeploymentKey = getAuthorizeDeploymentKey(selectedDeploymentState);
+
+    if (nextDeploymentKey === null) {
+      return;
+    }
+
+    const turret = turretList.turrets.find((candidate) => candidate.objectId === turretObjectId);
+
+    if (turret === undefined) {
+      return;
+    }
+
+    setRawSelectedSimulationTurretId(turret.objectId);
+    turretSimulation.openSimulation({
+      deploymentKey: nextDeploymentKey,
+      deploymentState: selectedDeploymentState,
+      turret,
+    });
+    onViewChange?.("simulate");
+  }, [onViewChange, selectedDeploymentState, turretList.turrets, turretSimulation]);
+
+  const contractSelector = useMemo<AuthorizeContractSelectorProps>(() => ({
+    contracts: authorizationContracts.contracts,
+    errorMessage: authorizationContracts.errorMessage,
+    isLoading: authorizationContracts.isLoading,
+    onChange: handleContractSelectionChange,
+    selectedDeploymentKey: getAuthorizeDeploymentKey(selectedDeploymentState),
+  }), [authorizationContracts.contracts, authorizationContracts.errorMessage, authorizationContracts.isLoading, handleContractSelectionChange, selectedDeploymentState]);
 
   return (
     <section aria-label={activeView === "simulate" ? "Simulate view" : "Authorize view"} className="flex flex-1 min-h-0 overflow-hidden border-y border-[var(--ui-border-dark)]">
-      <div className="ff-authorize-view">
+      <div className={`ff-authorize-view${activeView === "simulate" ? " ff-authorize-view--simulate" : ""}`}>
         <AuthorizeViewHeader activeView={activeView} />
 
-        <div className="ff-authorize-view__grid">
+        <div className={`ff-authorize-view__grid${activeView === "simulate" ? " ff-authorize-view__grid--simulate" : ""}`}>
           <div className="ff-authorize-view__primary">
             {activeView === "simulate" ? (
-              <AuthorizeSimulationPanel onViewChange={onViewChange} turretList={turretList} turretSimulation={turretSimulation} />
+              <AuthorizeSimulationPanel
+                contractSelector={contractSelector}
+                deploymentState={selectedDeploymentState}
+                onViewChange={onViewChange}
+                onSelectTurret={handleOpenSimulation}
+                selectedTurretObjectId={selectedSimulationTurretId}
+                turretList={turretList}
+                turretSimulation={turretSimulation}
+                walletAddress={account?.address}
+              />
             ) : (
               <AuthorizeViewPrimaryPanel
                 authorization={authorization}
                 deploymentKey={deploymentKey}
-                deploymentState={deploymentState}
+                deploymentState={selectedDeploymentState}
                 handleAuthorize={handleAuthorize}
+                handleOpenSimulation={handleOpenSimulation}
                 handleSelectionChange={handleSelectionChange}
                 listInstanceKey={listInstanceKey}
-                onViewChange={onViewChange}
                 selectedTurretIds={selectedTurretIds}
                 turretList={turretList}
-                turretSimulation={turretSimulation}
               />
             )}
           </div>
 
-          <AuthorizeDeploymentPanel deploymentState={deploymentState} walletAddress={account?.address} />
+          {activeView === "authorize" ? (
+            <AuthorizeDeploymentPanel contractSelector={contractSelector} deploymentState={selectedDeploymentState} walletAddress={account?.address} />
+          ) : null}
         </div>
       </div>
 

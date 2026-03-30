@@ -15,6 +15,10 @@ const WALLET_NAME = "Mock Sui Wallet";
 const WALLET_STORAGE_KEY = "frontier-flow:sui-wallet";
 const SIMULATED_TARGET_ITEM_ID = "900001";
 const SIMULATED_PRIORITY_WEIGHT = "120";
+const SIMULATED_TYPE_ID = "900002";
+const SIMULATED_GROUP_ID = "25";
+const SIMULATED_CHARACTER_ID = "42";
+const SIMULATED_CHARACTER_TRIBE = "7";
 
 function createGraphQlResponse() {
   return {
@@ -170,7 +174,7 @@ test("runs the full turret authorization workflow and refreshes the list after c
       return;
     }
 
-    if (query.includes("query PlayerProfile")) {
+    if (query.includes("query PlayerProfiles")) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -181,13 +185,38 @@ test("runs the full turret authorization workflow and refreshes the list after c
                 nodes: [{
                   contents: {
                     json: {
-                      fields: {
-                        character_id: CHARACTER_ID,
-                        name: "Mock Capsuleer",
-                      },
+                      character_id: CHARACTER_ID,
                     },
                   },
                 }],
+              },
+            },
+          },
+        }),
+      });
+      return;
+    }
+
+    if (query.includes("query Character")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            object: {
+              asMoveObject: {
+                contents: {
+                  json: {
+                    key: {
+                      item_id: Number(SIMULATED_CHARACTER_ID),
+                      tenant: "utopia",
+                    },
+                    tribe_id: Number(SIMULATED_CHARACTER_TRIBE),
+                    metadata: {
+                      name: "Mock Capsuleer",
+                    },
+                  },
+                },
               },
             },
           },
@@ -200,6 +229,35 @@ test("runs the full turret authorization workflow and refreshes the list after c
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ data: { address: { objects: { nodes: [] } } } }),
+    });
+  });
+
+  await page.route("https://world-api-stillness.live.tech.evefrontier.com/v2/ships", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [{
+          id: Number(SIMULATED_TYPE_ID),
+          name: "Mock Frigate",
+          classId: Number(SIMULATED_GROUP_ID),
+          className: "Frigate",
+        }],
+      }),
+    });
+  });
+
+  await page.route("https://world-api-stillness.live.tech.evefrontier.com/v2/tribes", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [{
+          id: Number(SIMULATED_CHARACTER_TRIBE),
+          name: "Sepharim",
+          nameShort: "SEP",
+        }],
+      }),
     });
   });
 
@@ -347,11 +405,11 @@ test("runs the full turret authorization workflow and refreshes the list after c
 
   await expect(page.getByRole("heading", { name: "Shield Bastion" })).toBeVisible();
   await expect(page.getByText(CHARACTER_ID)).toBeVisible();
+  await expect(page.getByLabel("Type Id")).toHaveValue(SIMULATED_TYPE_ID);
+  await expect(page.getByLabel("Group Id")).toHaveValue(SIMULATED_GROUP_ID);
+  await expect(page.getByLabel("Character Id")).toHaveValue(SIMULATED_CHARACTER_ID);
+  await expect(page.getByLabel("Character Tribe")).toHaveValue(SIMULATED_CHARACTER_TRIBE);
   await page.getByLabel("Item Id").fill("900001");
-  await page.getByLabel("Type Id").fill("900002");
-  await page.getByLabel("Group Id").fill("25");
-  await page.getByLabel("Character Id").fill("42");
-  await page.getByLabel("Character Tribe").fill("7");
   await page.getByRole("button", { name: "Run Simulation" }).click();
 
   await expect(page.getByText("Simulation Results")).toBeVisible();

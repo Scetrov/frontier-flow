@@ -1,6 +1,42 @@
 import type { StoredDeploymentState, TurretInfo } from "./authorization";
 
-export type SimulationFieldSource = "authorize-context" | "remote-suggestion" | "default" | "manual";
+export type SimulationFieldSource = "authorize-context" | "remote-suggestion" | "default" | "manual" | "world-api" | "graphql";
+
+export interface SimulationShipOption {
+  readonly description: string;
+  readonly groupId: string;
+  readonly label: string;
+  readonly typeId: string;
+}
+
+export interface SimulationTribeOption {
+  readonly description?: string;
+  readonly label: string;
+  readonly value: number;
+}
+
+export interface SimulationCharacterOption {
+  readonly characterId: number;
+  readonly characterTribe: number | null;
+  readonly description: string | null;
+  readonly label: string;
+  readonly sourceObjectId: string | null;
+}
+
+export interface SimulationReferenceDataPayload {
+  readonly characterOptions: readonly SimulationCharacterOption[];
+  readonly errorMessages: readonly string[];
+  readonly shipOptions: readonly SimulationShipOption[];
+  readonly tribeOptions: readonly SimulationTribeOption[];
+}
+
+export interface SimulationReferenceData {
+  readonly characterOptions: readonly SimulationCharacterOption[];
+  readonly isLoading: boolean;
+  readonly loadErrorMessage: string | null;
+  readonly shipOptions: readonly SimulationShipOption[];
+  readonly tribeOptions: readonly SimulationTribeOption[];
+}
 
 export interface SimulationCandidateDraft {
   readonly itemId: string;
@@ -102,6 +138,7 @@ export interface UseTurretSimulationResult {
   readonly isOpen: boolean;
   readonly loadSuggestions: (field: SimulationFieldKey, query?: string) => Promise<void>;
   readonly openSimulation: (input: OpenTurretSimulationInput) => void;
+  readonly referenceData: SimulationReferenceData;
   readonly refreshContext: () => Promise<void>;
   readonly runSimulation: () => Promise<void>;
   readonly setLookupQuery: (value: string) => void;
@@ -112,8 +149,10 @@ export interface UseTurretSimulationResult {
   ) => void;
 }
 
+export const DEFAULT_SIMULATION_ITEM_ID = "10000002887";
+
 const DEFAULT_CANDIDATE_DRAFT: SimulationCandidateDraft = {
-  itemId: "",
+  itemId: DEFAULT_SIMULATION_ITEM_ID,
   typeId: "",
   groupId: "",
   characterId: null,
@@ -139,6 +178,16 @@ const DEFAULT_FIELD_SOURCES: SimulationFieldSourceMap = {
   priorityWeight: "default",
   behaviourChange: "default",
 };
+
+export function createEmptySimulationReferenceData(): SimulationReferenceData {
+  return {
+    characterOptions: [],
+    isLoading: false,
+    loadErrorMessage: null,
+    shipOptions: [],
+    tribeOptions: [],
+  };
+}
 
 export function createEmptySimulationInputDraft(now = Date.now()): SimulationInputDraft {
   return {

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useTutorial } from "../hooks/useTutorial";
+import { useTutorial, RETRY_DELAY_MS, MAX_RETRIES } from "../hooks/useTutorial";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
 
 const TUTORIAL_STORAGE_KEY = "frontier-flow:tutorial";
@@ -151,7 +151,9 @@ describe("useTutorial", () => {
     onSetDrawerVisibility.mockClear();
 
     act(() => {
-      vi.advanceTimersByTime(450);
+      // Advance time long enough for the tutorial target-measure retries
+      // to exhaust and for the step-skipping timeout to fire.
+      vi.advanceTimersByTime((MAX_RETRIES * RETRY_DELAY_MS) + RETRY_DELAY_MS);
     });
 
     expect(result.current.currentStep?.id).toBe("socket");

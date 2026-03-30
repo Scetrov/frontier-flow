@@ -3,6 +3,7 @@ import type { BuildProgressEvent } from "@zktx.io/sui-move-builder/lite";
 import {
   loadMoveBuilderLite,
   moveBuilderLiteWasmUrl,
+  prewarmMoveBuilderLiteWasm,
   resetMoveBuilderLiteForTests,
   verifyMoveBuilderLiteIntegrity,
 } from "./moveBuilderLite";
@@ -54,6 +55,7 @@ interface MoveCompilerModule {
 
 type MoveCompilerLoader = () => Promise<MoveCompilerModule>;
 type MoveCompilerIntegrityVerifier = () => Promise<void>;
+type MoveCompilerWasmPrewarmer = (wasm: string | URL) => Promise<void>;
 
 let compilerModulePromise: Promise<MoveCompilerModule> | null = null;
 let initialisationPromise: Promise<void> | null = null;
@@ -61,6 +63,7 @@ let integrityPromise: Promise<void> | null = null;
 let worldShimModuleSetPromise: Promise<ReadonlySet<string>> | null = null;
 let compilerModuleLoader: MoveCompilerLoader = () => loadMoveBuilderLite() as Promise<MoveCompilerModule>;
 let moveCompilerIntegrityVerifier: MoveCompilerIntegrityVerifier = verifyMoveBuilderLiteIntegrity;
+let moveCompilerWasmPrewarmer: MoveCompilerWasmPrewarmer = prewarmMoveBuilderLiteWasm;
 
 function resetCompilerState(): void {
   compilerModulePromise = null;
@@ -74,6 +77,7 @@ export function resetMoveCompilerStateForTests(): void {
   resetMoveBuilderLiteForTests();
   compilerModuleLoader = () => loadMoveBuilderLite() as Promise<MoveCompilerModule>;
   moveCompilerIntegrityVerifier = async () => {};
+  moveCompilerWasmPrewarmer = async () => {};
 }
 
 export function setMoveCompilerLoaderForTests(loader: MoveCompilerLoader): void {
@@ -199,10 +203,12 @@ async function ensureCompilerInitialised(): Promise<MoveCompilerModule> {
   await ensureMoveCompilerIntegrity();
   const compilerModule = await loadCompilerModule();
   if (initialisationPromise === null) {
-    initialisationPromise = compilerModule.initMoveCompiler({ wasm: moveBuilderLiteWasmUrl }).catch((error: unknown) => {
-      resetCompilerState();
-      throw error;
-    });
+    initialisationPromise = moveCompilerWasmPrewarmer(moveBuilderLiteWasmUrl)
+      .then(() => compilerModule.initMoveCompiler({ wasm: moveBuilderLiteWasmUrl }))
+      .catch((error: unknown) => {
+        resetCompilerState();
+        throw error;
+      });
   }
 
   await initialisationPromise;

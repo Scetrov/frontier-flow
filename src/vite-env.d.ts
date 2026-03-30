@@ -3,6 +3,7 @@
 declare const __APP_VERSION__: string;
 
 interface ImportMetaEnv {
+	readonly VITE_DEBUG?: string;
 	readonly VITE_WALRUS_UPLOAD_RELAY_URL?: string;
 	readonly VITE_WALRUS_UPLOAD_RELAY_TIP_MAX?: string;
 }

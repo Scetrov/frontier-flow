@@ -11,10 +11,12 @@ import {
 
 const mockInitMoveCompiler = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
 const mockBuildMovePackage = vi.fn();
+const mockFetchPackageFromGitHub = vi.fn();
 
 vi.mock("@zktx.io/sui-move-builder/lite", () => ({
   initMoveCompiler: mockInitMoveCompiler,
   buildMovePackage: mockBuildMovePackage,
+  fetchPackageFromGitHub: mockFetchPackageFromGitHub,
 }));
 
 import {
@@ -248,6 +250,52 @@ describe("compileMove", () => {
     expect(secondResult.success).toBe(true);
     expect(mockInitMoveCompiler).toHaveBeenCalledTimes(2);
     expect(mockBuildMovePackage).toHaveBeenCalledTimes(1);
+  });
+
+  it("suppresses verbose move builder logs by default", async () => {
+    const artifact = createArtifact();
+    const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    mockBuildMovePackage.mockImplementationOnce(() => {
+      console.log("[Compile] pkgId=Sui, pkgName=Sui, hasFiles=true, manifestName=Sui");
+      console.log("[V3 Files] Storing: Sui (manifest: Sui)");
+
+      return {
+        modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
+        dependencies: graphToMoveDependencyFixture,
+      };
+    });
+
+    try {
+      const result = await compileMove(artifact);
+
+      expect(result.success).toBe(true);
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    } finally {
+      consoleLogSpy.mockRestore();
+    }
+  });
+
+  it("preserves verbose move builder logs when debug logging is enabled", async () => {
+    const artifact = createArtifact();
+    const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    window.history.replaceState({}, "", "/?DEBUG=true");
+    mockBuildMovePackage.mockImplementationOnce(() => {
+      console.log("[Compile] pkgId=Sui, pkgName=Sui, hasFiles=true, manifestName=Sui");
+
+      return {
+        modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
+        dependencies: graphToMoveDependencyFixture,
+      };
+    });
+
+    try {
+      const result = await compileMove(artifact);
+
+      expect(result.success).toBe(true);
+      expect(consoleLogSpy).toHaveBeenCalledWith("[Compile] pkgId=Sui, pkgName=Sui, hasFiles=true, manifestName=Sui");
+    } finally {
+      consoleLogSpy.mockRestore();
+    }
   });
 
   it("fails closed when the bundled WASM integrity verification fails", async () => {

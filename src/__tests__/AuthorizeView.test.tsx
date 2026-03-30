@@ -8,6 +8,7 @@ import type {
 } from "@mysten/dapp-kit";
 
 import type { AuthorizationProgressState, StoredDeploymentState, TurretInfo } from "../types/authorization";
+import type { SimulationReferenceDataPayload } from "../types/turretSimulation";
 import AuthorizeView from "../components/AuthorizeView";
 import type { PrimaryView } from "../components/Header";
 import type { UseAuthorizationResult } from "../hooks/useAuthorization";
@@ -27,8 +28,9 @@ const mockUseCurrentWallet = vi.fn<() => CurrentWallet>();
 const mockUseSuiClient = vi.fn<() => SuiClient>();
 const mockUseTurretList = vi.fn<(input: unknown) => UseTurretListResult>();
 const mockUseAuthorization = vi.fn<(input: unknown) => UseAuthorizationResult>();
-const { mockFetchSimulationOwnerCharacterId } = vi.hoisted(() => ({
+const { mockFetchSimulationOwnerCharacterId, mockLoadSimulationReferenceData } = vi.hoisted(() => ({
   mockFetchSimulationOwnerCharacterId: vi.fn<(input: FetchOwnerCapInput) => Promise<string>>(),
+  mockLoadSimulationReferenceData: vi.fn<(input: unknown) => Promise<SimulationReferenceDataPayload>>(),
 }));
 
 vi.mock("@mysten/dapp-kit", () => ({
@@ -51,6 +53,15 @@ vi.mock("../utils/authorizationTransaction", async () => {
   return {
     ...actual,
     fetchSimulationOwnerCharacterId: (input: FetchOwnerCapInput) => mockFetchSimulationOwnerCharacterId(input),
+  };
+});
+
+vi.mock("../utils/turretSimulationReferenceData", async () => {
+  const actual = await vi.importActual<typeof import("../utils/turretSimulationReferenceData")>("../utils/turretSimulationReferenceData");
+
+  return {
+    ...actual,
+    loadSimulationReferenceData: (input: unknown) => mockLoadSimulationReferenceData(input),
   };
 });
 
@@ -185,9 +196,53 @@ beforeEach(() => {
   mockUseAuthorization.mockReturnValue(createAuthorizationResult());
   mockFetchSimulationOwnerCharacterId.mockReset();
   mockFetchSimulationOwnerCharacterId.mockResolvedValue("0xownercharacter");
+  mockLoadSimulationReferenceData.mockReset();
+  mockLoadSimulationReferenceData.mockResolvedValue({
+    characterOptions: [{
+      characterId: 42,
+      characterTribe: 7,
+      description: "Tribe 7",
+      label: "Character 42",
+      sourceObjectId: "0xprofile",
+    }],
+    errorMessages: [],
+    shipOptions: [{
+      description: "Frigate · Group 25",
+      groupId: "25",
+      label: "USV",
+      typeId: "900002",
+    }],
+    tribeOptions: [{
+      description: "SEP",
+      label: "Sepharim",
+      value: 7,
+    }],
+  });
 });
 
 describe("AuthorizeView", () => {
+  it("shows relative deployment age in the contract dropdown", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-24T02:00:00.000Z"));
+
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: [],
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    try {
+      render(<AuthorizeView deploymentState={deploymentState} />);
+
+      expect(screen.getByRole("option", { name: "Starter Contract · starter_contract (deployed 1d 2h ago)" })).toBeVisible();
+      expect(screen.getAllByText("Starter Contract · starter_contract (deployed 1d 2h ago)").length).toBeGreaterThan(0);
+      expect(screen.getByText("0xfeedface on testnet:stillness")).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("renders a loading state while turrets are being fetched", () => {
     mockUseTurretList.mockReturnValue({
       status: "loading",
@@ -270,14 +325,7 @@ describe("AuthorizeView", () => {
     expect(screen.getByRole("heading", { name: "Simulate Turrets" })).toBeVisible();
     expect(screen.getAllByText(deploymentState.packageId).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "Authorize Selected" })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getAllByRole("button", { name: "Back to Authorize" })[0]);
-
-    const selectableTurret = screen.getByRole("checkbox", { name: /Perimeter Lancer/i });
-
-    expect(screen.getByRole("heading", { name: "Authorize Turrets" })).toBeVisible();
-    expect(selectableTurret).not.toBeChecked();
-    expect(screen.getByRole("button", { name: "Authorize Selected" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Back to Authorize" })).not.toBeInTheDocument();
   });
 
   it("hydrates the simulation modal with the turret owner character lookup", async () => {
@@ -301,7 +349,15 @@ describe("AuthorizeView", () => {
       turretObjectId: "0x111",
       walletAddress: connectedWalletAddress,
     }));
-    expect(screen.getByLabelText("HP Ratio")).toHaveValue("100");
+    await waitFor(() => {
+      expect(screen.getByLabelText("Type Id")).toHaveValue("900002");
+    });
+
+    expect(screen.getByLabelText("Group Id")).toHaveValue("25");
+    expect(screen.getByLabelText("Character Id")).toHaveValue("42");
+    expect(screen.getByLabelText("Character Tribe")).toHaveValue("7");
+    expect(screen.getByLabelText("Item Id")).toHaveValue("10000002887");
+    expect(screen.getByLabelText("HP Ratio")).toHaveValue(100);
   });
 
   it("runs a simulation and renders decoded priority results", async () => {
@@ -323,14 +379,10 @@ describe("AuthorizeView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
 
     await waitFor(() => {
-      expect(screen.getByText("0xownercharacter")).toBeVisible();
+      expect(screen.getByLabelText("Character Id")).toHaveValue("42");
     });
 
     fireEvent.change(screen.getByLabelText("Item Id"), { target: { value: "900001" } });
-    fireEvent.change(screen.getByLabelText("Type Id"), { target: { value: "900002" } });
-    fireEvent.change(screen.getByLabelText("Group Id"), { target: { value: "25" } });
-    fireEvent.change(screen.getByLabelText("Character Id"), { target: { value: "42" } });
-    fireEvent.change(screen.getByLabelText("Character Tribe"), { target: { value: "7" } });
     fireEvent.click(screen.getByRole("button", { name: "Run Simulation" }));
 
     await waitFor(() => {
@@ -357,14 +409,10 @@ describe("AuthorizeView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
 
     await waitFor(() => {
-      expect(screen.getByText("0xownercharacter")).toBeVisible();
+      expect(screen.getByLabelText("Character Id")).toHaveValue("42");
     });
 
     fireEvent.change(screen.getByLabelText("Item Id"), { target: { value: "900001" } });
-    fireEvent.change(screen.getByLabelText("Type Id"), { target: { value: "900002" } });
-    fireEvent.change(screen.getByLabelText("Group Id"), { target: { value: "25" } });
-    fireEvent.change(screen.getByLabelText("Character Id"), { target: { value: "42" } });
-    fireEvent.change(screen.getByLabelText("Character Tribe"), { target: { value: "7" } });
     fireEvent.click(screen.getByRole("button", { name: "Run Simulation" }));
 
     await waitFor(() => {
@@ -404,6 +452,23 @@ describe("AuthorizeView", () => {
 
     expect(screen.getByText("Simulation Context Required")).toBeVisible();
     expect(screen.getByRole("button", { name: "Open Authorize" })).toBeVisible();
+  });
+
+  it("uses the dedicated simulate scroll container when the simulate tab is active", () => {
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: turretFixtures,
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AuthorizeViewHarness deploymentState={deploymentState} initialView="simulate" />);
+
+    const simulateHeading = screen.getByRole("heading", { name: "Simulate Turrets" });
+    const simulateViewRoot = simulateHeading.closest(".ff-authorize-view");
+
+    expect(simulateViewRoot).not.toBeNull();
+    expect(simulateViewRoot).toHaveClass("ff-authorize-view--simulate");
   });
 
   it("passes the connected wallet and deployment state into the turret hooks", () => {

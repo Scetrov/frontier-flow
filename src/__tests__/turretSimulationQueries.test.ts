@@ -15,11 +15,30 @@ describe("turretSimulationQueries", () => {
                 address: "0xprofile",
                 contents: {
                   json: {
-                    character_id: 42,
-                    tribe_id: 7,
+                    character_id: "0xcafe42",
                   },
                 },
               }],
+            },
+          },
+        },
+      }))
+      .mockResolvedValueOnce(createJsonResponse({
+        data: {
+          object: {
+            asMoveObject: {
+              contents: {
+                json: {
+                  key: {
+                    item_id: 42,
+                    tenant: "utopia",
+                  },
+                  tribe_id: 7,
+                  metadata: {
+                    name: "Pilot Prime",
+                  },
+                },
+              },
             },
           },
         },
@@ -37,14 +56,67 @@ describe("turretSimulationQueries", () => {
       refreshedTurret: null,
       suggestions: [{
         field: "characterId",
-        label: "Character 42",
+        label: "Pilot Prime (42)",
         value: "42",
-        description: "Tribe 7",
+        description: "Name Pilot Prime · Tenant utopia · Tribe 7",
         derivedFields: {
           characterId: 42,
           characterTribe: 7,
         },
-        sourceObjectId: "0xprofile",
+        sourceObjectId: "0xcafe42",
+      }],
+    });
+  });
+
+  it("searches shared character objects by typed name for character id suggestions", async () => {
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(createJsonResponse({
+        data: {
+          objects: {
+            pageInfo: {
+              hasNextPage: false,
+              endCursor: null,
+            },
+            nodes: [{
+              address: "0xcafe42",
+              asMoveObject: {
+                contents: {
+                  json: {
+                    key: {
+                      item_id: 42,
+                    },
+                    tribe_id: 7,
+                    metadata: {
+                      name: "Pilot Prime",
+                    },
+                  },
+                },
+              },
+            }],
+          },
+        },
+      }));
+
+    await expect(fetchSimulationSuggestions({
+      deploymentState: simulationDeploymentState,
+      turretObjectId: "0x111",
+      walletAddress: "0x9999",
+      ownerCharacterId: null,
+      query: "pilot",
+      field: "characterId",
+      fetchFn,
+    })).resolves.toEqual({
+      refreshedTurret: null,
+      suggestions: [{
+        field: "characterId",
+        label: "Pilot Prime (42)",
+        value: "42",
+        description: "Name Pilot Prime · Tribe 7",
+        derivedFields: {
+          characterId: 42,
+          characterTribe: 7,
+        },
+        sourceObjectId: "0xcafe42",
       }],
     });
   });
