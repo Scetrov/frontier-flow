@@ -8,6 +8,7 @@ const expectedMessages = [
   "Drag from a socket to a matching socket to connect two nodes",
   "You can save or load a previous flow from the Browser Storage, or export YAML to share",
   "Once your flow is complete, move on to review the code and Deploy from here",
+  "Connect your wallet to deploy the extension and authorize it on your turret.",
 ] as const;
 
 afterEach(() => {
@@ -15,16 +16,17 @@ afterEach(() => {
 });
 
 describe("tutorial step definitions", () => {
-  it("defines the expected five tutorial steps in order", () => {
-    expect(TUTORIAL_STEPS).toHaveLength(5);
+  it("defines the expected tutorial steps in order", () => {
+    expect(TUTORIAL_STEPS).toHaveLength(6);
     expect(TUTORIAL_STEPS.map((step) => step.id)).toEqual([
       "network-selector",
       "toolbox",
       "socket",
       "save-load",
       "view-navigation",
+      "wallet-connect",
     ]);
-    expect(TUTORIAL_STEPS.map((step) => step.ordinal)).toEqual([1, 2, 3, 4, 5]);
+    expect(TUTORIAL_STEPS.map((step) => step.ordinal)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(TUTORIAL_STEPS.map((step) => step.message)).toEqual(expectedMessages);
   });
 
@@ -35,6 +37,7 @@ describe("tutorial step definitions", () => {
       "bottom",
       "right",
       "bottom",
+      "left",
     ]);
     expect(TUTORIAL_STEPS.map((step) => step.requiresDrawerOpen)).toEqual([
       null,
@@ -42,11 +45,13 @@ describe("tutorial step definitions", () => {
       null,
       "contract-panel",
       null,
+      null,
     ]);
     expect(TUTORIAL_STEPS.map((step) => step.requiresDemoNode)).toEqual([
       false,
       false,
       true,
+      false,
       false,
       false,
     ]);
@@ -78,11 +83,16 @@ describe("tutorial step definitions", () => {
     navigation.className = "ff-header__nav";
     document.body.append(navigation);
 
+    const walletConnect = document.createElement("button");
+    walletConnect.setAttribute("data-ff-wallet-connect", "true");
+    document.body.append(walletConnect);
+
     expect(TUTORIAL_STEPS[0].resolveTarget()).toBe(networkSelector);
     expect(TUTORIAL_STEPS[1].resolveTarget()).toBe(toolbox);
     expect(TUTORIAL_STEPS[2].resolveTarget()).toBe(genericSocket);
     expect(TUTORIAL_STEPS[3].resolveTarget()).toBe(saveLoad);
     expect(TUTORIAL_STEPS[4].resolveTarget()).toBe(navigation);
+    expect(TUTORIAL_STEPS[5].resolveTarget()).toBe(walletConnect);
   });
 
   it("ignores sockets that are rendered outside the React Flow viewport", () => {

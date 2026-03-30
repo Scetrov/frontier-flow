@@ -6,7 +6,8 @@ export type TutorialStepId =
   | "toolbox"
   | "socket"
   | "save-load"
-  | "view-navigation";
+  | "view-navigation"
+  | "wallet-connect";
 
 /**
  * Drawers that can be programmatically opened before measuring a tutorial target.

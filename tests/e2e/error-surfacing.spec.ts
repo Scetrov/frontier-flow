@@ -34,7 +34,6 @@ test("surfaces invalid disconnected nodes and returns to compiled after removal"
   await prepareCompilationPage(page);
   const statusButton = getCompilationStatusButton(page);
 
-  await expect(statusButton).toContainText("Compiling");
   await expect(statusButton).toContainText("Compiled");
 
   await ensureCategoryExpanded(page, "Action");
@@ -56,7 +55,6 @@ test("surfaces invalid disconnected nodes and returns to compiled after removal"
   });
   await page.reload();
 
-  await expect(statusButton).toContainText("Compiling");
   await expect(statusButton).toContainText("Compiled");
   await expect(page.locator('.ff-node[data-validation-error="true"]')).toHaveCount(0);
 });

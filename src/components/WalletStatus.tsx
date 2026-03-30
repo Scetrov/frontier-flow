@@ -21,6 +21,7 @@ interface WalletActionButtonProps {
   readonly icon: React.ReactNode;
   readonly label: string;
   readonly className: string;
+  readonly tutorialTarget?: "wallet-connect";
   readonly disabled?: boolean;
   readonly onClick?: () => void;
 }
@@ -43,9 +44,16 @@ function formatBalance(balanceMist: string | null | undefined): string {
   return `${trimmed} SUI`;
 }
 
-function WalletActionButton({ className, disabled = false, icon, label, onClick }: WalletActionButtonProps) {
+function WalletActionButton({ className, disabled = false, icon, label, onClick, tutorialTarget }: WalletActionButtonProps) {
   return (
-    <button aria-label={label} className={className} disabled={disabled} onClick={onClick} type="button">
+    <button
+      aria-label={label}
+      className={className}
+      data-ff-wallet-connect={tutorialTarget === "wallet-connect" ? "true" : undefined}
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
       <span aria-hidden="true" className="ff-header__button-icon">{icon}</span>
       <span className="ff-header__button-label">{label}</span>
     </button>
@@ -124,6 +132,7 @@ function WalletHelpStatus({
         icon={<ConservativeConnectIcon />}
         label={showWalletHelp ? "Hide Help" : "Connect"}
         onClick={onToggleHelp}
+        tutorialTarget={showWalletHelp ? undefined : "wallet-connect"}
       />
       {showWalletHelp ? (
         <div className="absolute right-4 top-full z-50 mt-2 max-w-[18rem] border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.95)] p-3 shadow-xl backdrop-blur-md">
@@ -330,6 +339,7 @@ function WalletStatus({
           className={primaryButtonClassName}
           icon={<ConservativeConnectIcon />}
           label="Connect"
+          tutorialTarget="wallet-connect"
         />
       }
     />

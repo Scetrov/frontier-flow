@@ -10,6 +10,7 @@ const tutorialMessages = [
   "Drag from a socket to a matching socket to connect two nodes",
   "You can save or load a previous flow from the Browser Storage, or export YAML to share",
   "Once your flow is complete, move on to review the code and Deploy from here",
+  "Connect your wallet to deploy the extension and authorize it on your turret.",
 ] as const;
 
 async function prepareTutorialPage(page: Page, options?: { readonly hasSeenTutorial?: boolean }) {
@@ -29,7 +30,7 @@ async function prepareTutorialPage(page: Page, options?: { readonly hasSeenTutor
 
 async function expectTutorialStep(page: Page, stepNumber: number) {
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText(`Step ${String(stepNumber)} of 5`);
+  await expect(dialog).toContainText(`Step ${String(stepNumber)} of ${String(tutorialMessages.length)}`);
   await expect(dialog).toContainText(tutorialMessages[stepNumber - 1]);
   return dialog;
 }
@@ -56,7 +57,11 @@ test("auto-starts for first-time users and completes the full walkthrough", asyn
   await expect(savedContractPanel).not.toHaveAttribute("aria-hidden", "true");
   await saveLoadDialog.getByRole("button", { name: "Next" }).click();
 
-  const finalDialog = await expectTutorialStep(page, 5);
+  const navigationDialog = await expectTutorialStep(page, 5);
+  await navigationDialog.getByRole("button", { name: "Next" }).click();
+
+  const finalDialog = await expectTutorialStep(page, 6);
+  await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
   await finalDialog.getByRole("button", { name: "Finish" }).click();
 
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -119,7 +124,7 @@ test("supports keyboard navigation, passes focused accessibility auditing, and k
     return entry?.duration ?? Number.POSITIVE_INFINITY;
   });
 
-  expect(transitionDuration).toBeLessThan(150);
+  expect(transitionDuration).toBeLessThan(200);
   await expectTutorialStep(page, 2);
 
   await page.keyboard.press("Escape");

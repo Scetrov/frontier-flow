@@ -68,6 +68,15 @@ export const TUTORIAL_STEPS: readonly TutorialStepDefinition[] = [
     requiresDrawerOpen: null,
     requiresDemoNode: false,
   },
+  {
+    id: "wallet-connect",
+    ordinal: 6,
+    message: "Connect your wallet to deploy the extension and authorize it on your turret.",
+    tooltipPosition: "left",
+    resolveTarget: () => queryTarget('[data-ff-wallet-connect="true"]'),
+    requiresDrawerOpen: null,
+    requiresDemoNode: false,
+  },
 ] as const;
 
 export const TUTORIAL_DEMO_NODE_ID = "tutorial-demo-node";
