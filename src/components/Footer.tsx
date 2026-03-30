@@ -84,6 +84,12 @@ function Footer({
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <a
+            className="font-heading text-[0.72rem] uppercase tracking-[0.24em] text-[var(--cream-white)] transition-colors hover:text-[var(--brand-orange)]"
+            href="/colophon"
+          >
+            colophon
+          </a>
+          <a
             aria-label="GitHub Repository"
             className="inline-flex items-center justify-center text-[var(--cream-white)] transition-colors hover:text-[var(--brand-orange)]"
             href={repositoryUrl}

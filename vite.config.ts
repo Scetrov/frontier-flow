@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 
 import react from "@vitejs/plugin-react";
@@ -6,6 +7,21 @@ import { defineConfig } from "vitest/config";
 const appVersion = process.env.npm_package_version ?? "0.0.0";
 const basePath = process.env.VITE_BASE_PATH ?? "/";
 const appPort = 5179;
+const packageJson = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
+  readonly dependencies?: Record<string, string>;
+  readonly devDependencies?: Record<string, string>;
+};
+
+function getSortedPackages(packages: Record<string, string> | undefined) {
+  return Object.entries(packages ?? {})
+    .sort(([leftName], [rightName]) => leftName.localeCompare(rightName))
+    .map(([name, version]) => ({ name, version }));
+}
+
+const projectPackages = {
+  dependencies: getSortedPackages(packageJson.dependencies),
+  devDependencies: getSortedPackages(packageJson.devDependencies),
+};
 
 export default defineConfig({
   base: basePath,
@@ -57,6 +73,10 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
+    __PROJECT_PACKAGES__: JSON.stringify({
+      ...projectPackages,
+      totalCount: projectPackages.dependencies.length + projectPackages.devDependencies.length,
+    }),
   },
   test: {
     globals: true,

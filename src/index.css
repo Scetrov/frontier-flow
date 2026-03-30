@@ -2986,6 +2986,245 @@ body,
   color: var(--brand-orange);
 }
 
+.ff-colophon {
+  min-height: 100dvh;
+  padding: 3rem 1.25rem 4rem;
+  background:
+    radial-gradient(circle at top right, rgba(84, 160, 255, 0.2), transparent 28%),
+    radial-gradient(circle at top left, rgba(255, 71, 0, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(12, 8, 8, 0.98) 0%, rgba(26, 10, 10, 0.98) 100%);
+}
+
+.ff-colophon__hero,
+.ff-colophon__section {
+  width: min(78rem, 100%);
+  margin: 0 auto;
+}
+
+.ff-colophon__hero {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(250, 250, 229, 0.12);
+  background:
+    linear-gradient(135deg, rgba(255, 71, 0, 0.08), transparent 40%),
+    rgba(11, 11, 11, 0.72);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.ff-colophon__hero-copy {
+  display: grid;
+  gap: 1rem;
+}
+
+.ff-colophon__eyebrow,
+.ff-colophon__section-kicker,
+.ff-colophon__package-count {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+.ff-colophon__title,
+.ff-colophon__section-title,
+.ff-colophon__package-title {
+  margin: 0;
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  text-transform: uppercase;
+  color: var(--cream-white);
+}
+
+.ff-colophon__title {
+  max-width: 14ch;
+  font-size: clamp(2.4rem, 7vw, 4.8rem);
+  line-height: 0.95;
+  letter-spacing: 0.08em;
+}
+
+.ff-colophon__lede,
+.ff-colophon__section-copy,
+.ff-colophon__package-description,
+.ff-colophon__meta {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--text-secondary);
+}
+
+.ff-colophon__hero-actions {
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+}
+
+.ff-colophon__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--ui-border-dark);
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.ff-colophon__link--primary {
+  color: var(--cream-white);
+  background: rgba(255, 71, 0, 0.12);
+}
+
+.ff-colophon__link:hover,
+.ff-colophon__link:focus-visible {
+  border-color: var(--brand-orange);
+  color: var(--brand-orange);
+  background: rgba(255, 71, 0, 0.08);
+}
+
+.ff-colophon__section {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(250, 250, 229, 0.1);
+  background: rgba(14, 10, 10, 0.78);
+}
+
+.ff-colophon__section-header {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ff-colophon__section-header--wide {
+  align-items: end;
+}
+
+.ff-colophon__section-title {
+  margin-top: 0.35rem;
+  font-size: clamp(1.3rem, 4vw, 2rem);
+  letter-spacing: 0.1em;
+}
+
+.ff-colophon__thanks-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.9rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ff-colophon__thanks-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 4rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 71, 0, 0.06), rgba(255, 255, 255, 0.02));
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cream-white);
+}
+
+.ff-colophon__thanks-mark {
+  color: var(--brand-orange);
+}
+
+.ff-colophon__package-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.ff-colophon__package-panel {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 7, 7, 0.72);
+}
+
+.ff-colophon__package-panel-header {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ff-colophon__package-title {
+  margin-top: 0.3rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.14em;
+}
+
+.ff-colophon__package-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ff-colophon__package-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ff-colophon__package-name,
+.ff-colophon__package-version {
+  font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
+}
+
+.ff-colophon__package-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--cream-white);
+}
+
+.ff-colophon__package-version {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+@media (min-width: 900px) {
+  .ff-colophon__hero {
+    grid-template-columns: minmax(0, 1.8fr) minmax(16rem, 0.9fr);
+    align-items: end;
+  }
+
+  .ff-colophon__section-header--wide {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .ff-colophon {
+    padding-inline: 1rem;
+  }
+
+  .ff-colophon__hero,
+  .ff-colophon__section {
+    padding: 1.1rem;
+  }
+
+  .ff-colophon__package-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 @media (max-width: 768px) {
   .ff-contract-panel {
     width: min(24rem, 88vw);

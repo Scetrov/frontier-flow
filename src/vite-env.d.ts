@@ -1,6 +1,17 @@
 /// <reference types="vite/client" />
 
 declare const __APP_VERSION__: string;
+declare const __PROJECT_PACKAGES__: {
+	readonly dependencies: readonly {
+		readonly name: string;
+		readonly version: string;
+	}[];
+	readonly devDependencies: readonly {
+		readonly name: string;
+		readonly version: string;
+	}[];
+	readonly totalCount: number;
+};
 
 interface ImportMetaEnv {
 	readonly VITE_DEBUG?: string;

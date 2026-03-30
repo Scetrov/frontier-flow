@@ -19,6 +19,7 @@ describe("Footer", () => {
       "href",
       "https://scetrov.live",
     );
+    expect(screen.getByRole("link", { name: "colophon" })).toHaveAttribute("href", "/colophon");
   });
 
   it("surfaces artifact-linked diagnostics through the footer status panel", () => {

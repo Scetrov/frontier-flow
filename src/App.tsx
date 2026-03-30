@@ -31,6 +31,7 @@ const CanvasWorkspace = lazy(() => import("./components/CanvasWorkspace"));
 const DeployWorkflowView = lazy(() => import("./components/DeployWorkflowView"));
 const KitchenSinkPage = lazy(() => import("./components/KitchenSinkPage"));
 const IconPreviewPage = lazy(() => import("./components/IconPreviewPage"));
+const ColophonPage = lazy(() => import("./components/ColophonPage"));
 const MoveSourcePanel = lazy(() => import("./components/MoveSourcePanel"));
 const Sidebar = lazy(() => import("./components/Sidebar"));
 const TutorialOverlay = lazy(() => import("./components/TutorialOverlay"));
@@ -829,11 +830,20 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
 function App() {
   const pathname = typeof window === "undefined" ? "/" : window.location.pathname;
   const isIconPreviewRoute = pathname === "/icon-preview" || pathname.startsWith("/icon-preview/");
+  const isColophonRoute = pathname === "/colophon";
 
   if (isIconPreviewRoute) {
     return (
       <Suspense fallback={<main className="flex min-h-[100dvh]" aria-label="Icon preview loading" />}>
         <IconPreviewPage />
+      </Suspense>
+    );
+  }
+
+  if (isColophonRoute) {
+    return (
+      <Suspense fallback={<main className="flex min-h-[100dvh]" aria-label="Colophon loading" />}>
+        <ColophonPage />
       </Suspense>
     );
   }
