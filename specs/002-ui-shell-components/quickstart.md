@@ -43,7 +43,7 @@ bun run build
 
 ### Visual Check
 
-1. Run `bun dev` and open `http://localhost:5173` in a browser.
+1. Run `bun dev` and open `http://localhost:5179` in a browser.
 2. Confirm the browser tab shows the Frontier Flow favicon and title.
 3. Verify the Header is visible at the top with logo and "Frontier Flow" text.
 4. Verify the Sidebar is visible on the right listing node definitions.

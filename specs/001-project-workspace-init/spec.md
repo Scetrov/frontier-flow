@@ -13,13 +13,13 @@ A developer clones the repository for the first time and needs to get a working 
 
 **Why this priority**: Without a functioning local dev environment no other work can begin. This is the foundational prerequisite for everything else in the project.
 
-**Independent Test**: Clone the repository, run `bun install` then `bun dev`, and confirm the Vite dev server starts and serves a page at `http://localhost:5173` that renders without console errors.
+**Independent Test**: Clone the repository, run `bun install` then `bun dev`, and confirm the Vite dev server starts and serves a page at `http://localhost:5179` that renders without console errors.
 
 **Acceptance Scenarios**:
 
 1. **Given** a fresh clone of the repository, **When** the developer runs `bun install`, **Then** all dependencies resolve successfully and a `bun.lockb` lock file is present.
-2. **Given** dependencies are installed, **When** the developer runs `bun dev`, **Then** the Vite development server starts on port 5173 and serves the application entry point.
-3. **Given** the dev server is running, **When** the developer opens `http://localhost:5173` in a browser, **Then** a blank React application shell renders with no TypeScript or runtime errors in the console.
+2. **Given** dependencies are installed, **When** the developer runs `bun dev`, **Then** the Vite development server starts on port 5179 and serves the application entry point.
+3. **Given** the dev server is running, **When** the developer opens `http://localhost:5179` in a browser, **Then** a blank React application shell renders with no TypeScript or runtime errors in the console.
 4. **Given** the project is initialised, **When** the developer runs `bun run build`, **Then** TypeScript type-checking passes (`tsc -b`) and Vite produces a production build in the `dist/` directory.
 5. **Given** the project is initialised, **When** the developer runs `bun run lint`, **Then** ESLint runs against the codebase with zero violations on the scaffolded files.
 
@@ -31,13 +31,13 @@ A developer who prefers containerised environments (or needs environment parity)
 
 **Why this priority**: Docker-based development is a secondary workflow. It depends on the project files being properly scaffolded first (US1) but enables consistent environments across the team.
 
-**Independent Test**: Run `docker compose up` from the project root, wait for the container to start, and verify the application is accessible at `http://localhost:5173`.
+**Independent Test**: Run `docker compose up` from the project root, wait for the container to start, and verify the application is accessible at `http://localhost:5179`.
 
 **Acceptance Scenarios**:
 
 1. **Given** Docker and Docker Compose are installed on the host, **When** the developer runs `docker compose up`, **Then** the container builds, installs dependencies, and starts the Vite dev server.
 2. **Given** the Docker dev container is running, **When** the developer edits a source file on the host, **Then** the change is reflected live in the browser via Vite HMR (hot module replacement) because the source directory is bind-mounted.
-3. **Given** the Docker dev container is running, **When** the developer opens `http://localhost:5173`, **Then** the application renders identically to the local Bun-based workflow.
+3. **Given** the Docker dev container is running, **When** the developer opens `http://localhost:5179`, **Then** the application renders identically to the local Bun-based workflow.
 
 ---
 
@@ -60,7 +60,7 @@ A new contributor opens the project and finds directories and configuration file
 ### Edge Cases
 
 - What happens when the developer has a different version of Bun installed? The project should specify a minimum Bun version in `package.json` engines field.
-- What happens when port 5173 is already occupied on the host? Vite should fall back to the next available port and display the actual URL in the terminal output.
+- What happens when port 5179 is already occupied on the host? Vite should fall back to the next available port and display the actual URL in the terminal output.
 - What happens when Docker is not installed and the developer runs `docker compose up`? A clear native error message is shown; the project does not depend on Docker for the primary workflow.
 - What happens when the developer runs `bun run build` before `bun install`? The build script should fail with a clear dependency-not-found error rather than a cryptic crash.
 
@@ -76,8 +76,8 @@ A new contributor opens the project and finds directories and configuration file
 - **FR-006**: `package.json` MUST define the following scripts: `"dev": "vite"`, `"build": "tsc -b && vite build"`, `"lint": "eslint ."`, `"preview": "vite preview"`.
 - **FR-007**: A `vite.config.ts` file MUST exist at the project root, configured with the `@vitejs/plugin-react` plugin.
 - **FR-008**: Tailwind CSS v4 MUST be configured via `postcss.config.js` (using `@tailwindcss/postcss`) and a base `src/index.css` file that imports Tailwind.
-- **FR-009**: A `Dockerfile.dev` MUST be provided, based on the `oven/bun:latest` image, exposing port 5173 and running `bun dev` as its default command.
-- **FR-010**: A `docker-compose.yml` MUST be provided that builds from `Dockerfile.dev`, mounts the local project directory into the container, and maps host port 5173 to container port 5173.
+- **FR-009**: A `Dockerfile.dev` MUST be provided, based on the `oven/bun:latest` image, exposing port 5179 and running `bun dev` as its default command.
+- **FR-010**: A `docker-compose.yml` MUST be provided that builds from `Dockerfile.dev`, mounts the local project directory into the container, and maps host port 5179 to container port 5179.
 - **FR-011**: The source directory MUST contain empty scaffold directories: `src/components/`, `src/nodes/`, and `src/utils/` to match the project's architectural layout.
 - **FR-012**: An `index.html` entry file MUST be present at the project root, referencing the application's main TypeScript entry point (`src/main.tsx`).
 - **FR-013**: A minimal `src/main.tsx` and `src/App.tsx` MUST be provided so that the development server renders a blank application shell without errors.
@@ -104,6 +104,6 @@ A new contributor opens the project and finds directories and configuration file
 - **SC-001**: A developer can go from a fresh clone to a running dev server in under 2 minutes (install + start time combined).
 - **SC-002**: `bun run build` completes successfully with zero TypeScript errors on the scaffolded codebase.
 - **SC-003**: `bun run lint` passes with zero violations on all scaffolded files.
-- **SC-004**: `docker compose up` starts the containerised dev server and the application is accessible at `http://localhost:5173` within 60 seconds of the command being issued.
+- **SC-004**: `docker compose up` starts the containerised dev server and the application is accessible at `http://localhost:5179` within 60 seconds of the command being issued.
 - **SC-005**: The `src/` directory tree matches the layout documented in the HLD section 3 (Project Structure) for the directories and files covered by this feature.
 - **SC-006**: All installed dependency versions satisfy the exact version constraints specified in the feature requirements (FR-004, FR-005).

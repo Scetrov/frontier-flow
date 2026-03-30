@@ -32,9 +32,9 @@ Append these query parameters to the local app URL when you want deterministic d
 Example URLs:
 
 ```text
-http://localhost:5173/?ff_mock_wallet=connected
-http://localhost:5173/?ff_mock_wallet=disconnected&ff_mock_invalid_package_refs=1
-http://localhost:5173/?ff_mock_wallet=connected&ff_mock_deploy_reject=1&ff_mock_deploy_stage_delay_ms=600
+http://localhost:5179/?ff_mock_wallet=connected
+http://localhost:5179/?ff_mock_wallet=disconnected&ff_mock_invalid_package_refs=1
+http://localhost:5179/?ff_mock_wallet=connected&ff_mock_deploy_reject=1&ff_mock_deploy_stage_delay_ms=600
 ```
 
 ## Happy-path validation

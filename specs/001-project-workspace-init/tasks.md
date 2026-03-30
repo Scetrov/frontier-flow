@@ -40,9 +40,9 @@
 
 ## Phase 3: User Story 1 — Developer Bootstraps the Project Locally (Priority: P1) 🎯 MVP
 
-**Goal**: A developer can clone the repo, run `bun install` then `bun dev`, and see a blank application shell at localhost:5173 with zero errors. Build and lint also pass.
+**Goal**: A developer can clone the repo, run `bun install` then `bun dev`, and see a blank application shell at localhost:5179 with zero errors. Build and lint also pass.
 
-**Independent Test**: Clone the repository, run `bun install` then `bun dev`, and confirm the Vite dev server starts and serves a page at `http://localhost:5173` that renders without console errors.
+**Independent Test**: Clone the repository, run `bun install` then `bun dev`, and confirm the Vite dev server starts and serves a page at `http://localhost:5179` that renders without console errors.
 
 ### Implementation for User Story 1
 
@@ -55,7 +55,7 @@
 - [x] T012 [P] [US1] Create src/App.tsx root component shell that renders a minimal placeholder div in src/App.tsx
 - [x] T013 [P] [US1] Create src/main.tsx that imports React, ReactDOM, App, and index.css, renders App into document.getElementById root in src/main.tsx
 - [x] T014 [US1] Install all production dependencies (react, react-dom, @xyflow/react, lucide-react, dagre, react-syntax-highlighter, @types/dagre, @types/react-syntax-highlighter) and dev dependencies (rolldown-vite, typescript, tailwindcss, @tailwindcss/postcss, postcss, autoprefixer, eslint, @eslint/js, globals, typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh, eslint-plugin-jsx-a11y, @vitejs/plugin-react, @types/react, @types/react-dom) via bun install
-- [x] T015 [US1] Verify bun dev starts Vite dev server on port 5173, bun run build produces dist/ with zero TS errors, and bun run lint passes with zero violations
+- [x] T015 [US1] Verify bun dev starts Vite dev server on port 5179, bun run build produces dist/ with zero TS errors, and bun run lint passes with zero violations
 
 **Checkpoint**: User Story 1 fully functional — local development workflow works end to end (SC-001, SC-002, SC-003)
 
@@ -63,14 +63,14 @@
 
 ## Phase 4: User Story 2 — Developer Builds and Runs via Docker (Priority: P2)
 
-**Goal**: A developer can run `docker compose up` and access the same application at localhost:5173 without installing Bun locally.
+**Goal**: A developer can run `docker compose up` and access the same application at localhost:5179 without installing Bun locally.
 
-**Independent Test**: Run `docker compose up` from the project root, wait for the container to start, and verify the application is accessible at `http://localhost:5173`.
+**Independent Test**: Run `docker compose up` from the project root, wait for the container to start, and verify the application is accessible at `http://localhost:5179`.
 
 ### Implementation for User Story 2
 
-- [x] T016 [P] [US2] Create Dockerfile.dev based on oven/bun:latest with WORKDIR /app, COPY package.json and bun.lockb, RUN bun install, COPY source, EXPOSE 5173, CMD bun dev --host in Dockerfile.dev
-- [x] T017 [US2] Create docker-compose.yml with app service building from Dockerfile.dev, port mapping 5173:5173, bind mount .:/app, anonymous volume for node_modules, and CHOKIDAR_USEPOLLING=true in docker-compose.yml
+- [x] T016 [P] [US2] Create Dockerfile.dev based on oven/bun:latest with WORKDIR /app, COPY package.json and bun.lockb, RUN bun install, COPY source, EXPOSE 5179, CMD bun dev --host in Dockerfile.dev
+- [x] T017 [US2] Create docker-compose.yml with app service building from Dockerfile.dev, port mapping 5179:5179, bind mount .:/app, anonymous volume for node_modules, and CHOKIDAR_USEPOLLING=true in docker-compose.yml
 
 **Checkpoint**: User Story 2 functional — Docker workflow mirrors local dev (SC-004)
 

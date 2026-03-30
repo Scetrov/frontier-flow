@@ -76,12 +76,12 @@ The existing `ff_mock_*` flags remain valid only for deterministic test harnesse
 Useful examples:
 
 ```text
-http://localhost:5173/?ff_mock_wallet=connected
-http://localhost:5173/?ff_mock_wallet=connected&ff_mock_deploy_reject=1
-http://localhost:5173/?ff_local_deploy_ready=0
-http://localhost:5173/?ff_mock_invalid_package_refs=1&ff_mock_wallet=connected
-http://localhost:5173/?ff_mock_wallet=connected&ff_mock_deploy_fail=1
-http://localhost:5173/?ff_mock_wallet=connected&ff_mock_deploy_unresolved=1
+http://localhost:5179/?ff_mock_wallet=connected
+http://localhost:5179/?ff_mock_wallet=connected&ff_mock_deploy_reject=1
+http://localhost:5179/?ff_local_deploy_ready=0
+http://localhost:5179/?ff_mock_invalid_package_refs=1&ff_mock_wallet=connected
+http://localhost:5179/?ff_mock_wallet=connected&ff_mock_deploy_fail=1
+http://localhost:5179/?ff_mock_wallet=connected&ff_mock_deploy_unresolved=1
 ```
 
 Use these flags to validate blocker, cancellation, and progress-surface behavior without treating the results as real deployments.
@@ -161,7 +161,7 @@ Notes:
 
 ## Recorded local verification results
 
-Real local-validator verification was executed against the running dev server at `http://127.0.0.1:5173/` with the seeded `Example · Turret Aggressor First` contract after fixing the publish transaction to transfer the returned upgrade capability.
+Real local-validator verification was executed against the running dev server at `http://127.0.0.1:5179/` with the seeded `Example · Turret Aggressor First` contract after fixing the publish transaction to transfer the returned upgrade capability.
 
 Observed result:
 

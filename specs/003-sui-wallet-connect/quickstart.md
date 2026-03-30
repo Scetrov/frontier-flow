@@ -38,7 +38,7 @@ bun run build
 
 ## Verify
 
-1. Open `http://localhost:5173` in a browser with a Sui wallet extension
+1. Open `http://localhost:5179` in a browser with a Sui wallet extension
 2. Confirm the "Connect" button appears in the top-right of the header
 3. Click "Connect" → wallet selection dialog opens
 4. Select wallet → approve connection → address and balance appear

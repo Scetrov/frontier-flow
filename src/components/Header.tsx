@@ -119,9 +119,10 @@ function AuthorizeNavIcon() {
 function SimulateNavIcon() {
   return (
     <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 11.5L6.5 8L8.6 10.1L14.8 3.9" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-      <path d="M11.8 3.9H14.8V6.9" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-      <path d="M3 3.5H8.2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+      <circle cx="9" cy="7" fill="currentColor" r="1.1" />
+      <path d="M5.4 7C5.4 5.01 7.01 3.4 9 3.4C10.99 3.4 12.6 5.01 12.6 7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+      <path d="M2.5 7C2.5 3.41 5.41 0.5 9 0.5C12.59 0.5 15.5 3.41 15.5 7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+      <path d="M9 7L14.3 2.9" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
     </svg>
   );
 }

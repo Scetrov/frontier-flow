@@ -60,7 +60,7 @@ bun run test:e2e
 
 ## Using the New Nodes
 
-1. Open the app in the browser (`http://localhost:5173`)
+1. Open the app in the browser (`http://localhost:5179`)
 2. The sidebar shows 31 nodes grouped by category
 3. Drag representative nodes from each category onto the canvas, for example `Aggression`, `Get Priority Weight`, `Get Tribe List from Config`, `Exclude Same Tribe`, `Group Bonus Config`, and `Add to Queue`
 4. Connect sockets — valid links such as `target` → `target` are accepted, while invalid links such as `number` → `tribe` are rejected

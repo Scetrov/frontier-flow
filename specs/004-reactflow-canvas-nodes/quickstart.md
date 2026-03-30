@@ -56,7 +56,7 @@ bun run typecheck # TypeScript only
 
 ## Verification Steps
 
-1. **Dev server starts without errors**: `bun dev` → opens at localhost:5173
+1. **Dev server starts without errors**: `bun dev` → opens at localhost:5179
 2. **All 9 nodes appear in sidebar**: Verify the toolbox lists Proximity, Aggression, Get Tribe, List of Tribe, Is In List, Add to Queue, HP Ratio, Shield Ratio, Armor Ratio
 3. **Drag-and-drop works**: Drag any node from sidebar → drops onto ReactFlow canvas
 4. **Sockets render correctly**: Each node shows typed handles with correct colours

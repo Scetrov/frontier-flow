@@ -26,7 +26,7 @@ bun install
 bun dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) — you should see an empty application shell.
+Open [http://localhost:5179](http://localhost:5179) — you should see an empty application shell.
 
 ### 3. Build for Production
 
@@ -60,7 +60,7 @@ Serves the `dist/` folder locally for inspection.
 docker compose up
 ```
 
-Builds the dev container from `Dockerfile.dev`, installs dependencies, and starts Vite. The application is accessible at [http://localhost:5173](http://localhost:5173).
+Builds the dev container from `Dockerfile.dev`, installs dependencies, and starts Vite. The application is accessible at [http://localhost:5179](http://localhost:5179).
 
 ### 2. Hot Module Replacement
 
@@ -97,7 +97,7 @@ docker compose down
 | Check | Command | Expected |
 |-------|---------|----------|
 | Dependencies install | `bun install` | Exits 0, `bun.lockb` present |
-| Dev server starts | `bun dev` | Vite serves on port 5173 |
+| Dev server starts | `bun dev` | Vite serves on port 5179 |
 | Build succeeds | `bun run build` | `dist/` created, 0 TS errors |
 | Lint passes | `bun run lint` | 0 violations |
-| Docker starts | `docker compose up` | App at localhost:5173 |
+| Docker starts | `docker compose up` | App at localhost:5179 |

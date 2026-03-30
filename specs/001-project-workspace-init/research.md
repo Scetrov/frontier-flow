@@ -70,10 +70,10 @@ The `eslint.config.js` content is prescribed by ADR-006 and uses `defineConfig` 
 **Question**: What should the `Dockerfile.dev` and `docker-compose.yml` look like?
 
 **Decision**:
-- **`Dockerfile.dev`**: Base image `oven/bun:latest`, `WORKDIR /app`, copy `package.json` and `bun.lockb`, run `bun install`, copy remaining source, expose port 5173, `CMD ["bun", "dev", "--host"]`. The `--host` flag is needed so Vite binds to `0.0.0.0` inside the container, making it accessible from the host.
-- **`docker-compose.yml`**: Single service `app`, builds from `Dockerfile.dev`, maps `5173:5173`, bind-mounts `.:/app` (with `node_modules` as an anonymous volume to avoid overwriting container deps), and sets `CHOKIDAR_USEPOLLING=true` for reliable HMR via file watching inside the container.
+- **`Dockerfile.dev`**: Base image `oven/bun:latest`, `WORKDIR /app`, copy `package.json` and `bun.lockb`, run `bun install`, copy remaining source, expose port 5179, `CMD ["bun", "dev", "--host"]`. The `--host` flag is needed so Vite binds to `0.0.0.0` inside the container, making it accessible from the host.
+- **`docker-compose.yml`**: Single service `app`, builds from `Dockerfile.dev`, maps `5179:5179`, bind-mounts `.:/app` (with `node_modules` as an anonymous volume to avoid overwriting container deps), and sets `CHOKIDAR_USEPOLLING=true` for reliable HMR via file watching inside the container.
 
-**Rationale**: FR-009 and FR-010 specify these requirements. The spec mentions `oven/bun:latest`, port 5173, and bind-mount for HMR. The `--host` flag is required for container networking.
+**Rationale**: FR-009 and FR-010 specify these requirements. The spec mentions `oven/bun:latest`, port 5179, and bind-mount for HMR. The `--host` flag is required for container networking.
 
 **Alternatives Considered**:
 - Multi-stage build — unnecessary for a dev image.
