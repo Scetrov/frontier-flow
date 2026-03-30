@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+
 import logoUrl from "../../assets/favicon@32px.png";
 import type { DeploymentTargetId } from "../compiler/types";
 import WalletStatus from "./WalletStatus";
@@ -64,6 +66,123 @@ function WorkflowSeparator() {
   return <span aria-hidden="true" className="ff-header__nav-label text-[0.8rem] text-[var(--text-secondary)]">▶</span>;
 }
 
+interface ViewNavigationItem {
+  readonly active: boolean;
+  readonly disabled?: boolean;
+  readonly icon: React.ReactNode;
+  readonly label: string;
+  readonly onClick: () => void;
+  readonly tooltip?: string;
+}
+
+function VisualNavIcon() {
+  return (
+    <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="3" cy="3" fill="currentColor" r="1.5" />
+      <circle cx="15" cy="3" fill="currentColor" r="1.5" />
+      <circle cx="9" cy="11" fill="currentColor" r="1.5" />
+      <path d="M4.25 3H13.75M4.2 4.2L7.8 9.8M13.8 4.2L10.2 9.8" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function CodeNavIcon() {
+  return (
+    <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 2L2.5 7L6 12" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M12 2L15.5 7L12 12" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M10 1.5L8 12.5" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function DeployNavIcon() {
+  return (
+    <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 1.5V9.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+      <path d="M5.8 6.6L9 9.8L12.2 6.6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+      <path d="M3 12H15" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function AuthorizeNavIcon() {
+  return (
+    <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 1.4L14.5 3.5V6.8C14.5 10 12.15 12.3 9 12.9C5.85 12.3 3.5 10 3.5 6.8V3.5L9 1.4Z" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M9 5.1V8.3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+      <circle cx="9" cy="9.9" fill="currentColor" r="0.8" />
+    </svg>
+  );
+}
+
+function SimulateNavIcon() {
+  return (
+    <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 11.5L6.5 8L8.6 10.1L14.8 3.9" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+      <path d="M11.8 3.9H14.8V6.9" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+      <path d="M3 3.5H8.2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function buildViewNavigationItems(input: {
+  readonly activeView: PrimaryView;
+  readonly canAccessDeploy: boolean;
+  readonly canAccessMove: boolean;
+  readonly canAuthorize: boolean;
+  readonly isCompiling: boolean;
+  readonly onViewChange: (view: PrimaryView) => void;
+}): readonly ViewNavigationItem[] {
+  const compileTooltip = input.isCompiling
+    ? "Automatic compile is in progress"
+    : "Automatic compile will unlock Code after the current graph settles";
+  const deployTooltip = input.isCompiling
+    ? "Automatic compile is in progress"
+    : "Compile the current graph before reviewing deploy checks";
+
+  return [
+    {
+      active: input.activeView === "visual",
+      icon: <VisualNavIcon />,
+      label: "Visual",
+      onClick: () => { input.onViewChange("visual"); },
+    },
+    {
+      active: input.activeView === "move",
+      disabled: !input.canAccessMove,
+      icon: <CodeNavIcon />,
+      label: "Code",
+      onClick: () => { input.onViewChange("move"); },
+      tooltip: !input.canAccessMove ? compileTooltip : undefined,
+    },
+    {
+      active: input.activeView === "deploy",
+      disabled: !input.canAccessDeploy,
+      icon: <DeployNavIcon />,
+      label: "Deploy",
+      onClick: () => { input.onViewChange("deploy"); },
+      tooltip: !input.canAccessDeploy ? deployTooltip : undefined,
+    },
+    {
+      active: input.activeView === "authorize",
+      disabled: !input.canAuthorize,
+      icon: <AuthorizeNavIcon />,
+      label: "Authorize",
+      onClick: () => { input.onViewChange("authorize"); },
+      tooltip: !input.canAuthorize ? "Deploy a contract first" : undefined,
+    },
+    {
+      active: input.activeView === "simulate",
+      disabled: !input.canAuthorize,
+      icon: <SimulateNavIcon />,
+      label: "Simulate",
+      onClick: () => { input.onViewChange("simulate"); },
+      tooltip: !input.canAuthorize ? "Deploy a contract first" : undefined,
+    },
+  ];
+}
+
 function ViewNavigation({
   activeView,
   canAccessDeploy,
@@ -79,91 +198,23 @@ function ViewNavigation({
   readonly isCompiling: boolean;
   readonly onViewChange: (view: PrimaryView) => void;
 }) {
+  const items = buildViewNavigationItems({
+    activeView,
+    canAccessDeploy,
+    canAccessMove,
+    canAuthorize,
+    isCompiling,
+    onViewChange,
+  });
+
   return (
     <nav aria-label="Primary" className="ff-header__nav">
-      <NavigationButton
-        active={activeView === "visual"}
-        icon={(
-          <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="3" cy="3" fill="currentColor" r="1.5" />
-            <circle cx="15" cy="3" fill="currentColor" r="1.5" />
-            <circle cx="9" cy="11" fill="currentColor" r="1.5" />
-            <path d="M4.25 3H13.75M4.2 4.2L7.8 9.8M13.8 4.2L10.2 9.8" stroke="currentColor" strokeWidth="1.4" />
-          </svg>
-        )}
-        label="Visual"
-        onClick={() => {
-          onViewChange("visual");
-        }}
-      />
-      <WorkflowSeparator />
-      <NavigationButton
-        active={activeView === "move"}
-        disabled={!canAccessMove}
-        icon={(
-          <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 2L2.5 7L6 12" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M12 2L15.5 7L12 12" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M10 1.5L8 12.5" stroke="currentColor" strokeWidth="1.4" />
-          </svg>
-        )}
-        label="Code"
-        onClick={() => {
-          onViewChange("move");
-        }}
-        tooltip={!canAccessMove ? (isCompiling ? "Automatic compile is in progress" : "Automatic compile will unlock Code after the current graph settles") : undefined}
-      />
-      <WorkflowSeparator />
-      <NavigationButton
-        active={activeView === "deploy"}
-        disabled={!canAccessDeploy}
-        icon={(
-          <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 1.5V9.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-            <path d="M5.8 6.6L9 9.8L12.2 6.6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-            <path d="M3 12H15" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-          </svg>
-        )}
-        label="Deploy"
-        onClick={() => {
-          onViewChange("deploy");
-        }}
-        tooltip={!canAccessDeploy ? (isCompiling ? "Automatic compile is in progress" : "Compile the current graph before reviewing deploy checks") : undefined}
-      />
-      <WorkflowSeparator />
-      <NavigationButton
-        active={activeView === "authorize"}
-        disabled={!canAuthorize}
-        icon={(
-          <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 1.4L14.5 3.5V6.8C14.5 10 12.15 12.3 9 12.9C5.85 12.3 3.5 10 3.5 6.8V3.5L9 1.4Z" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M9 5.1V8.3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-            <circle cx="9" cy="9.9" fill="currentColor" r="0.8" />
-          </svg>
-        )}
-        label="Authorize"
-        onClick={() => {
-          onViewChange("authorize");
-        }}
-        tooltip={!canAuthorize ? "Deploy a contract first" : undefined}
-      />
-      <WorkflowSeparator />
-      <NavigationButton
-        active={activeView === "simulate"}
-        disabled={!canAuthorize}
-        icon={(
-          <svg fill="none" height="14" viewBox="0 0 18 14" width="18" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 11.5L6.5 8L8.6 10.1L14.8 3.9" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-            <path d="M11.8 3.9H14.8V6.9" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-            <path d="M3 3.5H8.2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-          </svg>
-        )}
-        label="Simulate"
-        onClick={() => {
-          onViewChange("simulate");
-        }}
-        tooltip={!canAuthorize ? "Deploy a contract first" : undefined}
-      />
+      {items.map((item, index) => (
+        <Fragment key={item.label}>
+          <NavigationButton {...item} />
+          {index < items.length - 1 ? <WorkflowSeparator /> : null}
+        </Fragment>
+      ))}
     </nav>
   );
 }

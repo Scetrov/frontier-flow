@@ -353,43 +353,66 @@ async function fetchGlobalCharacterSuggestions(input: {
       fetchFn: input.fetchFn,
       query: CHARACTER_OBJECTS_QUERY,
       signal: input.signal,
-      variables: after === null ? { type: characterType } : { after, type: characterType },
+      variables: buildCharacterSearchVariables(characterType, after),
     });
 
-    for (const node of response.objects?.nodes ?? []) {
-      const sourceObjectId = typeof node.address === "string" ? node.address : null;
-      const suggestion = buildCharacterSuggestion({
-        content: node.asMoveObject?.contents?.json,
-        field: input.field,
-        sourceObjectId,
-      });
+    appendMatchingCharacterSuggestions({
+      field: input.field,
+      nodes: response.objects?.nodes ?? [],
+      normalizedQuery,
+      seenKeys,
+      suggestions,
+    });
 
-      if (suggestion === null || !matchesCharacterSuggestion(suggestion, normalizedQuery)) {
-        continue;
-      }
-
-      const dedupeKey = `${suggestion.value}:${suggestion.sourceObjectId ?? suggestion.label}`;
-      if (seenKeys.has(dedupeKey)) {
-        continue;
-      }
-
-      seenKeys.add(dedupeKey);
-      suggestions.push(suggestion);
-
-      if (suggestions.length >= CHARACTER_SUGGESTION_LIMIT) {
-        return suggestions;
-      }
-    }
-
-    const pageInfo = response.objects?.pageInfo ?? null;
-    if (pageInfo?.hasNextPage !== true || typeof pageInfo.endCursor !== "string") {
+    if (suggestions.length >= CHARACTER_SUGGESTION_LIMIT) {
       break;
     }
 
-    after = pageInfo.endCursor;
+    after = getNextGraphQlCursor(response.objects?.pageInfo);
+
+    if (after === null) {
+      break;
+    }
   }
 
   return suggestions;
+}
+
+function buildCharacterSearchVariables(characterType: string, after: string | null): Record<string, string> {
+  return after === null ? { type: characterType } : { after, type: characterType };
+}
+
+function appendMatchingCharacterSuggestions(input: {
+  readonly field: "characterId";
+  readonly nodes: ReadonlyArray<NonNullable<NonNullable<CharacterSearchResponse["objects"]>["nodes"]>[number]>;
+  readonly normalizedQuery: string;
+  readonly seenKeys: Set<string>;
+  readonly suggestions: SimulationSuggestion[];
+}): void {
+  for (const node of input.nodes) {
+    const sourceObjectId = typeof node.address === "string" ? node.address : null;
+    const suggestion = buildCharacterSuggestion({
+      content: node.asMoveObject?.contents?.json,
+      field: input.field,
+      sourceObjectId,
+    });
+
+    if (suggestion === null || !matchesCharacterSuggestion(suggestion, input.normalizedQuery)) {
+      continue;
+    }
+
+    const dedupeKey = `${suggestion.value}:${suggestion.sourceObjectId ?? suggestion.label}`;
+    if (input.seenKeys.has(dedupeKey)) {
+      continue;
+    }
+
+    input.seenKeys.add(dedupeKey);
+    input.suggestions.push(suggestion);
+
+    if (input.suggestions.length >= CHARACTER_SUGGESTION_LIMIT) {
+      return;
+    }
+  }
 }
 
 function buildCharacterSuggestion(input: {
@@ -471,29 +494,33 @@ async function loadAllPlayerProfileNodes(input: {
       fetchFn: input.fetchFn,
       query: PLAYER_PROFILE_QUERY,
       signal: input.signal,
-      variables: after === null
-        ? {
-            owner: input.owner,
-            type: input.type,
-          }
-        : {
-            after,
-            owner: input.owner,
-            type: input.type,
-          },
+      variables: buildPlayerProfileVariables(input.owner, input.type, after),
     });
 
     nodes.push(...(response.address?.objects?.nodes ?? []));
 
-    const pageInfo: NonNullable<NonNullable<PlayerProfileResponse["address"]>["objects"]>["pageInfo"] = response.address?.objects?.pageInfo;
-    if (pageInfo?.hasNextPage !== true || typeof pageInfo.endCursor !== "string") {
+    after = getNextGraphQlCursor(response.address?.objects?.pageInfo);
+
+    if (after === null) {
       break;
     }
-
-    after = pageInfo.endCursor;
   }
 
   return nodes;
+}
+
+function buildPlayerProfileVariables(owner: string, type: string, after: string | null): Record<string, string> {
+  return after === null
+    ? { owner, type }
+    : { after, owner, type };
+}
+
+function getNextGraphQlCursor(pageInfo: { readonly hasNextPage?: boolean; readonly endCursor?: string | null } | null | undefined): string | null {
+  if (pageInfo?.hasNextPage !== true || typeof pageInfo.endCursor !== "string") {
+    return null;
+  }
+
+  return pageInfo.endCursor;
 }
 
 async function postGraphQl<TData>(input: {

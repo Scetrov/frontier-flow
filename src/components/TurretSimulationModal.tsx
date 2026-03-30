@@ -427,6 +427,187 @@ function SimulationReadOnlyField(input: {
   );
 }
 
+function getCharacterSuggestionState(session: TurretSimulationSession) {
+  return session.suggestionState.activeField === "characterId"
+    ? session.suggestionState
+    : null;
+}
+
+function buildLocalCharacterSuggestions(characterOptions: readonly SimulationCharacterOption[]): readonly SimulationSuggestion[] {
+  return characterOptions.map((option) => ({
+    field: "characterId",
+    label: option.label,
+    value: String(option.characterId),
+    description: option.description,
+    derivedFields: {
+      characterId: option.characterId,
+      characterTribe: option.characterTribe,
+    },
+    sourceObjectId: option.sourceObjectId,
+  } satisfies SimulationSuggestion));
+}
+
+function getRemoteCharacterSuggestions(characterSuggestionState: TurretSimulationSession["suggestionState"] | null): readonly SimulationSuggestion[] {
+  return characterSuggestionState?.suggestions.filter((suggestion) => suggestion.field === "characterId") ?? [];
+}
+
+function hasSettledCharacterQuery(input: {
+  readonly characterSearchQuery: string;
+  readonly characterSuggestionState: TurretSimulationSession["suggestionState"] | null;
+  readonly remoteCharacterSuggestions: readonly SimulationSuggestion[];
+}): boolean {
+  return input.characterSuggestionState !== null
+    && input.characterSuggestionState.query === input.characterSearchQuery.trim()
+    && (
+      input.characterSuggestionState.isLoading
+      || input.characterSuggestionState.errorMessage !== null
+      || input.remoteCharacterSuggestions.length > 0
+    );
+}
+
+function getCharacterFieldDisplayValue(input: {
+  readonly characterId: number | null;
+  readonly characterMenuOpen: boolean;
+  readonly characterSearchQuery: string;
+}): string {
+  if (input.characterMenuOpen) {
+    return input.characterSearchQuery;
+  }
+
+  return input.characterId === null ? "" : String(input.characterId);
+}
+
+function getCharacterHelperText(input: {
+  readonly characterSuggestionState: TurretSimulationSession["suggestionState"] | null;
+  readonly ownerCharacterErrorMessage: string | null;
+  readonly selectedCharacter: SimulationCharacterOption | null;
+}): string | undefined {
+  if (input.characterSuggestionState?.errorMessage) {
+    return input.characterSuggestionState.errorMessage;
+  }
+
+  if (input.selectedCharacter === null) {
+    return input.ownerCharacterErrorMessage ?? undefined;
+  }
+
+  return `${input.selectedCharacter.label}${input.selectedCharacter.description ? ` · ${input.selectedCharacter.description}` : ""}`;
+}
+
+function shouldShowCharacterSuggestions(input: {
+  readonly characterMenuOpen: boolean;
+  readonly characterSearchQuery: string;
+  readonly characterSuggestionState: TurretSimulationSession["suggestionState"] | null;
+  readonly localCharacterSuggestions: readonly SimulationSuggestion[];
+  readonly remoteCharacterSuggestions: readonly SimulationSuggestion[];
+}): boolean {
+  if (!input.characterMenuOpen) {
+    return false;
+  }
+
+  if (input.characterSearchQuery.trim().length === 0) {
+    return input.localCharacterSuggestions.length > 0;
+  }
+
+  return input.characterSuggestionState?.isLoading === true
+    || input.characterSuggestionState?.errorMessage !== null
+    || input.remoteCharacterSuggestions.length > 0;
+}
+
+function CharacterSuggestionMenu(input: {
+  readonly characterSearchQuery: string;
+  readonly characterSuggestionState: TurretSimulationSession["suggestionState"] | null;
+  readonly onApplySuggestion?: (suggestion: SimulationSuggestion) => void;
+  readonly onSelectSuggestion: () => void;
+  readonly visibleSuggestions: readonly SimulationSuggestion[];
+}) {
+  return (
+    <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-y-auto border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.97)] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+      <p className="mb-2 text-[0.65rem] uppercase tracking-[0.16em] text-[var(--text-secondary)]">
+        {input.characterSearchQuery.trim().length === 0 ? "Known Characters" : "Matching Characters"}
+      </p>
+      {input.visibleSuggestions.length > 0 ? (
+        <div className="grid gap-1">
+          {input.visibleSuggestions.map((suggestion) => (
+            <button
+              className="grid gap-1 border border-[rgba(250,250,229,0.08)] bg-[rgba(255,255,255,0.02)] px-3 py-2 text-left transition-colors hover:border-[var(--brand-orange)]"
+              key={`${suggestion.value}:${suggestion.sourceObjectId ?? suggestion.label}`}
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              onClick={() => {
+                input.onSelectSuggestion();
+                input.onApplySuggestion?.(suggestion);
+              }}
+              type="button"
+            >
+              <span className="font-mono text-xs text-[var(--cream-white)]">{suggestion.label}</span>
+              {suggestion.description ? (
+                <span className="text-xs text-[var(--text-secondary)]">{suggestion.description}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {input.characterSuggestionState?.isLoading ? (
+        <span className="text-xs text-[var(--text-secondary)]">Searching characters...</span>
+      ) : null}
+      {input.characterSearchQuery.trim().length > 0
+        && input.characterSuggestionState?.isLoading !== true
+        && input.visibleSuggestions.length === 0 ? (
+          <span className="text-xs text-[var(--text-secondary)]">No matching characters found.</span>
+        ) : null}
+    </div>
+  );
+}
+
+function CharacterSearchInput(input: {
+  readonly characterId: number | null;
+  readonly characterOptions: readonly SimulationCharacterOption[];
+  readonly characterSearchQuery: string;
+  readonly onUpdateField?: <TKey extends SimulationFieldKey>(key: TKey, value: SimulationFieldValue<TKey>) => void;
+  readonly placeholder: string;
+  readonly setCharacterMenuOpen: (isOpen: boolean) => void;
+  readonly setCharacterSearchQuery: (value: string) => void;
+  readonly value: string;
+}) {
+  return (
+    <DraftInput
+      aria-label="Character Id"
+      autoComplete="off"
+      id="simulation-character-id"
+      onBlur={() => {
+        input.setCharacterMenuOpen(false);
+        input.setCharacterSearchQuery("");
+      }}
+      onChange={(event) => {
+        const nextQuery = event.currentTarget.value;
+        const nextValue = parseOptionalInteger(nextQuery);
+
+        input.setCharacterSearchQuery(nextQuery);
+
+        if (nextQuery.trim().length === 0) {
+          input.onUpdateField?.("characterId", null);
+          input.onUpdateField?.("characterTribe", null);
+          return;
+        }
+
+        if (nextValue !== null) {
+          const nextCharacter = getSelectedCharacter(input.characterOptions, nextValue);
+
+          input.onUpdateField?.("characterId", nextValue);
+          input.onUpdateField?.("characterTribe", nextCharacter?.characterTribe ?? null);
+        }
+      }}
+      onFocus={() => {
+        input.setCharacterMenuOpen(true);
+        input.setCharacterSearchQuery(input.characterId === null ? "" : String(input.characterId));
+      }}
+      placeholder={input.placeholder}
+      value={input.value}
+    />
+  );
+}
+
 function SimulationCharacterField(input: {
   readonly onApplySuggestion?: (suggestion: SimulationSuggestion) => void;
   readonly onLoadSuggestions?: (field: SimulationFieldKey, query?: string) => void;
@@ -439,40 +620,34 @@ function SimulationCharacterField(input: {
   const selectedCharacter = getSelectedCharacter(characterOptions, session.draft.candidate.characterId);
   const [characterMenuOpen, setCharacterMenuOpen] = useState(false);
   const [characterSearchQuery, setCharacterSearchQuery] = useState("");
-  const characterSuggestionState = session.suggestionState.activeField === "characterId"
-    ? session.suggestionState
-    : null;
-  const remoteCharacterSuggestions = characterSuggestionState?.suggestions.filter((suggestion) => suggestion.field === "characterId") ?? [];
-  const localCharacterSuggestions = characterOptions.map((option) => ({
-    field: "characterId",
-    label: option.label,
-    value: String(option.characterId),
-    description: option.description,
-    derivedFields: {
-      characterId: option.characterId,
-      characterTribe: option.characterTribe,
-    },
-    sourceObjectId: option.sourceObjectId,
-  } satisfies SimulationSuggestion));
+  const characterSuggestionState = getCharacterSuggestionState(session);
+  const localCharacterSuggestions = buildLocalCharacterSuggestions(characterOptions);
+  const remoteCharacterSuggestions = getRemoteCharacterSuggestions(characterSuggestionState);
   const visibleSuggestions = characterSearchQuery.trim().length === 0 ? localCharacterSuggestions : remoteCharacterSuggestions;
   const isShowingSelectedCharacter = selectedCharacter !== null && characterSearchQuery === String(selectedCharacter.characterId);
-  const hasSettledRemoteQuery = characterSuggestionState !== null
-    && characterSuggestionState.query === characterSearchQuery.trim()
-    && (
-      characterSuggestionState.isLoading
-      || characterSuggestionState.errorMessage !== null
-      || remoteCharacterSuggestions.length > 0
-    );
-  const displayValue = characterMenuOpen
-    ? characterSearchQuery
-    : (session.draft.candidate.characterId === null ? "" : String(session.draft.candidate.characterId));
-  const shouldShowSuggestions = characterMenuOpen && (
-    characterSearchQuery.trim().length === 0
-      ? localCharacterSuggestions.length > 0
-      : characterSuggestionState?.isLoading === true
-        || characterSuggestionState?.errorMessage !== null
-        || remoteCharacterSuggestions.length > 0
-  );
+  const hasSettledRemoteQuery = hasSettledCharacterQuery({
+    characterSearchQuery,
+    characterSuggestionState,
+    remoteCharacterSuggestions,
+  });
+  const displayValue = getCharacterFieldDisplayValue({
+    characterId: session.draft.candidate.characterId,
+    characterMenuOpen,
+    characterSearchQuery,
+  });
+  const shouldShowSuggestions = shouldShowCharacterSuggestions({
+    characterMenuOpen,
+    characterSearchQuery,
+    characterSuggestionState,
+    localCharacterSuggestions,
+    remoteCharacterSuggestions,
+  });
+  const placeholder = referenceData.isLoading ? "Loading character ids..." : "Search by character name or id";
+  const helperText = getCharacterHelperText({
+    characterSuggestionState,
+    ownerCharacterErrorMessage: session.ownerCharacterErrorMessage,
+    selectedCharacter,
+  });
 
   useEffect(() => {
     const trimmedQuery = characterSearchQuery.trim();
@@ -490,14 +665,6 @@ function SimulationCharacterField(input: {
     };
   }, [characterMenuOpen, characterSearchQuery, hasSettledRemoteQuery, isShowingSelectedCharacter, onLoadSuggestions]);
 
-  const helperText = characterSuggestionState?.errorMessage
-    ?? (selectedCharacter === null
-      ? session.ownerCharacterErrorMessage ?? undefined
-      : `${selectedCharacter.label}${selectedCharacter.description ? ` · ${selectedCharacter.description}` : ""}`);
-  const placeholder = referenceData.isLoading
-    ? "Loading character ids..."
-    : "Search by character name or id";
-
   return (
     <DraftFieldShell
       controlId="simulation-character-id"
@@ -507,76 +674,27 @@ function SimulationCharacterField(input: {
       source={session.draft.fieldSources.characterId}
     >
       <div className="relative">
-        <DraftInput
-          aria-label="Character Id"
-          autoComplete="off"
-          onBlur={() => {
-            setCharacterMenuOpen(false);
-            setCharacterSearchQuery("");
-          }}
-          id="simulation-character-id"
-          onChange={(event) => {
-            const nextQuery = event.currentTarget.value;
-            const nextValue = parseOptionalInteger(nextQuery);
-
-            setCharacterSearchQuery(nextQuery);
-
-            if (nextQuery.trim().length === 0) {
-              onUpdateField?.("characterId", null);
-              onUpdateField?.("characterTribe", null);
-              return;
-            }
-
-            if (nextValue !== null) {
-              const nextCharacter = getSelectedCharacter(characterOptions, nextValue);
-
-              onUpdateField?.("characterId", nextValue);
-              onUpdateField?.("characterTribe", nextCharacter?.characterTribe ?? null);
-            }
-          }}
-          onFocus={() => {
-            setCharacterMenuOpen(true);
-            setCharacterSearchQuery(session.draft.candidate.characterId === null ? "" : String(session.draft.candidate.characterId));
-          }}
+        <CharacterSearchInput
+          characterId={session.draft.candidate.characterId}
+          characterOptions={characterOptions}
+          characterSearchQuery={characterSearchQuery}
+          onUpdateField={onUpdateField}
           placeholder={placeholder}
+          setCharacterMenuOpen={setCharacterMenuOpen}
+          setCharacterSearchQuery={setCharacterSearchQuery}
           value={displayValue}
         />
         {shouldShowSuggestions ? (
-          <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-y-auto border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.97)] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
-            <p className="mb-2 text-[0.65rem] uppercase tracking-[0.16em] text-[var(--text-secondary)]">
-              {characterSearchQuery.trim().length === 0 ? "Known Characters" : "Matching Characters"}
-            </p>
-            {visibleSuggestions.length > 0 ? (
-              <div className="grid gap-1">
-              {visibleSuggestions.map((suggestion) => (
-                <button
-                  className="grid gap-1 border border-[rgba(250,250,229,0.08)] bg-[rgba(255,255,255,0.02)] px-3 py-2 text-left transition-colors hover:border-[var(--brand-orange)]"
-                  key={`${suggestion.value}:${suggestion.sourceObjectId ?? suggestion.label}`}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                  }}
-                  onClick={() => {
-                    setCharacterMenuOpen(false);
-                    setCharacterSearchQuery("");
-                    onApplySuggestion?.(suggestion);
-                  }}
-                  type="button"
-                >
-                  <span className="font-mono text-xs text-[var(--cream-white)]">{suggestion.label}</span>
-                  {suggestion.description ? (
-                    <span className="text-xs text-[var(--text-secondary)]">{suggestion.description}</span>
-                  ) : null}
-                </button>
-              ))}
-              </div>
-            ) : null}
-            {characterSuggestionState?.isLoading ? (
-              <span className="text-xs text-[var(--text-secondary)]">Searching characters...</span>
-            ) : null}
-            {characterSearchQuery.trim().length > 0 && characterSuggestionState?.isLoading !== true && visibleSuggestions.length === 0 ? (
-              <span className="text-xs text-[var(--text-secondary)]">No matching characters found.</span>
-            ) : null}
-          </div>
+          <CharacterSuggestionMenu
+            characterSearchQuery={characterSearchQuery}
+            characterSuggestionState={characterSuggestionState}
+            onApplySuggestion={onApplySuggestion}
+            onSelectSuggestion={() => {
+              setCharacterMenuOpen(false);
+              setCharacterSearchQuery("");
+            }}
+            visibleSuggestions={visibleSuggestions}
+          />
         ) : null}
       </div>
     </DraftFieldShell>
