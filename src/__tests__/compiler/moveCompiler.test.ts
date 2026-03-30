@@ -278,6 +278,7 @@ describe("compileMove", () => {
   it("preserves verbose move builder logs when debug logging is enabled", async () => {
     const artifact = createArtifact();
     const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const previousLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     window.history.replaceState({}, "", "/?DEBUG=true");
     mockBuildMovePackage.mockImplementationOnce(() => {
       console.log("[Compile] pkgId=Sui, pkgName=Sui, hasFiles=true, manifestName=Sui");
@@ -294,6 +295,7 @@ describe("compileMove", () => {
       expect(result.success).toBe(true);
       expect(consoleLogSpy).toHaveBeenCalledWith("[Compile] pkgId=Sui, pkgName=Sui, hasFiles=true, manifestName=Sui");
     } finally {
+      window.history.replaceState({}, "", previousLocation);
       consoleLogSpy.mockRestore();
     }
   });
