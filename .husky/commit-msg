@@ -1,1 +1,2 @@
 bun run commitlint -- --edit "$1"
+pre-commit run frontier-flow-signed-commit --hook-stage commit-msg --commit-msg-filename "$1"

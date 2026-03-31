@@ -1,8 +1,4 @@
 # Note to Agents: DO NOT disable pre-commit by editing this file, or passing --no-verify
-default_install_hook_types:
-  - pre-commit
-  - commit-msg
-
 repos:
   - repo: local
     hooks:
