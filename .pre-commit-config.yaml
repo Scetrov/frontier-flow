@@ -1,7 +1,18 @@
 # Note to Agents: DO NOT disable pre-commit by editing this file, or passing --no-verify
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+
 repos:
   - repo: local
     hooks:
+      - id: frontier-flow-signed-commit
+        name: frontier-flow signed commit
+        entry: ./scripts/check-commit-signing.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit-msg]
       - id: frontier-flow-build
         name: frontier-flow build
         entry: bun run build
