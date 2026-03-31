@@ -1,10 +1,11 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useTutorial, RETRY_DELAY_MS, MAX_RETRIES } from "../hooks/useTutorial";
+import { useTutorial, RETRY_DELAY_MS, MAX_RETRIES, TARGET_LAYOUT_SETTLE_MS } from "../hooks/useTutorial";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
 
 const TUTORIAL_STORAGE_KEY = "frontier-flow:tutorial";
+const SKIPPED_STEP_TIMEOUT_MS = TARGET_LAYOUT_SETTLE_MS + (MAX_RETRIES * RETRY_DELAY_MS) + RETRY_DELAY_MS;
 
 function setPersistedDrawerState(input: { readonly isContractPanelOpen: boolean; readonly isSidebarOpen: boolean }) {
   window.localStorage.setItem(UI_STATE_STORAGE_KEY, JSON.stringify({
@@ -151,14 +152,61 @@ describe("useTutorial", () => {
     onSetDrawerVisibility.mockClear();
 
     act(() => {
-      // Advance time long enough for the tutorial target-measure retries
-      // to exhaust and for the step-skipping timeout to fire.
-      vi.advanceTimersByTime((MAX_RETRIES * RETRY_DELAY_MS) + RETRY_DELAY_MS);
+      result.current.next();
+      vi.advanceTimersByTime(SKIPPED_STEP_TIMEOUT_MS);
     });
 
-    expect(result.current.currentStep?.id).toBe("socket");
-    expect(onSetDrawerVisibility).toHaveBeenCalledWith("sidebar", false);
-    expect(onSetDrawerVisibility).toHaveBeenCalledWith("contract-panel", false);
+    expect(result.current.currentStep?.id).toBe("save-load");
+    expect(onSetDrawerVisibility).toHaveBeenCalledWith("sidebar", true);
+    expect(onSetDrawerVisibility).toHaveBeenCalledWith("contract-panel", true);
+
+    onSetDrawerVisibility.mockClear();
+
+    act(() => {
+      vi.advanceTimersByTime(SKIPPED_STEP_TIMEOUT_MS);
+    });
+
+    expect(result.current.currentStep?.id).toBe("view-navigation");
+    expect(onSetDrawerVisibility).toHaveBeenCalledWith("sidebar", true);
+    expect(onSetDrawerVisibility).toHaveBeenCalledWith("contract-panel", true);
+  });
+
+  it("waits for drawer transitions to settle before measuring drawer-backed steps", () => {
+    const networkSelector = document.createElement("button");
+    networkSelector.setAttribute("aria-label", "Target network/server");
+    setBoundingRect(networkSelector, { left: 10, top: 10, width: 120, height: 36 });
+    document.body.append(networkSelector);
+
+    const toolbox = document.createElement("aside");
+    toolbox.id = "node-toolbox";
+    setBoundingRect(toolbox, { left: 780, top: 60, width: 240, height: 520 });
+    document.body.append(toolbox);
+
+    const { result } = renderTutorialHook();
+
+    act(() => {
+      result.current.start();
+      result.current.next();
+    });
+
+    expect(result.current.currentStep?.id).toBe("toolbox");
+    expect(result.current.targetRect).toBeNull();
+    expect(toolbox).not.toHaveClass("ff-tutorial__target");
+
+    act(() => {
+      vi.advanceTimersByTime(TARGET_LAYOUT_SETTLE_MS - 1);
+    });
+
+    expect(result.current.targetRect).toBeNull();
+    expect(toolbox).not.toHaveClass("ff-tutorial__target");
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+
+    expect(result.current.targetRect?.width).toBe(240);
+    expect(result.current.targetRect?.height).toBe(520);
+    expect(toolbox).toHaveClass("ff-tutorial__target");
   });
 
   it("inserts and removes the demo node around the socket step", () => {

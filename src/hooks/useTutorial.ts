@@ -11,6 +11,7 @@ const TUTORIAL_STORAGE_KEY = "frontier-flow:tutorial";
 const STORAGE_VERSION = 1;
 export const RETRY_DELAY_MS = 100;
 export const MAX_RETRIES = 20;
+export const TARGET_LAYOUT_SETTLE_MS = 240;
 const AUTO_START_DELAY_MS = 500;
 
 export interface UseTutorialOptions {
@@ -167,6 +168,14 @@ function applyTutorialTargetClass(targetRef: { current: HTMLElement | null }, el
   targetRef.current = element;
 }
 
+function getTargetMeasurementDelayMs(currentStep: (typeof TUTORIAL_STEPS)[number]): number {
+  if (currentStep.requiresDrawerOpen !== null || currentStep.id === "socket") {
+    return TARGET_LAYOUT_SETTLE_MS;
+  }
+
+  return 0;
+}
+
 function useTutorialTargetMeasurement(input: {
   readonly currentStep: (typeof TUTORIAL_STEPS)[number] | null;
   readonly activeTargetRef: { current: HTMLElement | null };
@@ -226,7 +235,14 @@ function useTutorialTargetMeasurement(input: {
       }, RETRY_DELAY_MS));
     };
 
-    measureTarget(0);
+    const measurementDelayMs = getTargetMeasurementDelayMs(currentStep);
+    if (measurementDelayMs > 0) {
+      timeoutIds.push(window.setTimeout(() => {
+        measureTarget(0);
+      }, measurementDelayMs));
+    } else {
+      measureTarget(0);
+    }
 
     return () => {
       cancelled = true;
