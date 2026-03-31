@@ -207,27 +207,15 @@ Follow [Semantic Versioning](https://semver.org/):
 
 ### 6.2 Release Steps
 
-```bash
-# 1. Ensure main is up to date
-git checkout main && git pull
+The repository no longer uses a manual local version-bump and tag workflow.
 
-# 2. Update version in package.json
-bun version minor  # or major/patch
-
-# 3. Update CHANGELOG.md with release notes
-
-# 4. Commit and tag
-git add -A
-git commit -S -m "chore(release): v0.2.0"
-git tag -s v0.2.0 -m "Release v0.2.0"
-
-# 5. Push with tags
-git push origin main --tags
-```
+For the up-to-date maintainer-facing operational checklist, version-bump rules, and step-by-step major/minor/patch procedures, use the dedicated [`RELEASE-RUNBOOK.md`](./RELEASE-RUNBOOK.md). This section is deprecated and retained only to preserve section numbering in this document; do not follow the old manual release flow for new releases.
 
 ### 6.3 Release Automation
 
 The project uses [`release-please`](https://github.com/googleapis/release-please) for automated versioning and changelog generation.
+
+For the maintainer-facing operational checklist, version-bump rules, and step-by-step major/minor/patch procedures, use the dedicated [`RELEASE-RUNBOOK.md`](./RELEASE-RUNBOOK.md).
 
 The [`release-please.yml`](../.github/workflows/release-please.yml) workflow runs on every push to `main` and can also be started manually with `workflow_dispatch`.
 
@@ -245,7 +233,7 @@ The resulting release commit and tag continue through the existing automation:
 
 There is no local `bun run release` step anymore. Maintainers should ensure merged commits follow Conventional Commits so the release PR gets the correct version bump and changelog sections.
 
-Future release pipeline additions (see [SECURITY.md §6.3](./SECURITY.md#63-release-attestation-workflow)):
+Future release pipeline additions (see [`SECURITY.md` §6.3](./SECURITY.md#63-release-attestation-workflow)):
 
 1. Generate SBOM (CycloneDX)
 2. Generate SLSA build provenance attestation
