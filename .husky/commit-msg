@@ -1,2 +1,6 @@
 bun run commitlint -- --edit "$1"
-pre-commit run frontier-flow-signed-commit --hook-stage commit-msg --commit-msg-filename "$1"
+if command -v pre-commit >/dev/null 2>&1; then
+	pre-commit run frontier-flow-signed-commit --hook-stage commit-msg --commit-msg-filename "$1"
+else
+	./scripts/check-commit-signing.sh
+fi
