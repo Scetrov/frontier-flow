@@ -229,6 +229,8 @@ git push origin main --tags
 
 The project uses [`release-please`](https://github.com/googleapis/release-please) for automated versioning and changelog generation.
 
+For the maintainer-facing operational checklist, version-bump rules, and step-by-step major/minor/patch procedures, use the dedicated [RELEASE-RUNBOOK.md](./RELEASE-RUNBOOK.md).
+
 The [`release-please.yml`](../.github/workflows/release-please.yml) workflow runs on every push to `main` and can also be started manually with `workflow_dispatch`.
 
 This automatically:
