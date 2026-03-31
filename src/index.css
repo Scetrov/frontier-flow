@@ -2735,20 +2735,24 @@ button,
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.75rem;
 }
 
 .ff-authorize-turret-item__title {
+  min-width: 0;
   font-family: "Disket Mono", "Fira Code", "SFMono-Regular", monospace;
   font-size: 0.88rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--cream-white);
+  overflow-wrap: anywhere;
 }
 
 .ff-authorize-turret-item__meta {
   color: var(--text-secondary);
   font-size: 0.78rem;
+  overflow-wrap: anywhere;
 }
 
 .ff-authorize-turret-item__warning {

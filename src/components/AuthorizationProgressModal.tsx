@@ -6,7 +6,6 @@ import type {
   AuthorizationTarget,
   AuthorizationTurretStatus,
 } from "../types/authorization";
-import { formatAddress } from "../utils/formatAddress";
 
 interface AuthorizationProgressModalProps {
   readonly onClose: () => void;
@@ -180,7 +179,7 @@ function getStatusMessage(progress: AuthorizationProgressState): string {
       : "Authorization batch finished. Review each turret outcome before closing this dialog.";
   }
 
-  return `${getTargetStatusLabel(activeTarget.status, activeTarget.confirmationPhase)} ${formatAddress(activeTarget.turretObjectId)}.`;
+  return `${getTargetStatusLabel(activeTarget.status, activeTarget.confirmationPhase)} ${activeTarget.turretObjectId}.`;
 }
 
 function AuthorizationTurretRow(input: {
@@ -195,7 +194,7 @@ function AuthorizationTurretRow(input: {
       <span aria-hidden="true" className="ff-authorization-modal__row-indicator">{STATUS_ICONS[target.status]}</span>
       <div className="ff-authorization-modal__row-body">
         <div className="ff-authorization-modal__row-header">
-          <span className="ff-authorization-modal__row-title">{formatAddress(target.turretObjectId)}</span>
+          <span className="ff-authorization-modal__row-title">{target.turretObjectId}</span>
           <span className="ff-authorization-modal__row-status">{getTargetStatusLabel(target.status, target.confirmationPhase)}</span>
         </div>
         <p className="ff-authorization-modal__row-copy">{getTargetCopy(target)}</p>

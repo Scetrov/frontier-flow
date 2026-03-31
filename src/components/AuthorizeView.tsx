@@ -1,5 +1,5 @@
 import { useCurrentAccount, useCurrentWallet, useSuiClient } from "@mysten/dapp-kit";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { StoredDeploymentState } from "../types/authorization";
 import { getDeploymentTarget } from "../data/deploymentTargets";
@@ -129,7 +129,7 @@ function getDeploymentAgeLabel(deployedAt: string): string | null {
 }
 
 function getTurretOptionLabel(turret: { readonly displayName: string | null; readonly objectId: string }): string {
-  return turret.displayName ?? formatAddress(turret.objectId);
+  return turret.displayName ?? turret.objectId;
 }
 
 function getSimulationTurretPlaceholder(input: {
@@ -210,17 +210,92 @@ function SimulationSelectedTurretSummary(input: {
   readonly onChangeTurret: () => void;
   readonly selectedTurret: { readonly objectId: string; readonly displayName: string | null };
 }) {
+  const primaryLabelShellRef = useRef<HTMLSpanElement | null>(null);
+  const primaryLabelMeasureRef = useRef<HTMLSpanElement | null>(null);
+  const secondaryLabelShellRef = useRef<HTMLSpanElement | null>(null);
+  const secondaryLabelMeasureRef = useRef<HTMLSpanElement | null>(null);
+  const [shouldCompactPrimaryLabel, setShouldCompactPrimaryLabel] = useState(false);
+  const [shouldCompactSecondaryLabel, setShouldCompactSecondaryLabel] = useState(false);
+  const primaryLabel = getTurretOptionLabel(input.selectedTurret);
+  const isObjectIdPrimaryLabel = primaryLabel === input.selectedTurret.objectId;
+  const renderedPrimaryLabel = isObjectIdPrimaryLabel && shouldCompactPrimaryLabel
+    ? formatAddress(primaryLabel)
+    : primaryLabel;
+  const renderedSecondaryLabel = shouldCompactSecondaryLabel
+    ? formatAddress(input.selectedTurret.objectId)
+    : input.selectedTurret.objectId;
+
+  useLayoutEffect(() => {
+    const primaryLabelShell = primaryLabelShellRef.current;
+    const primaryLabelMeasure = primaryLabelMeasureRef.current;
+    const secondaryLabelShell = secondaryLabelShellRef.current;
+    const secondaryLabelMeasure = secondaryLabelMeasureRef.current;
+
+    if (
+      primaryLabelShell === null
+      || primaryLabelMeasure === null
+      || secondaryLabelShell === null
+      || secondaryLabelMeasure === null
+    ) {
+      return undefined;
+    }
+
+    const updateLabelLayout = () => {
+      setShouldCompactPrimaryLabel(primaryLabelMeasure.scrollWidth > primaryLabelShell.clientWidth);
+      setShouldCompactSecondaryLabel(secondaryLabelMeasure.scrollWidth > secondaryLabelShell.clientWidth);
+    };
+
+    updateLabelLayout();
+
+    if (typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(() => {
+      updateLabelLayout();
+    });
+
+    observer.observe(primaryLabelShell);
+    observer.observe(primaryLabelMeasure);
+    observer.observe(secondaryLabelShell);
+    observer.observe(secondaryLabelMeasure);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [input.selectedTurret.objectId, primaryLabel]);
+
   return (
     <div className="grid gap-3 border border-[rgba(250,250,229,0.14)] bg-[rgba(10,6,6,0.54)] px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="grid gap-1 min-w-0">
         <span className="font-heading text-[0.62rem] uppercase tracking-[0.18em] text-[var(--brand-orange)]">
           Selected Turret
         </span>
-        <span className="font-mono text-sm text-[var(--cream-white)] break-words">
-          {getTurretOptionLabel(input.selectedTurret)}
+        <span
+          className="min-w-0 overflow-hidden font-mono text-sm text-[var(--cream-white)]"
+          ref={primaryLabelShellRef}
+          title={primaryLabel}
+        >
+          <span
+            className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
+            data-measurement="authorize-selected-turret-primary"
+            ref={primaryLabelMeasureRef}
+          >
+            {renderedPrimaryLabel}
+          </span>
         </span>
-        <span className="text-xs text-[var(--text-secondary)] break-all">
-          {input.selectedTurret.objectId}
+        <span
+          className="min-w-0 overflow-hidden text-xs text-[var(--text-secondary)]"
+          ref={secondaryLabelShellRef}
+          title={input.selectedTurret.objectId}
+        >
+          <span
+            className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
+            data-measurement="authorize-selected-turret-secondary"
+            ref={secondaryLabelMeasureRef}
+          >
+            {renderedSecondaryLabel}
+          </span>
         </span>
       </div>
       <button className="ff-authorize-view__action" onClick={input.onChangeTurret} type="button">

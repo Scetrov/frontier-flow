@@ -22,7 +22,6 @@ import {
   type TurretSimulationSession,
   type UseTurretSimulationResult,
 } from "../types/turretSimulation";
-import { formatAddress } from "../utils/formatAddress";
 import { fetchSimulationOwnerCharacterId } from "../utils/authorizationTransaction";
 import { runTurretSimulation } from "../utils/turretSimulationExecution";
 import { fetchSimulationSuggestions } from "../utils/turretSimulationQueries";
@@ -52,7 +51,7 @@ interface DraftHydrationAccumulator {
 }
 
 function getTurretTitle(turret: TurretInfo): string {
-  return turret.displayName ?? formatAddress(turret.objectId);
+  return turret.displayName ?? turret.objectId;
 }
 
 function getResolvedSession(input: {

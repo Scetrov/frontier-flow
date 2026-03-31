@@ -1,5 +1,4 @@
 import type { TurretInfo } from "../types/authorization";
-import { formatAddress } from "../utils/formatAddress";
 
 interface AuthorizeTurretItemProps {
   readonly checked: boolean;
@@ -37,7 +36,7 @@ function getBadgeLabel(turret: TurretInfo): string {
  * Render a single turret row with a sci-fi checkbox and extension badge.
  */
 function AuthorizeTurretItem({ checked, disabled = false, onSimulate, onToggle, showReplacementWarning = false, turret }: AuthorizeTurretItemProps) {
-  const title = turret.displayName ?? formatAddress(turret.objectId);
+  const title = turret.displayName ?? turret.objectId;
 
   return (
     <label className={getItemClassName(checked, disabled)}>
@@ -74,7 +73,7 @@ function AuthorizeTurretItem({ checked, disabled = false, onSimulate, onToggle, 
             </button>
           </span>
         </span>
-        <span className="ff-authorize-turret-item__meta">{formatAddress(turret.objectId)}</span>
+        <span className="ff-authorize-turret-item__meta">{turret.objectId}</span>
         {showReplacementWarning ? (
           <span className="ff-authorize-turret-item__warning">This will replace the current extension</span>
         ) : null}

@@ -16,6 +16,7 @@ import type { UseTurretListResult } from "../hooks/useTurretList";
 import type { FetchOwnerCapInput } from "../utils/authorizationTransaction";
 import { createDevInspectErrorResponse, createDevInspectSuccessResponse } from "../test/turretSimulationMocks";
 import { encodeSimulationPriorityEntries } from "../utils/turretSimulationCodec";
+import { formatAddress } from "../utils/formatAddress";
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
@@ -347,6 +348,49 @@ describe("AuthorizeView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change Turret" }));
 
     expect(screen.getByLabelText("Simulation Turret")).toBeVisible();
+  });
+
+  it("compacts the selected turret object id when the summary card is constrained", () => {
+    const longTurretId = "0x5809382554e3f8bfdf628b0f19193c6474d1cc91dd65b4797c58c542dc009082";
+    const clientWidthGetter = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function clientWidth(this: HTMLElement) {
+      if (this instanceof HTMLSpanElement && this.title === longTurretId) {
+        return 160;
+      }
+
+      return 0;
+    });
+    const scrollWidthGetter = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function scrollWidth(this: HTMLElement) {
+      if (this instanceof HTMLSpanElement && this.dataset.measurement?.startsWith("authorize-selected-turret-")) {
+        return 640;
+      }
+
+      return 0;
+    });
+
+    mockUseTurretList.mockReturnValue({
+      status: "success",
+      turrets: [{
+        objectId: longTurretId,
+        displayName: null,
+        currentExtension: null,
+      }],
+      errorMessage: null,
+      refresh: vi.fn(),
+    });
+
+    try {
+      render(<AuthorizeViewHarness deploymentState={deploymentState} />);
+
+      fireEvent.click(screen.getByRole("button", { name: `Simulate turret ${longTurretId}` }));
+
+      const compactObjectId = formatAddress(longTurretId);
+
+      expect(screen.getAllByText(compactObjectId)).toHaveLength(2);
+      expect(screen.getAllByTitle(longTurretId)).toHaveLength(2);
+    } finally {
+      clientWidthGetter.mockRestore();
+      scrollWidthGetter.mockRestore();
+    }
   });
 
   it("hydrates the simulation modal with the turret owner character lookup", async () => {

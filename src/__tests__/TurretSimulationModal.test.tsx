@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import TurretSimulationModal from "../components/TurretSimulationModal";
 import { createEmptySimulationReferenceData } from "../types/turretSimulation";
 import { createSimulationCandidateDraft, createSimulationSession, simulationDeploymentState } from "../test/turretSimulationFixtures";
+import { formatAddress } from "../utils/formatAddress";
 
 describe("TurretSimulationModal", () => {
   it("renders the selected turret and deployment context inside the simulation workspace", () => {
@@ -24,6 +25,52 @@ describe("TurretSimulationModal", () => {
     expect(screen.getByLabelText("Item Id")).toBeVisible();
     expect(screen.queryByLabelText("Candidate lookup query")).not.toBeInTheDocument();
     expect(screen.getByText("Review the selected turret context before running a non-mutating extension simulation.")).toBeVisible();
+  });
+
+  it("abbreviates a raw turret object id in the header when the title area is constrained", () => {
+    const longTurretId = "0x5809382554e3f8bfdf628b0f19193c6474d1cc91dd65b4797c58c542dc009082";
+    const clientWidthGetter = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function clientWidth(this: HTMLElement) {
+      if (this instanceof HTMLDivElement && this.id !== "turret-simulation-title") {
+        const measurement = this.querySelector('[data-measurement="turret-simulation-title"]');
+
+        if (measurement !== null) {
+          return 160;
+        }
+      }
+
+      return 0;
+    });
+    const scrollWidthGetter = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function scrollWidth(this: HTMLElement) {
+      if (this instanceof HTMLSpanElement && this.dataset.measurement === "turret-simulation-title") {
+        return 640;
+      }
+
+      return 0;
+    });
+
+    try {
+      render(
+        <TurretSimulationModal
+          onClose={() => undefined}
+          onRefreshContext={() => undefined}
+          session={createSimulationSession({
+            turretObjectId: longTurretId,
+            turretTitle: longTurretId,
+            turret: {
+              currentExtension: null,
+              displayName: null,
+              objectId: longTurretId,
+            },
+          })}
+        />,
+      );
+
+      expect(screen.getByRole("heading", { name: longTurretId })).toHaveTextContent(formatAddress(longTurretId));
+      expect(screen.getByTitle(longTurretId)).toBeVisible();
+    } finally {
+      clientWidthGetter.mockRestore();
+      scrollWidthGetter.mockRestore();
+    }
   });
 
   it("shows a stale warning and refresh action when the session is stale", () => {

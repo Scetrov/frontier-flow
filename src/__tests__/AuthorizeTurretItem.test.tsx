@@ -15,6 +15,12 @@ const replacementTurret: TurretInfo = {
   },
 };
 
+const unnamedTurret: TurretInfo = {
+  objectId: "0x58091234567890abcdef1234567890abcdef1234567890abcdef123456789082",
+  displayName: null,
+  currentExtension: null,
+};
+
 describe("AuthorizeTurretItem", () => {
   it("renders an inline replacement warning when a different extension is selected", () => {
     render(
@@ -61,5 +67,17 @@ describe("AuthorizeTurretItem", () => {
 
     expect(handleSimulate).toHaveBeenCalledWith(replacementTurret);
     expect(handleToggle).not.toHaveBeenCalled();
+  });
+
+  it("shows the full turret object id when no display name is available", () => {
+    render(
+      <AuthorizeTurretItem
+        checked={false}
+        onToggle={() => undefined}
+        turret={unnamedTurret}
+      />,
+    );
+
+    expect(screen.getAllByText(unnamedTurret.objectId)).toHaveLength(2);
   });
 });

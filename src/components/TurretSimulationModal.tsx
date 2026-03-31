@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type {
   SimulationCharacterOption,
@@ -234,17 +234,68 @@ function TurretSimulationHeader(input: {
 }) {
   const { closeLabel, onClose, session } = input;
   const shouldRenderCloseAction = closeLabel !== undefined && closeLabel.trim().length > 0;
+  const titleShellRef = useRef<HTMLDivElement | null>(null);
+  const titleMeasureRef = useRef<HTMLSpanElement | null>(null);
+  const [shouldCompactTitle, setShouldCompactTitle] = useState(false);
+  const fullTitle = getFallbackValue(session.turretTitle, session.turretObjectId ?? "Selected turret");
+  const isObjectIdTitle = session.turretObjectId !== null && fullTitle === session.turretObjectId;
+  const headerTitle = isObjectIdTitle && shouldCompactTitle ? formatAddress(fullTitle) : fullTitle;
+
+  useLayoutEffect(() => {
+    const titleShell = titleShellRef.current;
+    const titleMeasure = titleMeasureRef.current;
+
+    if (titleShell === null || titleMeasure === null) {
+      return undefined;
+    }
+
+    const updateTitleLayout = () => {
+      setShouldCompactTitle(titleMeasure.scrollWidth > titleShell.clientWidth);
+    };
+
+    updateTitleLayout();
+
+    if (typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(() => {
+      updateTitleLayout();
+    });
+
+    observer.observe(titleShell);
+    observer.observe(titleMeasure);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [fullTitle, shouldRenderCloseAction, session.status]);
 
   return (
     <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.74)] px-5 py-4">
-      <div className="grid gap-2">
+      <div className="grid min-w-0 gap-2">
         <p className="font-heading text-[0.68rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
           Turret Simulation
         </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="font-heading text-lg uppercase tracking-[0.12em] text-[var(--cream-white)] sm:text-xl" id="turret-simulation-title">
-            {session.turretTitle}
-          </h2>
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <div className="relative min-w-0 flex-1 basis-full sm:basis-auto" ref={titleShellRef}>
+            <h2
+              aria-label={isObjectIdTitle ? fullTitle : undefined}
+              className="truncate font-heading text-lg uppercase tracking-[0.12em] text-[var(--cream-white)] sm:text-xl"
+              id="turret-simulation-title"
+              title={isObjectIdTitle && shouldCompactTitle ? fullTitle : undefined}
+            >
+              {headerTitle}
+            </h2>
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 top-0 invisible whitespace-nowrap font-heading text-lg uppercase tracking-[0.12em] sm:text-xl"
+              data-measurement="turret-simulation-title"
+              ref={titleMeasureRef}
+            >
+              {fullTitle}
+            </span>
+          </div>
           <SessionStatusBadge session={session} />
         </div>
         <p className="text-sm text-[var(--text-secondary)]" id="turret-simulation-description">
@@ -287,7 +338,7 @@ function TurretSimulationContextPanel(input: {
     setCopiedField(field);
   }, []);
 
-  const turretValue = getFallbackValue(session.turretTitle, formatAddress(session.turretObjectId ?? ""));
+  const turretValue = getFallbackValue(session.turretTitle, session.turretObjectId ?? "");
   const turretObjectValue = getFallbackValue(session.turretObjectId, "Unavailable");
   const packageValue = getFallbackValue(session.deploymentState?.packageId, "Unavailable");
   const moduleValue = getFallbackValue(session.deploymentState?.moduleName, "Unavailable");
