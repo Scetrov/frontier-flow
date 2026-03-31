@@ -227,29 +227,23 @@ git push origin main --tags
 
 ### 6.3 Release Automation
 
-The project uses [`standard-version`](https://github.com/conventional-changelog/standard-version) for automated versioning and changelog generation:
+The project uses [`release-please`](https://github.com/googleapis/release-please) for automated versioning and changelog generation.
 
-```bash
-# Standard release (auto-determines semver bump from commits)
-bun run release
-
-# Explicit version bumps
-bun run release:major
-bun run release:minor
-bun run release:patch
-```
+The [`release-please.yml`](../.github/workflows/release-please.yml) workflow runs on every push to `main` and can also be started manually with `workflow_dispatch`.
 
 This automatically:
 
-1. Bumps the version in `package.json`
-2. Updates `CHANGELOG.md` from Conventional Commit messages
-3. Creates a version commit and `v*` git tag
+1. Opens or updates a release PR that bumps `package.json` and updates `CHANGELOG.md` from Conventional Commit messages
+2. Creates the version commit, `v*` git tag, and GitHub Release when that release PR is merged
+3. Keeps the release metadata aligned with the repository history tracked in `.release-please-manifest.json`
 
-Pushing the tag triggers CI workflows:
+The resulting release commit and tag continue through the existing automation:
 
 - **`ci.yml`** — Runs lint, typecheck, unit tests, and audit on all pushes
 - **`deploy-pages.yml`** — Builds and deploys to GitHub Pages on push to `main`
 - **Netlify** — Auto-deploys from `main` via webhook
+
+There is no local `bun run release` step anymore. Maintainers should ensure merged commits follow Conventional Commits so the release PR gets the correct version bump and changelog sections.
 
 Future release pipeline additions (see [SECURITY.md §6.3](./SECURITY.md#63-release-attestation-workflow)):
 

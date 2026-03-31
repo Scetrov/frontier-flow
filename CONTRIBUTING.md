@@ -48,28 +48,27 @@ bun dev
 
 ### 1.3 Available Scripts
 
-| Script          | Command                                                 | Purpose                                                   |
-| --------------- | ------------------------------------------------------- | --------------------------------------------------------- |
-| `dev`           | `bun dev`                                               | Start Vite dev server                                     |
-| `build`         | `bun run build`                                         | Type-check and production build                           |
-| `build:with-world-contracts` | `bun run build:with-world-contracts`              | Fetch the pinned `world-contracts` reference checkout, then build |
-| `fetch:world-contracts` | `bun run fetch:world-contracts`                      | Materialize the pinned ignored `vendor/world-contracts` checkout on demand |
-| `lint`          | `bun run lint`                                          | Run ESLint                                                |
-| `preview`       | `bun run preview`                                       | Preview production build                                  |
-| `release`       | `bun run release`                                       | Bump version + update changelog from Conventional Commits |
-| `release:first` | `bun run release:first`                                 | Create the first tagged release without prior tags        |
-| `release:patch` | `bun run release:patch`                                 | Force a patch release                                     |
-| `release:minor` | `bun run release:minor`                                 | Force a minor release                                     |
-| `release:major` | `bun run release:major`                                 | Force a major release                                     |
-| `test`          | `bunx vitest`                                           | Run unit/component tests                                  |
-| `test:run`      | `bunx vitest run`                                       | Run tests once (CI mode)                                  |
-| `test:e2e`      | `bunx playwright test`                                  | Run E2E tests                                             |
-| `typecheck`     | `bunx tsc -b`                                           | TypeScript type checking                                  |
-| `audit`         | `bunx npm-audit --audit-level=high`                     | Dependency vulnerability audit                            |
-| `verify`        | `bun run lint && bun run typecheck && bun run test:run` | Local pre-commit quality gate                             |
-| `verify:full`   | `bun run verify && bun run build`                       | Full local CI-style verification                          |
+| Script                         | Command                                                 | Purpose                                                                    |
+| ------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `commitlint`                   | `bun run commitlint -- --from <base> --to <head>`       | Validate commit messages against Conventional Commits                      |
+| `dev`                          | `bun dev`                                               | Start Vite dev server                                                      |
+| `build`                        | `bun run build`                                         | Type-check and production build                                            |
+| `build:with-world-contracts`   | `bun run build:with-world-contracts`                    | Fetch the pinned `world-contracts` reference checkout, then build          |
+| `fetch:world-contracts`        | `bun run fetch:world-contracts`                         | Materialize the pinned ignored `vendor/world-contracts` checkout on demand |
+| `lint`                         | `bun run lint`                                          | Run ESLint                                                                 |
+| `preview`                      | `bun run preview`                                       | Preview production build                                                   |
+| `test`                         | `bunx vitest`                                           | Run unit/component tests                                                   |
+| `test:run`                     | `bunx vitest run`                                       | Run tests once (CI mode)                                                   |
+| `test:e2e`                     | `bunx playwright test`                                  | Run E2E tests                                                              |
+| `typecheck`                    | `bunx tsc -b`                                           | TypeScript type checking                                                   |
+| `audit`                        | `bunx npm-audit --audit-level=high`                     | Dependency vulnerability audit                                             |
+| `verify`                       | `bun run lint && bun run typecheck && bun run test:run` | Local pre-commit quality gate                                              |
+| `verify:full`                  | `bun run verify && bun run build`                       | Full local CI-style verification                                           |
 
 The `vendor/` directory is intentionally ignored. Use `bun run fetch:world-contracts` or `bun run build:with-world-contracts` when you need a pinned local checkout of the upstream `world-contracts` repository for inspection or compatibility work.
+
+Versioning, tags, and changelog updates are handled by the `release-please` GitHub workflow after Conventional Commits land on `main`.
+Running `bun install` also installs the Husky `commit-msg` hook, so invalid commit messages fail locally before they ever reach CI.
 
 ### 1.4 Project Structure
 
@@ -152,13 +151,7 @@ Examples:
 
 **Types:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `style`, `ci`
 
-Version numbers are derived from this commit history. Run one of the release scripts before a production release to update [package.json](package.json) and [CHANGELOG.md](CHANGELOG.md) consistently:
-
-```bash
-bun run release
-```
-
-Use the explicit `release:patch`, `release:minor`, or `release:major` variants when you need to override the inferred bump.
+Version numbers and changelog entries are derived from this commit history. Husky enforces this format locally through `.husky/commit-msg`, and CI rechecks the pushed commit range in `.github/workflows/ci.yml`. The `release-please` workflow opens or updates a release PR from commits on `main`; merging that PR updates [package.json](package.json), refreshes [CHANGELOG.md](CHANGELOG.md), creates the version tag, and publishes the GitHub release.
 
 ### 3.3 Signed Commits
 

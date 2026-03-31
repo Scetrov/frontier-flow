@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
 ### [0.9.8](https://github.com/Scetrov/frontier-flow/compare/v0.9.7...v0.9.8) (2026-03-31)
 
