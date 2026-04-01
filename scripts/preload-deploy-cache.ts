@@ -1,7 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve as resolvePath } from "node:path";
 
+import type { BundledDependencySnapshot, ResolvedDependencies } from "../src/compiler/types";
 import { loadMoveBuilderLite, moveBuilderLiteWasmUrl, verifyMoveBuilderLiteIntegrity } from "../src/compiler/moveBuilderLite";
+import { canonicalizeResolvedDependencies, createSnapshotValidationResult } from "../src/deployment/dependencySnapshotValidation";
 
 interface CacheSnapshotConfig {
   readonly sourceVersionTag: string;
@@ -13,16 +15,6 @@ interface CacheSnapshotConfig {
 
 interface CacheManifest {
   readonly snapshots: readonly CacheSnapshotConfig[];
-}
-
-interface ProjectDependencySnapshot {
-  readonly sourceVersionTag: string;
-  readonly resolvedAt: number;
-  readonly resolvedDependencies: {
-    readonly files: string;
-    readonly dependencies: string;
-    readonly lockfileDependencies: string;
-  };
 }
 
 function parseManifest(value: unknown): CacheManifest {
@@ -48,6 +40,29 @@ function parseManifest(value: unknown): CacheManifest {
   });
 
   return { snapshots };
+}
+
+function createBundledSnapshot(
+  sourceVersionTag: string,
+  resolvedDependencies: ResolvedDependencies,
+): BundledDependencySnapshot {
+  const canonicalResolvedDependencies = canonicalizeResolvedDependencies(resolvedDependencies);
+  const validation = createSnapshotValidationResult(canonicalResolvedDependencies);
+  if (!validation.isValid) {
+    throw new Error(`Bundled snapshot validation failed for ${sourceVersionTag}: ${validation.message}`);
+  }
+
+  const bundledSnapshot: BundledDependencySnapshot = {
+    sourceVersionTag,
+    resolvedAt: Date.now(),
+    resolvedDependencies: {
+      files: "{}",
+      dependencies: canonicalResolvedDependencies.dependencies,
+      lockfileDependencies: canonicalResolvedDependencies.lockfileDependencies,
+    },
+  };
+
+  return bundledSnapshot;
 }
 
 function createSyntheticFiles(sourceVersionTag: string, repositoryUrl: string, subdirectory: string): Record<string, string> {
@@ -97,15 +112,7 @@ async function main(): Promise<void> {
       silenceWarnings: false,
     });
 
-    const output: ProjectDependencySnapshot = {
-      sourceVersionTag: snapshot.sourceVersionTag,
-      resolvedAt: Date.now(),
-      resolvedDependencies: {
-        files: "{}",
-        dependencies: resolvedDependencies.dependencies,
-        lockfileDependencies: resolvedDependencies.lockfileDependencies,
-      },
-    };
+    const output = createBundledSnapshot(snapshot.sourceVersionTag, resolvedDependencies);
 
     const outputPath = resolvePath(process.cwd(), snapshot.outputPath);
     await mkdir(dirname(outputPath), { recursive: true });

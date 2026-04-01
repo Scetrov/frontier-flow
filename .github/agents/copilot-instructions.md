@@ -1,1 +1,1 @@
-- 018-simulate-turret-inputs: Added TypeScript 5.9 (strict, ES Modules) + React 19, Tailwind CSS 4, `@mysten/sui` (`bcs`, `jsonRpc`, `transactions`), `@mysten/dapp-kit`, existing authorization/turret GraphQL utilities
+- 019-cache-package-refresh: Added TypeScript 5.9 (strict), React 19, ES Modules + `@zktx.io/sui-move-builder/lite`, `@mysten/sui`, Vite, Bun, Vitest

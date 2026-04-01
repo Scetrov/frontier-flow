@@ -83,6 +83,10 @@ describe("compileMove", () => {
       silenceWarnings: false,
       network: "testnet",
     });
+    const buildInput = mockBuildMovePackage.mock.calls[0]?.[0] as { readonly rootGit?: unknown; readonly resolvedDependencies?: unknown };
+    expect(buildInput.rootGit).toBeUndefined();
+    expect(buildInput.resolvedDependencies).toBeUndefined();
+    expect(mockFetchPackageFromGitHub).not.toHaveBeenCalled();
     expect(result.success).toBe(true);
     expect(result.modules).toEqual(graphToMoveBytecodeFixture);
     expect(result.dependencies).toEqual(graphToMoveDependencyFixture);

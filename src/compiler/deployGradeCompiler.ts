@@ -13,9 +13,12 @@ import type {
   DeployCompileProgressEvent,
   DeployGradeCompileRequest,
   DeployGradeCompileResult,
+  MaterializedDependencyTree,
   ResolvedDependencies,
+  ResolvedDependencyPackageSnapshot,
 } from "./types";
 import { DeployCompilationError as DeployCompilationErrorClass, DependencyResolutionError as DependencyResolutionErrorClass } from "./types";
+import { normalizeDependencyPackageName, parseResolvedDependencyPackages } from "../deployment/dependencySnapshotValidation";
 
 const WORLD_CONTRACTS_GIT_URL = "https://github.com/evefrontier/world-contracts.git";
 const WORLD_CONTRACTS_SUBDIRECTORY = "contracts/world";
@@ -67,11 +70,6 @@ function getResolutionCacheKey(targetId: string, sourceVersionTag: string): stri
 function decodeBase64(value: string): Uint8Array {
   const binary = globalThis.atob(value);
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
-interface ResolvedDependencyPackageSnapshot {
-  readonly name?: string;
-  readonly files?: Record<string, string>;
 }
 
 function createRootGit(revision: string): { readonly git: string; readonly rev: string; readonly subdir: string } {
@@ -135,15 +133,6 @@ function sanitizeWorldDependencyFiles(files: Record<string, string>): {
   return { files: nextFiles, changed };
 }
 
-function parseResolvedDependencyPackages(resolvedDependencies: ResolvedDependencies): unknown[] | null {
-  try {
-    const dependencyPackages: unknown = JSON.parse(resolvedDependencies.dependencies);
-    return Array.isArray(dependencyPackages) ? dependencyPackages : null;
-  } catch {
-    return null;
-  }
-}
-
 function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies): ResolvedDependencies {
   const dependencyPackages = parseResolvedDependencyPackages(resolvedDependencies);
   if (dependencyPackages === null) {
@@ -151,21 +140,15 @@ function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies
   }
 
   let changed = false;
-  const sanitizedDependencyPackages: unknown[] = [];
+  const sanitizedDependencyPackages: ResolvedDependencyPackageSnapshot[] = [];
 
   for (const dependencyPackage of dependencyPackages) {
-    if (typeof dependencyPackage !== "object" || dependencyPackage === null) {
+    if (normalizeDependencyPackageName(dependencyPackage.name ?? "") !== RESOLVED_WORLD_PACKAGE_NAME || dependencyPackage.files === undefined) {
       sanitizedDependencyPackages.push(dependencyPackage);
       continue;
     }
 
-    const snapshot = dependencyPackage as ResolvedDependencyPackageSnapshot;
-    if (snapshot.name?.toLowerCase() !== RESOLVED_WORLD_PACKAGE_NAME || snapshot.files === undefined) {
-      sanitizedDependencyPackages.push(dependencyPackage);
-      continue;
-    }
-
-    const sanitizedSnapshot = sanitizeWorldDependencyFiles(snapshot.files);
+    const sanitizedSnapshot = sanitizeWorldDependencyFiles(dependencyPackage.files);
     changed ||= sanitizedSnapshot.changed;
 
     sanitizedDependencyPackages.push({
@@ -292,68 +275,146 @@ function rewriteMoveTomlForLocalWorldDependency(moveToml: string, worldPackageId
   return result.join("\n");
 }
 
-function extractWorldFilesFromSnapshot(
+function getLocalDependencyDirectoryName(snapshotName: string | undefined): string {
+  const normalizedName = normalizeDependencyPackageName(snapshotName ?? "dependency");
+  if (normalizedName === "movestdlib") {
+    return "move-stdlib";
+  }
+
+  return normalizedName.length > 0 ? normalizedName : "dependency";
+}
+
+function isWorldSnapshot(normalizedName: string): boolean {
+  return normalizedName === RESOLVED_WORLD_PACKAGE_NAME;
+}
+
+function shouldSkipSnapshotFile(filePath: string, prefix: string): string | null {
+  if (!filePath.startsWith(prefix)) {
+    return null;
+  }
+
+  const relativePath = filePath.slice(prefix.length);
+  return /^tests\//i.test(relativePath) ? null : relativePath;
+}
+
+function getSnapshotFileContent(input: {
+  readonly content: string;
+  readonly isWorldPackage: boolean;
+  readonly relativePath: string;
+  readonly rewritesApplied: string[];
+}): string {
+  if (
+    input.isWorldPackage
+    && /access_control\.move$/i.test(input.relativePath)
+    && UNSUPPORTED_CHARACTER_TRANSFER_CHECK.test(input.content)
+  ) {
+    input.rewritesApplied.push(`world-source-sanitized:${input.relativePath}`);
+    return input.content.replace(UNSUPPORTED_CHARACTER_TRANSFER_CHECK, COMPATIBLE_CHARACTER_TRANSFER_CHECK);
+  }
+
+  return input.content;
+}
+
+function ensureWorldManifestPresent(
+  extractedFiles: Record<string, string>,
+  rewritesApplied: string[],
+  worldPackageId: string,
+): void {
+  if ("deps/world/Move.toml" in extractedFiles) {
+    return;
+  }
+
+  extractedFiles["deps/world/Move.toml"] = createWorldDepMoveToml(worldPackageId);
+  rewritesApplied.push("world-manifest-created");
+}
+
+function extractSnapshotFiles(
   snapshot: ResolvedDependencyPackageSnapshot,
+  destinationDirectory: string,
+  rewritesApplied: string[],
   worldPackageId: string,
 ): Record<string, string> {
-  const worldFiles: Record<string, string> = {};
-  const resolvedName = snapshot.name ?? "World";
+  const extractedFiles: Record<string, string> = {};
+  const resolvedName = snapshot.name ?? "Dependency";
+  const normalizedName = normalizeDependencyPackageName(resolvedName);
+  const isWorldPackage = isWorldSnapshot(normalizedName);
   const prefix = `dependencies/${resolvedName}/`;
 
   for (const [filePath, content] of Object.entries(snapshot.files ?? {})) {
-    if (!filePath.startsWith(prefix)) {
+    const relativePath = shouldSkipSnapshotFile(filePath, prefix);
+    if (relativePath === null) {
       continue;
     }
 
-    const relativePath = filePath.slice(prefix.length);
-    if (/^tests\//.test(relativePath)) {
+    const destinationPath = `deps/${destinationDirectory}/${relativePath}`;
+    if (isWorldPackage && relativePath === "Move.toml") {
+      extractedFiles[destinationPath] = createWorldDepMoveToml(worldPackageId);
+      rewritesApplied.push("world-manifest-rewrite");
       continue;
     }
 
-    if (relativePath === "Move.toml") {
-      worldFiles[`deps/world/${relativePath}`] = createWorldDepMoveToml(worldPackageId);
-      continue;
-    }
-
-    const source = /access_control\.move$/i.test(relativePath) && UNSUPPORTED_CHARACTER_TRANSFER_CHECK.test(content)
-      ? content.replace(UNSUPPORTED_CHARACTER_TRANSFER_CHECK, COMPATIBLE_CHARACTER_TRANSFER_CHECK)
-      : content;
-
-    worldFiles[`deps/world/${relativePath}`] = source;
+    extractedFiles[destinationPath] = getSnapshotFileContent({
+      content,
+      isWorldPackage,
+      relativePath,
+      rewritesApplied,
+    });
   }
 
-  if (!("deps/world/Move.toml" in worldFiles)) {
-    worldFiles["deps/world/Move.toml"] = createWorldDepMoveToml(worldPackageId);
+  if (isWorldPackage) {
+    ensureWorldManifestPresent(extractedFiles, rewritesApplied, worldPackageId);
   }
 
-  return worldFiles;
+  return extractedFiles;
 }
 
-function extractWorldSourceFromResolvedDependencies(
+function createMaterializedDependencyTree(
+  request: DeployGradeCompileRequest,
   resolvedDependencies: ResolvedDependencies,
-  worldPackageId: string,
-): Record<string, string> {
-  let dependencyPackages: unknown;
-  try {
-    dependencyPackages = JSON.parse(resolvedDependencies.dependencies);
-  } catch {
-    return {};
+): MaterializedDependencyTree {
+  const dependencyPackages = parseResolvedDependencyPackages(resolvedDependencies);
+  if (dependencyPackages === null) {
+    throw new DependencyResolutionErrorClass("Bundled dependency payloads could not be parsed for deploy-grade compilation.", {
+      code: "bundled-snapshot-invalid",
+      userMessage: "Bundled dependency payloads could not be parsed for deploy-grade compilation.",
+      suggestedAction: "Regenerate the bundled dependency snapshots or retry deploy-grade compilation without the bundled cache.",
+    });
   }
 
-  if (!Array.isArray(dependencyPackages)) {
-    return {};
-  }
+  const dependencyLinkPackageId = getDependencyLinkPackageId(request.target);
+  const files: Record<string, string> = {
+    "Move.toml": rewriteMoveTomlForLocalWorldDependency(request.artifact.moveToml, dependencyLinkPackageId),
+  };
+  const packageMap: Record<string, string> = {};
+  const rewritesApplied: string[] = [];
 
-  for (const pkg of dependencyPackages) {
-    const snapshot = pkg as ResolvedDependencyPackageSnapshot;
-    if (snapshot.name?.toLowerCase() !== RESOLVED_WORLD_PACKAGE_NAME || snapshot.files === undefined) {
+  for (const file of request.artifact.sourceFiles ?? [{ path: request.artifact.sourceFilePath, content: request.artifact.moveSource }]) {
+    if (file.path.startsWith("deps/world/")) {
       continue;
     }
 
-    return extractWorldFilesFromSnapshot(snapshot, worldPackageId);
+    files[file.path] = file.content;
   }
 
-  return {};
+  for (const snapshot of dependencyPackages) {
+    const packageName = snapshot.name;
+    if (packageName === undefined || snapshot.files === undefined) {
+      continue;
+    }
+
+    const localDirectory = getLocalDependencyDirectoryName(packageName);
+    packageMap[normalizeDependencyPackageName(packageName)] = `deps/${localDirectory}`;
+
+    for (const [filePath, content] of Object.entries(extractSnapshotFiles(snapshot, localDirectory, rewritesApplied, dependencyLinkPackageId))) {
+      files[filePath] = content;
+    }
+  }
+
+  return {
+    files,
+    packageMap,
+    rewritesApplied,
+  };
 }
 
 function createWorldDepMoveToml(worldPackageId: string): string {
@@ -369,32 +430,10 @@ function createWorldDepMoveToml(worldPackageId: string): string {
   ].join("\n");
 }
 
-function createLocalWorldFileMap(
-  request: DeployGradeCompileRequest,
-  worldSourceFiles: Record<string, string>,
-): Record<string, string> {
-  const dependencyLinkPackageId = getDependencyLinkPackageId(request.target);
-  const files: Record<string, string> = {
-    "Move.toml": rewriteMoveTomlForLocalWorldDependency(request.artifact.moveToml, dependencyLinkPackageId),
-  };
-
-  for (const file of request.artifact.sourceFiles ?? [{ path: request.artifact.sourceFilePath, content: request.artifact.moveSource }]) {
-    if (file.path.startsWith("deps/world/")) {
-      continue;
-    }
-    files[file.path] = file.content;
-  }
-
-  for (const [path, content] of Object.entries(worldSourceFiles)) {
-    files[path] = content;
-  }
-
-  return files;
-}
-
 async function buildExtensionWithLocalWorld(
   request: DeployGradeCompileRequest,
   files: Record<string, string>,
+  resolvedDependencies: ResolvedDependencies,
   buildCompilerPackage: BuildMovePackageFn,
 ): Promise<BuildSuccessResult> {
   request.onProgress?.({ phase: "compiling" });
@@ -405,6 +444,7 @@ async function buildExtensionWithLocalWorld(
       files,
       wasm: moveBuilderLiteWasmUrl,
       network: "testnet",
+      resolvedDependencies,
       silenceWarnings: false,
       onProgress: (event) => {
         const mapped = toDeployProgress(event);
@@ -438,6 +478,7 @@ function createWorldOnlyFileMap(localFiles: Record<string, string>): Record<stri
 
 async function detectWorldModuleSet(
   worldOnlyFiles: Record<string, string>,
+  resolvedDependencies: ResolvedDependencies,
   buildCompilerPackage: BuildMovePackageFn,
 ): Promise<ReadonlySet<string> | null> {
   try {
@@ -445,6 +486,7 @@ async function detectWorldModuleSet(
       files: worldOnlyFiles,
       wasm: moveBuilderLiteWasmUrl,
       network: "testnet",
+      resolvedDependencies,
       silenceWarnings: true,
     }) as BuildSuccessResult | BuildErrorResult;
 
@@ -589,14 +631,12 @@ export async function compileForDeployment(
   const resolvedDependencies = await resolveDeployDependencies({ request, files: gitFiles, rootGit, cacheKey, resolve: resolveCompilerDependencies, now });
   const sanitizedDependencies = sanitizeResolvedDependencies(resolvedDependencies);
 
-  // Step 2: Extract world source from resolved deps and create local file map
-  const dependencyLinkPackageId = getDependencyLinkPackageId(request.target);
-  const worldSourceFiles = extractWorldSourceFromResolvedDependencies(sanitizedDependencies, dependencyLinkPackageId);
-  const localFiles = createLocalWorldFileMap(request, worldSourceFiles);
+  // Step 2: Materialize the dependency tree from cached/resolved package payloads.
+  const localFiles = createMaterializedDependencyTree(request, sanitizedDependencies).files;
 
-  const buildResult = await buildExtensionWithLocalWorld(request, localFiles, buildCompilerPackage);
+  const buildResult = await buildExtensionWithLocalWorld(request, localFiles, sanitizedDependencies, buildCompilerPackage);
   const worldOnlyFiles = createWorldOnlyFileMap(localFiles);
-  const worldModuleSet = await detectWorldModuleSet(worldOnlyFiles, buildCompilerPackage);
+  const worldModuleSet = await detectWorldModuleSet(worldOnlyFiles, sanitizedDependencies, buildCompilerPackage);
 
   const extensionModules = worldModuleSet !== null
     ? buildResult.modules.filter((m) => !worldModuleSet.has(m))

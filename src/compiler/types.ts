@@ -69,6 +69,31 @@ export interface ResolvedDependencies {
   readonly lockfileDependencies: string;
 }
 
+export interface ResolvedDependencyPackageSnapshot {
+  readonly name?: string;
+  readonly files?: Readonly<Record<string, string>>;
+}
+
+export interface BundledDependencySnapshot {
+  readonly sourceVersionTag: string;
+  readonly resolvedAt: number;
+  readonly resolvedDependencies: ResolvedDependencies;
+}
+
+export interface SnapshotValidationResult {
+  readonly isValid: boolean;
+  readonly missingPackages: readonly string[];
+  readonly emptyPackageNames: readonly string[];
+  readonly fallbackAllowed: boolean;
+  readonly message: string;
+}
+
+export interface MaterializedDependencyTree {
+  readonly files: Readonly<Record<string, string>>;
+  readonly packageMap: Readonly<Record<string, string>>;
+  readonly rewritesApplied: readonly string[];
+}
+
 export interface ResolvedWorldSource {
   readonly sourceVersionTag: string;
   readonly files: Readonly<Record<string, string>>;
