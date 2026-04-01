@@ -288,7 +288,7 @@ function isWorldSnapshot(normalizedName: string): boolean {
   return normalizedName === RESOLVED_WORLD_PACKAGE_NAME;
 }
 
-function shouldSkipSnapshotFile(filePath: string, prefix: string): string | null {
+function getIncludedSnapshotRelativePath(filePath: string, prefix: string): string | null {
   if (!filePath.startsWith(prefix)) {
     return null;
   }
@@ -357,7 +357,7 @@ function extractSnapshotFiles(
   const prefix = `dependencies/${snapshotDirectory}/`;
 
   for (const [filePath, content] of Object.entries(snapshot.files ?? {})) {
-    const relativePath = shouldSkipSnapshotFile(filePath, prefix);
+    const relativePath = getIncludedSnapshotRelativePath(filePath, prefix);
     if (relativePath === null) {
       continue;
     }

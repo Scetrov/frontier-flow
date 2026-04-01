@@ -437,6 +437,40 @@ describe("deployGradeCompiler", () => {
     expect(mainBuildInput.files?.["deps/sui/sources/sui.move"]).toContain("module sui::sui {}");
   });
 
+  it("skips dependency test files while still materializing included sources", async () => {
+    const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture([
+      createResolvedDependencyPackageSnapshot({
+        name: "Sui",
+        files: {
+          "dependencies/Sui/Move.toml": "[package]\nname = \"Sui\"\n",
+          "dependencies/Sui/sources/sui.move": "module sui::sui {}",
+          "dependencies/Sui/tests/skip.move": "module sui::skip {}",
+        },
+      }),
+      createResolvedDependencyPackageSnapshot({ name: "World" }),
+      createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
+    ]);
+    const buildMovePackage = vi.fn()
+      .mockResolvedValue({
+        modules: [toBase64([1, 2, 3])],
+        dependencies: ["0x1", "0x2"],
+        digest: [3, 2, 1],
+      });
+
+    await compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      buildMovePackage,
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+      now: () => 42,
+    });
+
+    const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly files?: Record<string, string> };
+    expect(mainBuildInput.files?.["deps/sui/sources/sui.move"]).toContain("module sui::sui {}");
+    expect(mainBuildInput.files?.["deps/sui/tests/skip.move"]).toBeUndefined();
+  });
+
   it("fails fast when bundled dependency payloads are not parseable", async () => {
     await expect(compileForDeployment(createRequest(), {
       initMoveCompiler: vi.fn(() => Promise.resolve()),

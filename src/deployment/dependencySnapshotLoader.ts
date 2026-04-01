@@ -15,6 +15,14 @@ function createSnapshotUrl(relativePath: string): string {
   return `${normalizedBaseUrl}${relativePath}`;
 }
 
+function createInvalidSnapshotError(message: string): DependencyResolutionError {
+  return new DependencyResolutionError(message, {
+    code: "bundled-snapshot-invalid",
+    userMessage: message,
+    suggestedAction: "Regenerate the bundled dependency snapshots or allow the runtime to fall back to upstream dependency resolution.",
+  });
+}
+
 async function loadProjectDependencySnapshot(
   sourceVersionTag: string,
   dependencies: DependencySnapshotLoaderDependencies = {},
@@ -44,20 +52,17 @@ async function loadProjectDependencySnapshot(
     const parsed = parseBundledDependencySnapshot(await response.json() as unknown);
     if (parsed === null) {
       const message = `Deploy dependency snapshot for ${sourceVersionTag} was invalid.`;
-      throw new DependencyResolutionError(message, {
-        code: "bundled-snapshot-invalid",
-        userMessage: message,
-        suggestedAction: "Regenerate the bundled dependency snapshots or allow the runtime to fall back to upstream dependency resolution.",
-      });
+      throw createInvalidSnapshotError(message);
+    }
+
+    if (parsed.sourceVersionTag !== sourceVersionTag) {
+      const message = `Deploy dependency snapshot for ${sourceVersionTag} had mismatched sourceVersionTag (${parsed.sourceVersionTag}).`;
+      throw createInvalidSnapshotError(message);
     }
 
     const validation = createSnapshotValidationResult(parsed.resolvedDependencies);
     if (!validation.isValid) {
-      throw new DependencyResolutionError(validation.message, {
-        code: "bundled-snapshot-invalid",
-        userMessage: validation.message,
-        suggestedAction: "Regenerate the bundled dependency snapshots or allow the runtime to fall back to upstream dependency resolution.",
-      });
+      throw createInvalidSnapshotError(validation.message);
     }
 
     return parsed;

@@ -196,19 +196,24 @@ describe("deployment executor error sanitization", () => {
     const publishRemote = vi.fn(() => Promise.resolve({ transactionDigest: "0xremote" }));
     const confirm = vi.fn(() => Promise.resolve({ confirmed: true, confirmationReference: "0xremote", finalStage: "confirming" as const }));
     const executor = createDeploymentExecutor({ loadCachedResolution, fetchWorldSource, compileForDeployment, publishRemote, confirm });
+    const onProgress = vi.fn();
 
     const result = await executor({
       artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
       ownerAddress: "0x1234",
       references: createPackageReferenceBundleFixture("testnet:stillness"),
       target: getDeploymentTarget("testnet:stillness"),
-    });
+    }, onProgress);
 
     expect(result.outcome).toBe("succeeded");
     expect(loadCachedResolution).toHaveBeenCalledTimes(1);
     expect(fetchWorldSource).toHaveBeenCalledTimes(1);
     expect(compileForDeployment).toHaveBeenCalledTimes(1);
     expect(publishRemote).toHaveBeenCalledTimes(1);
+    expect(onProgress).toHaveBeenCalledWith({
+      stage: "fetch-world-source",
+      message: "No bundled dependency snapshot found. Falling back to upstream world source.",
+    });
   });
 
   it("routes local through deploy-grade compilation before local publish", async () => {
@@ -454,6 +459,7 @@ describe("deployment executor error sanitization", () => {
     });
 
     expect(result.outcome).toBe("failed");
+    expect(result.stage).toBe("fetch-world-source");
     expect(result.errorCode).toBe("resolution-failed");
     expect(result.message).toContain("No bundled dependency snapshot was available");
   });

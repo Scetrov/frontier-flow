@@ -147,6 +147,8 @@ function isConfirmationTimeoutError(message: string): boolean {
 
 function getFailureErrorCode(fallbackStage: DeploymentStage): string {
   switch (fallbackStage) {
+    case "fetch-world-source":
+      return "resolution-failed";
     case "confirming":
       return "confirmation-failed";
     case "resolve-dependencies":
@@ -166,9 +168,9 @@ function classifyExecutionError(error: unknown, fallbackStage: DeploymentStage):
   if (error instanceof DependencyResolutionError) {
     return {
       outcome: "failed",
-      stage: fallbackStage === "fetch-world-source" ? "resolve-dependencies" : fallbackStage,
+      stage: fallbackStage,
       message,
-      errorCode: "resolution-failed",
+      errorCode: getFailureErrorCode(fallbackStage),
     };
   }
 
@@ -245,6 +247,11 @@ async function compileDeployGradeArtifact(
 
   if (cachedResolution === null && fallbackReason === null) {
     fallbackReason = "missing";
+    reportProgress(
+      onProgress,
+      "fetch-world-source",
+      "No bundled dependency snapshot found. Falling back to upstream world source.",
+    );
   }
 
   const worldSource = cachedResolution === null

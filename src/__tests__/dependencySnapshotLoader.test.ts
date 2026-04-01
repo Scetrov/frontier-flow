@@ -37,4 +37,29 @@ describe("dependencySnapshotLoader", () => {
       userMessage: "Deploy dependency snapshot for v0.0.18 was invalid.",
     });
   });
+
+  it("throws a cache-invalid dependency resolution error when the bundled snapshot tag mismatches the requested version", async () => {
+    const fetchFn = vi.fn(() => Promise.resolve(createFetchResponse({
+      ok: true,
+      status: 200,
+      jsonValue: {
+        targetId: "testnet:stillness",
+        sourceVersionTag: "v0.0.21",
+        resolvedAt: 123,
+        resolvedDependencies: {
+          files: "{}",
+          dependencies: "{}",
+          lockfileDependencies: "{}",
+        },
+      },
+    })));
+
+    await expect(getProjectCachedDependencyResolution(createPackageReferenceBundle(), {
+      fetchFn,
+    })).rejects.toMatchObject({
+      name: DependencyResolutionError.name,
+      code: "bundled-snapshot-invalid",
+      userMessage: "Deploy dependency snapshot for v0.0.18 had mismatched sourceVersionTag (v0.0.21).",
+    });
+  });
 });
