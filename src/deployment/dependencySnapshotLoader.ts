@@ -43,7 +43,12 @@ async function loadProjectDependencySnapshot(
 
     const parsed = parseBundledDependencySnapshot(await response.json() as unknown);
     if (parsed === null) {
-      throw new Error(`Deploy dependency snapshot for ${sourceVersionTag} was invalid.`);
+      const message = `Deploy dependency snapshot for ${sourceVersionTag} was invalid.`;
+      throw new DependencyResolutionError(message, {
+        code: "bundled-snapshot-invalid",
+        userMessage: message,
+        suggestedAction: "Regenerate the bundled dependency snapshots or allow the runtime to fall back to upstream dependency resolution.",
+      });
     }
 
     const validation = createSnapshotValidationResult(parsed.resolvedDependencies);

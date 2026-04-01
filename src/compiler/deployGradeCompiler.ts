@@ -328,6 +328,21 @@ function ensureWorldManifestPresent(
   rewritesApplied.push("world-manifest-created");
 }
 
+function getSnapshotDependencyDirectory(
+  snapshot: ResolvedDependencyPackageSnapshot,
+  fallbackDirectory: string,
+  normalizedName: string,
+): string {
+  for (const filePath of Object.keys(snapshot.files ?? {})) {
+    const match = filePath.match(/^dependencies\/([^/]+)\//i);
+    if (match?.[1] !== undefined && normalizeDependencyPackageName(match[1]) === normalizedName) {
+      return match[1];
+    }
+  }
+
+  return fallbackDirectory;
+}
+
 function extractSnapshotFiles(
   snapshot: ResolvedDependencyPackageSnapshot,
   destinationDirectory: string,
@@ -338,7 +353,8 @@ function extractSnapshotFiles(
   const resolvedName = snapshot.name ?? "Dependency";
   const normalizedName = normalizeDependencyPackageName(resolvedName);
   const isWorldPackage = isWorldSnapshot(normalizedName);
-  const prefix = `dependencies/${resolvedName}/`;
+  const snapshotDirectory = getSnapshotDependencyDirectory(snapshot, resolvedName, normalizedName);
+  const prefix = `dependencies/${snapshotDirectory}/`;
 
   for (const [filePath, content] of Object.entries(snapshot.files ?? {})) {
     const relativePath = shouldSkipSnapshotFile(filePath, prefix);
