@@ -1,7 +1,7 @@
 # 1. Implementation Plan
 
-**Branch**: `019-cache-package-refresh` | **Date**: 2026-04-01 | **Spec**: `/home/scetrov/source/frontier-flow/specs/019-cache-package-refresh/spec.md`
-**Input**: Feature specification from `/home/scetrov/source/frontier-flow/specs/019-cache-package-refresh/spec.md`
+**Branch**: `019-cache-package-refresh` | **Date**: 2026-04-01 | **Spec**: `specs/019-cache-package-refresh/spec.md`
+**Input**: Feature specification from `specs/019-cache-package-refresh/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 

@@ -141,7 +141,8 @@ files have no dedicated test coverage. Items are grouped by risk level.
       to `main`.
 - [x] **Enforce test coverage gates** — Add Vitest coverage reporting to the CI
       pipeline with minimum thresholds (70% overall, 90% for `src/compiler/`).
-      Currently defined in `docs/TESTING-STRATEGY.md §11` but not CI-enforced.
+      Thresholds are defined in `docs/TESTING-STRATEGY.md §11` and enforced via the
+      CI unit-tests coverage run.
 - [ ] **SBOM / provenance attestation** — Release workflow should generate
       CycloneDX SBOM and SLSA provenance (documented in `docs/SECURITY.md §6.3` and
       `docs/DEPLOYMENT.md §6.3` but not yet implemented).
