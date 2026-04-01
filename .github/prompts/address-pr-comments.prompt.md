@@ -168,25 +168,40 @@ For each comment requiring code changes:
 
 ### Phase 5: Commit Changes
 
+**Commit message safety requirements:**
+
+- Do not embed literal `\n` escape sequences in a quoted `git commit -m` body; Git will store them as one long line.
+- Prefer `git commit -F <file>` or a heredoc-backed `-m` body when the commit message has multiple paragraphs or bullets.
+- After creating or amending the commit, inspect the exact stored message with `git log -1 --format=%B`.
+- Validate the final message before push with `bun run commitlint --from HEAD~1 --to HEAD --verbose` when local dependencies are available.
+- If commitlint cannot run locally, explicitly check that no line in `git log -1 --format=%B` exceeds 100 characters before pushing.
+
 1. **Stage changes by category** (prefer atomic commits):
 
    ```bash
    git add <files_for_comment_1>
-   git commit -m "fix(scope): address review comment - <summary>
+   git commit -F /tmp/pr-review-commit-message.txt
+   ```
+
+   Example message file contents:
+
+   ```text
+   fix(scope): address review comment - <summary>
 
    Addresses review comment by @reviewer on PR #<number>:
    <quote first line of comment>
 
    Changes:
    - <change 1>
-   - <change 2>"
+   - <change 2>
    ```
 
 2. **Alternative: Single commit for multiple related comments**:
 
    ```bash
    git add -A
-   git commit -m "fix: address PR #<number> review comments
+   cat <<'EOF' >/tmp/pr-review-commit-message.txt
+   fix: address PR #<number> review comments
 
    Addresses the following review feedback:
    - @reviewer1: <summary of fix 1>
@@ -195,7 +210,11 @@ For each comment requiring code changes:
    Changes:
    - <change 1>
    - <change 2>
-   - <change 3>"
+   - <change 3>
+   EOF
+   git commit -F /tmp/pr-review-commit-message.txt
+   git log -1 --format=%B
+   bun run commitlint --from HEAD~1 --to HEAD --verbose
    ```
 
 3. **Push changes**:
