@@ -156,7 +156,7 @@ module deepbook::order_query {
                 let order = linked_table::borrow(open_orders, key);
 
                 // if the order id is greater than max_id, we end the iteration for this tick level.
-                if (option::is_some(&max_id) && key > option::destroy_some(max_id)) {
+                if (option::is_some(&max_id) && key > *option::borrow(&max_id)) {
                     break
                 };
 
@@ -164,7 +164,7 @@ module deepbook::order_query {
 
                 // if expire timestamp is set, and if the order is expired, we skip it.
                 if (option::is_none(&min_expire_timestamp) ||
-                    clob_v2::expire_timestamp(order) > option::destroy_some(min_expire_timestamp)) {
+                    clob_v2::expire_timestamp(order) > *option::borrow(&min_expire_timestamp)) {
                     vector::push_back(&mut orders, clob_v2::clone_order(order));
                 };
             };

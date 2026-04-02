@@ -7,6 +7,7 @@ module deepbook::custodian {
     use sui::table::{Self, Table};
 
     // <<<<<<<<<<<<<<<<<<<<<<<< Error codes <<<<<<<<<<<<<<<<<<<<<<<<
+    const EDEPRECATED_ENTRYPOINT: u64 = 1337;
 
     public struct Account<phantom T> has store {
         available_balance: Balance<T>,
@@ -25,8 +26,7 @@ module deepbook::custodian {
     #[deprecated(note = b"Minting account cap is deprecated. Please use Deepbook V3.")]
     /// Create an `AccountCap` that can be used across all DeepBook pool
     public fun mint_account_cap(_ctx: &mut TxContext): AccountCap {
-        
-        abort 1337
+        abort EDEPRECATED_ENTRYPOINT
     }
 
     public(package) fun account_balance<Asset>(

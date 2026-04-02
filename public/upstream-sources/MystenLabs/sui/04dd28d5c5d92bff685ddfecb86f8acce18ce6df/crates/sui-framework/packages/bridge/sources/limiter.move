@@ -151,7 +151,11 @@ fun adjust_transfer_records(self: &mut TransferRecord, current_hour_since_epoch:
         return // nothing to backfill
     };
 
-    let target_tail = current_hour_since_epoch - 23;
+    let target_tail = if (current_hour_since_epoch < 23) {
+        0
+    } else {
+        current_hour_since_epoch - 23
+    };
 
     // If `hour_head` is even older than 24 hours ago, it means all items in
     // `per_hour_amounts` are to be evicted.
