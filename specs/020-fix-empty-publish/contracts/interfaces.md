@@ -63,7 +63,12 @@ interface DeploymentExecutionRequest {
 
 ```typescript
 interface DeploymentExecutionResult {
-  readonly outcome: "blocked" | "cancelled" | "failed" | "unresolved" | "succeeded";
+  readonly outcome:
+    | "blocked"
+    | "cancelled"
+    | "failed"
+    | "unresolved"
+    | "succeeded";
   readonly stage: DeploymentStage;
   readonly message: string;
   readonly errorCode?: string;
@@ -93,7 +98,10 @@ interface RemotePublishRequest {
   readonly ownerAddress: string;
   readonly target: DeploymentTarget;
   readonly references: PackageReferenceBundle;
-  readonly execute: (transaction: Transaction, request?: RemotePublishExecutionRequest) => Promise<{ digest: string }>;
+  readonly execute: (
+    transaction: Transaction,
+    request?: RemotePublishExecutionRequest,
+  ) => Promise<{ digest: string }>;
   readonly onSubmitting?: () => void;
   readonly signal?: AbortSignal;
 }
@@ -102,7 +110,7 @@ interface RemotePublishRequest {
 ### 1.3.2. Precondition
 
 ```typescript
-modules.length > 0
+modules.length > 0;
 ```
 
 ### 1.3.3. Failure Contract
@@ -130,7 +138,7 @@ interface LocalPublishRequest {
 ### 1.4.2. Precondition
 
 ```typescript
-resolvedModules.length > 0
+resolvedModules.length > 0;
 ```
 
 ### 1.4.3. Failure Contract
