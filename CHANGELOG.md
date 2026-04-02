@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.9.9](https://github.com/Scetrov/frontier-flow/compare/v0.9.8...v0.9.9) (2026-04-02)
+
+
+### Bug Fixes
+
+* refresh deploy-grade dependency cache ([#25](https://github.com/Scetrov/frontier-flow/issues/25)) ([712b090](https://github.com/Scetrov/frontier-flow/commit/712b090a49ffad16e2575ac1be19e0cc8217ef6f))
+
 ### [0.9.8](https://github.com/Scetrov/frontier-flow/compare/v0.9.7...v0.9.8) (2026-03-31)
 
 ### [0.9.7](https://github.com/Scetrov/frontier-flow/compare/v0.9.6...v0.9.7) (2026-03-31)
