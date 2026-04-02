@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { DependencyResolutionError } from "../compiler/types";
 import type { FetchWorldSourceResult } from "../compiler/types";
 import type { DeploymentExecutionRequest, DeploymentExecutorDependencies } from "../deployment/executor";
 import { getDeploymentTarget } from "../data/deploymentTargets";
@@ -195,19 +196,24 @@ describe("deployment executor error sanitization", () => {
     const publishRemote = vi.fn(() => Promise.resolve({ transactionDigest: "0xremote" }));
     const confirm = vi.fn(() => Promise.resolve({ confirmed: true, confirmationReference: "0xremote", finalStage: "confirming" as const }));
     const executor = createDeploymentExecutor({ loadCachedResolution, fetchWorldSource, compileForDeployment, publishRemote, confirm });
+    const onProgress = vi.fn();
 
     const result = await executor({
       artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
       ownerAddress: "0x1234",
       references: createPackageReferenceBundleFixture("testnet:stillness"),
       target: getDeploymentTarget("testnet:stillness"),
-    });
+    }, onProgress);
 
     expect(result.outcome).toBe("succeeded");
     expect(loadCachedResolution).toHaveBeenCalledTimes(1);
     expect(fetchWorldSource).toHaveBeenCalledTimes(1);
     expect(compileForDeployment).toHaveBeenCalledTimes(1);
     expect(publishRemote).toHaveBeenCalledTimes(1);
+    expect(onProgress).toHaveBeenCalledWith({
+      stage: "fetch-world-source",
+      message: "No bundled dependency snapshot found. Falling back to upstream world source.",
+    });
   });
 
   it("routes local through deploy-grade compilation before local publish", async () => {
@@ -387,6 +393,75 @@ describe("deployment executor error sanitization", () => {
         fetchedAt: 7,
       },
     }));
+  });
+
+  it("falls back to fetching the upstream world source when the bundled snapshot is invalid", async () => {
+    const fetchedWorldSource: FetchWorldSourceResult = {
+      files: { "Move.toml": "[package]\nname=\"world\"\n" },
+      sourceVersionTag: "v0.0.18",
+      fetchedAt: 11,
+    };
+    const loadCachedResolution = vi.fn(() => Promise.reject(new DependencyResolutionError(
+      "Bundled dependency snapshot is invalid: missing package payloads for Sui.",
+      {
+        code: "bundled-snapshot-invalid",
+        userMessage: "Bundled dependency snapshot is invalid.",
+      },
+    )));
+    const fetchWorldSource = vi.fn(() => Promise.resolve(fetchedWorldSource));
+    const compileForDeployment = vi.fn(() => Promise.resolve({
+      modules: [new Uint8Array([1, 2, 3])],
+      dependencies: ["0x1"],
+      digest: [1, 2, 3],
+      resolvedDependencies: {
+        files: "{}",
+        dependencies: "[]",
+        lockfileDependencies: "{}",
+      },
+      targetId: "testnet:stillness" as const,
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
+      compiledAt: 2,
+    }));
+    const publishRemote = vi.fn(() => Promise.resolve({ transactionDigest: "0xremote" }));
+    const confirm = vi.fn(() => Promise.resolve({ confirmed: true, confirmationReference: "0xremote", finalStage: "confirming" as const }));
+    const executor = createDeploymentExecutor({ loadCachedResolution, fetchWorldSource, compileForDeployment, publishRemote, confirm });
+
+    const result = await executor({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      ownerAddress: "0x1234",
+      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      target: getDeploymentTarget("testnet:stillness"),
+    });
+
+    expect(result.outcome).toBe("succeeded");
+    expect(fetchWorldSource).toHaveBeenCalledTimes(1);
+    expect(compileForDeployment).toHaveBeenCalledWith(expect.objectContaining({
+      cachedResolution: undefined,
+      worldSource: fetchedWorldSource,
+    }));
+  });
+
+  it("surfaces a cache-aware error when no bundled snapshot is available and fallback fetch fails", async () => {
+    const loadCachedResolution = vi.fn(() => Promise.resolve(null));
+    const fetchWorldSource = vi.fn(() => Promise.reject(new Error("Failed to fetch world source for v0.0.18 from upstream")));
+    const executor = createDeploymentExecutor({
+      loadCachedResolution,
+      fetchWorldSource,
+      compileForDeployment: vi.fn(),
+    });
+
+    const result = await executor({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      ownerAddress: "0x1234",
+      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      target: getDeploymentTarget("testnet:stillness"),
+    });
+
+    expect(result.outcome).toBe("failed");
+    expect(result.stage).toBe("fetch-world-source");
+    expect(result.errorCode).toBe("resolution-failed");
+    expect(result.message).toContain("No bundled dependency snapshot was available");
   });
 
   it("preserves deploy-grade failure staging instead of collapsing it to submitting", async () => {

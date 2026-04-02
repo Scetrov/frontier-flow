@@ -1,50 +1,26 @@
-import type { CachedDependencyResolution, FetchWorldSourceResult, PackageReferenceBundle, ResolvedDependencies } from "../compiler/types";
-
-interface ProjectDependencySnapshot {
-  readonly sourceVersionTag: string;
-  readonly resolvedAt: number;
-  readonly resolvedDependencies: ResolvedDependencies;
-}
+import { DependencyResolutionError } from "../compiler/types";
+import type { BundledDependencySnapshot, CachedDependencyResolution, FetchWorldSourceResult, PackageReferenceBundle } from "../compiler/types";
+import { createSnapshotValidationResult, parseBundledDependencySnapshot } from "./dependencySnapshotValidation";
 
 interface DependencySnapshotLoaderDependencies {
   readonly fetchFn?: typeof fetch;
 }
 
 const projectDependencySnapshotCache = new Map<string, Promise<ProjectDependencySnapshot | null>>();
-
-function hasResolvedDependenciesShape(value: unknown): value is ResolvedDependencies {
-  return typeof value === "object"
-    && value !== null
-    && typeof (value as ResolvedDependencies).files === "string"
-    && typeof (value as ResolvedDependencies).dependencies === "string"
-    && typeof (value as ResolvedDependencies).lockfileDependencies === "string";
-}
-
-function parseProjectDependencySnapshot(value: unknown): ProjectDependencySnapshot | null {
-  if (typeof value !== "object" || value === null) {
-    return null;
-  }
-
-  const snapshot = value as Partial<ProjectDependencySnapshot>;
-  if (
-    typeof snapshot.sourceVersionTag !== "string"
-    || typeof snapshot.resolvedAt !== "number"
-    || !hasResolvedDependenciesShape(snapshot.resolvedDependencies)
-  ) {
-    return null;
-  }
-
-  return {
-    sourceVersionTag: snapshot.sourceVersionTag,
-    resolvedAt: snapshot.resolvedAt,
-    resolvedDependencies: snapshot.resolvedDependencies,
-  };
-}
+type ProjectDependencySnapshot = BundledDependencySnapshot;
 
 function createSnapshotUrl(relativePath: string): string {
   const baseUrl = import.meta.env.BASE_URL;
   const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   return `${normalizedBaseUrl}${relativePath}`;
+}
+
+function createInvalidSnapshotError(message: string): DependencyResolutionError {
+  return new DependencyResolutionError(message, {
+    code: "bundled-snapshot-invalid",
+    userMessage: message,
+    suggestedAction: "Regenerate the bundled dependency snapshots or allow the runtime to fall back to upstream dependency resolution.",
+  });
 }
 
 async function loadProjectDependencySnapshot(
@@ -73,9 +49,20 @@ async function loadProjectDependencySnapshot(
       throw new Error(`Failed to load deploy dependency snapshot for ${sourceVersionTag}: ${String(response.status)} ${response.statusText}`.trim());
     }
 
-    const parsed = parseProjectDependencySnapshot(await response.json() as unknown);
+    const parsed = parseBundledDependencySnapshot(await response.json() as unknown);
     if (parsed === null) {
-      throw new Error(`Deploy dependency snapshot for ${sourceVersionTag} was invalid.`);
+      const message = `Deploy dependency snapshot for ${sourceVersionTag} was invalid.`;
+      throw createInvalidSnapshotError(message);
+    }
+
+    if (parsed.sourceVersionTag !== sourceVersionTag) {
+      const message = `Deploy dependency snapshot for ${sourceVersionTag} had mismatched sourceVersionTag (${parsed.sourceVersionTag}).`;
+      throw createInvalidSnapshotError(message);
+    }
+
+    const validation = createSnapshotValidationResult(parsed.resolvedDependencies);
+    if (!validation.isValid) {
+      throw createInvalidSnapshotError(validation.message);
     }
 
     return parsed;

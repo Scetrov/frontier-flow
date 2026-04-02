@@ -2,6 +2,7 @@ import { createFlowNodeData, getNodeDefinition } from "../../data/node-definitio
 import type { FlowNode, NodeFieldMap } from "../../types/nodes";
 import { createGeneratedContractArtifact } from "../../compiler/generators/shared";
 import type {
+  BundledDependencySnapshot,
   DeploymentAttempt,
   DeploymentProgress,
   DeploymentReviewEntry,
@@ -12,6 +13,8 @@ import type {
   GeneratedContractArtifact,
   IRNode,
   PackageReferenceBundle,
+  ResolvedDependencies,
+  ResolvedDependencyPackageSnapshot,
 } from "../../compiler/types";
 
 import type { GraphFixture } from "../../__fixtures__/graphs/smartTurretExtensionFixtures";
@@ -211,5 +214,50 @@ export function createGeneratedArtifactStub(overrides: Partial<GeneratedContract
     ...artifact,
     ...overrides,
     deploymentStatus,
+  };
+}
+
+export function createResolvedDependencyPackageSnapshot(
+  overrides: Partial<ResolvedDependencyPackageSnapshot> & { readonly name: string },
+): ResolvedDependencyPackageSnapshot {
+  const normalizedName = overrides.name.toLowerCase();
+  const directoryName = normalizedName === "movestdlib"
+    ? "MoveStdlib"
+    : normalizedName === "sui"
+      ? "Sui"
+      : normalizedName === "world"
+        ? "World"
+        : overrides.name;
+
+  return {
+    name: overrides.name,
+    files: overrides.files ?? {
+      [`dependencies/${directoryName}/Move.toml`]: `[package]\nname = "${overrides.name}"\n`,
+      [`dependencies/${directoryName}/sources/${normalizedName}.move`]: `module ${normalizedName}::${normalizedName} {}`,
+    },
+  };
+}
+
+export function createResolvedDependenciesFixture(
+  packages: readonly ResolvedDependencyPackageSnapshot[] = [
+    createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
+    createResolvedDependencyPackageSnapshot({ name: "Sui" }),
+    createResolvedDependencyPackageSnapshot({ name: "World" }),
+  ],
+): ResolvedDependencies {
+  return {
+    files: "{}",
+    dependencies: JSON.stringify(packages),
+    lockfileDependencies: "{}",
+  };
+}
+
+export function createBundledDependencySnapshotFixture(
+  overrides: Partial<BundledDependencySnapshot> = {},
+): BundledDependencySnapshot {
+  return {
+    sourceVersionTag: overrides.sourceVersionTag ?? "v0.0.18",
+    resolvedAt: overrides.resolvedAt ?? 1,
+    resolvedDependencies: overrides.resolvedDependencies ?? createResolvedDependenciesFixture(),
   };
 }

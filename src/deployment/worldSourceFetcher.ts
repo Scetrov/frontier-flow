@@ -92,6 +92,6 @@ export async function fetchWorldSource(
     }
 
     const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to fetch world source for ${request.versionTag}: ${detail}`, { cause: error });
+    throw new Error(`Failed to fetch world source for ${request.versionTag} from ${createPackageUrl(request)}: ${detail}`, { cause: error });
   }
 }

@@ -433,6 +433,12 @@ This splits the problem into two clear layers:
 - authoring compatibility
 - deploy-grade dependency resolution
 
+The shipped implementation now adds a third operational rule on top of that split:
+
+1. Maintained remote targets ship a validated bundled dependency snapshot keyed by `sourceVersionTag`.
+2. Cache-hit deploy-grade compilation reuses the bundled `resolvedDependencies` payload and materializes the local package tree from that payload instead of refetching `MoveStdlib`, `Sui`, or `World` sources from GitHub.
+3. If the bundled snapshot is missing or invalid, the runtime falls back explicitly to the upstream fetch path and reports a cache-aware error if that fallback also fails.
+
 That split matches the current practical constraints better than trying to force the shim-based browser path into acting like a full published dependency resolver.
 
 ---

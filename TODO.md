@@ -47,7 +47,14 @@ document in `specs/` but no corresponding source code.
 
 ## Code Completion
 
-- [ ] **Legacy node auto-migration** — `src/data/nodeMigration.ts` (line 84)
+- [x] **Deploy-grade bundled cache refresh** — `src/compiler/deployGradeCompiler.ts`,
+      `src/deployment/dependencySnapshotLoader.ts`, `src/deployment/executor.ts`,
+      and `scripts/preload-deploy-cache.ts` now validate bundled dependency
+      snapshots, materialize cached transitive packages locally for deploy-grade
+      compilation, avoid cache-hit refetches of upstream package sources, and
+      surface explicit fallback diagnostics when the bundled cache cannot be used.
+
+- [x] **Legacy node auto-migration** — `src/data/nodeMigration.ts` (line 84)
       `autoMigrateLegacyNode()` returns `undefined` for four legacy node types
       (`excludeOwner`, `excludeStoppedAttack`, `excludeNpc`, `excludeSameTribe`).
       Users see a remediation warning instead of automatic migration. Implement the
@@ -86,7 +93,7 @@ document in `specs/` but no corresponding source code.
       (see [Unresolved Integration Questions](#unresolved-integration-questions) below)
 - [ ] **RISK-REGISTER.md** — Review and update status of all open risks; close
       any that have been mitigated by implemented specs (see [Open Risks](#open-risks) below)
-- [ ] **SOLUTION-DESIGN.md §5.7** — Update deployment wallet integration section
+- [x] **SOLUTION-DESIGN.md §5.7** — Update deployment wallet integration section
       to reflect current `useDeployment()` hook implementation status and any
       changes from spec 011 planning
 
@@ -99,7 +106,7 @@ files have no dedicated test coverage. Items are grouped by risk level.
 
 ### Higher priority (logic / validation)
 
-- [ ] `src/utils/deploymentValidation.ts` — deployment pre-flight checks
+- [x] `src/utils/deploymentValidation.ts` — deployment pre-flight checks
 - [ ] `src/utils/mergeDeploymentStatus.ts` — artifact + deployment status merging
 - [ ] `src/compiler/determinism.ts` — deterministic output guarantees
 - [ ] `src/compiler/referenceTemplates.ts` — Move template generation
@@ -120,7 +127,7 @@ files have no dedicated test coverage. Items are grouped by risk level.
 - [ ] `src/utils/layoutFlow.ts` — dagre auto-layout utility
 - [ ] `src/utils/contractStorage.ts` — expand existing partial coverage
 - [ ] `src/data/exampleContracts.ts` — built-in example contract definitions
-- [ ] `src/data/packageReferences.ts` — Sui package ID references
+- [x] `src/data/packageReferences.ts` — Sui package ID references
 - [ ] `src/data/deploymentTargets.ts` — network target definitions
 - [ ] `src/data/kitchenSinkFlow.ts` — demo graph fixture
 
@@ -132,13 +139,14 @@ files have no dedicated test coverage. Items are grouped by risk level.
       `e2e` job that installs Playwright browsers and runs `bun run test:e2e`.
       Keep this job aligned with the E2E suite (currently 16 specs) before merging
       to `main`.
-- [ ] **Enforce test coverage gates** — Add Vitest coverage reporting to the CI
+- [x] **Enforce test coverage gates** — Add Vitest coverage reporting to the CI
       pipeline with minimum thresholds (70% overall, 90% for `src/compiler/`).
-      Currently defined in `docs/TESTING-STRATEGY.md §11` but not CI-enforced.
+      Thresholds are defined in `docs/TESTING-STRATEGY.md §11` and enforced via the
+      CI unit-tests coverage run.
 - [ ] **SBOM / provenance attestation** — Release workflow should generate
       CycloneDX SBOM and SLSA provenance (documented in `docs/SECURITY.md §6.3` and
       `docs/DEPLOYMENT.md §6.3` but not yet implemented).
-- [ ] **`.env` in `.gitignore`** — Verify `.env` is listed in `.gitignore`
+- [x] **`.env` in `.gitignore`** — Verify `.env` is listed in `.gitignore`
       (referenced in DEPLOYMENT.md but should be confirmed).
 
 ---

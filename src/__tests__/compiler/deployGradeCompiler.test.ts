@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Mock } from "vitest";
 import type {
   DeployGradeCompileRequest,
   FetchWorldSourceResult,
   ResolvedDependencies,
 } from "../../compiler/types";
 import { compileForDeployment, resetDeployGradeCompilerStateForTests } from "../../compiler/deployGradeCompiler";
-import { createGeneratedArtifactStub, createPackageReferenceBundle } from "../compiler/helpers";
+import type { BuildMovePackageFn } from "../../compiler/moveBuilderLite";
+import { createGeneratedArtifactStub, createPackageReferenceBundle, createResolvedDependenciesFixture, createResolvedDependencyPackageSnapshot } from "../compiler/helpers";
 
 function toBase64(bytes: readonly number[]): string {
   return btoa(String.fromCharCode(...bytes));
@@ -50,17 +52,21 @@ function createRequest(overrides: Partial<DeployGradeCompileRequest> = {}): Depl
   };
 }
 
+function getBuildMovePackageInput(
+  buildMovePackage: Mock,
+  callIndex: number,
+): Parameters<BuildMovePackageFn>[0] {
+  const calls = buildMovePackage.mock.calls as unknown as ReadonlyArray<readonly [Parameters<BuildMovePackageFn>[0]]>;
+  return calls[callIndex][0];
+}
+
 describe("deployGradeCompiler", () => {
   beforeEach(() => {
     resetDeployGradeCompilerStateForTests();
   });
 
   it("derives rootGit from target metadata and rewrites Move.toml for git world dependencies", async () => {
-    const resolvedDependencies: ResolvedDependencies = {
-      files: "{}",
-      dependencies: "{}",
-      lockfileDependencies: "{}",
-    };
+    const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture();
     const resolveDependencies = vi.fn((input: {
       readonly files: Record<string, string>;
       readonly rootGit?: { readonly git: string; readonly rev: string; readonly subdir?: string };
@@ -108,14 +114,15 @@ describe("deployGradeCompiler", () => {
     expect(Array.from(result.modules[0] ?? [])).toEqual([1, 2, 3]);
     expect(resolveDependencies).toHaveBeenCalledTimes(1);
     expect(buildMovePackage).toHaveBeenCalledTimes(2);
+    const mainBuildInput = getBuildMovePackageInput(buildMovePackage, 0);
+    expect(mainBuildInput.resolvedDependencies).toEqual(resolvedDependencies);
+    expect(typeof mainBuildInput.files["deps/world/Move.toml"]).toBe("string");
+    expect(typeof mainBuildInput.files["deps/sui/Move.toml"]).toBe("string");
+    expect(typeof mainBuildInput.files["deps/move-stdlib/Move.toml"]).toBe("string");
   });
 
   it("reuses cached resolution snapshots for repeated compilations on the same target and version", async () => {
-    const resolvedDependencies: ResolvedDependencies = {
-      files: "{}",
-      dependencies: "{}",
-      lockfileDependencies: "{}",
-    };
+    const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture();
     const resolveDependencies = vi.fn(() => Promise.resolve(resolvedDependencies));
     const buildMovePackage = vi.fn(() => Promise.resolve({
       modules: [toBase64([4, 5, 6])],
@@ -142,7 +149,7 @@ describe("deployGradeCompiler", () => {
   it("ignores cached resolution snapshots when the target or source version does not match", async () => {
     const resolveDependencies = vi.fn(() => Promise.resolve({
       files: "{resolved:true}",
-      dependencies: "{}",
+      dependencies: createResolvedDependenciesFixture().dependencies,
       lockfileDependencies: "{}",
     }));
     const buildMovePackage = vi.fn(() => Promise.resolve({
@@ -157,7 +164,7 @@ describe("deployGradeCompiler", () => {
         sourceVersionTag: "v0.0.21",
         resolvedDependencies: {
           files: "{stale:true}",
-          dependencies: "{}",
+          dependencies: createResolvedDependenciesFixture().dependencies,
           lockfileDependencies: "{}",
         },
         resolvedAt: 1,
@@ -192,7 +199,7 @@ describe("deployGradeCompiler", () => {
       initMoveCompiler: vi.fn(() => Promise.resolve()),
       resolveDependencies: vi.fn(() => Promise.resolve({
         files: "{}",
-        dependencies: "{}",
+        dependencies: createResolvedDependenciesFixture().dependencies,
         lockfileDependencies: "{}",
       })),
       buildMovePackage: vi.fn(() => Promise.resolve({
@@ -210,7 +217,7 @@ describe("deployGradeCompiler", () => {
     const resolvedDependencies: ResolvedDependencies = {
       files: "{}",
       dependencies: JSON.stringify([
-        {
+        createResolvedDependencyPackageSnapshot({
           name: "world",
           files: {
             "dependencies/world/tests/primitives/location_tests.move": "module world::location_tests;",
@@ -224,7 +231,9 @@ describe("deployGradeCompiler", () => {
               "}",
             ].join("\n"),
           },
-        },
+        }),
+        createResolvedDependencyPackageSnapshot({ name: "Sui" }),
+        createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
       ]),
       lockfileDependencies: "{}",
     };
@@ -255,7 +264,7 @@ describe("deployGradeCompiler", () => {
     const resolvedDependencies: ResolvedDependencies = {
       files: "{}",
       dependencies: JSON.stringify([
-        {
+        createResolvedDependencyPackageSnapshot({
           name: "World",
           files: {
             "dependencies/World/tests/assemblies/storage_unit_tests.move": "module world::storage_unit_tests;",
@@ -269,7 +278,9 @@ describe("deployGradeCompiler", () => {
               "}",
             ].join("\n"),
           },
-        },
+        }),
+        createResolvedDependencyPackageSnapshot({ name: "Sui" }),
+        createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
       ]),
       lockfileDependencies: "{}",
     };
@@ -301,12 +312,14 @@ describe("deployGradeCompiler", () => {
     const resolvedDependencies: ResolvedDependencies = {
       files: "{}",
       dependencies: JSON.stringify([
-        {
+        createResolvedDependencyPackageSnapshot({
           name: "World",
           files: {
             "dependencies/World/sources/example.move": "module world::example {}",
           },
-        },
+        }),
+        createResolvedDependencyPackageSnapshot({ name: "Sui" }),
+        createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
       ]),
       lockfileDependencies: "{}",
     };
@@ -342,12 +355,14 @@ describe("deployGradeCompiler", () => {
     const resolvedDependencies: ResolvedDependencies = {
       files: "{}",
       dependencies: JSON.stringify([
-        {
+        createResolvedDependencyPackageSnapshot({
           name: "world",
           files: {
             "dependencies/world/sources/example.move": "module world::example {}",
           },
-        },
+        }),
+        createResolvedDependencyPackageSnapshot({ name: "Sui" }),
+        createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
       ]),
       lockfileDependencies: "{}",
     };
@@ -381,5 +396,95 @@ describe("deployGradeCompiler", () => {
     expect(rootMoveToml).toContain(`world = "${originalWorldPackageId}"`);
     expect(worldMoveToml).toContain(`published-at = "${originalWorldPackageId}"`);
     expect(worldMoveToml).toContain(`world = "${originalWorldPackageId}"`);
+  });
+
+  it("materializes dependency files when snapshot directory casing differs from the package name", async () => {
+    const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture([
+      createResolvedDependencyPackageSnapshot({
+        name: "World",
+        files: {
+          "dependencies/World/Move.toml": "[package]\nname = \"World\"\n",
+          "dependencies/World/sources/example.move": "module world::example {}",
+        },
+      }),
+      createResolvedDependencyPackageSnapshot({
+        name: "Sui",
+        files: {
+          "dependencies/sUi/Move.toml": "[package]\nname = \"Sui\"\n",
+          "dependencies/sUi/sources/sui.move": "module sui::sui {}",
+        },
+      }),
+      createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
+    ]);
+    const buildMovePackage = vi.fn()
+      .mockResolvedValue({
+        modules: [toBase64([1, 2, 3])],
+        dependencies: ["0x1", "0x2"],
+        digest: [3, 2, 1],
+      });
+
+    await compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      buildMovePackage,
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+      now: () => 42,
+    });
+
+    const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly files?: Record<string, string> };
+    expect(mainBuildInput.files?.["deps/sui/Move.toml"]).toContain('name = "Sui"');
+    expect(mainBuildInput.files?.["deps/sui/sources/sui.move"]).toContain("module sui::sui {}");
+  });
+
+  it("skips dependency test files while still materializing included sources", async () => {
+    const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture([
+      createResolvedDependencyPackageSnapshot({
+        name: "Sui",
+        files: {
+          "dependencies/Sui/Move.toml": "[package]\nname = \"Sui\"\n",
+          "dependencies/Sui/sources/sui.move": "module sui::sui {}",
+          "dependencies/Sui/tests/skip.move": "module sui::skip {}",
+        },
+      }),
+      createResolvedDependencyPackageSnapshot({ name: "World" }),
+      createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
+    ]);
+    const buildMovePackage = vi.fn()
+      .mockResolvedValue({
+        modules: [toBase64([1, 2, 3])],
+        dependencies: ["0x1", "0x2"],
+        digest: [3, 2, 1],
+      });
+
+    await compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      buildMovePackage,
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+      now: () => 42,
+    });
+
+    const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly files?: Record<string, string> };
+    expect(mainBuildInput.files?.["deps/sui/sources/sui.move"]).toContain("module sui::sui {}");
+    expect(mainBuildInput.files?.["deps/sui/tests/skip.move"]).toBeUndefined();
+  });
+
+  it("fails fast when bundled dependency payloads are not parseable", async () => {
+    await expect(compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies: vi.fn(() => Promise.resolve({
+        files: "{}",
+        dependencies: "not-json",
+        lockfileDependencies: "{}",
+      })),
+      buildMovePackage: vi.fn(),
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+    })).rejects.toMatchObject({
+      name: "DependencyResolutionError",
+      code: "bundled-snapshot-invalid",
+    });
   });
 });

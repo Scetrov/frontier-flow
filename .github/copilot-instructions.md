@@ -24,6 +24,14 @@ Frontier Flow is a visual low-code programming interface for EVE Frontier game a
 - Feature branches only, min 1 PR approval, all CI green before merge
 - Dependabot enabled; lock files committed (`bun.lockb`, frozen installs)
 
+## Commit Hygiene
+
+- Never build multi-line git commit messages with literal `\n` escapes inside a quoted `-m` string; use real newlines via multiple `-m` flags, a heredoc, or `git commit -F <file>`.
+- When an agent creates or amends a non-trivial commit, inspect the final message with `git log -1 --format=%B` before pushing.
+- Keep commit body lines at 100 characters or fewer to satisfy commitlint.
+- If dependencies are installed, validate the final commit message before push with `bun run commitlint --from HEAD~1 --to HEAD --verbose`.
+- If commitlint cannot run locally, fall back to a direct line-length check on `git log -1 --format=%B` rather than skipping validation.
+
 ## Reference Docs
 
 Read these for deeper context when working in related areas:

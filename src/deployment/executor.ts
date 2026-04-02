@@ -8,6 +8,7 @@ import type {
   GeneratedContractArtifact,
   PackageReferenceBundle,
 } from "../compiler/types";
+import { DependencyResolutionError } from "../compiler/types";
 import { compileForDeployment } from "../compiler/deployGradeCompiler";
 import { usesDeployGradeCompilation, usesWalletSignedPublish } from "../data/deploymentTargets";
 import { createWorldSourceFromCachedResolution, getProjectCachedDependencyResolution } from "./dependencySnapshotLoader";
@@ -136,12 +137,44 @@ function sanitizeExecutionMessage(message: string): string {
   return sanitized.length > 0 ? sanitized : "Deployment failed unexpectedly.";
 }
 
+function isWalletApprovalError(message: string): boolean {
+  return message.includes("rejected") || message.includes("denied") || message.includes("cancelled");
+}
+
+function isConfirmationTimeoutError(message: string): boolean {
+  return message.includes("confirm") && message.includes("timeout");
+}
+
+function getFailureErrorCode(fallbackStage: DeploymentStage): string {
+  switch (fallbackStage) {
+    case "fetch-world-source":
+      return "resolution-failed";
+    case "confirming":
+      return "confirmation-failed";
+    case "resolve-dependencies":
+      return "resolution-failed";
+    case "deploy-grade-compile":
+      return "compile-failed";
+    default:
+      return "deployment-executor-error";
+  }
+}
+
 function classifyExecutionError(error: unknown, fallbackStage: DeploymentStage): DeploymentExecutionResult {
   const rawMessage = error instanceof Error ? error.message : "Deployment failed unexpectedly.";
   const message = sanitizeExecutionMessage(rawMessage);
   const normalizedMessage = rawMessage.toLowerCase();
 
-  if (normalizedMessage.includes("rejected") || normalizedMessage.includes("denied") || normalizedMessage.includes("cancelled")) {
+  if (error instanceof DependencyResolutionError) {
+    return {
+      outcome: "failed",
+      stage: fallbackStage,
+      message,
+      errorCode: getFailureErrorCode(fallbackStage),
+    };
+  }
+
+  if (isWalletApprovalError(normalizedMessage)) {
     return {
       outcome: "cancelled",
       stage: "signing",
@@ -150,7 +183,7 @@ function classifyExecutionError(error: unknown, fallbackStage: DeploymentStage):
     };
   }
 
-  if (normalizedMessage.includes("confirm") && normalizedMessage.includes("timeout")) {
+  if (isConfirmationTimeoutError(normalizedMessage)) {
     return {
       outcome: "unresolved",
       stage: "confirming",
@@ -163,13 +196,7 @@ function classifyExecutionError(error: unknown, fallbackStage: DeploymentStage):
     outcome: "failed",
     stage: fallbackStage,
     message,
-    errorCode: fallbackStage === "confirming"
-      ? "confirmation-failed"
-      : fallbackStage === "resolve-dependencies"
-        ? "resolution-failed"
-        : fallbackStage === "deploy-grade-compile"
-          ? "compile-failed"
-          : "deployment-executor-error",
+    errorCode: getFailureErrorCode(fallbackStage),
   };
 }
 
@@ -204,9 +231,48 @@ async function compileDeployGradeArtifact(
   onProgress?: (progress: DeploymentExecutionProgress) => void,
 ): Promise<{ readonly compileResult: DeployGradeCompileResult; readonly worldSource: FetchWorldSourceResult }> {
   const references = request.references as PackageReferenceBundle;
-  const cachedResolution = await dependencies.loadCachedResolution({ references });
+  let cachedResolution: CachedDependencyResolution | null = null;
+  let fallbackReason: "missing" | "invalid" | null = null;
+
+  try {
+    cachedResolution = await dependencies.loadCachedResolution({ references });
+  } catch (error) {
+    if (error instanceof DependencyResolutionError && error.code === "bundled-snapshot-invalid") {
+      fallbackReason = "invalid";
+      reportProgress(onProgress, "fetch-world-source", "Bundled dependency snapshot was invalid. Falling back to upstream world source.");
+    } else {
+      throw error;
+    }
+  }
+
+  if (cachedResolution === null && fallbackReason === null) {
+    fallbackReason = "missing";
+    reportProgress(
+      onProgress,
+      "fetch-world-source",
+      "No bundled dependency snapshot found. Falling back to upstream world source.",
+    );
+  }
+
   const worldSource = cachedResolution === null
-    ? await dependencies.fetchWorldSource({ references, signal: request.signal })
+    ? await dependencies.fetchWorldSource({ references, signal: request.signal }).catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      if (fallbackReason === "invalid") {
+        throw new DependencyResolutionError(`Bundled dependency snapshot was invalid and fallback world-source fetch failed: ${detail}`, {
+          code: "bundled-snapshot-fallback-failed",
+          userMessage: "Bundled dependency snapshot validation failed, and the fallback fetch of the upstream world package also failed.",
+          suggestedAction: "Regenerate the bundled dependency snapshot or retry once GitHub access is available.",
+          cause: error,
+        });
+      }
+
+      throw new DependencyResolutionError(`No bundled dependency snapshot was available and fallback world-source fetch failed: ${detail}`, {
+        code: "bundled-snapshot-missing-fallback-failed",
+        userMessage: "No bundled dependency snapshot was available for this target, and fetching the upstream world package failed.",
+        suggestedAction: "Retry with GitHub access or add a bundled dependency snapshot for this source version.",
+        cause: error,
+      });
+    })
     : createWorldSourceFromCachedResolution(cachedResolution);
 
   const compileResult = await dependencies.compileForDeployment({

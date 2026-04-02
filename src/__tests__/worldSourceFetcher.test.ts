@@ -98,6 +98,6 @@ describe("worldSourceFetcher", () => {
       subdirectory: "contracts/world",
     }, {
       fetchPackage,
-    })).rejects.toThrow("Failed to fetch world source for v0.0.18: GitHub rate limited the request");
+    })).rejects.toThrow("Failed to fetch world source for v0.0.18 from https://github.com/evefrontier/world-contracts/tree/v0.0.18/contracts/world: GitHub rate limited the request");
   });
 });
