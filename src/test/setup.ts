@@ -12,18 +12,20 @@ class ResizeObserver {
 
 globalThis.ResizeObserver = ResizeObserver;
 
-window.matchMedia = (query: string) => ({
-  matches: false,
-  media: query,
-  onchange: null,
-  addEventListener() {},
-  removeEventListener() {},
-  addListener() {},
-  removeListener() {},
-  dispatchEvent() {
-    return false;
-  },
-});
+if (typeof window !== "undefined") {
+  window.matchMedia = (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+    dispatchEvent() {
+      return false;
+    },
+  });
+}
 
 afterEach(() => {
   cleanup();

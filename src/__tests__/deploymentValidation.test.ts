@@ -30,6 +30,22 @@ describe("deploymentValidation", () => {
     });
   });
 
+  it("uses deployment-package remediation copy when compiled modules are missing", () => {
+    const validation = createDeploymentValidationResult({
+      artifactReady: true,
+      artifactHasBytecode: false,
+      hasAvailableWallets: true,
+      hasConnectedWallet: true,
+      targetId: "local",
+    });
+
+    expect(validation.blockers[0]).toMatchObject({
+      code: "missing-bytecode",
+      message: "The deployment package is incomplete because no compiled Move modules are available yet.",
+      remediation: "Build or rebuild the current graph so the deployment package includes compiled Move modules, then retry deployment.",
+    });
+  });
+
   it("keeps the artifact input unresolved when the compiled artifact no longer matches the graph", () => {
     const validation = createDeploymentValidationResult({
       artifactReady: true,

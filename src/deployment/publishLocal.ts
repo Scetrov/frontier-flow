@@ -10,6 +10,7 @@ import {
 } from "../compiler/moveBuilderLite";
 import { prepareArtifactManifestForTarget } from "../compiler/emitter";
 import type { DeploymentTarget, GeneratedContractArtifact, PackageReferenceBundle } from "../compiler/types";
+import { assertPublishPayloadReadiness } from "./publishPayload";
 
 export interface LocalPublishRequest {
   readonly artifact: GeneratedContractArtifact;
@@ -124,6 +125,11 @@ export async function publishToLocalValidator(request: LocalPublishRequest, depe
     request.artifact.dependencies,
   );
   const modules = await resolveLocalPublishModules(request.artifact, dependencies);
+  assertPublishPayloadReadiness(modules, {
+    stage: "preparing",
+    targetLabel: request.target.label,
+    source: request.references === null ? "artifact" : "deploy-grade",
+  });
   const transaction = new Transaction();
   const [upgradeCap] = transaction.publish({
     modules: modules.map((module) => Array.from(module)),

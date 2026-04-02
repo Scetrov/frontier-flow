@@ -17,8 +17,8 @@
 
 **Purpose**: Prepare focused regression fixtures and shared task inputs for the empty-publish fix.
 
-- [ ] T001 [P] Add empty publish-payload artifact fixtures in `src/__tests__/compiler/helpers.ts`
-- [ ] T002 [P] Add blocked-attempt fixture helpers for `publish-payload-empty` scenarios in `src/__tests__/deployment/testFactories.ts`
+- [X] T001 [P] Add empty publish-payload artifact fixtures in `src/__tests__/compiler/helpers.ts`
+- [X] T002 [P] Add blocked-attempt fixture helpers for `publish-payload-empty` scenarios in `src/__tests__/deployment/testFactories.ts`
 
 ---
 
@@ -28,14 +28,14 @@
 
 **⚠️ CRITICAL**: Complete this phase before starting user story implementation.
 
-- [ ] T003 Add failing executor regression coverage for empty publish payloads in `src/__tests__/deploymentExecutor.test.ts`
-- [ ] T004 [P] Add failing remote publisher empty-modules coverage in `src/__tests__/publishRemote.test.ts`
-- [ ] T005 [P] Add failing local publisher empty-modules coverage in `src/__tests__/publishLocal.test.ts`
-- [ ] T006 Add failing blocked-state coverage for empty publish payloads in `src/__tests__/useDeployment.blockers.test.ts` and `src/__tests__/CompilationStatus.deployment-popup.test.tsx`
-- [ ] T007 Add the stable `publish-payload-empty` result contract in `src/compiler/types.ts`
-- [ ] T008 Implement the executor-level final publish-payload validation and blocked-result mapping in `src/deployment/executor.ts`
-- [ ] T009 [P] Implement the remote publisher guard before `Transaction.publish()` in `src/deployment/publishRemote.ts`
-- [ ] T010 [P] Implement the local publisher guard before `Transaction.publish()` in `src/deployment/publishLocal.ts`
+- [X] T003 Add failing executor regression coverage for empty publish payloads in `src/__tests__/deploymentExecutor.test.ts`
+- [X] T004 [P] Add failing remote publisher empty-modules coverage in `src/__tests__/publishRemote.test.ts`
+- [X] T005 [P] Add failing local publisher empty-modules coverage in `src/__tests__/publishLocal.test.ts`
+- [X] T006 Add failing blocked-state coverage for empty publish payloads in `src/__tests__/useDeployment.blockers.test.ts` and `src/__tests__/CompilationStatus.deployment-popup.test.tsx`
+- [X] T007 Add the stable `publish-payload-empty` result contract in `src/compiler/types.ts`
+- [X] T008 Implement the executor-level final publish-payload validation and blocked-result mapping in `src/deployment/executor.ts`
+- [X] T009 [P] Implement the remote publisher guard before `Transaction.publish()` in `src/deployment/publishRemote.ts`
+- [X] T010 [P] Implement the local publisher guard before `Transaction.publish()` in `src/deployment/publishLocal.ts`
 
 **Checkpoint**: Shared empty-publish protection is in place and no publisher can construct a Sui Move publish transaction with an empty module list.
 
@@ -49,13 +49,13 @@
 
 ### 1.4.1. Tests for User Story 1
 
-- [ ] T011 [US1] Add executor success-path regression coverage for valid final publish payloads in `src/__tests__/deploymentExecutor.test.ts`
-- [ ] T012 [P] [US1] Add publisher success-path regression coverage for non-empty module lists in `src/__tests__/publishRemote.test.ts` and `src/__tests__/publishLocal.test.ts`
+- [X] T011 [US1] Add executor success-path regression coverage for valid final publish payloads in `src/__tests__/deploymentExecutor.test.ts`
+- [X] T012 [P] [US1] Add publisher success-path regression coverage for non-empty module lists in `src/__tests__/publishRemote.test.ts` and `src/__tests__/publishLocal.test.ts`
 
 ### 1.4.2. Implementation for User Story 1
 
-- [ ] T013 [US1] Preserve successful stage progression and confirmation metadata after payload validation in `src/deployment/executor.ts`
-- [ ] T014 [US1] Preserve successful transaction construction for non-empty final module lists in `src/deployment/publishRemote.ts` and `src/deployment/publishLocal.ts`
+- [X] T013 [US1] Preserve successful stage progression and confirmation metadata after payload validation in `src/deployment/executor.ts`
+- [X] T014 [US1] Preserve successful transaction construction for non-empty final module lists in `src/deployment/publishRemote.ts` and `src/deployment/publishLocal.ts`
 
 **Checkpoint**: User Story 1 is complete when valid deployments still proceed normally and no success-path regression appears in the Sui Move publish flow.
 
@@ -69,13 +69,13 @@
 
 ### 1.5.1. Tests for User Story 2
 
-- [ ] T015 [US2] Add blocked-before-wallet coverage for empty deploy-grade and artifact payloads in `src/__tests__/useDeployment.blockers.test.ts`
-- [ ] T016 [P] [US2] Add blocked review-surface coverage for `publish-payload-empty` outcomes in `src/__tests__/CompilationStatus.deployment-popup.test.tsx`
+- [X] T015 [US2] Add blocked-before-wallet coverage for empty deploy-grade and artifact payloads in `src/__tests__/useDeployment.blockers.test.ts`
+- [X] T016 [P] [US2] Add blocked review-surface coverage for `publish-payload-empty` outcomes in `src/__tests__/CompilationStatus.deployment-popup.test.tsx`
 
 ### 1.5.2. Implementation for User Story 2
 
-- [ ] T017 [US2] Surface `publish-payload-empty` executor outcomes as blocked deployment messaging in `src/hooks/useDeployment.ts`
-- [ ] T018 [US2] Align incomplete deployment-package remediation copy and next-action guidance in `src/utils/deploymentValidation.ts` and `src/hooks/useDeployment.ts`
+- [X] T017 [US2] Surface `publish-payload-empty` executor outcomes as blocked deployment messaging in `src/hooks/useDeployment.ts`
+- [X] T018 [US2] Align incomplete deployment-package remediation copy and next-action guidance in `src/utils/deploymentValidation.ts` and `src/hooks/useDeployment.ts`
 
 **Checkpoint**: User Story 2 is complete when malformed publish attempts are blocked before submission and the UI explains how to recover.
 
@@ -89,12 +89,12 @@
 
 ### 1.6.1. Tests for User Story 3
 
-- [ ] T019 [US3] Add blocked-then-success retry regression coverage in `src/__tests__/useDeployment.blockers.test.ts` and `src/__tests__/CompilationStatus.deployment-popup.test.tsx`
+- [X] T019 [US3] Add blocked-then-success retry regression coverage in `src/__tests__/useDeployment.blockers.test.ts` and `src/__tests__/CompilationStatus.deployment-popup.test.tsx`
 
 ### 1.6.2. Implementation for User Story 3
 
-- [ ] T020 [US3] Preserve blocked-attempt review history and later success entries in `src/hooks/useDeployment.ts`
-- [ ] T021 [US3] Re-run final publish-payload validation for every fresh deployment attempt in `src/deployment/executor.ts`
+- [X] T020 [US3] Preserve blocked-attempt review history and later success entries in `src/hooks/useDeployment.ts`
+- [X] T021 [US3] Re-run final publish-payload validation for every fresh deployment attempt in `src/deployment/executor.ts`
 
 **Checkpoint**: User Story 3 is complete when blocked attempts remain visible and a later successful retry is evaluated and recorded independently.
 
@@ -104,8 +104,8 @@
 
 **Purpose**: Finalize documentation and regression verification across all stories.
 
-- [ ] T022 [P] Update manual verification steps for empty-publish blocking and same-session recovery in `specs/020-fix-empty-publish/quickstart.md`
-- [ ] T023 Run focused regression verification with `bun run test:run -- src/__tests__/deploymentExecutor.test.ts src/__tests__/publishRemote.test.ts src/__tests__/publishLocal.test.ts src/__tests__/useDeployment.blockers.test.ts src/__tests__/CompilationStatus.deployment-popup.test.tsx`, then run `bun run typecheck`, `bun run lint`, and `bun run test:run`
+- [X] T022 [P] Update manual verification steps for empty-publish blocking and same-session recovery in `specs/020-fix-empty-publish/quickstart.md`
+- [X] T023 Run focused regression verification with `bun run test:run -- src/__tests__/deploymentExecutor.test.ts src/__tests__/publishRemote.test.ts src/__tests__/publishLocal.test.ts src/__tests__/useDeployment.blockers.test.ts src/__tests__/CompilationStatus.deployment-popup.test.tsx`, then run `bun run typecheck`, `bun run lint`, and `bun run test:run`
 
 ---
 

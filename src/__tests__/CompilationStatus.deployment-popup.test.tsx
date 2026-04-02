@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import CompilationStatus from "../components/CompilationStatus";
 import { createDeploymentReviewEntry, createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
+import {
+  EMPTY_PUBLISH_PAYLOAD_MESSAGE,
+  createEmptyPublishPayloadReviewEntryFixture,
+  createEmptyPublishPayloadStatusFixture,
+} from "./deployment/testFactories";
 
 describe("CompilationStatus deployment popup review", () => {
   it("renders target-aware success details including stage, severity, package id, and digest", () => {
@@ -100,5 +105,74 @@ describe("CompilationStatus deployment popup review", () => {
     expect(screen.getByText("Artifact ID: artifact-review-only")).toBeVisible();
     expect(screen.getByText("Target: testnet:utopia")).toBeVisible();
     expect(screen.getByText("Transaction Digest: digest-explicit-02")).toBeVisible();
+  });
+
+  it("renders blocked empty-publish review details instead of a raw chain parser failure", () => {
+    const artifact = createGeneratedArtifactStub({
+      deploymentStatus: createEmptyPublishPayloadStatusFixture({
+        artifactId: "artifact-empty-publish",
+        targetId: "local",
+        reviewHistory: [
+          createEmptyPublishPayloadReviewEntryFixture({
+            attemptId: "attempt-empty-publish",
+            artifactId: "artifact-empty-publish",
+            targetId: "local",
+          }),
+        ],
+      }),
+    });
+
+    render(<CompilationStatus diagnostics={[]} status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Deployment Blocked/i }));
+
+    expect(screen.getByText("Artifact ID: artifact-empty-publish")).toBeVisible();
+    expect(screen.getByText("Target: local")).toBeVisible();
+    expect(screen.getByText("Stage: deploy-grade-compile")).toBeVisible();
+    expect(screen.getByText("Severity: error")).toBeVisible();
+    expect(screen.getByText(EMPTY_PUBLISH_PAYLOAD_MESSAGE)).toBeVisible();
+    expect(screen.getByText("Rebuild or refresh the deployment package so the final publish payload contains compiled Move modules, then retry deployment.")).toBeVisible();
+    expect(screen.queryByText(/TransferObjects, MergeCoin, and Publish cannot have empty arguments/i)).not.toBeInTheDocument();
+  });
+
+  it("shows an earlier empty-publish block alongside a later successful retry", () => {
+    const artifact = createGeneratedArtifactStub({
+      deploymentStatus: createDeploymentStatus("deployed", {
+        headline: "Deployed",
+        targetId: "local",
+        stage: "confirming",
+        severity: "success",
+        packageId: "0xabc123",
+        confirmationReference: "0xdigest",
+        nextActionSummary: "Deployment completed for localnet. Package ID: 0xabc123.",
+        reviewHistory: [
+          createDeploymentReviewEntry({
+            attemptId: "attempt-success",
+            headline: "Deployed",
+            targetId: "local",
+            outcome: "succeeded",
+            severity: "success",
+            stage: "confirming",
+            packageId: "0xabc123",
+            confirmationReference: "0xdigest",
+            details: "Deployment completed for localnet. Package ID: 0xabc123.",
+            blockedReasons: [],
+          }),
+          createEmptyPublishPayloadReviewEntryFixture({
+            attemptId: "attempt-empty-publish",
+            artifactId: "starter_contract-00000000",
+            targetId: "local",
+          }),
+        ],
+      }),
+    });
+
+    render(<CompilationStatus diagnostics={[]} status={{ state: "compiled", bytecode: [new Uint8Array([1])], artifact }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Deployed/i }));
+
+    expect(screen.getByText("Earlier this session")).toBeVisible();
+    expect(screen.getByText(/Deployment blocked - local - deploy-grade-compile/)).toBeVisible();
+    expect(screen.getByText("Rebuild or refresh the deployment package so the final publish payload contains compiled Move modules, then retry deployment.")).toBeVisible();
   });
 });

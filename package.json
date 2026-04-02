@@ -18,6 +18,7 @@
     "build:with-world-contracts": "bun run fetch:world-contracts && bun run build",
     "commitlint": "commitlint",
     "debug:local-publish-mcve": "bun run ./scripts/debug-local-publish-mcve.ts",
+    "fetch:sui-upstream-sources": "bun run ./scripts/fetch-sui-upstream-sources.ts",
     "fetch:world-contracts": "bun run ./scripts/fetch-world-contracts.ts",
     "lint": "eslint .",
     "prepare": "husky",

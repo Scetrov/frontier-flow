@@ -202,6 +202,23 @@ describe("compileMove", () => {
     );
   });
 
+  it("surfaces dependency rate limits as actionable compiler diagnostics", async () => {
+    const artifact = createArtifact();
+    mockBuildMovePackage.mockRejectedValueOnce(new Error("429 Too Many Requests while fetching https://raw.githubusercontent.com/MystenLabs/sui/.../token.move"));
+
+    const result = await compileMove(artifact);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rawMessage: "429 Too Many Requests while fetching https://raw.githubusercontent.com/MystenLabs/sui/.../token.move",
+          userMessage: "Compilation could not fetch upstream Sui framework sources because the dependency host rate limited the request. Wait for the limit to reset, then retry compile.",
+        }),
+      ]),
+    );
+  });
+
   it("retries the compiler module import after a transient loader failure", async () => {
     const artifact = createArtifact();
     const fallbackModule = {
@@ -368,5 +385,64 @@ describe("compileMove", () => {
       silenceWarnings: true,
       network: "testnet",
     });
+  });
+
+  it("backs off world-shim recompilation after a transient dependency fetch failure", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-02T00:00:00Z"));
+
+    const shimModuleBytes = new Uint8Array([9, 9, 9]);
+    const rootModuleBytes = new Uint8Array([7, 7, 7]);
+    const artifact = {
+      ...createArtifact(),
+      sourceFiles: [
+        { path: "sources/graph_to_move_supported.move", content: "module builder_extensions::graph_to_move_supported {}" },
+        { path: "deps/world/Move.toml", content: "[package]\nname = \"world\"\n\n[addresses]\nworld = \"0x0\"\n" },
+        { path: "deps/world/sources/character.move", content: "module world::character;" },
+        { path: "deps/world/sources/in_game_id.move", content: "module world::in_game_id;" },
+        { path: "deps/world/sources/turret.move", content: "module world::turret;" },
+      ],
+    } as const;
+    const rateLimitError = new Error("429 Too Many Requests");
+
+    mockBuildMovePackage
+      .mockResolvedValueOnce({
+        modules: [encodeBase64(rootModuleBytes), encodeBase64(shimModuleBytes)],
+        dependencies: graphToMoveDependencyFixture,
+      })
+      .mockRejectedValueOnce(rateLimitError)
+      .mockResolvedValueOnce({
+        modules: [encodeBase64(rootModuleBytes), encodeBase64(shimModuleBytes)],
+        dependencies: graphToMoveDependencyFixture,
+      })
+      .mockResolvedValueOnce({
+        modules: [encodeBase64(rootModuleBytes), encodeBase64(shimModuleBytes)],
+        dependencies: graphToMoveDependencyFixture,
+      })
+      .mockResolvedValueOnce({
+        modules: [encodeBase64(shimModuleBytes)],
+        dependencies: [],
+      });
+
+    try {
+      const firstResult = await compileMove(artifact);
+      const secondResult = await compileMove(artifact);
+
+      expect(firstResult.success).toBe(false);
+      expect(secondResult.success).toBe(false);
+      expect(firstResult.errors).toEqual(expect.arrayContaining([expect.objectContaining({ rawMessage: "429 Too Many Requests" })]));
+      expect(secondResult.errors).toEqual(expect.arrayContaining([expect.objectContaining({ rawMessage: "429 Too Many Requests" })]));
+      expect(mockBuildMovePackage).toHaveBeenCalledTimes(3);
+
+      vi.advanceTimersByTime(30_001);
+
+      const thirdResult = await compileMove(artifact);
+
+      expect(thirdResult.success).toBe(true);
+      expect(thirdResult.modules).toEqual([rootModuleBytes]);
+      expect(mockBuildMovePackage).toHaveBeenCalledTimes(5);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

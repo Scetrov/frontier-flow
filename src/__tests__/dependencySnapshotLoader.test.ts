@@ -34,7 +34,7 @@ describe("dependencySnapshotLoader", () => {
     })).rejects.toMatchObject({
       name: DependencyResolutionError.name,
       code: "bundled-snapshot-invalid",
-      userMessage: "Deploy dependency snapshot for v0.0.18 was invalid.",
+      userMessage: "Deploy dependency snapshot for v0.0.23 was invalid.",
     });
   });
 
@@ -59,7 +59,7 @@ describe("dependencySnapshotLoader", () => {
     })).rejects.toMatchObject({
       name: DependencyResolutionError.name,
       code: "bundled-snapshot-invalid",
-      userMessage: "Deploy dependency snapshot for v0.0.18 had mismatched sourceVersionTag (v0.0.21).",
+      userMessage: "Deploy dependency snapshot for v0.0.23 had mismatched sourceVersionTag (v0.0.21).",
     });
   });
 });

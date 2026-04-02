@@ -11,6 +11,7 @@ import { parseCompilerOutput } from "./errorParser";
 import { createStandaloneWorldShimPackageFiles } from "./worldShim";
 import type {
   CompileResult,
+  CompilerDiagnostic,
   GeneratedContractArtifact,
   ResolvedDependencies,
 } from "./types";
@@ -57,10 +58,18 @@ type MoveCompilerLoader = () => Promise<MoveCompilerModule>;
 type MoveCompilerIntegrityVerifier = () => Promise<void>;
 type MoveCompilerWasmPrewarmer = (wasm: string | URL) => Promise<void>;
 
+interface WorldShimModuleSetFailure {
+  readonly error: Error;
+  readonly failedAt: number;
+}
+
+const WORLD_SHIM_FAILURE_RETRY_MS = 30_000;
+
 let compilerModulePromise: Promise<MoveCompilerModule> | null = null;
 let initialisationPromise: Promise<void> | null = null;
 let integrityPromise: Promise<void> | null = null;
 let worldShimModuleSetPromise: Promise<ReadonlySet<string>> | null = null;
+let worldShimModuleSetFailure: WorldShimModuleSetFailure | null = null;
 let compilerModuleLoader: MoveCompilerLoader = () => loadMoveBuilderLite() as Promise<MoveCompilerModule>;
 let moveCompilerIntegrityVerifier: MoveCompilerIntegrityVerifier = verifyMoveBuilderLiteIntegrity;
 let moveCompilerWasmPrewarmer: MoveCompilerWasmPrewarmer = prewarmMoveBuilderLiteWasm;
@@ -70,6 +79,7 @@ function resetCompilerState(): void {
   initialisationPromise = null;
   integrityPromise = null;
   worldShimModuleSetPromise = null;
+  worldShimModuleSetFailure = null;
 }
 
 export function resetMoveCompilerStateForTests(): void {
@@ -216,6 +226,15 @@ async function ensureCompilerInitialised(): Promise<MoveCompilerModule> {
 }
 
 async function getWorldShimModuleSet(compilerModule: MoveCompilerModule): Promise<ReadonlySet<string>> {
+  if (worldShimModuleSetFailure !== null) {
+    const retryAgeMs = Date.now() - worldShimModuleSetFailure.failedAt;
+    if (retryAgeMs < WORLD_SHIM_FAILURE_RETRY_MS) {
+      throw worldShimModuleSetFailure.error;
+    }
+
+    worldShimModuleSetFailure = null;
+  }
+
   if (worldShimModuleSetPromise === null) {
     worldShimModuleSetPromise = compilerModule.buildMovePackage({
       files: createStandaloneWorldShimPackageFiles(),
@@ -226,10 +245,15 @@ async function getWorldShimModuleSet(compilerModule: MoveCompilerModule): Promis
         throw new Error(`Failed to compile bundled world shim: ${result.error}`);
       }
 
+      worldShimModuleSetFailure = null;
       return new Set(result.modules);
     }).catch((error: unknown) => {
       worldShimModuleSetPromise = null;
-      throw error;
+      worldShimModuleSetFailure = {
+        error: error instanceof Error ? error : new Error(String(error)),
+        failedAt: Date.now(),
+      };
+      throw worldShimModuleSetFailure.error;
     });
   }
 
@@ -268,7 +292,7 @@ function handleBuildSuccess(
 }
 
 function handleBuildError(result: BuildErrorResult, artifact: GeneratedContractArtifact): CompileResult {
-  const errors = parseCompilerOutput(result.error, artifact.sourceMap);
+  const errors = createCompilationFailureDiagnostics(result.error, artifact.sourceMap);
   return {
     success: false,
     modules: null,
@@ -279,8 +303,38 @@ function handleBuildError(result: BuildErrorResult, artifact: GeneratedContractA
   };
 }
 
+function isDependencyRateLimited(rawMessage: string): boolean {
+  const normalizedMessage = rawMessage.toLowerCase();
+  return normalizedMessage.includes("429")
+    || normalizedMessage.includes("too many requests")
+    || normalizedMessage.includes("rate limit");
+}
+
+function createRateLimitedDependencyDiagnostic(rawMessage: string): CompilerDiagnostic {
+  return {
+    severity: "error",
+    stage: "compilation",
+    rawMessage,
+    line: null,
+    reactFlowNodeId: null,
+    socketId: null,
+    userMessage: "Compilation could not fetch upstream Sui framework sources because the dependency host rate limited the request. Wait for the limit to reset, then retry compile.",
+  };
+}
+
+function createCompilationFailureDiagnostics(
+  rawMessage: string,
+  sourceMap: GeneratedContractArtifact["sourceMap"],
+): readonly CompilerDiagnostic[] {
+  if (isDependencyRateLimited(rawMessage)) {
+    return [createRateLimitedDependencyDiagnostic(rawMessage)];
+  }
+
+  return parseCompilerOutput(rawMessage, sourceMap);
+}
+
 function handleCompileFailure(rawMessage: string, artifact: GeneratedContractArtifact): CompileResult {
-  const errors = parseCompilerOutput(rawMessage, artifact.sourceMap);
+  const errors = createCompilationFailureDiagnostics(rawMessage, artifact.sourceMap);
   return {
     success: false,
     modules: null,

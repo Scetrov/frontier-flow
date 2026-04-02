@@ -51,7 +51,7 @@ This preserves the existing Sui Move deployment model:
 Run the focused regression suite during implementation:
 
 ```bash
-bun run test:run -- src/__tests__/deploymentExecutor.test.ts src/__tests__/publishRemote.test.ts src/__tests__/publishLocal.test.ts src/__tests__/useDeployment.blockers.test.ts
+bun run test:run -- src/__tests__/deploymentExecutor.test.ts src/__tests__/publishRemote.test.ts src/__tests__/publishLocal.test.ts src/__tests__/useDeployment.blockers.test.ts src/__tests__/CompilationStatus.deployment-popup.test.tsx
 ```
 
 Then run the standard workspace checks:

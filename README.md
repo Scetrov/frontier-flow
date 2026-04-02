@@ -173,6 +173,14 @@ bun run build:with-world-contracts
 
 This populates `vendor/world-contracts` at the pinned upstream tag used for local reference work, then runs the normal production build. The `vendor/` directory is intentionally ignored and is not part of the app's tracked runtime dependencies.
 
+Refresh the pinned locally hosted Sui framework mirror used by the browser compiler when you need to update the shipped upstream sources:
+
+```bash
+bun run fetch:sui-upstream-sources
+```
+
+This fetches the pinned `MystenLabs/sui` package tree via `git`, copies the framework sources into `public/upstream-sources/`, and lets the app serve those files locally instead of hitting `raw.githubusercontent.com` during normal compilation.
+
 ### Typical contributor workflow
 
 ```bash
@@ -189,6 +197,9 @@ bun run test:run
 
 # fetch the pinned world-contracts checkout only if you need that local reference repo
 bun run fetch:world-contracts
+
+# refresh the pinned locally hosted Sui framework mirror used by the browser compiler
+bun run fetch:sui-upstream-sources
 ```
 
 ## Workflow Screenshots

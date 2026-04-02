@@ -275,6 +275,60 @@ describe("publishToRemoteTarget", () => {
     })).rejects.toThrow("A connected wallet address is required before deploying to testnet:utopia.");
   });
 
+  it("blocks remote publish transactions when the final module list is empty", async () => {
+    const execute = vi.fn(() => Promise.resolve({ digest: "0xdigest" }));
+
+    await expect(() => publishToRemoteTarget({
+      compileResult: {
+        modules: [],
+        dependencies: ["0x1"],
+        digest: [1, 2, 3],
+        resolvedDependencies: {
+          files: "{}",
+          dependencies: "{}",
+          lockfileDependencies: "{}",
+        },
+        targetId: "testnet:stillness",
+        sourceVersionTag: "v0.0.18",
+        builderToolchainVersion: "1.67.1",
+        compiledAt: 1,
+      },
+      ownerAddress: "0x1234",
+      target: getDeploymentTarget("testnet:stillness"),
+      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      execute,
+    })).rejects.toThrow("did not produce any publishable Move modules");
+
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("blocks remote publish transactions when any compiled module is empty", async () => {
+    const execute = vi.fn(() => Promise.resolve({ digest: "0xdigest" }));
+
+    await expect(() => publishToRemoteTarget({
+      compileResult: {
+        modules: [new Uint8Array()],
+        dependencies: ["0x1"],
+        digest: [1, 2, 3],
+        resolvedDependencies: {
+          files: "{}",
+          dependencies: "{}",
+          lockfileDependencies: "{}",
+        },
+        targetId: "testnet:utopia",
+        sourceVersionTag: "v0.0.21",
+        builderToolchainVersion: "1.68.0",
+        compiledAt: 1,
+      },
+      ownerAddress: "0x1234",
+      target: getDeploymentTarget("testnet:utopia"),
+      references: createPackageReferenceBundleFixture("testnet:utopia"),
+      execute,
+    })).rejects.toThrow("did not produce any publishable Move modules");
+
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it("surfaces remote recompilation failures before wallet signing", async () => {
     compileMoveMock.mockResolvedValue({
       success: false,

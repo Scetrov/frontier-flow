@@ -160,8 +160,8 @@ function createArtifactBlockers(input: {
     return [{
       code: "missing-bytecode",
       stage: "validating",
-      message: "A compiled bytecode artifact is required before deployment can continue.",
-      remediation: "Compile the generated package successfully so deployable bytecode is available.",
+      message: "The deployment package is incomplete because no compiled Move modules are available yet.",
+      remediation: "Build or rebuild the current graph so the deployment package includes compiled Move modules, then retry deployment.",
     }];
   }
 

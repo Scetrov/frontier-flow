@@ -54,6 +54,7 @@ bun dev
 | `dev`                          | `bun dev`                                               | Start Vite dev server                                                      |
 | `build`                        | `bun run build`                                         | Type-check and production build                                            |
 | `build:with-world-contracts`   | `bun run build:with-world-contracts`                    | Fetch the pinned `world-contracts` reference checkout, then build          |
+| `fetch:sui-upstream-sources`   | `bun run fetch:sui-upstream-sources`                    | Refresh the pinned locally hosted `MystenLabs/sui` framework sources       |
 | `fetch:world-contracts`        | `bun run fetch:world-contracts`                         | Materialize the pinned ignored `vendor/world-contracts` checkout on demand |
 | `lint`                         | `bun run lint`                                          | Run ESLint                                                                 |
 | `preview`                      | `bun run preview`                                       | Preview production build                                                   |
@@ -65,7 +66,7 @@ bun dev
 | `verify`                       | `bun run lint && bun run typecheck && bun run test:run` | Local pre-commit quality gate                                              |
 | `verify:full`                  | `bun run verify && bun run build`                       | Full local CI-style verification                                           |
 
-The `vendor/` directory is intentionally ignored. Use `bun run fetch:world-contracts` or `bun run build:with-world-contracts` when you need a pinned local checkout of the upstream `world-contracts` repository for inspection or compatibility work.
+The `vendor/` directory is intentionally ignored. Use `bun run fetch:world-contracts` or `bun run build:with-world-contracts` when you need a pinned local checkout of the upstream `world-contracts` repository for inspection or compatibility work. Use `bun run fetch:sui-upstream-sources` to refresh the pinned browser-served Sui framework mirror under `public/upstream-sources/` when the app's hosted upstream sources need to be updated.
 
 Versioning, tags, and changelog updates are handled by the `release-please` GitHub workflow after Conventional Commits land on `main`.
 Running `bun install` also installs the Husky `commit-msg` hook, so invalid commit messages fail locally before they ever reach CI.

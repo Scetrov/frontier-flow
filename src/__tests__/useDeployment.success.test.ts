@@ -114,7 +114,7 @@ beforeEach(() => {
       "Move.toml": "[package]\nname = \"world\"\n",
       "sources/world.move": "module world::world {}",
     },
-    sourceVersionTag: "v0.0.18",
+    sourceVersionTag: "v0.0.23",
     fetchedAt: new Date("2026-03-22T12:00:00.000Z").getTime(),
   });
   mockCompileForDeployment.mockResolvedValue({
@@ -131,8 +131,8 @@ beforeEach(() => {
       dependencies: "{}",
       lockfileDependencies: "{}",
     },
-    sourceVersionTag: "v0.0.18",
-    builderToolchainVersion: "1.67.1",
+    sourceVersionTag: "v0.0.23",
+    builderToolchainVersion: "1.69.1",
     compiledAt: new Date("2026-03-22T12:00:00.500Z").getTime(),
   });
   mockCompileMove.mockImplementation((artifact: { bytecodeModules: readonly Uint8Array[]; dependencies: readonly string[] }) => Promise.resolve({
@@ -218,8 +218,8 @@ describe("useDeployment success path", () => {
       transactionDigest: result.current.latestAttempt?.confirmationReference,
       deployedAt: new Date(result.current.latestAttempt?.endedAt ?? 0).toISOString(),
       contractName: artifact.moduleName,
-      sourceVersionTag: "v0.0.18",
-      builderToolchainVersion: "1.67.1",
+      sourceVersionTag: "v0.0.23",
+      builderToolchainVersion: "1.69.1",
     });
   });
 
