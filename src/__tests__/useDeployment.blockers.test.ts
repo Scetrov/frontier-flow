@@ -10,8 +10,31 @@ import type {
 import type { signTransaction as signTransactionFunction } from "@mysten/wallet-standard";
 
 import { saveLocalEnvironmentConfig } from "../data/localEnvironment";
+
+const {
+  mockCreateDeploymentExecutor,
+  mockDeploymentExecutor,
+} = vi.hoisted(() => ({
+  mockCreateDeploymentExecutor: vi.fn(),
+  mockDeploymentExecutor: vi.fn(),
+}));
+
+vi.mock("../deployment/executor", async () => {
+  const actual = await vi.importActual<typeof import("../deployment/executor")>("../deployment/executor");
+
+  return {
+    ...actual,
+    createDeploymentExecutor: mockCreateDeploymentExecutor,
+  };
+});
+
 import { useDeployment } from "../hooks/useDeployment";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
+import {
+  ARTIFACT_EMPTY_PUBLISH_PAYLOAD_MESSAGE,
+  DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE,
+  EMPTY_PUBLISH_PAYLOAD_REMEDIATION,
+} from "./deployment/testFactories";
 
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
@@ -88,6 +111,9 @@ describe("useDeployment blocker handling", () => {
     mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
     mockUseSuiClient.mockReturnValue({} as SuiClient);
     mockUseWallets.mockReturnValue([availableWallet]);
+    mockDeploymentExecutor.mockReset();
+    mockCreateDeploymentExecutor.mockReset();
+    mockCreateDeploymentExecutor.mockReturnValue(mockDeploymentExecutor);
     window.history.replaceState({}, "", "/?ff_mock_deploy_stage_delay_ms=25");
   });
 
@@ -334,5 +360,111 @@ describe("useDeployment blocker handling", () => {
     expect(result.current.deploymentStatus?.status).toBe("blocked");
     expect(result.current.deploymentStatus?.outcome).toBe("unresolved");
     expect(result.current.statusMessage?.headline).toBe("Deployment unresolved");
+  });
+
+  it("surfaces executor-blocked empty publish payloads with actionable remediation", async () => {
+    window.history.replaceState({}, "", "/");
+    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    mockDeploymentExecutor.mockResolvedValueOnce({
+      outcome: "blocked",
+      stage: "deploy-grade-compile",
+      message: DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE,
+      remediation: EMPTY_PUBLISH_PAYLOAD_REMEDIATION,
+      errorCode: "publish-payload-empty",
+    });
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "local",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    await act(async () => {
+      await result.current.startDeployment();
+      await Promise.resolve();
+    });
+
+    expect(mockDeploymentExecutor).toHaveBeenCalledTimes(1);
+    expect(result.current.latestAttempt?.outcome).toBe("blocked");
+    expect(result.current.latestAttempt?.errorCode).toBe("publish-payload-empty");
+    expect(result.current.latestAttempt?.message).toBe(DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE);
+    expect(result.current.deploymentStatus?.status).toBe("blocked");
+    expect(result.current.deploymentStatus?.blockedReasons).toContain(DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE);
+    expect(result.current.statusMessage?.headline).toBe("Deployment blocked");
+    expect(result.current.statusMessage?.details).toBe(EMPTY_PUBLISH_PAYLOAD_REMEDIATION);
+  });
+
+  it("treats artifact-level empty publish payload blockers as blocked-before-submission outcomes", async () => {
+    window.history.replaceState({}, "", "/");
+    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    mockDeploymentExecutor.mockResolvedValueOnce({
+      outcome: "blocked",
+      stage: "preparing",
+      message: ARTIFACT_EMPTY_PUBLISH_PAYLOAD_MESSAGE,
+      remediation: EMPTY_PUBLISH_PAYLOAD_REMEDIATION,
+      errorCode: "publish-payload-empty",
+    });
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "local",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    await act(async () => {
+      await result.current.startDeployment();
+      await Promise.resolve();
+    });
+
+    expect(result.current.latestAttempt?.outcome).toBe("blocked");
+    expect(result.current.latestAttempt?.currentStage).toBe("preparing");
+    expect(result.current.latestAttempt?.message).toBe(ARTIFACT_EMPTY_PUBLISH_PAYLOAD_MESSAGE);
+    expect(result.current.deploymentStatus?.blockedReasons).toContain(ARTIFACT_EMPTY_PUBLISH_PAYLOAD_MESSAGE);
+    expect(result.current.statusMessage?.details).toBe(EMPTY_PUBLISH_PAYLOAD_REMEDIATION);
+  });
+
+  it("preserves blocked empty-publish history when a later retry succeeds in the same session", async () => {
+    window.history.replaceState({}, "", "/");
+    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    mockDeploymentExecutor
+      .mockResolvedValueOnce({
+        outcome: "blocked",
+        stage: "deploy-grade-compile",
+        message: DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE,
+        remediation: EMPTY_PUBLISH_PAYLOAD_REMEDIATION,
+        errorCode: "publish-payload-empty",
+      })
+      .mockResolvedValueOnce({
+        outcome: "succeeded",
+        stage: "confirming",
+        message: "Deployment completed for localnet.",
+        packageId: "0xabc123",
+        confirmationReference: "0xdigest",
+      });
+    const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
+
+    const { result } = renderHook(() => useDeployment({
+      initialTarget: "local",
+      status: { state: "compiled", bytecode: [new Uint8Array([1, 2, 3])], artifact },
+    }));
+
+    await act(async () => {
+      await result.current.startDeployment();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await result.current.startDeployment();
+      await Promise.resolve();
+    });
+
+    expect(result.current.latestAttempt?.outcome).toBe("succeeded");
+    expect(result.current.deploymentStatus?.status).toBe("deployed");
+    expect(result.current.deploymentStatus?.reviewHistory).toHaveLength(2);
+    expect(result.current.deploymentStatus?.reviewHistory?.[0]?.outcome).toBe("succeeded");
+    expect(result.current.deploymentStatus?.reviewHistory?.[1]?.blockedReasons).toContain(DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE);
   });
 });

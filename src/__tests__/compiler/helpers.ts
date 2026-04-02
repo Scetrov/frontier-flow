@@ -175,6 +175,16 @@ export function createPackageReferenceBundle(
   targetId: DeploymentTargetId = "testnet:stillness",
   overrides: Partial<PackageReferenceBundle> = {},
 ): PackageReferenceBundle {
+  const defaultSourceVersionTag = targetId === "testnet:utopia"
+    ? "v0.0.21"
+    : targetId === "testnet:stillness"
+      ? "v0.0.23"
+      : "v0.0.18";
+  const defaultToolchainVersion = targetId === "testnet:utopia"
+    ? "1.68.0"
+    : targetId === "testnet:stillness"
+      ? "1.69.1"
+      : "1.67.1";
   const bundle: PackageReferenceBundle = {
     targetId,
     environmentLabel: overrides.environmentLabel ?? (targetId === "local" ? "Localnet 0x1" : targetId === "testnet:stillness" ? "Stillness" : "Utopia"),
@@ -182,8 +192,8 @@ export function createPackageReferenceBundle(
     originalWorldPackageId: overrides.originalWorldPackageId ?? overrides.worldPackageId ?? "0x1",
     objectRegistryId: overrides.objectRegistryId ?? "0x2",
     serverAddressRegistryId: overrides.serverAddressRegistryId ?? "0x3",
-    sourceVersionTag: overrides.sourceVersionTag ?? (targetId === "testnet:utopia" ? "v0.0.21" : "v0.0.18"),
-    toolchainVersion: overrides.toolchainVersion ?? (targetId === "testnet:utopia" ? "1.68.0" : "1.67.1"),
+    sourceVersionTag: overrides.sourceVersionTag ?? defaultSourceVersionTag,
+    toolchainVersion: overrides.toolchainVersion ?? defaultToolchainVersion,
     source: overrides.source ?? "test",
     lastVerifiedOn: overrides.lastVerifiedOn ?? "2026-03-21",
   };
@@ -215,6 +225,24 @@ export function createGeneratedArtifactStub(overrides: Partial<GeneratedContract
     ...overrides,
     deploymentStatus,
   };
+}
+
+export function createEmptyPublishPayloadArtifactStub(
+  overrides: Partial<GeneratedContractArtifact> = {},
+): GeneratedContractArtifact {
+  return createGeneratedArtifactStub({
+    ...overrides,
+    bytecodeModules: overrides.bytecodeModules ?? [],
+  });
+}
+
+export function createArtifactWithEmptyPublishModuleStub(
+  overrides: Partial<GeneratedContractArtifact> = {},
+): GeneratedContractArtifact {
+  return createGeneratedArtifactStub({
+    ...overrides,
+    bytecodeModules: overrides.bytecodeModules ?? [new Uint8Array()],
+  });
 }
 
 export function createResolvedDependencyPackageSnapshot(

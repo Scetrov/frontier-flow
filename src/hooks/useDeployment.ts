@@ -114,6 +114,11 @@ function toDeploymentStatus(
   reviewHistory: readonly DeploymentReviewEntry[],
 ): DeploymentStatus {
   const statusValue = attempt.outcome === "succeeded" ? "deployed" : "blocked";
+  const blockedReasons = validation.blockers.map((blocker) => blocker.message);
+
+  if ((attempt.outcome === "blocked" || attempt.outcome === "cancelled") && !blockedReasons.includes(attempt.message)) {
+    blockedReasons.push(attempt.message);
+  }
 
   return {
     artifactId: attempt.artifactId,
@@ -130,9 +135,7 @@ function toDeploymentStatus(
     resolvedInputs: statusValue === "deployed"
       ? [...validation.requiredInputs, "deployment package id"]
       : validation.resolvedInputs,
-    blockedReasons: statusValue === "blocked"
-      ? validation.blockers.map((blocker) => blocker.message).concat(attempt.outcome === "cancelled" ? [attempt.message] : [])
-      : [],
+    blockedReasons: statusValue === "blocked" ? blockedReasons : [],
     nextActionSummary: statusMessage.details,
     reviewHistory,
   };
@@ -143,6 +146,12 @@ function createReviewEntry(
   statusMessage: DeploymentStatusMessage,
   validation: DeploymentValidationResult,
 ): DeploymentReviewEntry {
+  const blockedReasons = validation.blockers.map((blocker) => blocker.message);
+
+  if ((attempt.outcome === "blocked" || attempt.outcome === "cancelled") && !blockedReasons.includes(attempt.message)) {
+    blockedReasons.push(attempt.message);
+  }
+
   return {
     attemptId: attempt.attemptId,
     artifactId: attempt.artifactId,
@@ -156,11 +165,7 @@ function createReviewEntry(
     packageId: attempt.packageId,
     confirmationReference: attempt.confirmationReference,
     details: statusMessage.details,
-    blockedReasons: validation.blockers.length > 0
-      ? validation.blockers.map((blocker) => blocker.message).concat(attempt.outcome === "cancelled" ? [attempt.message] : [])
-      : attempt.outcome === "cancelled"
-        ? [attempt.message]
-        : [],
+    blockedReasons,
   };
 }
 
@@ -717,7 +722,7 @@ function getExecutionOutcomeNextAction(result: DeploymentExecutionResult): strin
     case "unresolved":
       return "Retry confirmation or redeploy after checking the target network and transaction digest.";
     case "blocked":
-      return "Resolve the reported blocker before retrying deployment.";
+      return result.remediation ?? "Resolve the reported blocker before retrying deployment.";
     case "succeeded":
       return result.message;
   }

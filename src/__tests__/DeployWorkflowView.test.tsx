@@ -4,12 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import DeployWorkflowView from "../components/DeployWorkflowView";
 import type { DeploymentState } from "../compiler/types";
 import { getLocalDeploymentTargetLabel } from "../data/localEnvironment";
+import { getPackageReferenceBundle } from "../data/packageReferences";
 
 type TargetBalanceQuery = ReturnType<typeof import("../hooks/useTargetBalance").useTargetBalance>;
 
 const mockUseTargetBalance = vi.fn<(...args: [string | null, import("../compiler/types").DeploymentTargetId]) => TargetBalanceQuery>();
 const mockGetObject = vi.fn<() => Promise<unknown>>();
 const mockSuiClient = { getObject: mockGetObject };
+const STILLNESS_WORLD_PACKAGE_ID = getPackageReferenceBundle("testnet:stillness").worldPackageId;
 
 vi.mock("@mysten/dapp-kit", () => ({
   useCurrentAccount: () => ({ address: "0xabc" }),
@@ -89,7 +91,7 @@ describe("DeployWorkflowView", () => {
     expect(screen.getByText("Connect a Sui-compatible wallet before deploying to testnet:stillness.")).toBeVisible();
     expect(screen.getByText("Review blockers before deploying")).toBeVisible();
     expect(screen.getByText("Wallet balance: 2.5 SUI")).toBeVisible();
-    expect(await screen.findByText("0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c")).toBeVisible();
+    expect(await screen.findByText(STILLNESS_WORLD_PACKAGE_ID)).toBeVisible();
     expect(screen.getByText("Deployment blocked")).toBeVisible();
     expect(screen.getByText("Resolve the wallet connection before retrying deployment.")).toBeVisible();
   });
@@ -114,7 +116,7 @@ describe("DeployWorkflowView", () => {
     }));
 
     const detailsBlock = screen.getByLabelText("Deployment status details");
-    expect(await screen.findByText("0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c")).toBeVisible();
+    expect(await screen.findByText(STILLNESS_WORLD_PACKAGE_ID)).toBeVisible();
 
     expect(detailsBlock.tagName).toBe("PRE");
     expect(detailsBlock.textContent).toBe(details);
@@ -160,7 +162,7 @@ describe("DeployWorkflowView", () => {
 
     const { rerender } = renderDeployWorkflowView(createDeploymentState());
 
-    expect(await screen.findByText("0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c")).toBeVisible();
+    expect(await screen.findByText(STILLNESS_WORLD_PACKAGE_ID)).toBeVisible();
 
     rerender(<DeployWorkflowView deployment={createDeploymentState({
       selectedTarget: "testnet:utopia",
@@ -186,7 +188,7 @@ describe("DeployWorkflowView", () => {
     })} />);
 
     await waitFor(() => {
-      expect(screen.queryByText("0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c")).not.toBeInTheDocument();
+      expect(screen.queryByText(STILLNESS_WORLD_PACKAGE_ID)).not.toBeInTheDocument();
     });
     expect(screen.getByText("Checking published world package")).toBeVisible();
   });

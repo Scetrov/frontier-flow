@@ -20,6 +20,10 @@ const DEFAULT_ARTIFACT_ID = "starter_contract-00000000";
 const DEFAULT_TARGET_ID: DeploymentTargetId = "local";
 const DEFAULT_BLOCKED_REASON = "The local validator required for local deployment is unavailable.";
 const DEFAULT_NEXT_ACTION = "Start or configure the local validator, then retry deployment to local.";
+export const ARTIFACT_EMPTY_PUBLISH_PAYLOAD_MESSAGE = "Deployment package for localnet did not produce any publishable Move modules because the current artifact does not contain compiled contract bytecode. The graph was never built successfully, the compiled artifact went stale, or the compiled module set was lost before publish.";
+export const DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE = "Deployment package for localnet did not produce any publishable Move modules because deploy-grade compilation left only dependency or world modules in the final package. There is no contract-specific bytecode left to publish.";
+export const EMPTY_PUBLISH_PAYLOAD_MESSAGE = DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE;
+export const EMPTY_PUBLISH_PAYLOAD_REMEDIATION = "Rebuild or refresh the deployment package so the final publish payload contains compiled Move modules, then retry deployment.";
 const DEFAULT_REQUIRED_INPUTS = [
   "current compiled bytecode artifact",
   `published package references for ${getLocalDeploymentTargetLabel()}`,
@@ -138,6 +142,71 @@ export function createDeploymentReviewEntryFixture(
     historicalOnly: overrides.historicalOnly,
     historicalReason: overrides.historicalReason,
   };
+}
+
+/**
+ * Create a blocked deployment attempt fixture for empty publish-payload regressions.
+ */
+export function createEmptyPublishPayloadAttemptFixture(
+  overrides: Partial<DeploymentAttempt> = {},
+): DeploymentAttempt {
+  return createDeploymentAttemptFixture({
+    currentStage: overrides.currentStage ?? "deploy-grade-compile",
+    errorCode: overrides.errorCode ?? "publish-payload-empty",
+    message: overrides.message ?? DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE,
+    outcome: overrides.outcome ?? "blocked",
+    ...overrides,
+  });
+}
+
+/**
+ * Create a deployment status message fixture for empty publish-payload regressions.
+ */
+export function createEmptyPublishPayloadStatusMessageFixture(
+  overrides: Partial<DeploymentStatusMessage> = {},
+): DeploymentStatusMessage {
+  return createDeploymentStatusMessageFixture({
+    details: overrides.details ?? EMPTY_PUBLISH_PAYLOAD_REMEDIATION,
+    headline: overrides.headline ?? "Deployment blocked",
+    severity: overrides.severity ?? "error",
+    stage: overrides.stage ?? "deploy-grade-compile",
+    ...overrides,
+  });
+}
+
+/**
+ * Create a deployment status fixture for empty publish-payload regressions.
+ */
+export function createEmptyPublishPayloadStatusFixture(
+  overrides: Partial<DeploymentStatus> = {},
+): DeploymentStatus {
+  return createDeploymentStatusFixture({
+    blockedReasons: overrides.blockedReasons ?? [DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE],
+    headline: overrides.headline ?? "Deployment blocked",
+    nextActionSummary: overrides.nextActionSummary ?? EMPTY_PUBLISH_PAYLOAD_REMEDIATION,
+    outcome: overrides.outcome ?? "blocked",
+    severity: overrides.severity ?? "error",
+    stage: overrides.stage ?? "deploy-grade-compile",
+    status: overrides.status ?? "blocked",
+    ...overrides,
+  });
+}
+
+/**
+ * Create a review-entry fixture for empty publish-payload regressions.
+ */
+export function createEmptyPublishPayloadReviewEntryFixture(
+  overrides: Partial<DeploymentReviewEntry> = {},
+): DeploymentReviewEntry {
+  return createDeploymentReviewEntryFixture({
+    blockedReasons: overrides.blockedReasons ?? [DEPLOY_GRADE_EMPTY_PUBLISH_PAYLOAD_MESSAGE],
+    details: overrides.details ?? EMPTY_PUBLISH_PAYLOAD_REMEDIATION,
+    headline: overrides.headline ?? "Deployment blocked",
+    outcome: overrides.outcome ?? "blocked",
+    severity: overrides.severity ?? "error",
+    stage: overrides.stage ?? "deploy-grade-compile",
+    ...overrides,
+  });
 }
 
 /**

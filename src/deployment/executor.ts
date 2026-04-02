@@ -8,13 +8,14 @@ import type {
   GeneratedContractArtifact,
   PackageReferenceBundle,
 } from "../compiler/types";
-import { DependencyResolutionError } from "../compiler/types";
+import { DependencyResolutionError, PublishPayloadEmptyError } from "../compiler/types";
 import { compileForDeployment } from "../compiler/deployGradeCompiler";
 import { usesDeployGradeCompilation, usesWalletSignedPublish } from "../data/deploymentTargets";
 import { createWorldSourceFromCachedResolution, getProjectCachedDependencyResolution } from "./dependencySnapshotLoader";
 import { fetchWorldSource } from "./worldSourceFetcher";
 import { confirmPublishedPackage, type DeploymentConfirmationRequest, type DeploymentConfirmationResult } from "./confirmation";
 import { publishToLocalValidator, type LocalPublishResult } from "./publishLocal";
+import { validatePublishPayloadReadiness } from "./publishPayload";
 import { publishToRemoteTarget, type RemotePublishExecutionRequest, type RemotePublishResult } from "./publishRemote";
 
 export interface DeploymentExecutionRequest {
@@ -38,6 +39,7 @@ export interface DeploymentExecutionResult {
   readonly sourceVersionTag?: string;
   readonly builderToolchainVersion?: string;
   readonly message: string;
+  readonly remediation?: string;
   readonly errorCode?: string;
 }
 
@@ -161,6 +163,16 @@ function getFailureErrorCode(fallbackStage: DeploymentStage): string {
 }
 
 function classifyExecutionError(error: unknown, fallbackStage: DeploymentStage): DeploymentExecutionResult {
+  if (error instanceof PublishPayloadEmptyError) {
+    return {
+      outcome: "blocked",
+      stage: error.stage,
+      message: error.message,
+      remediation: error.remediation,
+      errorCode: error.code,
+    };
+  }
+
   const rawMessage = error instanceof Error ? error.message : "Deployment failed unexpectedly.";
   const message = sanitizeExecutionMessage(rawMessage);
   const normalizedMessage = rawMessage.toLowerCase();
@@ -311,14 +323,45 @@ function createPublishMetadata(publishResult: LocalPublishResult | RemotePublish
   };
 }
 
+function validateFinalPublishPayload(
+  modules: readonly Uint8Array[],
+  stage: DeploymentStage,
+  targetLabel: string,
+  source: "artifact" | "deploy-grade",
+): DeploymentExecutionResult | null {
+  const readiness = validatePublishPayloadReadiness(modules, { stage, targetLabel, source });
+
+  if (readiness.ready) {
+    return null;
+  }
+
+  return {
+    outcome: "blocked",
+    stage: readiness.stage,
+    message: readiness.message,
+    remediation: readiness.remediation,
+    errorCode: readiness.errorCode,
+  };
+}
+
 async function executeRemotePublish(
   request: DeploymentExecutionRequest,
   dependencies: DeploymentExecutorDependencies,
   setStage: (stage: DeploymentStage) => void,
   onProgress?: (progress: DeploymentExecutionProgress) => void,
-): Promise<RemotePublishResult> {
+): Promise<RemotePublishResult | DeploymentExecutionResult> {
   const references = request.references as PackageReferenceBundle;
   const { compileResult, worldSource } = await compileDeployGradeArtifact(request, dependencies, setStage, onProgress);
+  const payloadValidationResult = validateFinalPublishPayload(
+    compileResult.modules,
+    "deploy-grade-compile",
+    request.target.label,
+    "deploy-grade",
+  );
+
+  if (payloadValidationResult !== null) {
+    return payloadValidationResult;
+  }
 
   setStage("signing");
   reportProgress(onProgress, "signing", "Waiting for wallet signing approval.");
@@ -344,8 +387,18 @@ async function executeDeployGradeLocalPublish(
   dependencies: DeploymentExecutorDependencies,
   setStage: (stage: DeploymentStage) => void,
   onProgress?: (progress: DeploymentExecutionProgress) => void,
-): Promise<LocalPublishResult> {
+): Promise<LocalPublishResult | DeploymentExecutionResult> {
   const { compileResult } = await compileDeployGradeArtifact(request, dependencies, setStage, onProgress);
+  const payloadValidationResult = validateFinalPublishPayload(
+    compileResult.modules,
+    "deploy-grade-compile",
+    request.target.label,
+    "deploy-grade",
+  );
+
+  if (payloadValidationResult !== null) {
+    return payloadValidationResult;
+  }
 
   setStage("submitting");
   reportProgress(onProgress, "submitting", "Submitting deployment transaction.");
@@ -362,7 +415,18 @@ async function executeLocalPublish(
   dependencies: DeploymentExecutorDependencies,
   setStage: (stage: DeploymentStage) => void,
   onProgress?: (progress: DeploymentExecutionProgress) => void,
-): Promise<LocalPublishResult> {
+): Promise<LocalPublishResult | DeploymentExecutionResult> {
+  const payloadValidationResult = validateFinalPublishPayload(
+    request.artifact.bytecodeModules,
+    "preparing",
+    request.target.label,
+    "artifact",
+  );
+
+  if (payloadValidationResult !== null) {
+    return payloadValidationResult;
+  }
+
   setStage("submitting");
   reportProgress(onProgress, "submitting", "Submitting deployment transaction.");
   return dependencies.publishLocal({

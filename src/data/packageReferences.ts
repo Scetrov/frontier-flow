@@ -10,7 +10,7 @@ import {
 } from "./localEnvironment";
 
 const RESOURCE_SOURCE = "https://docs.evefrontier.com/tools/resources";
-const LAST_VERIFIED_ON = "2026-03-26";
+const LAST_VERIFIED_ON = "2026-04-02";
 export const PUBLISHED_WORLD_PACKAGE_MANIFEST_URL = "https://raw.githubusercontent.com/evefrontier/world-contracts/refs/heads/main/contracts/world/Published.toml";
 export const WORLD_PACKAGE_OVERRIDE_STORAGE_KEY = "frontier-flow:world-package-overrides";
 
@@ -19,12 +19,25 @@ let cachedOverrideSnapshot: string | null | undefined;
 let cachedLocalEnvironmentSnapshot: string | null | undefined;
 
 type RemoteDeploymentTargetId = Exclude<PackageReferenceBundle["targetId"], "local">;
+const REMOTE_DEPLOYMENT_TARGET_IDS = ["testnet:stillness", "testnet:utopia"] as const;
+
+interface StoredWorldPackageTargetOverride {
+  readonly worldPackageId: string;
+  readonly originalWorldPackageId?: string;
+  readonly toolchainVersion?: string;
+}
 
 interface StoredWorldPackageOverrides {
-  readonly version: 2;
+  readonly version: 2 | 3;
   readonly lastVerifiedOn: string;
   readonly source: string;
-  readonly worldPackageIds: Partial<Record<RemoteDeploymentTargetId, string>>;
+  readonly targets: Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>>;
+}
+
+interface PublishedWorldPackageMetadata {
+  readonly worldPackageId: string;
+  readonly originalWorldPackageId?: string;
+  readonly toolchainVersion?: string;
 }
 
 /**
@@ -46,12 +59,12 @@ export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
   {
     targetId: "testnet:stillness",
     environmentLabel: "Stillness",
-    worldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+    worldPackageId: "0xd2fd1224f881e7a705dbc211888af11655c315f2ee0f03fe680fc3176e6e4780",
     originalWorldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
     objectRegistryId: "0x454a9aa3d37e1d08d3c9181239c1b683781e4087fbbbd48c935d54b6736fd05c",
     serverAddressRegistryId: "0xeb97b81668699672b1147c28dacb3d595534c48f4e177d3d80337dbde464f05f",
-    sourceVersionTag: "v0.0.18",
-    toolchainVersion: "1.67.1",
+    sourceVersionTag: "v0.0.23",
+    toolchainVersion: "1.69.1",
     source: RESOURCE_SOURCE,
     lastVerifiedOn: LAST_VERIFIED_ON,
   },
@@ -85,30 +98,76 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function parseStoredWorldPackageTargetOverride(value: unknown): StoredWorldPackageTargetOverride | null {
+  if (!isRecord(value) || typeof value.worldPackageId !== "string" || !isPublishedPackageId(value.worldPackageId)) {
+    return null;
+  }
+
+  return {
+    worldPackageId: value.worldPackageId,
+    originalWorldPackageId: typeof value.originalWorldPackageId === "string" && isPublishedPackageId(value.originalWorldPackageId)
+      ? value.originalWorldPackageId
+      : undefined,
+    toolchainVersion: typeof value.toolchainVersion === "string" && value.toolchainVersion.length > 0
+      ? value.toolchainVersion
+      : undefined,
+  };
+}
+
+function parseVersion2StoredTargets(value: Record<string, unknown>): Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>> | null {
+  if (!isRecord(value.worldPackageIds)) {
+    return null;
+  }
+
+  const targets: Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>> = {};
+  for (const targetId of REMOTE_DEPLOYMENT_TARGET_IDS) {
+    const packageId = value.worldPackageIds[targetId];
+    if (typeof packageId === "string" && isPublishedPackageId(packageId)) {
+      targets[targetId] = {
+        worldPackageId: packageId,
+      };
+    }
+  }
+
+  return targets;
+}
+
+function parseVersion3StoredTargets(value: Record<string, unknown>): Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>> | null {
+  if (!isRecord(value.targets)) {
+    return null;
+  }
+
+  const targets: Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>> = {};
+  for (const targetId of REMOTE_DEPLOYMENT_TARGET_IDS) {
+    const parsedTargetOverride = parseStoredWorldPackageTargetOverride(value.targets[targetId]);
+    if (parsedTargetOverride !== null) {
+      targets[targetId] = parsedTargetOverride;
+    }
+  }
+
+  return targets;
+}
+
 function parseStoredWorldPackageOverrides(value: unknown): StoredWorldPackageOverrides | null {
   if (
     !isRecord(value)
-    || value.version !== 2
+    || (value.version !== 2 && value.version !== 3)
     || typeof value.lastVerifiedOn !== "string"
     || typeof value.source !== "string"
-    || !isRecord(value.worldPackageIds)
   ) {
     return null;
   }
 
-  const worldPackageIds: Partial<Record<RemoteDeploymentTargetId, string>> = {};
-  for (const targetId of ["testnet:stillness", "testnet:utopia"] as const) {
-    const packageId = value.worldPackageIds[targetId];
-    if (typeof packageId === "string" && isPublishedPackageId(packageId)) {
-      worldPackageIds[targetId] = packageId;
-    }
+  const targets = value.version === 2 ? parseVersion2StoredTargets(value) : parseVersion3StoredTargets(value);
+  if (targets === null) {
+    return null;
   }
 
   return {
-    version: 2,
+    version: value.version,
     lastVerifiedOn: value.lastVerifiedOn,
     source: value.source,
-    worldPackageIds,
+    targets,
   };
 }
 
@@ -164,14 +223,16 @@ function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): read
       } satisfies PackageReferenceBundle;
     }
 
-    const overrideWorldPackageId = storedOverrides?.worldPackageIds[bundle.targetId as RemoteDeploymentTargetId];
-    if (overrideWorldPackageId === undefined) {
+    const overrideMetadata = storedOverrides?.targets[bundle.targetId as RemoteDeploymentTargetId];
+    if (overrideMetadata === undefined) {
       return bundle;
     }
 
     return {
       ...bundle,
-      worldPackageId: overrideWorldPackageId,
+      worldPackageId: overrideMetadata.worldPackageId,
+      originalWorldPackageId: overrideMetadata.originalWorldPackageId ?? bundle.originalWorldPackageId,
+      toolchainVersion: overrideMetadata.toolchainVersion ?? bundle.toolchainVersion,
       source: storedOverrides?.source ?? bundle.source,
       lastVerifiedOn: storedOverrides?.lastVerifiedOn ?? bundle.lastVerifiedOn,
     } satisfies PackageReferenceBundle;
@@ -200,22 +261,27 @@ function createPackageReferenceBundleMap(storage = getBrowserStorage()): Readonl
 export function shouldRefreshPublishedWorldPackageManifest(storage = getBrowserStorage()): boolean {
   const storedOverrides = getStoredWorldPackageOverrides(storage);
 
-  return storedOverrides?.lastVerifiedOn !== getCurrentIsoDate();
+  return storedOverrides?.version !== 3 || storedOverrides.lastVerifiedOn !== getCurrentIsoDate();
 }
 
 /**
- * Parse Published.toml world package ids for the supported EVE Frontier targets.
+ * Parse Published.toml world package metadata for the supported EVE Frontier targets.
  */
-export function parsePublishedWorldPackageManifest(manifest: string): Partial<Record<RemoteDeploymentTargetId, string>> {
-  const results: Partial<Record<RemoteDeploymentTargetId, string>> = {};
+export function parsePublishedWorldPackageManifest(manifest: string): Partial<Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata>> {
+  const results: Partial<Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata>> = {};
 
   for (const [sectionName, targetId] of [["testnet_stillness", "testnet:stillness"], ["testnet_utopia", "testnet:utopia"]] as const) {
     const originalId = extractPublishedSectionValue(manifest, sectionName, "original-id");
     const publishedAt = extractPublishedSectionValue(manifest, sectionName, "published-at");
+    const toolchainVersion = extractPublishedSectionValue(manifest, sectionName, "toolchain-version");
     const resolvedPackageId = publishedAt ?? originalId;
 
     if (resolvedPackageId !== null && isPublishedPackageId(resolvedPackageId)) {
-      results[targetId] = resolvedPackageId;
+      results[targetId] = {
+        worldPackageId: resolvedPackageId,
+        originalWorldPackageId: originalId !== null && isPublishedPackageId(originalId) ? originalId : undefined,
+        toolchainVersion: toolchainVersion?.length ? toolchainVersion : undefined,
+      };
     }
   }
 
@@ -228,7 +294,7 @@ export function parsePublishedWorldPackageManifest(manifest: string): Partial<Re
 export async function refreshPublishedWorldPackageManifest(input: {
   readonly fetchFn?: typeof fetch;
   readonly storage?: Storage;
-} = {}): Promise<Partial<Record<RemoteDeploymentTargetId, string>>> {
+} = {}): Promise<Partial<Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata>>> {
   const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
   const response = await fetchFn(PUBLISHED_WORLD_PACKAGE_MANIFEST_URL);
 
@@ -237,15 +303,15 @@ export async function refreshPublishedWorldPackageManifest(input: {
   }
 
   const manifest = await response.text();
-  const worldPackageIds = parsePublishedWorldPackageManifest(manifest);
+  const targets = parsePublishedWorldPackageManifest(manifest);
   saveStoredWorldPackageOverrides(input.storage ?? getBrowserStorage(), {
-    version: 2,
+    version: 3,
     lastVerifiedOn: getCurrentIsoDate(),
     source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
-    worldPackageIds,
+    targets,
   });
 
-  return worldPackageIds;
+  return targets;
 }
 
 /**

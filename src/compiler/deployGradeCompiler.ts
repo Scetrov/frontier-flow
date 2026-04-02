@@ -22,6 +22,7 @@ import { normalizeDependencyPackageName, parseResolvedDependencyPackages } from 
 
 const WORLD_CONTRACTS_GIT_URL = "https://github.com/evefrontier/world-contracts.git";
 const WORLD_CONTRACTS_SUBDIRECTORY = "contracts/world";
+const BUILT_IN_DEPENDENCY_PACKAGE_NAMES = new Set(["movestdlib", "sui"]);
 const RESOLVED_WORLD_PACKAGE_NAME = "world";
 const RESOLVED_WORLD_TEST_PREFIX_PATTERN = /^dependencies\/world\/tests\//i;
 const RESOLVED_WORLD_ACCESS_CONTROL_PATH_PATTERN = /^dependencies\/world\/sources\/access\/access_control\.move$/i;
@@ -41,6 +42,24 @@ interface BuildSuccessResult {
 
 interface BuildErrorResult {
   readonly error: string;
+}
+
+interface DeployGradeModuleSetDiagnostics {
+  readonly targetId: string;
+  readonly targetWorldPackageId: string;
+  readonly sourceVersionTag: string;
+  readonly packageMap: Readonly<Record<string, string>>;
+  readonly rewritesApplied: readonly string[];
+  readonly localFileCount: number;
+  readonly localFileKeys: readonly string[];
+  readonly worldOnlyFileCount: number;
+  readonly worldOnlyFileKeys: readonly string[];
+  readonly rootMoveToml: string | null;
+  readonly worldMoveToml: string | null;
+  readonly fullBuildModules: readonly string[];
+  readonly worldOnlyModules: readonly string[] | null;
+  readonly filteredModules: readonly string[];
+  readonly fallbackApplied: boolean;
 }
 
 interface DeployGradeCompilerDependencies {
@@ -65,6 +84,18 @@ const resolutionCache = new Map<string, CachedDependencyResolution>();
 
 function getResolutionCacheKey(targetId: string, sourceVersionTag: string): string {
   return `${targetId}:${sourceVersionTag}`;
+}
+
+function getDeployGradeCompilerSearchParams(): URLSearchParams | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return new URLSearchParams(window.location.search);
+}
+
+function shouldDebugDeployGradeModuleSets(): boolean {
+  return getDeployGradeCompilerSearchParams()?.get("ff_debug_deploy_grade_modules") === "1";
 }
 
 function decodeBase64(value: string): Uint8Array {
@@ -176,6 +207,14 @@ function getCompilerDependencies(dependencies: DeployGradeCompilerDependencies) 
     now: dependencies.now ?? Date.now,
     verifyIntegrity: dependencies.verifyMoveCompilerIntegrity ?? verifyMoveBuilderLiteIntegrity,
   };
+}
+
+function reportDeployGradeModuleSetDiagnostics(diagnostics: DeployGradeModuleSetDiagnostics): void {
+  if (!shouldDebugDeployGradeModuleSets()) {
+    return;
+  }
+
+  console.warn("[DeployGrade] Module sets", diagnostics);
 }
 
 function rewriteMoveTomlForDeployGrade(moveToml: string, sourceVersionTag: string): string {
@@ -319,12 +358,13 @@ function ensureWorldManifestPresent(
   extractedFiles: Record<string, string>,
   rewritesApplied: string[],
   worldPackageId: string,
+  sourceManifest?: string,
 ): void {
   if ("deps/world/Move.toml" in extractedFiles) {
     return;
   }
 
-  extractedFiles["deps/world/Move.toml"] = createWorldDepMoveToml(worldPackageId);
+  extractedFiles["deps/world/Move.toml"] = createWorldDepMoveToml(worldPackageId, sourceManifest);
   rewritesApplied.push("world-manifest-created");
 }
 
@@ -343,6 +383,53 @@ function getSnapshotDependencyDirectory(
   return fallbackDirectory;
 }
 
+function getSourceWorldManifest(
+  snapshot: ResolvedDependencyPackageSnapshot,
+  snapshotDirectory: string,
+  isWorldPackage: boolean,
+): string | undefined {
+  if (!isWorldPackage) {
+    return undefined;
+  }
+
+  const manifestPath = Object.keys(snapshot.files ?? {}).find((filePath) => new RegExp(`^dependencies/${snapshotDirectory}/Move\\.toml$`, "i").test(filePath));
+  return manifestPath === undefined ? undefined : snapshot.files?.[manifestPath];
+}
+
+function materializeSnapshotFile(input: {
+  readonly filePath: string;
+  readonly content: string;
+  readonly prefix: string;
+  readonly destinationDirectory: string;
+  readonly isWorldPackage: boolean;
+  readonly worldPackageId: string;
+  readonly rewritesApplied: string[];
+}): { readonly destinationPath: string; readonly content: string; readonly rewriteApplied?: string } | null {
+  const relativePath = getIncludedSnapshotRelativePath(input.filePath, input.prefix);
+  if (relativePath === null) {
+    return null;
+  }
+
+  const destinationPath = `deps/${input.destinationDirectory}/${relativePath}`;
+  if (input.isWorldPackage && relativePath === "Move.toml") {
+    return {
+      destinationPath,
+      content: createWorldDepMoveToml(input.worldPackageId, input.content),
+      rewriteApplied: "world-manifest-rewrite",
+    };
+  }
+
+  return {
+    destinationPath,
+    content: getSnapshotFileContent({
+      content: input.content,
+      isWorldPackage: input.isWorldPackage,
+      relativePath,
+      rewritesApplied: input.rewritesApplied,
+    }),
+  };
+}
+
 function extractSnapshotFiles(
   snapshot: ResolvedDependencyPackageSnapshot,
   destinationDirectory: string,
@@ -355,30 +442,30 @@ function extractSnapshotFiles(
   const isWorldPackage = isWorldSnapshot(normalizedName);
   const snapshotDirectory = getSnapshotDependencyDirectory(snapshot, resolvedName, normalizedName);
   const prefix = `dependencies/${snapshotDirectory}/`;
+  const sourceWorldManifest = getSourceWorldManifest(snapshot, snapshotDirectory, isWorldPackage);
 
   for (const [filePath, content] of Object.entries(snapshot.files ?? {})) {
-    const relativePath = getIncludedSnapshotRelativePath(filePath, prefix);
-    if (relativePath === null) {
-      continue;
-    }
-
-    const destinationPath = `deps/${destinationDirectory}/${relativePath}`;
-    if (isWorldPackage && relativePath === "Move.toml") {
-      extractedFiles[destinationPath] = createWorldDepMoveToml(worldPackageId);
-      rewritesApplied.push("world-manifest-rewrite");
-      continue;
-    }
-
-    extractedFiles[destinationPath] = getSnapshotFileContent({
+    const materializedFile = materializeSnapshotFile({
+      filePath,
       content,
+      prefix,
+      destinationDirectory,
       isWorldPackage,
-      relativePath,
+      worldPackageId,
       rewritesApplied,
     });
+    if (materializedFile === null) {
+      continue;
+    }
+
+    extractedFiles[materializedFile.destinationPath] = materializedFile.content;
+    if (materializedFile.rewriteApplied !== undefined) {
+      rewritesApplied.push(materializedFile.rewriteApplied);
+    }
   }
 
   if (isWorldPackage) {
-    ensureWorldManifestPresent(extractedFiles, rewritesApplied, worldPackageId);
+    ensureWorldManifestPresent(extractedFiles, rewritesApplied, worldPackageId, sourceWorldManifest);
   }
 
   return extractedFiles;
@@ -418,8 +505,13 @@ function createMaterializedDependencyTree(
       continue;
     }
 
+    const normalizedPackageName = normalizeDependencyPackageName(packageName);
+    if (BUILT_IN_DEPENDENCY_PACKAGE_NAMES.has(normalizedPackageName)) {
+      continue;
+    }
+
     const localDirectory = getLocalDependencyDirectoryName(packageName);
-    packageMap[normalizeDependencyPackageName(packageName)] = `deps/${localDirectory}`;
+    packageMap[normalizedPackageName] = `deps/${localDirectory}`;
 
     for (const [filePath, content] of Object.entries(extractSnapshotFiles(snapshot, localDirectory, rewritesApplied, dependencyLinkPackageId))) {
       files[filePath] = content;
@@ -433,7 +525,7 @@ function createMaterializedDependencyTree(
   };
 }
 
-function createWorldDepMoveToml(worldPackageId: string): string {
+function createDefaultWorldDepMoveToml(worldPackageId: string): string {
   return [
     "[package]",
     'name = "world"',
@@ -446,10 +538,166 @@ function createWorldDepMoveToml(worldPackageId: string): string {
   ].join("\n");
 }
 
+function flushWorldMoveTomlSections(input: {
+  readonly result: string[];
+  readonly inPackage: boolean;
+  readonly publishedAtSet: boolean;
+  readonly inAddresses: boolean;
+  readonly worldAddressSet: boolean;
+  readonly worldPackageId: string;
+}): { readonly publishedAtSet: boolean; readonly worldAddressSet: boolean } {
+  let { publishedAtSet, worldAddressSet } = input;
+
+  if (input.inPackage && !publishedAtSet) {
+    input.result.push(`published-at = "${input.worldPackageId}"`);
+    publishedAtSet = true;
+  }
+
+  if (input.inAddresses && !worldAddressSet) {
+    input.result.push(`world = "${input.worldPackageId}"`);
+    worldAddressSet = true;
+  }
+
+  return { publishedAtSet, worldAddressSet };
+}
+
+function rewriteWorldPublishedAtLine(line: string, inPackage: boolean, worldPackageId: string): string | null {
+  if (!inPackage || !/^\s*published-at\s*=\s*"[^"]*"\s*$/.test(line)) {
+    return null;
+  }
+
+  return `published-at = "${worldPackageId}"`;
+}
+
+function rewriteWorldAddressLine(line: string, inAddresses: boolean, worldPackageId: string): string | null {
+  if (!inAddresses || !/^\s*world\s*=\s*"[^"]*"\s*$/.test(line)) {
+    return null;
+  }
+
+  return `world = "${worldPackageId}"`;
+}
+
+function rewriteWorldMoveToml(sourceMoveToml: string, worldPackageId: string): {
+  readonly result: string[];
+  readonly packageSectionSeen: boolean;
+  readonly addressesSectionSeen: boolean;
+  readonly publishedAtSet: boolean;
+} {
+  const result: string[] = [];
+  let inPackage = false;
+  let inAddresses = false;
+  let packageSectionSeen = false;
+  let addressesSectionSeen = false;
+  let publishedAtSet = false;
+  let worldAddressSet = false;
+
+  for (const line of sourceMoveToml.split("\n")) {
+    const trimmed = line.trim();
+
+    if (isSectionHeader(trimmed)) {
+      ({ publishedAtSet, worldAddressSet } = flushWorldMoveTomlSections({
+        result,
+        inPackage,
+        publishedAtSet,
+        inAddresses,
+        worldAddressSet,
+        worldPackageId,
+      }));
+      inPackage = /^\[package\]$/i.test(trimmed);
+      inAddresses = isAddressesSectionHeader(trimmed);
+      packageSectionSeen ||= inPackage;
+      addressesSectionSeen ||= inAddresses;
+      result.push(line);
+      continue;
+    }
+
+    const publishedAtLine = rewriteWorldPublishedAtLine(line, inPackage, worldPackageId);
+    if (publishedAtLine !== null) {
+      result.push(publishedAtLine);
+      publishedAtSet = true;
+      continue;
+    }
+
+    const worldAddressLine = rewriteWorldAddressLine(line, inAddresses, worldPackageId);
+    if (worldAddressLine !== null) {
+      result.push(worldAddressLine);
+      worldAddressSet = true;
+      continue;
+    }
+
+    result.push(line);
+  }
+
+  ({ publishedAtSet } = flushWorldMoveTomlSections({
+    result,
+    inPackage,
+    publishedAtSet,
+    inAddresses,
+    worldAddressSet,
+    worldPackageId,
+  }));
+
+  return {
+    result,
+    packageSectionSeen,
+    addressesSectionSeen,
+    publishedAtSet,
+  };
+}
+
+function createWorldMoveTomlWithoutPackageSection(
+  result: readonly string[],
+  addressesSectionSeen: boolean,
+  worldPackageId: string,
+): string {
+  return [
+    "[package]",
+    'name = "world"',
+    'edition = "2024.beta"',
+    `published-at = "${worldPackageId}"`,
+    "",
+    ...result,
+    ...(addressesSectionSeen ? [] : ["", "[addresses]", `world = "${worldPackageId}"`]),
+    "",
+  ].join("\n");
+}
+
+function ensureWorldPublishedAt(result: string[], publishedAtSet: boolean, worldPackageId: string): void {
+  if (publishedAtSet) {
+    return;
+  }
+
+  const packageHeaderIndex = result.findIndex((line) => /^\[package\]$/i.test(line.trim()));
+  if (packageHeaderIndex !== -1) {
+    result.splice(packageHeaderIndex + 1, 0, `published-at = "${worldPackageId}"`);
+  }
+}
+
+function ensureWorldAddressesSection(result: string[], addressesSectionSeen: boolean, worldPackageId: string): void {
+  if (!addressesSectionSeen) {
+    result.push("", "[addresses]", `world = "${worldPackageId}"`);
+  }
+}
+
+function createWorldDepMoveToml(worldPackageId: string, sourceMoveToml?: string): string {
+  if (typeof sourceMoveToml !== "string" || sourceMoveToml.trim().length === 0) {
+    return createDefaultWorldDepMoveToml(worldPackageId);
+  }
+
+  const rewritten = rewriteWorldMoveToml(sourceMoveToml, worldPackageId);
+  if (!rewritten.packageSectionSeen) {
+    return createWorldMoveTomlWithoutPackageSection(rewritten.result, rewritten.addressesSectionSeen, worldPackageId);
+  }
+
+  ensureWorldPublishedAt(rewritten.result, rewritten.publishedAtSet, worldPackageId);
+  ensureWorldAddressesSection(rewritten.result, rewritten.addressesSectionSeen, worldPackageId);
+
+  return rewritten.result.join("\n");
+}
+
 async function buildExtensionWithLocalWorld(
   request: DeployGradeCompileRequest,
   files: Record<string, string>,
-  resolvedDependencies: ResolvedDependencies,
   buildCompilerPackage: BuildMovePackageFn,
 ): Promise<BuildSuccessResult> {
   request.onProgress?.({ phase: "compiling" });
@@ -460,7 +708,6 @@ async function buildExtensionWithLocalWorld(
       files,
       wasm: moveBuilderLiteWasmUrl,
       network: "testnet",
-      resolvedDependencies,
       silenceWarnings: false,
       onProgress: (event) => {
         const mapped = toDeployProgress(event);
@@ -494,7 +741,6 @@ function createWorldOnlyFileMap(localFiles: Record<string, string>): Record<stri
 
 async function detectWorldModuleSet(
   worldOnlyFiles: Record<string, string>,
-  resolvedDependencies: ResolvedDependencies,
   buildCompilerPackage: BuildMovePackageFn,
 ): Promise<ReadonlySet<string> | null> {
   try {
@@ -502,7 +748,6 @@ async function detectWorldModuleSet(
       files: worldOnlyFiles,
       wasm: moveBuilderLiteWasmUrl,
       network: "testnet",
-      resolvedDependencies,
       silenceWarnings: true,
     }) as BuildSuccessResult | BuildErrorResult;
 
@@ -510,6 +755,44 @@ async function detectWorldModuleSet(
   } catch {
     return null;
   }
+}
+
+function selectExtensionModules(input: {
+  readonly request: DeployGradeCompileRequest;
+  readonly localFiles: Record<string, string>;
+  readonly packageMap: Readonly<Record<string, string>>;
+  readonly rewritesApplied: readonly string[];
+  readonly worldOnlyFiles: Record<string, string>;
+  readonly buildModules: readonly string[];
+  readonly worldModuleSet: ReadonlySet<string> | null;
+}): readonly string[] {
+  const worldModuleSet = input.worldModuleSet;
+  const filteredModules = worldModuleSet !== null
+    ? input.buildModules.filter((moduleBytes) => !worldModuleSet.has(moduleBytes))
+    : input.buildModules;
+  const fallbackApplied = worldModuleSet !== null
+    && input.buildModules.length > 0
+    && filteredModules.length === 0;
+
+  reportDeployGradeModuleSetDiagnostics({
+    targetId: input.request.target.targetId,
+    targetWorldPackageId: input.request.target.worldPackageId,
+    sourceVersionTag: input.request.worldSource.sourceVersionTag,
+    packageMap: input.packageMap,
+    rewritesApplied: input.rewritesApplied,
+    localFileCount: Object.keys(input.localFiles).length,
+    localFileKeys: Object.keys(input.localFiles).sort(),
+    worldOnlyFileCount: Object.keys(input.worldOnlyFiles).length,
+    worldOnlyFileKeys: Object.keys(input.worldOnlyFiles).sort(),
+    rootMoveToml: input.localFiles["Move.toml"] ?? null,
+    worldMoveToml: input.localFiles["deps/world/Move.toml"] ?? null,
+    fullBuildModules: input.buildModules,
+    worldOnlyModules: worldModuleSet === null ? null : Array.from(worldModuleSet),
+    filteredModules,
+    fallbackApplied,
+  });
+
+  return fallbackApplied ? input.buildModules : filteredModules;
 }
 
 function toDeployProgress(event: BuildProgressEvent): DeployCompileProgressEvent | null {
@@ -648,15 +931,21 @@ export async function compileForDeployment(
   const sanitizedDependencies = sanitizeResolvedDependencies(resolvedDependencies);
 
   // Step 2: Materialize the dependency tree from cached/resolved package payloads.
-  const localFiles = createMaterializedDependencyTree(request, sanitizedDependencies).files;
+  const materializedDependencyTree = createMaterializedDependencyTree(request, sanitizedDependencies);
+  const localFiles = materializedDependencyTree.files;
 
-  const buildResult = await buildExtensionWithLocalWorld(request, localFiles, sanitizedDependencies, buildCompilerPackage);
+  const buildResult = await buildExtensionWithLocalWorld(request, localFiles, buildCompilerPackage);
   const worldOnlyFiles = createWorldOnlyFileMap(localFiles);
-  const worldModuleSet = await detectWorldModuleSet(worldOnlyFiles, sanitizedDependencies, buildCompilerPackage);
-
-  const extensionModules = worldModuleSet !== null
-    ? buildResult.modules.filter((m) => !worldModuleSet.has(m))
-    : buildResult.modules;
+  const worldModuleSet = await detectWorldModuleSet(worldOnlyFiles, buildCompilerPackage);
+  const extensionModules = selectExtensionModules({
+    request,
+    localFiles,
+    packageMap: materializedDependencyTree.packageMap,
+    rewritesApplied: materializedDependencyTree.rewritesApplied,
+    worldOnlyFiles,
+    buildModules: buildResult.modules,
+    worldModuleSet,
+  });
 
   request.onProgress?.({ phase: "complete" });
 

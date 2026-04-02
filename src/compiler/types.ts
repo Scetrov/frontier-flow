@@ -225,6 +225,27 @@ export type DeploymentStage =
   | "confirming";
 export type DeploymentMessageSeverity = "info" | "warning" | "error" | "success";
 
+export interface PublishPayloadReadinessResult {
+  readonly ready: boolean;
+  readonly stage: DeploymentStage;
+  readonly message: string;
+  readonly remediation: string;
+  readonly errorCode?: "publish-payload-empty";
+}
+
+export class PublishPayloadEmptyError extends Error {
+  readonly code = "publish-payload-empty" as const;
+  readonly stage: DeploymentStage;
+  readonly remediation: string;
+
+  constructor(input: PublishPayloadReadinessResult) {
+    super(input.message);
+    this.name = "PublishPayloadEmptyError";
+    this.stage = input.stage;
+    this.remediation = input.remediation;
+  }
+}
+
 export interface ContractIdentity {
   readonly packageName: string;
   readonly moduleName: string;

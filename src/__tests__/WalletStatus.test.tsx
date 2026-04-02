@@ -298,11 +298,15 @@ describe("WalletStatus", () => {
 
   it("skips the manifest refresh when package references were already verified today", async () => {
     window.localStorage.setItem("frontier-flow:world-package-overrides", JSON.stringify({
-      version: 2,
+      version: 3,
       lastVerifiedOn: new Date().toISOString().slice(0, 10),
       source: "https://example.test/Published.toml",
-      worldPackageIds: {
-        "testnet:stillness": "0xbbb",
+      targets: {
+        "testnet:stillness": {
+          worldPackageId: "0xbbb",
+          originalWorldPackageId: "0xbbb",
+          toolchainVersion: "1.69.1",
+        },
       },
     }));
 

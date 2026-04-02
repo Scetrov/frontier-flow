@@ -1,1 +1,1 @@
-- 019-cache-package-refresh: Added TypeScript 5.9 (strict), React 19, ES Modules + `@zktx.io/sui-move-builder/lite`, `@mysten/sui`, Vite, Bun, Vitest
+- 020-fix-empty-publish: Added TypeScript 5.9 (strict, ES Modules) with Sui Move package publishing via `@mysten/sui` + React 19, `@mysten/sui`, `@mysten/dapp-kit`, `@zktx.io/sui-move-builder` 0.2.8, Vitest, Testing Library

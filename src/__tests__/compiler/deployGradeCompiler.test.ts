@@ -115,10 +115,10 @@ describe("deployGradeCompiler", () => {
     expect(resolveDependencies).toHaveBeenCalledTimes(1);
     expect(buildMovePackage).toHaveBeenCalledTimes(2);
     const mainBuildInput = getBuildMovePackageInput(buildMovePackage, 0);
-    expect(mainBuildInput.resolvedDependencies).toEqual(resolvedDependencies);
+    expect(mainBuildInput.resolvedDependencies).toBeUndefined();
     expect(typeof mainBuildInput.files["deps/world/Move.toml"]).toBe("string");
-    expect(typeof mainBuildInput.files["deps/sui/Move.toml"]).toBe("string");
-    expect(typeof mainBuildInput.files["deps/move-stdlib/Move.toml"]).toBe("string");
+    expect(mainBuildInput.files["deps/sui/Move.toml"]).toBeUndefined();
+    expect(mainBuildInput.files["deps/move-stdlib/Move.toml"]).toBeUndefined();
   });
 
   it("reuses cached resolution snapshots for repeated compilations on the same target and version", async () => {
@@ -144,6 +144,79 @@ describe("deployGradeCompiler", () => {
 
     expect(resolveDependencies).toHaveBeenCalledTimes(1);
     expect(buildMovePackage).toHaveBeenCalledTimes(4);
+  });
+
+  it("keeps full-build modules when world-only filtering would otherwise remove every module", async () => {
+    const overlappingModule = toBase64([11, 22, 33]);
+    const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture();
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const originalLocation = window.location.pathname + window.location.search + window.location.hash;
+    const buildMovePackage = vi.fn()
+      .mockResolvedValueOnce({
+        modules: [overlappingModule],
+        dependencies: ["0x5"],
+        digest: [5, 4, 3],
+      })
+      .mockResolvedValueOnce({
+        modules: [overlappingModule],
+        dependencies: [],
+        digest: [],
+      });
+
+    try {
+      window.history.replaceState({}, "", `${window.location.pathname}?ff_debug_deploy_grade_modules=1${window.location.hash}`);
+
+      const result = await compileForDeployment(createRequest(), {
+        initMoveCompiler: vi.fn(() => Promise.resolve()),
+        resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+        buildMovePackage,
+        getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+        verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+        now: () => 42,
+      });
+
+      expect(Array.from(result.modules[0] ?? [])).toEqual([11, 22, 33]);
+      expect(consoleWarn).toHaveBeenCalledWith("[DeployGrade] Module sets", expect.objectContaining({
+        targetId: "testnet:stillness",
+        targetWorldPackageId: "0x1",
+        sourceVersionTag: "v0.0.18",
+        packageMap: {
+          world: "deps/world",
+        },
+        rewritesApplied: ["world-manifest-rewrite"],
+        localFileCount: 4,
+        localFileKeys: [
+          "Move.toml",
+          "deps/world/Move.toml",
+          "deps/world/sources/world.move",
+          "sources/starter_contract.move",
+        ],
+        worldOnlyFileCount: 2,
+        worldOnlyFileKeys: ["Move.toml", "sources/world.move"],
+        rootMoveToml: [
+          "[package]",
+          'name = "starter_contract"',
+          'edition = "2024.beta"',
+          "",
+          "[addresses]",
+          'builder_extensions = "0x0"',
+          'world = "0x1"',
+          "",
+          "[dependencies]",
+          'world = { local = "deps/world" }',
+          "",
+        ].join("\n"),
+        fullBuildModules: [overlappingModule],
+        worldOnlyModules: [overlappingModule],
+        filteredModules: [],
+        fallbackApplied: true,
+      }));
+      const diagnostics = consoleWarn.mock.calls[0]?.[1] as { readonly worldMoveToml?: string } | undefined;
+      expect(diagnostics?.worldMoveToml).toContain('published-at = "0x1"');
+    } finally {
+      window.history.replaceState({}, "", originalLocation);
+      consoleWarn.mockRestore();
+    }
   });
 
   it("ignores cached resolution snapshots when the target or source version does not match", async () => {
@@ -315,6 +388,24 @@ describe("deployGradeCompiler", () => {
         createResolvedDependencyPackageSnapshot({
           name: "World",
           files: {
+            "dependencies/World/Move.toml": [
+              "[package]",
+              'name = "world"',
+              'version = "0.0.0"',
+              'edition = "2024.beta"',
+              "",
+              "[environments]",
+              'testnet_stillness = "4c78adac"',
+              "",
+              "[addresses]",
+              'builder_extensions = "0x0000000000000000000000000000000000000000000000000000000000000000"',
+              'starter_contract = "0x0000000000000000000000000000000000000000000000000000000000000000"',
+              'world = "0x0000000000000000000000000000000000000000000000000000000000000000"',
+              'std = "0x0000000000000000000000000000000000000000000000000000000000000001"',
+              'MoveStdlib = "0x0000000000000000000000000000000000000000000000000000000000000001"',
+              'sui = "0x0000000000000000000000000000000000000000000000000000000000000002"',
+              "",
+            ].join("\n"),
             "dependencies/World/sources/example.move": "module world::example {}",
           },
         }),
@@ -346,7 +437,64 @@ describe("deployGradeCompiler", () => {
     const worldMoveToml = mainBuildInput.files?.["deps/world/Move.toml"] ?? "";
     expect(worldMoveToml).toContain(`published-at = "${targetWorldPackageId}"`);
     expect(worldMoveToml).toContain(`world = "${targetWorldPackageId}"`);
+    expect(worldMoveToml).toContain("[environments]");
+    expect(worldMoveToml).toContain('testnet_stillness = "4c78adac"');
+    expect(worldMoveToml).toContain('builder_extensions = "0x0000000000000000000000000000000000000000000000000000000000000000"');
+    expect(worldMoveToml).toContain('starter_contract = "0x0000000000000000000000000000000000000000000000000000000000000000"');
     expect(buildMovePackage).toHaveBeenCalledTimes(2);
+  });
+
+  it("builds the materialized local-world tree without reusing resolvedDependencies", async () => {
+    const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture([
+      createResolvedDependencyPackageSnapshot({
+        name: "World",
+        files: {
+          "dependencies/World/Move.toml": [
+            "[package]",
+            'name = "world"',
+            'version = "0.0.0"',
+            'edition = "2024.beta"',
+            "",
+            "[environments]",
+            'testnet_stillness = "4c78adac"',
+            "",
+            "[addresses]",
+            'builder_extensions = "0x0000000000000000000000000000000000000000000000000000000000000000"',
+            'starter_contract = "0x0000000000000000000000000000000000000000000000000000000000000000"',
+            'world = "0x0000000000000000000000000000000000000000000000000000000000000000"',
+            'std = "0x0000000000000000000000000000000000000000000000000000000000000001"',
+            'MoveStdlib = "0x0000000000000000000000000000000000000000000000000000000000000001"',
+            'sui = "0x0000000000000000000000000000000000000000000000000000000000000002"',
+            "",
+          ].join("\n"),
+          "dependencies/World/sources/world.move": "module world::world {}",
+        },
+      }),
+      createResolvedDependencyPackageSnapshot({ name: "Sui" }),
+      createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
+    ]);
+    const buildMovePackage = vi.fn()
+      .mockResolvedValue({
+        modules: [toBase64([1, 2, 3])],
+        dependencies: ["0x1", "0x2"],
+        digest: [3, 2, 1],
+      });
+
+    await compileForDeployment(createRequest(), {
+      initMoveCompiler: vi.fn(() => Promise.resolve()),
+      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      buildMovePackage,
+      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+      now: () => 42,
+    });
+
+    const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly resolvedDependencies?: ResolvedDependencies; readonly files?: Record<string, string> };
+    const worldOnlyBuildInput = buildMovePackage.mock.calls[1]?.[0] as { readonly resolvedDependencies?: ResolvedDependencies; readonly files?: Record<string, string> };
+    expect(mainBuildInput.resolvedDependencies).toBeUndefined();
+    expect(worldOnlyBuildInput.resolvedDependencies).toBeUndefined();
+    expect(mainBuildInput.files?.["deps/sui/Move.toml"]).toBeUndefined();
+    expect(mainBuildInput.files?.["deps/move-stdlib/Move.toml"]).toBeUndefined();
   });
 
   it("links upgraded world packages through the original package id during deploy-grade compilation", async () => {
@@ -398,7 +546,7 @@ describe("deployGradeCompiler", () => {
     expect(worldMoveToml).toContain(`world = "${originalWorldPackageId}"`);
   });
 
-  it("materializes dependency files when snapshot directory casing differs from the package name", async () => {
+  it("materializes world dependency files when snapshot directory casing differs from the package name", async () => {
     const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture([
       createResolvedDependencyPackageSnapshot({
         name: "World",
@@ -433,11 +581,12 @@ describe("deployGradeCompiler", () => {
     });
 
     const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly files?: Record<string, string> };
-    expect(mainBuildInput.files?.["deps/sui/Move.toml"]).toContain('name = "Sui"');
-    expect(mainBuildInput.files?.["deps/sui/sources/sui.move"]).toContain("module sui::sui {}");
+    expect(mainBuildInput.files?.["deps/world/Move.toml"]).toContain('name = "World"');
+    expect(mainBuildInput.files?.["deps/world/sources/example.move"]).toContain("module world::example {}");
+    expect(mainBuildInput.files?.["deps/sui/Move.toml"]).toBeUndefined();
   });
 
-  it("skips dependency test files while still materializing included sources", async () => {
+  it("does not materialize built-in dependency snapshots into the local-world tree", async () => {
     const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture([
       createResolvedDependencyPackageSnapshot({
         name: "Sui",
@@ -467,7 +616,7 @@ describe("deployGradeCompiler", () => {
     });
 
     const mainBuildInput = buildMovePackage.mock.calls[0]?.[0] as { readonly files?: Record<string, string> };
-    expect(mainBuildInput.files?.["deps/sui/sources/sui.move"]).toContain("module sui::sui {}");
+    expect(mainBuildInput.files?.["deps/sui/sources/sui.move"]).toBeUndefined();
     expect(mainBuildInput.files?.["deps/sui/tests/skip.move"]).toBeUndefined();
   });
 

@@ -7,6 +7,7 @@ import type {
   GeneratedContractArtifact,
   PackageReferenceBundle,
 } from "../compiler/types";
+import { assertPublishPayloadReadiness } from "./publishPayload";
 
 export interface RemotePublishRequest {
   readonly artifact?: GeneratedContractArtifact;
@@ -226,6 +227,11 @@ export async function publishToRemoteTarget(request: RemotePublishRequest): Prom
   const { compileResult, compiledArtifact } = await resolvePublishModules(request);
   const modules = compileResult?.modules ?? compiledArtifact?.bytecodeModules ?? [];
   const dependencies = resolveRemoteDependencies(request, compileResult, compiledArtifact);
+  assertPublishPayloadReadiness(modules, {
+    stage: "preparing",
+    targetLabel: request.target.label,
+    source: request.compileResult !== undefined ? "deploy-grade" : "artifact",
+  });
   const transaction = createPublishTransaction(modules, dependencies, request.ownerAddress);
 
   let result: { digest: string };

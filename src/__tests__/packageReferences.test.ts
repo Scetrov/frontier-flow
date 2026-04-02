@@ -26,13 +26,23 @@ describe("packageReferences", () => {
 [published.testnet_stillness]
 published-at = "0x111"
 original-id = "0x222"
+toolchain-version = "1.70.0"
 
 [published.testnet_utopia]
 published-at = "0x333"
 original-id = "0x444"
+toolchain-version = "1.68.0"
 `)).toEqual({
-  "testnet:stillness": "0x111",
-  "testnet:utopia": "0x333",
+  "testnet:stillness": {
+    worldPackageId: "0x111",
+    originalWorldPackageId: "0x222",
+    toolchainVersion: "1.70.0",
+  },
+  "testnet:utopia": {
+    worldPackageId: "0x333",
+    originalWorldPackageId: "0x444",
+    toolchainVersion: "1.68.0",
+  },
     });
   });
 
@@ -46,10 +56,12 @@ original-id = "0x444"
 [published.testnet_stillness]
 published-at = "0xaaa"
 original-id = "0xbbb"
+    toolchain-version = "1.70.0"
 
 [published.testnet_utopia]
 published-at = "0xccc"
 original-id = "0xddd"
+    toolchain-version = "1.68.1"
 `, { status: 200, headers: { "content-type": "text/plain" } }));
     };
 
@@ -57,16 +69,26 @@ original-id = "0xddd"
 
     expect(JSON.parse(window.localStorage.getItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY) ?? "{}")).toMatchObject({
       source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
-      version: 2,
-      worldPackageIds: {
-        "testnet:stillness": "0xaaa",
-        "testnet:utopia": "0xccc",
+      version: 3,
+      targets: {
+        "testnet:stillness": {
+          worldPackageId: "0xaaa",
+          originalWorldPackageId: "0xbbb",
+          toolchainVersion: "1.70.0",
+        },
+        "testnet:utopia": {
+          worldPackageId: "0xccc",
+          originalWorldPackageId: "0xddd",
+          toolchainVersion: "1.68.1",
+        },
       },
     });
     expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe("0xaaa");
+    expect(getPackageReferenceBundle("testnet:stillness").originalWorldPackageId).toBe("0xbbb");
+    expect(getPackageReferenceBundle("testnet:stillness").toolchainVersion).toBe("1.70.0");
     expect(getPackageReferenceBundle("testnet:utopia").worldPackageId).toBe("0xccc");
-    expect(getPackageReferenceBundle("testnet:stillness").sourceVersionTag).toBe("v0.0.18");
-    expect(getPackageReferenceBundle("testnet:utopia").toolchainVersion).toBe("1.68.0");
+    expect(getPackageReferenceBundle("testnet:stillness").sourceVersionTag).toBe("v0.0.23");
+    expect(getPackageReferenceBundle("testnet:utopia").toolchainVersion).toBe("1.68.1");
   });
 
   it("exposes deploy-grade source metadata for each supported target", () => {
@@ -78,8 +100,9 @@ original-id = "0xddd"
     });
     expect(getPackageReferenceBundle("testnet:stillness")).toMatchObject({
       originalWorldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
-      sourceVersionTag: "v0.0.18",
-      toolchainVersion: "1.67.1",
+      worldPackageId: "0xd2fd1224f881e7a705dbc211888af11655c315f2ee0f03fe680fc3176e6e4780",
+      sourceVersionTag: "v0.0.23",
+      toolchainVersion: "1.69.1",
     });
     expect(getPackageReferenceBundle("testnet:utopia")).toMatchObject({
       originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
@@ -124,10 +147,12 @@ original-id = "0xddd"
 [published.testnet_stillness]
 published-at = "0xaaa"
 original-id = "0xbbb"
+toolchain-version = "1.70.0"
 
 [published.testnet_utopia]
 published-at = "0xccc"
 original-id = "0xddd"
+toolchain-version = "1.68.1"
 `, { status: 200, headers: { "content-type": "text/plain" } })),
       storage: window.localStorage,
     });
@@ -139,20 +164,24 @@ original-id = "0xddd"
 
   it("skips manifest refresh when overrides were already verified today", () => {
     window.localStorage.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify({
-      version: 2,
+      version: 3,
       lastVerifiedOn: new Date().toISOString().slice(0, 10),
       source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
-      worldPackageIds: {
-        "testnet:stillness": "0xaaa",
+      targets: {
+        "testnet:stillness": {
+          worldPackageId: "0xaaa",
+          originalWorldPackageId: "0xbbb",
+          toolchainVersion: "1.70.0",
+        },
       },
     }));
 
     expect(shouldRefreshPublishedWorldPackageManifest(window.localStorage)).toBe(false);
   });
 
-  it("forces a manifest refresh when stale version-1 overrides are present", () => {
+  it("forces a manifest refresh when version-2 overrides are present", () => {
     window.localStorage.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify({
-      version: 1,
+      version: 2,
       lastVerifiedOn: new Date().toISOString().slice(0, 10),
       source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
       worldPackageIds: {

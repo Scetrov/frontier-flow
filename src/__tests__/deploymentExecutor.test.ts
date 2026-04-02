@@ -6,7 +6,11 @@ import type { DeploymentExecutionRequest, DeploymentExecutorDependencies } from 
 import { getDeploymentTarget } from "../data/deploymentTargets";
 import { resetProjectDependencySnapshotCacheForTests } from "../deployment/dependencySnapshotLoader";
 import { createDeploymentExecutor } from "../deployment/executor";
-import { createGeneratedArtifactStub } from "./compiler/helpers";
+import {
+  createArtifactWithEmptyPublishModuleStub,
+  createEmptyPublishPayloadArtifactStub,
+  createGeneratedArtifactStub,
+} from "./compiler/helpers";
 import { createPackageReferenceBundleFixture } from "./deployment/testFactories";
 
 function createRemoteCompileDependencies() {
@@ -164,6 +168,104 @@ describe("deployment executor error sanitization", () => {
     expect(result.confirmationReference).toBe("0xdigest");
     expect(publishLocalSpy).toHaveBeenCalledTimes(1);
     expect(publishRemoteSpy).not.toHaveBeenCalled();
+  });
+
+  it("blocks direct local deployment before publishing when the final artifact has no modules", async () => {
+    const publishLocal = vi.fn<DeploymentExecutorDependencies["publishLocal"]>(() => Promise.resolve({ packageId: "0xabc", transactionDigest: "0xdigest" }));
+    const confirm = vi.fn(() => Promise.resolve({ confirmed: true, confirmationReference: "0xdigest", finalStage: "confirming" as const }));
+    const executor = createDeploymentExecutor({ confirm, publishLocal });
+
+    const result = await executor({
+      artifact: createEmptyPublishPayloadArtifactStub(),
+      references: null,
+      target: {
+        ...getDeploymentTarget("local"),
+        requiresPublishedPackageRefs: false,
+      },
+    });
+
+    expect(result.outcome).toBe("blocked");
+    expect(result.stage).toBe("preparing");
+    expect(result.errorCode).toBe("publish-payload-empty");
+    expect(result.message).toContain("the current artifact does not contain compiled contract bytecode");
+    expect(result.remediation).toContain("Rebuild or refresh the deployment package");
+    expect(publishLocal).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("blocks deploy-grade remote deployment before wallet signing when compiled modules are empty", async () => {
+    const remoteCompileDependencies = createRemoteCompileDependencies();
+    remoteCompileDependencies.compileForDeployment.mockResolvedValueOnce({
+      modules: [],
+      dependencies: ["0x1"],
+      digest: [1, 2, 3],
+      resolvedDependencies: {
+        files: "{}",
+        dependencies: "{}",
+        lockfileDependencies: "{}",
+      },
+      targetId: "testnet:stillness",
+      sourceVersionTag: "v0.0.18",
+      builderToolchainVersion: "1.67.1",
+      compiledAt: 2,
+    });
+    const publishRemote = vi.fn<DeploymentExecutorDependencies["publishRemote"]>(() => Promise.resolve({ transactionDigest: "0xremote" }));
+    const executor = createDeploymentExecutor({
+      ...remoteCompileDependencies,
+      publishRemote,
+    });
+
+    const result = await executor({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      ownerAddress: "0x1234",
+      references: createPackageReferenceBundleFixture("testnet:stillness"),
+      target: getDeploymentTarget("testnet:stillness"),
+    });
+
+    expect(result.outcome).toBe("blocked");
+    expect(result.stage).toBe("deploy-grade-compile");
+    expect(result.errorCode).toBe("publish-payload-empty");
+    expect(result.message).toContain("deploy-grade compilation left only dependency or world modules");
+    expect(publishRemote).not.toHaveBeenCalled();
+  });
+
+  it("blocks direct local deployment when any publish module is empty", async () => {
+    const publishLocal = vi.fn<DeploymentExecutorDependencies["publishLocal"]>(() => Promise.resolve({ packageId: "0xabc", transactionDigest: "0xdigest" }));
+    const executor = createDeploymentExecutor({ publishLocal });
+
+    const result = await executor({
+      artifact: createArtifactWithEmptyPublishModuleStub(),
+      references: null,
+      target: {
+        ...getDeploymentTarget("local"),
+        requiresPublishedPackageRefs: false,
+      },
+    });
+
+    expect(result.outcome).toBe("blocked");
+    expect(result.errorCode).toBe("publish-payload-empty");
+    expect(publishLocal).not.toHaveBeenCalled();
+  });
+
+  it("preserves successful direct local deployment when the final artifact modules are valid", async () => {
+    const publishLocal = vi.fn<DeploymentExecutorDependencies["publishLocal"]>(() => Promise.resolve({ packageId: "0xabc", transactionDigest: "0xdigest" }));
+    const confirm = vi.fn(() => Promise.resolve({ confirmed: true, packageId: "0xabc", confirmationReference: "0xdigest", finalStage: "confirming" as const }));
+    const executor = createDeploymentExecutor({ confirm, publishLocal });
+
+    const result = await executor({
+      artifact: createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] }),
+      references: null,
+      target: {
+        ...getDeploymentTarget("local"),
+        requiresPublishedPackageRefs: false,
+      },
+    });
+
+    expect(result.outcome).toBe("succeeded");
+    expect(result.stage).toBe("confirming");
+    expect(result.packageId).toBe("0xabc");
+    expect(result.confirmationReference).toBe("0xdigest");
+    expect(publishLocal).toHaveBeenCalledTimes(1);
   });
 
   it("passes the fetched world source through deploy-grade compilation before remote publish", async () => {
