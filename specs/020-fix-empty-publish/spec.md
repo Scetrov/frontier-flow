@@ -5,7 +5,7 @@
 **Status**: Draft  
 **Input**: User description: "Since release 0.9.9, deployment can fail with a publish transaction whose module list is empty, producing the chain error 'TransferObjects, MergeCoin, and Publish cannot have empty arguments'."
 
-## 1.1. User Scenarios & Testing _(mandatory)_
+## 1.1. User Scenarios & Testing *(mandatory)*
 
 ### 1.1.1. User Story 1 - Deploy a Prepared Contract Successfully (Priority: P1)
 
@@ -61,7 +61,7 @@ A user who hits the empty-publish regression can correct the contract state, ret
 - Dismissing a blocked deployment message must not clear the user’s graph, target selection, or latest valid deployment result.
 - If readiness appears valid initially but publish data becomes incomplete immediately before submission, the system must re-check and block the malformed attempt.
 
-## 1.2. Requirements _(mandatory)_
+## 1.2. Requirements *(mandatory)*
 
 ### 1.2.1. Functional Requirements
 
@@ -81,19 +81,14 @@ A user who hits the empty-publish regression can correct the contract state, ret
 - **FR-014**: If deployment package data becomes invalid after earlier readiness work but before final submission, the system MUST detect that condition before sending the publish transaction.
 - **FR-015**: The system SHOULD surface deployment readiness problems quickly enough that users are not left waiting on a doomed attempt.
 
-### 1.2.2. Key Entities _(include if feature involves data)_
+### 1.2.2. Key Entities *(include if feature involves data)*
 
 - **Deployment Package**: The user’s prepared contract publish payload for the current graph and target, including the publishable contract content required to construct a valid deployment attempt.
 - **Deployment Readiness State**: The current assessment of whether the active graph has all prerequisite data needed to proceed to signing and submission.
 - **Deployment Attempt**: A single user-initiated deployment action with a target, stage progression, outcome, and user-visible review history.
 - **Blocked Deployment Outcome**: A recorded deployment result that ends before submission because required deployment data was incomplete or invalid.
 
-## 1.3. Success Criteria _(mandatory)_
-
-<!--
-  ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
--->
+## 1.3. Success Criteria *(mandatory)*
 
 ### 1.3.1. Measurable Outcomes
 
@@ -111,3 +106,7 @@ A user who hits the empty-publish regression can correct the contract state, ret
 - The contract package can be regenerated or refreshed within the current session without forcing the user to rebuild the graph manually.
 
 ## 1.5. Dependencies & Constraints
+
+- The feature must preserve current deployment target options and the established deployment-stage review experience.
+- Wallet prompts and network submission are downstream dependencies and must only occur after local readiness validation passes.
+- The solution must avoid regressing existing successful deploy flows for local and published targets.
