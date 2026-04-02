@@ -2,8 +2,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import DeploymentProgressModal from "../components/DeploymentProgressModal";
+import { getPackageReferenceBundle } from "../data/packageReferences";
 import { getLocalDeploymentTargetLabel } from "../data/localEnvironment";
 import { createDeploymentAttemptFixture, createDeploymentProgressFixture } from "./deployment/testFactories";
+
+const STILLNESS_TARGET_LINE = `Target: testnet:stillness (${getPackageReferenceBundle("testnet:stillness").worldPackageId})`;
 
 describe("DeploymentProgressModal", () => {
   it("renders active deployment progress with the current stage and progress bar", () => {
@@ -24,7 +27,7 @@ describe("DeploymentProgressModal", () => {
 
     expect(screen.getByRole("dialog", { name: "Deployment in progress" })).toBeVisible();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "29");
-    expect(screen.getByText("Target: testnet:stillness (0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c)")).toBeVisible();
+    expect(screen.getByText(STILLNESS_TARGET_LINE)).toBeVisible();
     expect(document.querySelector(".ff-deployment-modal__message")?.textContent).toBe("Fetching the upstream world package source. Target: testnet:stillness.");
     expect(screen.getByText("Fetch World Source")).toBeVisible();
     expect(screen.getByText("Active")).toBeVisible();
@@ -158,7 +161,7 @@ describe("DeploymentProgressModal", () => {
     );
 
     expect(screen.getByRole("dialog", { name: "Deployed" })).toBeVisible();
-    expect(screen.getByText("Target: testnet:stillness (0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c)")).toBeVisible();
+    expect(screen.getByText(STILLNESS_TARGET_LINE)).toBeVisible();
     expect(screen.getByText("Package ID: 0xdef")).toBeVisible();
     expect(screen.getByText("Transaction Digest: 0xconfirm99")).toBeVisible();
     expect(screen.getAllByText("Complete")).toHaveLength(7);

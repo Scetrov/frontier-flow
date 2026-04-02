@@ -4,6 +4,7 @@ import { emitMove, prepareArtifactManifestForTarget } from "../../compiler/emitt
 import { buildIrGraph } from "../../compiler/irBuilder";
 import { sanitizeGraph } from "../../compiler/sanitizer";
 import { createDefaultContractFlow } from "../../data/kitchenSinkFlow";
+import { getPackageReferenceBundle } from "../../data/packageReferences";
 import expectedDefaultTurret from "../../__fixtures__/move/default-turret.move?raw";
 import expectedMinimalArtifact from "../../__fixtures__/move/graph-to-move-minimal.move?raw";
 
@@ -56,7 +57,7 @@ describe("emitMove", () => {
 
     expect(manifest.dependencies).toEqual([
       "0xexisting",
-      "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+      getPackageReferenceBundle("testnet:stillness").worldPackageId,
     ]);
   });
 });
