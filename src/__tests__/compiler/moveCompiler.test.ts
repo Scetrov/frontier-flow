@@ -25,6 +25,7 @@ import {
   setMoveCompilerIntegrityVerifierForTests,
   setMoveCompilerLoaderForTests,
 } from "../../compiler/moveCompiler";
+import { setMoveBuilderGitHubAccessTokenProvider } from "../../compiler/moveBuilderLite";
 import { createStandaloneWorldShimPackageFiles } from "../../compiler/worldShim";
 
 function encodeBase64(bytes: Uint8Array): string {
@@ -60,6 +61,7 @@ describe("compileMove", () => {
     mockBuildMovePackage.mockReset();
     mockInitMoveCompiler.mockResolvedValue(undefined);
     resetMoveCompilerStateForTests();
+    setMoveBuilderGitHubAccessTokenProvider(null);
     window.history.replaceState({}, "", "/");
   });
 
@@ -94,6 +96,22 @@ describe("compileMove", () => {
     expect(result.warnings[0]?.stage).toBe("compilation");
     expect(result.artifact?.bytecodeModules).toEqual(graphToMoveBytecodeFixture);
     expect(result.artifact?.dependencies).toEqual(graphToMoveDependencyFixture);
+  });
+
+  it("passes the active GitHub token into build requests when authenticated access is configured", async () => {
+    const artifact = createArtifact();
+    setMoveBuilderGitHubAccessTokenProvider(() => "test-token");
+    mockBuildMovePackage.mockResolvedValueOnce({
+      modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
+      dependencies: graphToMoveDependencyFixture,
+    });
+
+    const result = await compileMove(artifact);
+
+    expect(result.success).toBe(true);
+    expect(mockBuildMovePackage).toHaveBeenCalledWith(expect.objectContaining({
+      githubToken: "test-token",
+    }));
   });
 
   it("maps compiler failures back to the generated artifact source map", async () => {
@@ -214,6 +232,22 @@ describe("compileMove", () => {
         expect.objectContaining({
           rawMessage: "429 Too Many Requests while fetching https://raw.githubusercontent.com/MystenLabs/sui/.../token.move",
           userMessage: "Compilation could not fetch upstream Sui framework sources because the dependency host rate limited the request. Wait for the limit to reset, then retry compile.",
+        }),
+      ]),
+    );
+  });
+
+  it("surfaces invalid GitHub credentials as a re-authentication diagnostic", async () => {
+    const artifact = createArtifact();
+    mockBuildMovePackage.mockRejectedValueOnce(new Error("401 Bad credentials while fetching https://api.github.com/repos/MystenLabs/sui/contents/..."));
+
+    const result = await compileMove(artifact);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userMessage: "GitHub-authenticated dependency access is no longer valid. Sign in with GitHub again, then retry compile.",
         }),
       ]),
     );

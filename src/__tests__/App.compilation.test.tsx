@@ -15,6 +15,9 @@ import { mergeUiState } from "../utils/uiStateStorage";
 import type { CompilationStatus, CompilerDiagnostic } from "../compiler/types";
 import { createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/helpers";
 
+const mockBeginGitHubOAuthPopup = vi.fn<typeof import("../utils/githubAuthClient").beginGitHubOAuthPopup>();
+const mockValidateGitHubToken = vi.fn<typeof import("../utils/githubAuthClient").validateGitHubToken>();
+
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
 type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionHook>;
@@ -56,8 +59,17 @@ vi.mock("@mysten/dapp-kit", () => ({
   useWallets: () => mockUseWallets(),
 }));
 
+vi.mock("../utils/githubAuthClient", async () => {
+  const actual = await vi.importActual<typeof import("../utils/githubAuthClient")>("../utils/githubAuthClient");
+  return {
+    ...actual,
+    beginGitHubOAuthPopup: (...args: Parameters<typeof actual.beginGitHubOAuthPopup>) => mockBeginGitHubOAuthPopup(...args),
+    validateGitHubToken: (...args: Parameters<typeof actual.validateGitHubToken>) => mockValidateGitHubToken(...args),
+  };
+});
+
 vi.mock("../components/Header", () => ({
-  default: (props: { onViewChange?: (view: "visual" | "move" | "deploy") => void }) => (
+  default: (props: { gitHubAccessState?: { mode: string }; onGitHubSignIn?: () => void; onViewChange?: (view: "visual" | "move" | "deploy") => void }) => (
     <div>
       <button
         type="button"
@@ -75,6 +87,8 @@ vi.mock("../components/Header", () => ({
       >
         Header Deploy Slot
       </button>
+      <button type="button" onClick={props.onGitHubSignIn}>Header GitHub Sign-In Slot</button>
+      <span>{props.gitHubAccessState?.mode ?? "anonymous"}</span>
     </div>
   ),
 }));
@@ -143,6 +157,7 @@ vi.mock("../components/DeployWorkflowView", () => ({
 
 describe("App compilation handoff", () => {
   beforeEach(() => {
+    vi.stubEnv("VITE_GITHUB_CLIENT_ID", "client-id");
     mockUseCurrentAccount.mockReturnValue(null);
     mockUseCurrentWallet.mockReturnValue({ isConnected: false } as CurrentWallet);
     mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
@@ -164,6 +179,9 @@ describe("App compilation handoff", () => {
     mockUseSuiClient.mockReset();
     mockUseWallets.mockReset();
     mockCompilePipeline.mockReset();
+    mockBeginGitHubOAuthPopup.mockReset();
+    mockValidateGitHubToken.mockReset();
+    vi.unstubAllEnvs();
   });
 
   it("prefers artifact-backed Move source when the workspace reports it", async () => {
@@ -291,5 +309,95 @@ describe("App compilation handoff", () => {
     };
 
     expect(mergeDeploymentStatus(status, mismatchedDeploymentStatus)).toBe(status);
+  });
+
+  it("retries a blocked rebuild once after GitHub sign-in succeeds", async () => {
+    const rateLimitDiagnostic: CompilerDiagnostic = {
+      severity: "error",
+      stage: "compilation",
+      rawMessage: "429 Too Many Requests while fetching https://raw.githubusercontent.com/MystenLabs/sui/.../token.move",
+      line: null,
+      reactFlowNodeId: null,
+      socketId: null,
+      userMessage: "Compilation could not fetch upstream Sui framework sources because the dependency host rate limited the request. Wait for the limit to reset, then retry compile.",
+    };
+
+    mockCompilePipeline
+      .mockResolvedValueOnce({
+        status: {
+          state: "error",
+          diagnostics: [rateLimitDiagnostic],
+          artifact: createGeneratedArtifactStub({
+            moduleName: "starter_contract",
+            moveSource: "module builder_extensions::starter_contract {}",
+          }),
+        },
+        diagnostics: [rateLimitDiagnostic],
+        code: null,
+        sourceMap: null,
+        optimizationReport: null,
+        artifact: createGeneratedArtifactStub({
+          moduleName: "starter_contract",
+          moveSource: "module builder_extensions::starter_contract {}",
+        }),
+      })
+      .mockResolvedValueOnce({
+        status: {
+          state: "compiled",
+          bytecode: [new Uint8Array([4, 5, 6])],
+          artifact: createGeneratedArtifactStub({
+            moduleName: "starter_contract",
+            moveSource: "module builder_extensions::starter_contract {}",
+            bytecodeModules: [new Uint8Array([4, 5, 6])],
+          }),
+        },
+        diagnostics: [],
+        code: "module builder_extensions::starter_contract {}",
+        sourceMap: null,
+        optimizationReport: null,
+        artifact: createGeneratedArtifactStub({
+          moduleName: "starter_contract",
+          moveSource: "module builder_extensions::starter_contract {}",
+          bytecodeModules: [new Uint8Array([4, 5, 6])],
+        }),
+      });
+    mockBeginGitHubOAuthPopup.mockResolvedValue({
+      type: "ff:github-auth:success",
+      token: "test-token",
+      scopeHeader: "",
+      verifiedAt: 1760000000000,
+      loginLabel: "scetrov",
+      validatedUserId: 42,
+      grantedScopes: [],
+    });
+    mockValidateGitHubToken.mockResolvedValue({
+      scopeHeader: "repo",
+      verifiedAt: 1760000000000,
+      loginLabel: "scetrov",
+      validatedUserId: 42,
+      grantedScopes: ["repo"],
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Canvas Workspace Slot")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Header Move Slot" }));
+
+    await waitFor(() => {
+      expect(lastMoveSourcePanelProps?.onRebuild).toBeTypeOf("function");
+    });
+
+    await act(async () => {
+      await lastMoveSourcePanelProps?.onRebuild?.();
+    });
+
+    expect(await screen.findByText(/GitHub rate limited the blocked dependency fetch/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Header GitHub Sign-In Slot" }));
+
+    await waitFor(() => {
+      expect(mockCompilePipeline).toHaveBeenCalledTimes(2);
+      expect(screen.getByText("authenticated")).toBeInTheDocument();
+    });
   });
 });

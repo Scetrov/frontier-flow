@@ -2,6 +2,8 @@ import { Fragment } from "react";
 
 import logoUrl from "../../assets/favicon@32px.png";
 import type { DeploymentTargetId } from "../compiler/types";
+import type { GitHubAccessState } from "../types/githubAuth";
+import { ConservativeGitHubIcon } from "./HeaderActionIcons";
 import WalletStatus from "./WalletStatus";
 
 export type PrimaryView = "visual" | "move" | "deploy" | "authorize" | "simulate";
@@ -10,9 +12,13 @@ interface HeaderProps {
   readonly activeView?: PrimaryView;
   readonly canAccessDeploy?: boolean;
   readonly canAccessMove?: boolean;
+  readonly gitHubAccessState?: GitHubAccessState;
+  readonly hasGitHubAuth?: boolean;
   readonly hasAuthorizeAccess?: boolean;
   readonly isCompiling?: boolean;
   readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
+  readonly onGitHubSignIn?: () => void;
+  readonly onGitHubSignOut?: () => void;
   readonly onStartTutorial?: () => void;
   readonly onViewChange?: (view: PrimaryView) => void;
   readonly selectedDeploymentTarget?: DeploymentTargetId;
@@ -20,9 +26,92 @@ interface HeaderProps {
 
 interface HeaderActionsProps {
   readonly activeView: PrimaryView;
+  readonly gitHubAccessState: GitHubAccessState;
+  readonly hasGitHubAuth: boolean;
   readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
+  readonly onGitHubSignIn?: () => void;
+  readonly onGitHubSignOut?: () => void;
   readonly onStartTutorial?: () => void;
   readonly selectedDeploymentTarget: DeploymentTargetId;
+}
+
+function getGitHubStatusCopy(accessState: GitHubAccessState): {
+  readonly actionLabel: string;
+  readonly statusLabel: string;
+} {
+  if (accessState.mode === "authenticating") {
+    return {
+      actionLabel: "Connecting GitHub",
+      statusLabel: "Completing GitHub sign-in for dependency recovery",
+    };
+  }
+
+  if (accessState.mode === "authenticated") {
+    return {
+      actionLabel: "Sign out",
+      statusLabel: accessState.lastFailureKind === "rate-limit"
+        ? "GitHub access is active, but the dependency host is still rate limiting requests"
+        : accessState.loginLabel === null
+          ? "GitHub access active for dependency fetches"
+          : `GitHub access active as ${accessState.loginLabel}`,
+    };
+  }
+
+  if (accessState.mode === "reauth-required") {
+    return {
+      actionLabel: "Reconnect GitHub",
+      statusLabel: "GitHub access needs to be renewed before retrying blocked dependency fetches",
+    };
+  }
+
+  return {
+    actionLabel: "Sign in with GitHub",
+    statusLabel: accessState.lastFailureKind === "rate-limit"
+      ? "Anonymous GitHub access was rate limited"
+      : "Anonymous GitHub access is active",
+  };
+}
+
+function GitHubAuthControl({
+  accessState,
+  hasGitHubAuth,
+  onGitHubSignIn,
+  onGitHubSignOut,
+}: {
+  readonly accessState: GitHubAccessState;
+  readonly hasGitHubAuth: boolean;
+  readonly onGitHubSignIn?: () => void;
+  readonly onGitHubSignOut?: () => void;
+}) {
+  const { actionLabel, statusLabel } = getGitHubStatusCopy(accessState);
+  const shouldRenderStatusLabel = hasGitHubAuth && accessState.mode !== "anonymous";
+  const disabled = !hasGitHubAuth || accessState.mode === "authenticating";
+  const handleClick = accessState.mode === "authenticated" ? onGitHubSignOut : onGitHubSignIn;
+  const buttonLabel = hasGitHubAuth ? actionLabel : "GitHub unavailable";
+  const title = hasGitHubAuth ? statusLabel : "GitHub auth is not configured for this environment";
+
+  return (
+    <div className="flex items-center gap-2">
+      {shouldRenderStatusLabel ? (
+        <span aria-live="polite" className="hidden max-w-[18rem] truncate font-heading text-[0.62rem] uppercase tracking-[0.18em] text-[var(--text-secondary)] xl:inline-flex">
+          {statusLabel}
+        </span>
+      ) : null}
+      <button
+        aria-label={buttonLabel}
+        className="ff-header__button"
+        disabled={disabled}
+        onClick={handleClick}
+        title={title}
+        type="button"
+      >
+        <span aria-hidden="true" className="ff-header__button-icon">
+          <ConservativeGitHubIcon />
+        </span>
+        <span className="ff-header__button-label">{buttonLabel}</span>
+      </button>
+    </div>
+  );
 }
 
 interface NavigationButtonProps {
@@ -220,7 +309,16 @@ function ViewNavigation({
   );
 }
 
-function HeaderActions({ activeView, onDetectedDeploymentTarget, onStartTutorial, selectedDeploymentTarget }: HeaderActionsProps) {
+function HeaderActions({
+  activeView,
+  gitHubAccessState,
+  hasGitHubAuth,
+  onDetectedDeploymentTarget,
+  onGitHubSignIn,
+  onGitHubSignOut,
+  onStartTutorial,
+  selectedDeploymentTarget,
+}: HeaderActionsProps) {
   return (
     <div className="ff-header__actions">
       {activeView === "visual" && onStartTutorial !== undefined ? (
@@ -234,6 +332,7 @@ function HeaderActions({ activeView, onDetectedDeploymentTarget, onStartTutorial
           ?
         </button>
       ) : null}
+      <GitHubAuthControl accessState={gitHubAccessState} hasGitHubAuth={hasGitHubAuth} onGitHubSignIn={onGitHubSignIn} onGitHubSignOut={onGitHubSignOut} />
       <WalletStatus onDetectedDeploymentTarget={onDetectedDeploymentTarget} selectedDeploymentTarget={selectedDeploymentTarget} />
     </div>
   );
@@ -243,9 +342,20 @@ function Header({
   activeView = "visual",
   canAccessDeploy = false,
   canAccessMove = false,
+  gitHubAccessState = {
+    mode: "anonymous",
+    indicatorVariant: "neutral",
+    grantedScopes: [],
+    verifiedAt: null,
+    loginLabel: null,
+    lastFailureKind: null,
+  },
+  hasGitHubAuth = false,
   hasAuthorizeAccess = false,
   isCompiling = false,
   onDetectedDeploymentTarget,
+  onGitHubSignIn,
+  onGitHubSignOut,
   onStartTutorial,
   onViewChange,
   selectedDeploymentTarget = "local",
@@ -282,7 +392,16 @@ function Header({
           />
         ) : null}
 
-        <HeaderActions activeView={activeView} onDetectedDeploymentTarget={onDetectedDeploymentTarget} onStartTutorial={onStartTutorial} selectedDeploymentTarget={selectedDeploymentTarget} />
+        <HeaderActions
+          activeView={activeView}
+          gitHubAccessState={gitHubAccessState}
+          hasGitHubAuth={hasGitHubAuth}
+          onDetectedDeploymentTarget={onDetectedDeploymentTarget}
+          onGitHubSignIn={onGitHubSignIn}
+          onGitHubSignOut={onGitHubSignOut}
+          onStartTutorial={onStartTutorial}
+          selectedDeploymentTarget={selectedDeploymentTarget}
+        />
       </div>
     </header>
   );

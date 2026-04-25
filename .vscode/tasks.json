@@ -2,6 +2,50 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Netlify Dev",
+      "type": "shell",
+      "command": "bun",
+      "args": [
+        "run",
+        "dev:netlify"
+      ],
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "detail": "Run Netlify Dev, which now starts the Vite dev server automatically via netlify.toml."
+    },
+    {
+      "label": "Vite Dev Server",
+      "type": "shell",
+      "command": "bun",
+      "args": [
+        "run",
+        "dev",
+        "--",
+        "--open"
+      ],
+      "isBackground": true,
+    {
+      "label": "Local Dev Stack",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "Vite Dev Server",
+        "Netlify Dev (Proxy Vite)"
+      ],
+      "problemMatcher": [],
+      "detail": "Start both the Vite dev server and Netlify Dev proxy together."
+    }
+  ]
+}{
+  "version": "2.0.0",
+  "tasks": [
+    {
       "label": "Dev Server",
       "type": "shell",
       "command": "bun",

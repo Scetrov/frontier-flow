@@ -34,3 +34,9 @@
 1. Add Vitest coverage for the callback handler, auth state transitions, and fetch classification.
 2. Add React Testing Library coverage for header actions, CTA behavior, and accessible status text.
 3. Add or extend Playwright coverage only if the browser workflow changes materially enough that unit and component tests cannot prove the recovery path.
+
+## 1.6. Verified Notes
+
+1. Focused Vitest coverage now exercises the Netlify callback bridge, auth hook/storage/client helpers, header sign-in state, compiler token injection, and one-shot blocked rebuild recovery.
+2. The browser session keeps the GitHub OAuth token in memory only. A non-secret auth status snapshot is shared through `localStorage`, and the pending retry context remains session-scoped in `sessionStorage`.
+3. The preferred recovery path is popup sign-in from either the persistent header action or the rate-limit notice. Successful sign-in retries one blocked compile once and then clears the pending retry record.

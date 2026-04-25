@@ -9,9 +9,9 @@
 
 **Purpose**: Add feature-specific project scaffolding for Netlify and local configuration.
 
-- [ ] T001 Update GitHub auth dependencies and scripts in `package.json`
-- [ ] T002 Create GitHub OAuth environment placeholders in `.env.example`
-- [ ] T003 Add Netlify callback routing and function configuration in `netlify.toml`
+- [X] T001 Update GitHub auth dependencies and scripts in `package.json`
+- [X] T002 Create GitHub OAuth environment placeholders in `.env.example`
+- [X] T003 Add Netlify callback routing and function configuration in `netlify.toml`
 
 ---
 
@@ -21,14 +21,14 @@
 
 **⚠️ CRITICAL**: No user story work should start until this phase is complete.
 
-- [ ] T004 [P] Add shared GitHub auth client tests in `src/__tests__/githubAuthClient.test.ts`
-- [ ] T005 [P] Add shared GitHub auth storage tests in `src/__tests__/githubAuthStorage.test.ts`
-- [ ] T006 [P] Add GitHub auth state-machine tests in `src/__tests__/hooks/useGitHubAuth.test.tsx`
-- [ ] T007 Create shared GitHub auth types in `src/types/githubAuth.ts`
-- [ ] T008 Implement session storage and cross-tab sync helpers in `src/utils/githubAuthStorage.ts`
-- [ ] T009 Implement OAuth popup, callback bridge, and token validation helpers in `src/utils/githubAuthClient.ts`
-- [ ] T010 Implement shared GitHub auth state management in `src/hooks/useGitHubAuth.ts`
-- [ ] T011 Wire shared GitHub auth state into `src/App.tsx`
+- [X] T004 [P] Add shared GitHub auth client tests in `src/__tests__/githubAuthClient.test.ts`
+- [X] T005 [P] Add shared GitHub auth storage tests in `src/__tests__/githubAuthStorage.test.ts`
+- [X] T006 [P] Add GitHub auth state-machine tests in `src/__tests__/hooks/useGitHubAuth.test.tsx`
+- [X] T007 Create shared GitHub auth types in `src/types/githubAuth.ts`
+- [X] T008 Implement session storage and cross-tab sync helpers in `src/utils/githubAuthStorage.ts`
+- [X] T009 Implement OAuth popup, callback bridge, and token validation helpers in `src/utils/githubAuthClient.ts`
+- [X] T010 Implement shared GitHub auth state management in `src/hooks/useGitHubAuth.ts`
+- [X] T011 Wire shared GitHub auth state into `src/App.tsx`
 
 **Checkpoint**: Shared auth infrastructure is ready; user stories can now proceed in priority order or in parallel.
 
@@ -42,16 +42,16 @@
 
 ### 4.1. Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add Netlify callback contract tests in `netlify/functions/__tests__/github-callback.test.ts`
-- [ ] T013 [P] [US1] Add authenticated fetch and rate-limit classification tests in `src/__tests__/compiler/moveBuilderLite.test.ts`
-- [ ] T014 [P] [US1] Add blocked-workflow recovery tests in `src/__tests__/App.compilation.test.tsx`
+- [X] T012 [P] [US1] Add Netlify callback contract tests in `netlify/functions/__tests__/github-callback.test.ts`
+- [X] T013 [P] [US1] Add authenticated fetch and rate-limit classification tests in `src/__tests__/compiler/moveBuilderLite.test.ts`
+- [X] T014 [P] [US1] Add blocked-workflow recovery tests in `src/__tests__/App.compilation.test.tsx`
 
 ### 4.2. Implementation for User Story 1
 
-- [ ] T015 [US1] Implement GitHub OAuth code exchange and validation callback in `netlify/functions/github-callback.ts`
-- [ ] T016 [US1] Add auth-aware GitHub fetch injection and failure parsing in `src/compiler/moveBuilderLite.ts`
-- [ ] T017 [US1] Surface retryable GitHub rate-limit incidents in `src/compiler/moveCompiler.ts`
-- [ ] T018 [US1] Capture pending retry context and resume blocked workflows in `src/App.tsx`
+- [X] T015 [US1] Implement GitHub OAuth code exchange and validation callback in `netlify/functions/github-callback.ts`
+- [X] T016 [US1] Add auth-aware GitHub fetch injection and failure parsing in `src/compiler/moveBuilderLite.ts`
+- [X] T017 [US1] Surface retryable GitHub rate-limit incidents in `src/compiler/moveCompiler.ts`
+- [X] T018 [US1] Capture pending retry context and resume blocked workflows in `src/App.tsx`
 
 **Checkpoint**: User Story 1 should now recover blocked GitHub-backed workflows end to end and can serve as the MVP.
 
@@ -65,14 +65,14 @@
 
 ### 5.1. Tests for User Story 2
 
-- [ ] T019 [P] [US2] Add header GitHub auth indicator tests in `src/__tests__/Header.test.tsx`
-- [ ] T020 [P] [US2] Add proactive sign-in interaction tests in `src/__tests__/App.test.tsx`
+- [X] T019 [P] [US2] Add header GitHub auth indicator tests in `src/__tests__/Header.test.tsx`
+- [X] T020 [P] [US2] Add proactive sign-in interaction tests in `src/__tests__/App.test.tsx`
 
 ### 5.2. Implementation for User Story 2
 
-- [ ] T021 [US2] Add persistent GitHub auth control and status indicator in `src/components/HeaderActionIcons.tsx`
-- [ ] T022 [US2] Expose GitHub auth state text and accessible labels in `src/components/Header.tsx`
-- [ ] T023 [US2] Connect proactive sign-in entry points to shared auth state in `src/App.tsx`
+- [X] T021 [US2] Add persistent GitHub auth control and status indicator in `src/components/HeaderActionIcons.tsx`
+- [X] T022 [US2] Expose GitHub auth state text and accessible labels in `src/components/Header.tsx`
+- [X] T023 [US2] Connect proactive sign-in entry points to shared auth state in `src/App.tsx`
 
 **Checkpoint**: User Story 2 should now let users authenticate proactively from the header while User Story 1 continues to work independently.
 
@@ -86,14 +86,14 @@
 
 ### 6.1. Tests for User Story 3
 
-- [ ] T024 [P] [US3] Add sign-out and cross-tab auth sync tests in `src/__tests__/hooks/useGitHubAuth.test.tsx`
-- [ ] T025 [P] [US3] Add anonymous fallback and non-rate-limit guidance tests in `src/__tests__/App.test.tsx`
+- [X] T024 [P] [US3] Add sign-out and cross-tab auth sync tests in `src/__tests__/hooks/useGitHubAuth.test.tsx`
+- [X] T025 [P] [US3] Add anonymous fallback and non-rate-limit guidance tests in `src/__tests__/App.test.tsx`
 
 ### 6.2. Implementation for User Story 3
 
-- [ ] T026 [US3] Implement sign-out, reauth-required, and multi-tab refresh behavior in `src/hooks/useGitHubAuth.ts`
-- [ ] T027 [US3] Persist non-secret auth sync signals and pending retry cleanup in `src/utils/githubAuthStorage.ts`
-- [ ] T028 [US3] Apply anonymous fallback messaging and non-rate-limit guidance in `src/App.tsx`
+- [X] T026 [US3] Implement sign-out, reauth-required, and multi-tab refresh behavior in `src/hooks/useGitHubAuth.ts`
+- [X] T027 [US3] Persist non-secret auth sync signals and pending retry cleanup in `src/utils/githubAuthStorage.ts`
+- [X] T028 [US3] Apply anonymous fallback messaging and non-rate-limit guidance in `src/App.tsx`
 
 **Checkpoint**: User Story 3 should now preserve optional GitHub usage and handle session loss without breaking the anonymous path.
 
@@ -103,11 +103,11 @@
 
 **Purpose**: Final documentation, regression hardening, and quickstart validation across all stories.
 
-- [ ] T029 [P] Document GitHub auth deployment and callback setup in `docs/DEPLOYMENT.md`
-- [ ] T030 [P] Document secret-handling and browser-storage constraints in `docs/SECURITY.md`
-- [ ] T031 [P] Add local GitHub OAuth configuration examples in `.env.example`
-- [ ] T032 [P] Add GitHub failure-message regression coverage in `src/__tests__/compiler/moveCompiler.test.ts`
-- [ ] T033 Validate quickstart steps and record verified auth flow notes in `specs/021-github-token-auth/quickstart.md`
+- [X] T029 [P] Document GitHub auth deployment and callback setup in `docs/DEPLOYMENT.md`
+- [X] T030 [P] Document secret-handling and browser-storage constraints in `docs/SECURITY.md`
+- [X] T031 [P] Add local GitHub OAuth configuration examples in `.env.example`
+- [X] T032 [P] Add GitHub failure-message regression coverage in `src/__tests__/compiler/moveCompiler.test.ts`
+- [X] T033 Validate quickstart steps and record verified auth flow notes in `specs/021-github-token-auth/quickstart.md`
 
 ---
 

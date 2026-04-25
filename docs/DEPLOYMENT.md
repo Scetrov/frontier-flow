@@ -102,9 +102,10 @@ This function:
 
 1. Receives the authorisation `code` from GitHub's OAuth redirect
 2. Exchanges the code for an access token using `GITHUB_CLIENT_SECRET`
-3. Returns the token to the client
-4. Validates `Origin`/`Referer` against an allowlist
-5. Never logs or exposes the client secret
+3. Validates the returned token with a lightweight GitHub API request before completing the popup bridge
+4. Returns the token to the client popup bridge for in-memory use only
+5. Validates `Origin`/`Referer` against the request origin plus any configured allowlist entries
+6. Never logs or exposes the client secret
 
 ---
 
@@ -112,11 +113,12 @@ This function:
 
 ### 3.1 Netlify Environment
 
-| Variable               | Where to Set         | Purpose                                     | Sensitive |
-| ---------------------- | -------------------- | ------------------------------------------- | --------- |
-| `GITHUB_CLIENT_SECRET` | Netlify Environment  | OAuth token exchange in serverless function | **Yes**   |
-| `GITHUB_CLIENT_ID`     | Source code (public) | OAuth initiation (client-side)              | No        |
-| `NODE_VERSION`         | `netlify.toml`       | Node.js runtime for build                   | No        |
+| Variable                      | Where to Set         | Purpose                                            | Sensitive |
+| ----------------------------- | -------------------- | -------------------------------------------------- | --------- |
+| `GITHUB_CLIENT_SECRET`        | Netlify Environment  | OAuth token exchange in serverless function        | **Yes**   |
+| `GITHUB_CLIENT_ID`            | Source code (public) | OAuth initiation (client-side)                     | No        |
+| `GITHUB_AUTH_ALLOWED_ORIGINS` | Netlify Environment  | Optional comma-separated callback origin allowlist | No        |
+| `NODE_VERSION`                | `netlify.toml`       | Node.js runtime for build                          | No        |
 
 ### 3.2 Local Development
 
@@ -128,12 +130,13 @@ cp .env.example .env
 
 Available environment variables:
 
-| Variable                | Default | Purpose                                           |
-| ----------------------- | ------- | ------------------------------------------------- |
-| `VITE_BASE_PATH`        | `/`     | Base URL path (overridden by GitHub Pages deploy) |
-| `VITE_GITHUB_CLIENT_ID` | —       | GitHub OAuth app client ID (future)               |
+| Variable                         | Default                | Purpose                                           |
+| -------------------------------- | ---------------------- | ------------------------------------------------- |
+| `VITE_BASE_PATH`                 | `/`                    | Base URL path (overridden by GitHub Pages deploy) |
+| `VITE_GITHUB_CLIENT_ID`          | —                      | GitHub OAuth app client ID for optional sign-in   |
+| `VITE_GITHUB_AUTH_CALLBACK_PATH` | `/api/github-callback` | Public callback route used by the popup flow      |
 
-The `VITE_BASE_PATH` variable is used in `vite.config.ts` to set the `base` option. It is only overridden in the `deploy-pages.yml` GitHub Actions workflow for GitHub Pages subpath deployments.
+The `VITE_BASE_PATH` variable is used in `vite.config.ts` to set the `base` option. It is only overridden in the `deploy-pages.yml` GitHub Actions workflow for GitHub Pages subpath deployments. `VITE_GITHUB_AUTH_CALLBACK_PATH` only needs to change when the public callback route is intentionally remapped away from `/api/github-callback`.
 
 No environment variables are required for basic local development — `bun run dev` works without a `.env` file.
 
