@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
-import ministryOfPassageLogo from "../../assets/TheMOPLogo.png";
 import { authorableNodeDefinitions } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
 import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
@@ -103,25 +102,16 @@ function SidebarHeader() {
 function SidebarFooterCta() {
   return (
     <div className="shrink-0 border-t border-[var(--ui-border-dark)] px-4 py-4 sm:px-5">
-      <p className="font-heading text-[0.62rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
-        Colaborative Automation
-      </p>
-      <a
-        className="group mt-3 flex items-center gap-3 px-3 py-3 text-left transition-colors"
-        href="https://themop.dev"
-        rel="noreferrer"
-        target="_blank"
-      >
-        <img alt="" className="h-14 w-auto shrink-0" src={ministryOfPassageLogo} />
-        <span className="min-w-0">
-          <span className="block font-heading text-[0.8rem] uppercase tracking-[0.16em] text-[var(--cream-white)] transition-colors group-hover:text-[var(--brand-orange)]">
-            themop.dev
-          </span>
-          <span className="mt-1 block text-xs leading-5 text-[var(--text-secondary)]">
-            Use Ministry of Passage in your gates and storage for collaborative automation.
-          </span>
-        </span>
-      </a>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0">
+          <p className="font-heading text-[0.62rem] uppercase tracking-[0.24em] text-[var(--brand-orange)]">
+            EVE Frontier Hackathon 2026
+          </p>
+          <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
+            Frontier Flow won the Technical Category for the EVE Frontier × Sui Hackathon 2026! Thank you to everyone for your support.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
