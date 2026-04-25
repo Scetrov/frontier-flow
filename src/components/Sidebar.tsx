@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
-import frontierFlowLogo from "../../assets/LogoSquare@2x.png";
 import { authorableNodeDefinitions } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
 import { loadUiState, mergeUiState } from "../utils/uiStateStorage";
