@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.10.0](https://github.com/Scetrov/frontier-flow/compare/v0.9.10...v0.10.0) (2026-04-25)
+
+
+### Features
+
+* lower right CTA update ([#31](https://github.com/Scetrov/frontier-flow/issues/31)) ([4eecb2d](https://github.com/Scetrov/frontier-flow/commit/4eecb2d248fb38a1f35a5832d0945875e042eaad))
+
 ## [0.9.10](https://github.com/Scetrov/frontier-flow/compare/v0.9.9...v0.9.10) (2026-04-02)
 
 
