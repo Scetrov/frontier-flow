@@ -29,6 +29,7 @@ interface UseGitHubAuthResult {
 function buildAccessState(input: Partial<GitHubAccessState> & Pick<GitHubAccessState, "mode">): GitHubAccessState {
   const anonymousState = createAnonymousGitHubAccessState();
   const lastFailureKind = input.lastFailureKind ?? null;
+  const lastFailureMessage = input.lastFailureMessage ?? null;
   const indicatorVariant = input.indicatorVariant ?? (
     input.mode === "authenticated"
       ? lastFailureKind === "rate-limit"
@@ -49,6 +50,7 @@ function buildAccessState(input: Partial<GitHubAccessState> & Pick<GitHubAccessS
     verifiedAt: input.verifiedAt ?? anonymousState.verifiedAt,
     loginLabel: input.loginLabel ?? anonymousState.loginLabel,
     lastFailureKind,
+    lastFailureMessage,
   };
 }
 
@@ -59,6 +61,7 @@ function toReauthState(currentState: GitHubAccessState, failure: GitHubFailureCl
     verifiedAt: currentState.verifiedAt,
     loginLabel: currentState.loginLabel,
     lastFailureKind: failure.kind,
+    lastFailureMessage: null,
   });
 }
 
@@ -107,6 +110,7 @@ export function useGitHubAuth(): UseGitHubAuthResult {
         verifiedAt: currentState.verifiedAt,
         loginLabel: currentState.loginLabel,
         lastFailureKind: null,
+        lastFailureMessage: null,
       });
       saveGitHubPublicAuthState(nextState);
       publishGitHubAuthSyncSignal({
@@ -162,12 +166,17 @@ export function useGitHubAuth(): UseGitHubAuthResult {
       verifiedAt: currentState.verifiedAt,
       loginLabel: currentState.loginLabel,
       lastFailureKind: null,
+      lastFailureMessage: null,
     }));
 
     try {
       const popupPayload = await beginGitHubOAuthPopup({ clientId });
       if (popupPayload.type === "ff:github-auth:error") {
-        setAccessState(createAnonymousGitHubAccessState());
+        persistAccessState(buildAccessState({
+          mode: "anonymous",
+          lastFailureKind: "unknown",
+          lastFailureMessage: popupPayload.message,
+        }));
         return false;
       }
 
@@ -180,6 +189,7 @@ export function useGitHubAuth(): UseGitHubAuthResult {
         verifiedAt: validationResult.verifiedAt,
         loginLabel: validationResult.loginLabel,
         lastFailureKind: null,
+        lastFailureMessage: null,
       }));
       return true;
     } catch (error: unknown) {
@@ -187,6 +197,7 @@ export function useGitHubAuth(): UseGitHubAuthResult {
       persistAccessState(buildAccessState({
         mode: "anonymous",
         lastFailureKind: parsedFailure?.kind ?? "unknown",
+        lastFailureMessage: null,
       }));
       return false;
     }

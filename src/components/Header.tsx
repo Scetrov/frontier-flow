@@ -48,7 +48,9 @@ function getGitHubStatusCopy(accessState: GitHubAccessState): {
 
   if (accessState.mode === "authenticated") {
     return {
-      actionLabel: "Sign out",
+      actionLabel: accessState.loginLabel === null
+        ? "Sign out"
+        : `Sign out (${accessState.loginLabel})`,
       statusLabel: accessState.lastFailureKind === "rate-limit"
         ? "GitHub access is active, but the dependency host is still rate limiting requests"
         : accessState.loginLabel === null
@@ -84,7 +86,11 @@ function GitHubAuthControl({
   readonly onGitHubSignOut?: () => void;
 }) {
   const { actionLabel, statusLabel } = getGitHubStatusCopy(accessState);
-  const shouldRenderStatusLabel = hasGitHubAuth && accessState.mode !== "anonymous";
+  const shouldRenderStatusLabel = hasGitHubAuth && (
+    accessState.mode === "authenticating"
+    || accessState.mode === "reauth-required"
+    || (accessState.mode === "authenticated" && accessState.lastFailureKind === "rate-limit")
+  );
   const disabled = !hasGitHubAuth || accessState.mode === "authenticating";
   const handleClick = accessState.mode === "authenticated" ? onGitHubSignOut : onGitHubSignIn;
   const buttonLabel = hasGitHubAuth ? actionLabel : "GitHub unavailable";
@@ -99,7 +105,7 @@ function GitHubAuthControl({
       ) : null}
       <button
         aria-label={buttonLabel}
-        className="ff-header__button"
+        className="ff-header__button ff-header__button--compact ff-header__github-button"
         disabled={disabled}
         onClick={handleClick}
         title={title}

@@ -741,6 +741,7 @@ button,
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  flex: 0 0 auto;
   min-height: 2.5rem;
   border: 1px solid var(--ui-border-dark);
   background: rgba(26, 10, 10, 0.9);
@@ -749,6 +750,7 @@ button,
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--cream-white);
   cursor: pointer;
 }
@@ -765,6 +767,21 @@ button,
   display: inline-flex;
   align-items: center;
   min-width: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 1540px) {
+  .ff-header__github-button {
+    width: 2.5rem;
+    min-width: 2.5rem;
+    max-width: 2.5rem;
+    padding: 0;
+    aspect-ratio: 1 / 1;
+  }
+
+  .ff-header__github-button .ff-header__button-label {
+    display: none;
+  }
 }
 
 .ff-header__button:hover,

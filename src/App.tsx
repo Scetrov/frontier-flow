@@ -278,18 +278,19 @@ function GitHubAuthNotice(props: {
   readonly onSignIn: () => Promise<boolean>;
 }) {
   const { accessState, hasGitHubAuth, incident, onDismiss, onSignIn } = props;
-  const shouldRender = incident !== null || accessState.mode === "reauth-required";
+  const shouldRender = incident !== null || accessState.mode === "reauth-required" || accessState.lastFailureMessage !== null;
 
   if (!shouldRender) {
     return null;
   }
 
   const showSignIn = hasGitHubAuth && (accessState.mode === "anonymous" || accessState.mode === "reauth-required");
-  const message = incident?.failure.kind === "rate-limit"
-    ? "GitHub rate limited the blocked dependency fetch. Sign in with GitHub to retry this compile without losing your current workspace."
-    : accessState.mode === "reauth-required"
-      ? "Your GitHub session needs to be renewed before the blocked dependency fetch can be retried."
-      : "GitHub dependency access needs attention before the blocked workflow can resume.";
+  const message = accessState.lastFailureMessage
+    ?? (incident?.failure.kind === "rate-limit"
+      ? "GitHub rate limited the blocked dependency fetch. Sign in with GitHub to retry this compile without losing your current workspace."
+      : accessState.mode === "reauth-required"
+        ? "Your GitHub session needs to be renewed before the blocked dependency fetch can be retried."
+        : "GitHub dependency access needs attention before the blocked workflow can resume.");
 
   return (
     <div className="border-b border-[var(--ui-border-dark)] bg-[rgba(32,20,13,0.94)] px-4 py-3 text-[var(--cream-white)] sm:px-6">
@@ -984,6 +985,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       moveSourceCode={moveSourceCode}
       onDismissGitHubIncident={() => {
         setDismissedGitHubIncidentSignature(gitHubIncident?.signature ?? null);
+        clearGitHubFailure();
       }}
       onDismissPrivacyNotice={handleDismissPrivacyNotice}
       onGitHubSignIn={handleGitHubSignIn}

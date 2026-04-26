@@ -40,7 +40,7 @@ function formatBalance(balanceMist: string | null | undefined): string {
     return "-- SUI";
   }
 
-  const trimmed = amount.toFixed(4).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
+  const trimmed = amount.toFixed(2).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
   return `${trimmed} SUI`;
 }
 
@@ -79,8 +79,16 @@ function ConnectedWalletStatus({
     <div className="ff-wallet-status ff-wallet-status--connected">
       <div className="ff-wallet-status__control">
         <div className="ff-wallet-status__summary flex min-w-0 items-center gap-3 border border-[var(--ui-border-dark)] bg-[rgba(45,21,21,0.85)] px-3 py-2">
-          <span className="ff-wallet-status__label hidden font-heading text-[0.65rem] uppercase tracking-[0.28em] text-[var(--brand-orange)] sm:block">
-            Wallet
+          <span
+            aria-label="Sui"
+            className="ff-wallet-status__label hidden items-center text-[var(--brand-orange)] sm:inline-flex"
+            role="img"
+          >
+            <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 1.35C6.32 3.46 3.95 5.92 3.95 8.76C3.95 11.03 5.76 12.85 8 12.85C10.24 12.85 12.05 11.03 12.05 8.76C12.05 5.92 9.68 3.46 8 1.35Z" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M5.95 8.2C6.72 8.76 7.34 9.01 8 9.01C8.67 9.01 9.28 8.76 10.05 8.2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.3" />
+              <path d="M6.45 10.1C6.98 10.45 7.45 10.6 8 10.6C8.56 10.6 9.02 10.45 9.55 10.1" stroke="currentColor" strokeLinecap="round" strokeWidth="1.3" />
+            </svg>
           </span>
           <span className={showingCharacterName
             ? "truncate font-heading text-sm tracking-[0.06em] text-[var(--cream-white)]"

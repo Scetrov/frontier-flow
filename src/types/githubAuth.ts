@@ -11,6 +11,7 @@ export interface GitHubAccessState {
   readonly verifiedAt: number | null;
   readonly loginLabel: string | null;
   readonly lastFailureKind: GitHubFailureKind | null;
+  readonly lastFailureMessage?: string | null;
 }
 
 export interface GitHubOAuthSession {

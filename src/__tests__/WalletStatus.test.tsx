@@ -154,7 +154,20 @@ describe("WalletStatus", () => {
 
     expect(screen.getByText("0x1234...cdef")).toBeVisible();
     expect(screen.getByText("12.5 SUI")).toBeVisible();
+    expect(screen.getByLabelText("Sui")).toBeVisible();
     expect(screen.getByRole("button", { name: "Disconnect" })).toBeVisible();
+  });
+
+  it("rounds the connected wallet balance to two decimal places", () => {
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
+    mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({
+      data: { totalBalance: "12345000000" },
+    }));
+
+    render(<WalletStatus />);
+
+    expect(screen.getByText("12.35 SUI")).toBeVisible();
   });
 
   it("renders zero balances without collapsing the value", () => {

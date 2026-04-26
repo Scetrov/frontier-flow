@@ -105,7 +105,7 @@ describe("Header", () => {
     expect(screen.queryByRole("button", { name: /Unanchor/i })).not.toBeInTheDocument();
   });
 
-  it("shows sign-out when GitHub auth is active", () => {
+  it("shows the signed-in GitHub user only in the sign-out control", () => {
     const onGitHubSignOut = vi.fn();
 
     render(
@@ -123,9 +123,13 @@ describe("Header", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  const gitHubButton = screen.getByRole("button", { name: "Sign out (scetrov)" });
 
-    expect(screen.getByText(/GitHub access active as scetrov/i)).toBeVisible();
+  expect(gitHubButton).toHaveClass("ff-header__github-button");
+
+  fireEvent.click(gitHubButton);
+
+    expect(screen.queryByText(/GitHub access active as scetrov/i)).not.toBeInTheDocument();
     expect(onGitHubSignOut).toHaveBeenCalledTimes(1);
   });
 

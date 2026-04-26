@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setMoveBuilderGitHubAccessTokenProvider } from "../compiler/moveBuilderLite";
 import { getLocalDeploymentEnvironmentLabel, saveLocalEnvironmentConfig } from "../data/localEnvironment";
 
 import {
@@ -15,10 +16,12 @@ import {
 describe("packageReferences", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    setMoveBuilderGitHubAccessTokenProvider(null);
   });
 
   afterEach(() => {
     window.localStorage.clear();
+    setMoveBuilderGitHubAccessTokenProvider(null);
   });
 
   it("parses stillness and utopia world package ids from Published.toml", () => {
@@ -89,6 +92,31 @@ original-id = "0xddd"
     expect(getPackageReferenceBundle("testnet:utopia").worldPackageId).toBe("0xccc");
     expect(getPackageReferenceBundle("testnet:stillness").sourceVersionTag).toBe("v0.0.23");
     expect(getPackageReferenceBundle("testnet:utopia").toolchainVersion).toBe("1.68.1");
+  });
+
+  it("uses the signed-in GitHub token when refreshing the published manifest from raw GitHub", async () => {
+    setMoveBuilderGitHubAccessTokenProvider(() => "test-token");
+
+    const fetchFn: typeof fetch = (input, init) => {
+      const requestedUrl = input instanceof URL ? input.href : typeof input === "string" ? input : input.url;
+
+      expect(requestedUrl).toBe("https://api.github.com/repos/evefrontier/world-contracts/contents/contracts/world/Published.toml?ref=main");
+      expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer test-token");
+      expect(new Headers(init?.headers).get("Accept")).toBe("application/vnd.github.raw");
+
+      return Promise.resolve(new Response(`
+[published.testnet_stillness]
+published-at = "0xaaa"
+
+[published.testnet_utopia]
+published-at = "0xccc"
+`, { status: 200, headers: { "content-type": "text/plain" } }));
+    };
+
+    await refreshPublishedWorldPackageManifest({ fetchFn, storage: window.localStorage });
+
+    expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe("0xaaa");
+    expect(getPackageReferenceBundle("testnet:utopia").worldPackageId).toBe("0xccc");
   });
 
   it("exposes deploy-grade source metadata for each supported target", () => {

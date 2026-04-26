@@ -9,7 +9,13 @@ const GITHUB_API_VERSION = "2022-11-28";
 function getHeader(event: HandlerEvent, name: string): string | null {
   const targetName = name.toLowerCase();
   const entry = Object.entries(event.headers).find(([headerName]) => headerName.toLowerCase() === targetName);
-  return entry?.[1] ?? null;
+  if (entry?.[1] !== undefined) {
+    return entry[1];
+  }
+
+  const multiValueEntry = Object.entries(event.multiValueHeaders).find(([headerName]) => headerName.toLowerCase() === targetName);
+  const [firstValue] = multiValueEntry?.[1] ?? [];
+  return firstValue ?? null;
 }
 
 function parseCookie(cookieHeader: string | null, cookieName: string): string | null {
@@ -36,11 +42,13 @@ function parseScopes(scopeHeader: string): readonly string[] {
     .filter((scope) => scope.length > 0);
 }
 
-function escapeJsonForScript(payload: object): string {
-  return JSON.stringify(payload).replace(/</g, "\\u003c");
+function encodePayloadForHtmlAttribute(payload: object): string {
+  return encodeURIComponent(JSON.stringify(payload));
 }
 
 function createPopupBridgeResponse(payload: object, statusCode = 200): HandlerResponse {
+  const encodedPayload = encodePayloadForHtmlAttribute(payload);
+
   return {
     statusCode,
     headers: {
@@ -54,20 +62,22 @@ function createPopupBridgeResponse(payload: object, statusCode = 200): HandlerRe
     <meta charset="utf-8" />
     <title>GitHub Sign-In</title>
   </head>
-  <body>
-    <script>
-      const payload = ${escapeJsonForScript(payload)};
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage(payload, window.location.origin);
-      }
-      window.close();
-    </script>
+  <body data-auth-payload="${encodedPayload}">
+    <script src="/github-auth-callback.js"></script>
   </body>
 </html>`,
   };
 }
 
 function getRequestOrigin(event: HandlerEvent): string {
+  if (typeof event.rawUrl === "string" && event.rawUrl.length > 0) {
+    try {
+      return new URL(event.rawUrl).origin;
+    } catch {
+      // Fall through to header-based reconstruction.
+    }
+  }
+
   const protocol = getHeader(event, "x-forwarded-proto") ?? "https";
   const host = getHeader(event, "x-forwarded-host") ?? getHeader(event, "host");
   return host === null ? "" : `${protocol}://${host}`;
@@ -164,6 +174,11 @@ async function validateToken(accessToken: string): Promise<{
   };
 }
 
+function getGitHubClientId(): string | null {
+  const configuredClientId = process.env.GITHUB_CLIENT_ID ?? process.env.VITE_GITHUB_CLIENT_ID;
+  return typeof configuredClientId === "string" && configuredClientId.length > 0 ? configuredClientId : null;
+}
+
 export const handler: Handler = async (event) => {
   if (!isAllowedRequestOrigin(event)) {
     return createPopupBridgeResponse({
@@ -203,9 +218,9 @@ export const handler: Handler = async (event) => {
     }, 400);
   }
 
-  const clientId = process.env.GITHUB_CLIENT_ID;
+  const clientId = getGitHubClientId();
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  if (typeof clientId !== "string" || clientId.length === 0 || typeof clientSecret !== "string" || clientSecret.length === 0) {
+  if (clientId === null || typeof clientSecret !== "string" || clientSecret.length === 0) {
     return createPopupBridgeResponse({
       type: "ff:github-auth:error",
       reason: "exchange_failed",

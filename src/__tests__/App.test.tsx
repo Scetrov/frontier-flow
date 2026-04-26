@@ -388,6 +388,21 @@ describe("App", () => {
     expect(await screen.findByText("authenticated")).toBeInTheDocument();
   });
 
+  it("shows the callback failure message in the app notice after the popup closes", async () => {
+    mockBeginGitHubOAuthPopup.mockResolvedValue({
+      type: "ff:github-auth:error",
+      reason: "validation_failed",
+      message: "GitHub sign-in completed, but the returned session could not be validated.",
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Header GitHub Sign-In Slot" }));
+
+    expect(await screen.findByText("GitHub sign-in completed, but the returned session could not be validated.")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Sign in with GitHub" })).not.toHaveLength(0);
+  });
+
   it("shows reauthentication guidance without presenting the rate-limit CTA", async () => {
     window.localStorage.setItem("frontier-flow:github-auth:public-state", JSON.stringify({
       mode: "reauth-required",

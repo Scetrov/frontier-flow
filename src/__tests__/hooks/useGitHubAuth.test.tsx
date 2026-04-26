@@ -69,6 +69,26 @@ describe("useGitHubAuth", () => {
     expect(window.localStorage.getItem("frontier-flow:github-auth:public-state")).not.toContain("test-token");
   });
 
+  it("persists popup callback errors so the app can render them after the popup closes", async () => {
+    mockBeginGitHubOAuthPopup.mockResolvedValue({
+      type: "ff:github-auth:error",
+      reason: "validation_failed",
+      message: "GitHub sign-in completed, but the returned session could not be validated.",
+    });
+
+    const { result } = renderHook(() => useGitHubAuth());
+
+    await act(async () => {
+      await result.current.beginSignIn();
+    });
+
+    expect(result.current.accessState).toEqual(expect.objectContaining({
+      mode: "anonymous",
+      lastFailureKind: "unknown",
+      lastFailureMessage: "GitHub sign-in completed, but the returned session could not be validated.",
+    }));
+  });
+
   it("moves to reauth-required when an authenticated session becomes unusable", () => {
     const { result } = renderHook(() => useGitHubAuth());
     const failure: GitHubFailureClassification = {

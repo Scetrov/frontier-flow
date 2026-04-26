@@ -35,6 +35,7 @@ export function createAnonymousGitHubAccessState(): GitHubAccessState {
     verifiedAt: null,
     loginLabel: null,
     lastFailureKind: null,
+    lastFailureMessage: null,
   };
 }
 
