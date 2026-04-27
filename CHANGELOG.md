@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.0](https://github.com/Scetrov/frontier-flow/compare/v0.10.0...v0.11.0) (2026-04-27)
+
+
+### Features
+
+* **github-auth:** add GitHub OAuth sign-in flow ([#33](https://github.com/Scetrov/frontier-flow/issues/33)) ([5aa7ff6](https://github.com/Scetrov/frontier-flow/commit/5aa7ff6a67696cd40207dbe781f195e8b6857bcd))
+
 ## [0.10.0](https://github.com/Scetrov/frontier-flow/compare/v0.9.10...v0.10.0) (2026-04-25)
 
 
