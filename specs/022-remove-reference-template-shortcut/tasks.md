@@ -82,14 +82,14 @@
 1. Phase 1 is complete.
 2. Phase 2 is complete.
 3. Phase 3 is complete.
-4. Phase 4 is the remaining follow-up work.
+4. Phase 4 is complete.
 
 ### Next Slice
 
-1. Start with `T009` to decide whether aggressor-first should gain explicit same-tribe and behaviour guards in the graph model or intentionally remain a simpler graph.
-2. Then handle `T010` and `T011` to decide whether low-HP finisher and player-screen should gain new explicit nodes or accept reduced semantics.
+1. No remaining implementation slice is tracked in this spec because `T009` through `T011` are already complete.
+2. If additional semantic-parity follow-up is needed later, track it in a new task list or spec so this document remains an accurate record of completed work.
 
 ## Notes
 
 - The completed phases reflect implementation already landed in the compiler pipeline and tests.
-- This spec intentionally leaves semantic-parity follow-up as explicit work instead of hiding it behind another shortcut.
+- Any future semantic-parity follow-up should be tracked in a new task list or spec instead of making this completed slice ambiguous.

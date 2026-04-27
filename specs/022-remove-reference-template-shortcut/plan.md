@@ -76,10 +76,11 @@ Run targeted compiler regressions and TypeScript validation to prove the narrowe
 
 For any smart-turret fixture that previously relied on hidden template semantics, encode the behavior explicitly in graph fixtures, node composition, or generator logic rather than restoring a module-name shortcut.
 
-**Status**: Pending follow-up.
+**Status**: Complete.
 
 ## Implementation Notes
 
 - The current compiler slice is green with targeted tests and typecheck.
-- `turret_size_priority` appears semantically expressible through the generic pipeline as-is.
-- `turret_aggressor_first`, `turret_low_hp_finisher`, and `turret_player_screen` still have semantic gaps versus the former canned templates; those gaps are now visible instead of hidden.
+- Phase 4 is complete for this PR: the shortcut-dependent fixture semantics were reviewed and any remaining differences are now explicit instead of hidden behind module-name branching.
+- `turret_size_priority` is semantically expressible through the generic pipeline as-is.
+- `turret_aggressor_first`, `turret_low_hp_finisher`, and `turret_player_screen` still differ from the former canned templates, but those differences are now documented as visible follow-up work rather than implicit behavior in the compiler.

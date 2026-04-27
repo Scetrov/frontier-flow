@@ -125,13 +125,15 @@ function createFlowNode(id: string, type: string, position: { readonly x: number
     throw new Error(`Unknown node type for flow fixture: ${type}`);
   }
 
+  const data = createFlowNodeData(definition);
+
   return {
     id,
     type,
     position,
     data: {
-      ...createFlowNodeData(definition),
-      fields: fields ?? createFlowNodeData(definition).fields,
+      ...data,
+      fields: fields ?? data.fields,
     },
   };
 }
