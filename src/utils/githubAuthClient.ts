@@ -66,11 +66,11 @@ function isRateLimitMessage(normalizedMessage: string, hasStatus429: boolean): b
 }
 
 function isBadCredentialsMessage(normalizedMessage: string, hasStatus401: boolean): boolean {
-  return hasStatus401 || hasAnyPattern(normalizedMessage, [BAD_CREDENTIALS_PATTERNS[0]]);
+  return hasStatus401 || hasAnyPattern(normalizedMessage, BAD_CREDENTIALS_PATTERNS);
 }
 
 function isInsufficientPermissionMessage(normalizedMessage: string, hasStatus403: boolean): boolean {
-  return hasStatus403 || hasAnyPattern(normalizedMessage, [INSUFFICIENT_PERMISSION_PATTERNS[0], INSUFFICIENT_PERMISSION_PATTERNS[2]]);
+  return hasStatus403 || hasAnyPattern(normalizedMessage, INSUFFICIENT_PERMISSION_PATTERNS);
 }
 
 function getMessageKey(kind: GitHubFailureClassification["kind"]): GitHubFailureClassification["messageKey"] {

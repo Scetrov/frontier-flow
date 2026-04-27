@@ -1085,58 +1085,68 @@ function useGitHubIncidentRecovery(input: {
 }): void {
   const activeGitHubRetryRequestIdRef = useRef<string | null>(null);
   const lastHandledGitHubIncidentSignatureRef = useRef<string | null>(null);
+  const {
+    clearGitHubFailure,
+    displayStatusState,
+    gitHubAccessStateMode,
+    gitHubIncident,
+    onMoveRebuild,
+    pendingRetryContext,
+    reportGitHubFailure,
+    setPendingRetryContext,
+  } = input;
 
   useEffect(() => {
-    if (input.gitHubIncident === null) {
+    if (gitHubIncident === null) {
       lastHandledGitHubIncidentSignatureRef.current = null;
       return;
     }
 
-    if (input.gitHubIncident.signature === lastHandledGitHubIncidentSignatureRef.current) {
+    if (gitHubIncident.signature === lastHandledGitHubIncidentSignatureRef.current) {
       return;
     }
 
-    lastHandledGitHubIncidentSignatureRef.current = input.gitHubIncident.signature;
+    lastHandledGitHubIncidentSignatureRef.current = gitHubIncident.signature;
 
-    if (input.gitHubIncident.failure.kind === "rate-limit" && input.pendingRetryContext === null) {
-      input.setPendingRetryContext(createPendingGitHubRetryContext());
+    if (gitHubIncident.failure.kind === "rate-limit" && pendingRetryContext === null) {
+      setPendingRetryContext(createPendingGitHubRetryContext());
     }
 
-    if (input.gitHubIncident.failure.kind === "bad-credentials" || input.gitHubIncident.failure.kind === "insufficient-permission") {
-      input.reportGitHubFailure(input.gitHubIncident.failure);
+    if (gitHubIncident.failure.kind === "bad-credentials" || gitHubIncident.failure.kind === "insufficient-permission") {
+      reportGitHubFailure(gitHubIncident.failure);
     }
-  }, [input]);
+  }, [gitHubIncident, pendingRetryContext, reportGitHubFailure, setPendingRetryContext]);
 
   useEffect(() => {
     if (
-      input.gitHubAccessStateMode !== "authenticated"
-      || input.pendingRetryContext === null
-      || input.pendingRetryContext.retryCount > 0
+      gitHubAccessStateMode !== "authenticated"
+      || pendingRetryContext === null
+      || pendingRetryContext.retryCount > 0
       || activeGitHubRetryRequestIdRef.current !== null
     ) {
       return;
     }
 
-    activeGitHubRetryRequestIdRef.current = input.pendingRetryContext.requestId;
-    input.setPendingRetryContext({
-      ...input.pendingRetryContext,
+    activeGitHubRetryRequestIdRef.current = pendingRetryContext.requestId;
+    setPendingRetryContext({
+      ...pendingRetryContext,
       retryCount: 1,
     });
-    void input.onMoveRebuild();
-  }, [input]);
+    void onMoveRebuild();
+  }, [gitHubAccessStateMode, onMoveRebuild, pendingRetryContext, setPendingRetryContext]);
 
   useEffect(() => {
-    if (activeGitHubRetryRequestIdRef.current === null || input.displayStatusState === "compiling") {
+    if (activeGitHubRetryRequestIdRef.current === null || displayStatusState === "compiling") {
       return;
     }
 
-    input.setPendingRetryContext(null);
-    if (input.displayStatusState === "compiled") {
-      input.clearGitHubFailure();
+    setPendingRetryContext(null);
+    if (displayStatusState === "compiled") {
+      clearGitHubFailure();
     }
 
     activeGitHubRetryRequestIdRef.current = null;
-  }, [input]);
+  }, [clearGitHubFailure, displayStatusState, setPendingRetryContext]);
 }
 
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {

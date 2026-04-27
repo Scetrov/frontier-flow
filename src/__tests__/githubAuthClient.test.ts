@@ -31,6 +31,24 @@ describe("githubAuthClient", () => {
       resetAt: null,
       messageKey: "github.bad-credentials",
     });
+
+    expect(classifyGitHubErrorMessage("Request requires authentication")).toEqual({
+      httpStatus: 401,
+      kind: "bad-credentials",
+      rateLimitRemaining: null,
+      resetAt: null,
+      messageKey: "github.bad-credentials",
+    });
+  });
+
+  it("classifies serialized permission failures from raw messages", () => {
+    expect(classifyGitHubErrorMessage("Insufficient permissions to update this reference")).toEqual({
+      httpStatus: 403,
+      kind: "insufficient-permission",
+      rateLimitRemaining: null,
+      resetAt: null,
+      messageKey: "github.insufficient-permission",
+    });
   });
 
   it("validates a token and returns non-secret GitHub session metadata", async () => {
