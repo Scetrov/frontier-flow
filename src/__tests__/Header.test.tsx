@@ -9,7 +9,7 @@ vi.mock("../components/WalletStatus", () => ({
 
 describe("Header", () => {
   it("renders the banner with logo, title, and wallet action area", () => {
-    render(<Header activeView="visual" onViewChange={() => undefined} />);
+    render(<Header activeView="visual" hasGitHubAuth={true} onViewChange={() => undefined} />);
 
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByAltText("Frontier Flow")).toBeInTheDocument();
@@ -19,6 +19,7 @@ describe("Header", () => {
     expect(screen.getByRole("button", { name: "Deploy" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Authorize" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Simulate" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Sign in with GitHub" })).toBeVisible();
     expect(screen.getByText("Wallet Status Slot")).toBeVisible();
     expect(screen.getAllByText("▶")).toHaveLength(4);
   });
@@ -102,5 +103,47 @@ describe("Header", () => {
     expect(screen.queryByRole("button", { name: /Online/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Offline/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Unanchor/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the signed-in GitHub user only in the sign-out control", () => {
+    const onGitHubSignOut = vi.fn();
+
+    render(
+      <Header
+        gitHubAccessState={{
+          mode: "authenticated",
+          indicatorVariant: "active",
+          grantedScopes: [],
+          verifiedAt: 1760000000000,
+          loginLabel: "scetrov",
+          lastFailureKind: null,
+        }}
+        hasGitHubAuth={true}
+        onGitHubSignOut={onGitHubSignOut}
+      />,
+    );
+
+  const gitHubButton = screen.getByRole("button", { name: "Sign out (scetrov)" });
+
+  expect(gitHubButton).toHaveClass("ff-header__github-button");
+
+  fireEvent.click(gitHubButton);
+
+    expect(screen.queryByText(/GitHub access active as scetrov/i)).not.toBeInTheDocument();
+    expect(onGitHubSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not render duplicate unavailable GitHub messaging when auth is not configured", () => {
+    render(<Header hasGitHubAuth={false} />);
+
+    expect(screen.getByRole("button", { name: "GitHub unavailable" })).toBeDisabled();
+    expect(screen.queryByText("GitHub auth unavailable")).not.toBeInTheDocument();
+  });
+
+  it("does not render anonymous GitHub helper text next to the sign-in button", () => {
+    render(<Header hasGitHubAuth={true} />);
+
+    expect(screen.getByRole("button", { name: "Sign in with GitHub" })).toBeVisible();
+    expect(screen.queryByText("Anonymous GitHub access is active")).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,6 @@
 import type { PackageReferenceBundle } from "../compiler/types";
+import { getMoveBuilderGitHubAccessToken } from "../compiler/moveBuilderLite";
+import { GITHUB_API_VERSION } from "../utils/githubApi";
 import {
   DEFAULT_LOCAL_GRAPHQL_URL,
   DEFAULT_LOCAL_WORLD_PACKAGE_ID,
@@ -11,7 +13,8 @@ import {
 
 const RESOURCE_SOURCE = "https://docs.evefrontier.com/tools/resources";
 const LAST_VERIFIED_ON = "2026-04-02";
-export const PUBLISHED_WORLD_PACKAGE_MANIFEST_URL = "https://raw.githubusercontent.com/evefrontier/world-contracts/refs/heads/main/contracts/world/Published.toml";
+const RAW_GITHUB_HOSTNAME = "raw.githubusercontent.com";
+export const PUBLISHED_WORLD_PACKAGE_MANIFEST_URL = "https://raw.githubusercontent.com/evefrontier/world-contracts/main/contracts/world/Published.toml";
 export const WORLD_PACKAGE_OVERRIDE_STORAGE_KEY = "frontier-flow:world-package-overrides";
 
 let cachedBundleMap: ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> | null = null;
@@ -206,6 +209,51 @@ function extractPublishedSectionValue(manifest: string, sectionName: string, fie
   return fieldMatch?.[1] ?? null;
 }
 
+function getGitHubContentsApiUrl(rawUrl: string): string | null {
+  const url = new URL(rawUrl);
+  if (url.hostname !== RAW_GITHUB_HOSTNAME) {
+    return null;
+  }
+
+  const segments = url.pathname.split("/").filter((segment) => segment.length > 0);
+  if (segments.length < 4) {
+    return null;
+  }
+
+  const [owner, repo, revision, ...rest] = segments;
+  if (rest.length === 0) {
+    return null;
+  }
+
+  const apiUrl = new URL(`https://api.github.com/repos/${owner}/${repo}/contents/${rest.join("/")}`);
+  apiUrl.searchParams.set("ref", revision);
+  return apiUrl.toString();
+}
+
+async function fetchGitHubManifest(
+  fetchFn: typeof fetch,
+  rawUrl: string,
+): Promise<Response> {
+  const githubAccessToken = getMoveBuilderGitHubAccessToken();
+  if (githubAccessToken === null) {
+    return fetchFn(rawUrl);
+  }
+
+  const apiUrl = getGitHubContentsApiUrl(rawUrl);
+  if (apiUrl === null) {
+    return fetchFn(rawUrl);
+  }
+
+  return fetchFn(apiUrl, {
+    headers: {
+      Accept: "application/vnd.github.raw",
+      Authorization: `Bearer ${githubAccessToken}`,
+      "User-Agent": "frontier-flow",
+      "X-GitHub-Api-Version": GITHUB_API_VERSION,
+    },
+  });
+}
+
 function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): readonly PackageReferenceBundle[] {
   const storedOverrides = getStoredWorldPackageOverrides(storage);
   const localEnvironment = loadLocalEnvironmentConfig(storage);
@@ -296,7 +344,7 @@ export async function refreshPublishedWorldPackageManifest(input: {
   readonly storage?: Storage;
 } = {}): Promise<Partial<Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata>>> {
   const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
-  const response = await fetchFn(PUBLISHED_WORLD_PACKAGE_MANIFEST_URL);
+  const response = await fetchGitHubManifest(fetchFn, PUBLISHED_WORLD_PACKAGE_MANIFEST_URL);
 
   if (!response.ok) {
     throw new Error(`Failed to load published world package manifest: ${String(response.status)} ${response.statusText}`.trim());

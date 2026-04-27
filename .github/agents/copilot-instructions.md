@@ -1,1 +1,1 @@
-- 020-fix-empty-publish: Added TypeScript 5.9 (strict, ES Modules) with Sui Move package publishing via `@mysten/sui` + React 19, `@mysten/sui`, `@mysten/dapp-kit`, `@zktx.io/sui-move-builder` 0.2.8, Vitest, Testing Library
+- 021-github-token-auth: Added TypeScript `~6.0.2` (strict, ES Modules), React `19.2.0` + React, `@tanstack/react-query`, `@zktx.io/sui-move-builder`, Rolldown Vite, `@netlify/functions` (planned)

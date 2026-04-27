@@ -15,6 +15,9 @@ import { saveCompilationState } from "../utils/compilationStateStorage";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
 
+const mockBeginGitHubOAuthPopup = vi.fn<typeof import("../utils/githubAuthClient").beginGitHubOAuthPopup>();
+const mockValidateGitHubToken = vi.fn<typeof import("../utils/githubAuthClient").validateGitHubToken>();
+
 type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
 type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
 type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionHook>;
@@ -46,8 +49,17 @@ vi.mock("@mysten/dapp-kit", () => ({
   useWallets: () => mockUseWallets(),
 }));
 
+vi.mock("../utils/githubAuthClient", async () => {
+  const actual = await vi.importActual<typeof import("../utils/githubAuthClient")>("../utils/githubAuthClient");
+  return {
+    ...actual,
+    beginGitHubOAuthPopup: (...args: Parameters<typeof actual.beginGitHubOAuthPopup>) => mockBeginGitHubOAuthPopup(...args),
+    validateGitHubToken: (...args: Parameters<typeof actual.validateGitHubToken>) => mockValidateGitHubToken(...args),
+  };
+});
+
 vi.mock("../components/Header", () => ({
-  default: (props: { activeView?: string; onViewChange?: (view: "visual" | "move" | "deploy" | "authorize") => void }) => {
+  default: (props: { activeView?: string; gitHubAccessState?: { mode: string }; onGitHubSignIn?: () => void; onViewChange?: (view: "visual" | "move" | "deploy" | "authorize") => void }) => {
     headerSpy(props);
     return (
       <div>
@@ -67,6 +79,8 @@ vi.mock("../components/Header", () => ({
         >
           Header Deploy Slot
         </button>
+        <button type="button" onClick={props.onGitHubSignIn}>Header GitHub Sign-In Slot</button>
+        <span>{props.gitHubAccessState?.mode ?? "anonymous"}</span>
       </div>
     );
   },
@@ -122,6 +136,7 @@ describe("App", () => {
   const defaultContractFlow = createDefaultContractFlow();
 
   beforeEach(() => {
+    vi.stubEnv("VITE_GITHUB_CLIENT_ID", "client-id");
     mockUseCurrentAccount.mockReturnValue(null);
     mockUseCurrentWallet.mockReturnValue({ isConnected: false } as CurrentWallet);
     mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
@@ -140,6 +155,9 @@ describe("App", () => {
     mockUseSignAndExecuteTransaction.mockReset();
     mockUseSuiClient.mockReset();
     mockUseWallets.mockReset();
+    mockBeginGitHubOAuthPopup.mockReset();
+    mockValidateGitHubToken.mockReset();
+    vi.unstubAllEnvs();
   });
 
   it("renders the default editor shell on the root route", async () => {
@@ -343,5 +361,61 @@ describe("App", () => {
         focusedDiagnosticRequestKey: 2,
       }),
     );
+  });
+
+  it("lets the user sign in with GitHub proactively from the header", async () => {
+    mockBeginGitHubOAuthPopup.mockResolvedValue({
+      type: "ff:github-auth:success",
+      token: "test-token",
+      scopeHeader: "",
+      verifiedAt: 1760000000000,
+      loginLabel: "scetrov",
+      validatedUserId: 42,
+      grantedScopes: [],
+    });
+    mockValidateGitHubToken.mockResolvedValue({
+      scopeHeader: "repo",
+      verifiedAt: 1760000000000,
+      loginLabel: "scetrov",
+      validatedUserId: 42,
+      grantedScopes: ["repo"],
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Header GitHub Sign-In Slot" }));
+
+    expect(await screen.findByText("authenticated")).toBeInTheDocument();
+  });
+
+  it("shows the callback failure message in the app notice after the popup closes", async () => {
+    mockBeginGitHubOAuthPopup.mockResolvedValue({
+      type: "ff:github-auth:error",
+      reason: "validation_failed",
+      message: "GitHub sign-in completed, but the returned session could not be validated.",
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Header GitHub Sign-In Slot" }));
+
+    expect(await screen.findByText("GitHub sign-in completed, but the returned session could not be validated.")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Sign in with GitHub" })).not.toHaveLength(0);
+  });
+
+  it("shows reauthentication guidance without presenting the rate-limit CTA", async () => {
+    window.localStorage.setItem("frontier-flow:github-auth:public-state", JSON.stringify({
+      mode: "reauth-required",
+      indicatorVariant: "warning",
+      grantedScopes: [],
+      verifiedAt: 1760000000000,
+      loginLabel: "scetrov",
+      lastFailureKind: "bad-credentials",
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByText(/needs to be renewed before the blocked dependency fetch can be retried/i)).toBeInTheDocument();
+    expect(screen.queryByText(/rate limited the blocked dependency fetch/i)).not.toBeInTheDocument();
   });
 });

@@ -56,4 +56,16 @@ export default defineConfig([
       },
     },
   },
+  {
+    files: ["netlify/functions/**/*.ts"],
+    extends: [js.configs.recommended, tseslint.configs.strictTypeChecked],
+    languageOptions: {
+      ecmaVersion: "latest",
+      globals: globals.node,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
 ]);

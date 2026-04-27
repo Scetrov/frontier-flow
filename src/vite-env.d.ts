@@ -15,6 +15,8 @@ declare const __PROJECT_PACKAGES__: {
 
 interface ImportMetaEnv {
 	readonly VITE_DEBUG?: string;
+	readonly VITE_GITHUB_AUTH_CALLBACK_PATH?: string;
+	readonly VITE_GITHUB_CLIENT_ID?: string;
 	readonly VITE_WALRUS_UPLOAD_RELAY_URL?: string;
 	readonly VITE_WALRUS_UPLOAD_RELAY_TIP_MAX?: string;
 }

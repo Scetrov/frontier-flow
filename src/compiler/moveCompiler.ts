@@ -1,6 +1,7 @@
 import { attachArtifactDiagnostics, attachCompiledArtifactResult } from "./generators/shared";
 import type { BuildProgressEvent } from "@zktx.io/sui-move-builder/lite";
 import {
+  getMoveBuilderGitHubAccessToken,
   loadMoveBuilderLite,
   moveBuilderLiteWasmUrl,
   prewarmMoveBuilderLiteWasm,
@@ -8,6 +9,7 @@ import {
   verifyMoveBuilderLiteIntegrity,
 } from "./moveBuilderLite";
 import { parseCompilerOutput } from "./errorParser";
+import { classifyGitHubErrorMessage } from "../utils/githubAuthClient";
 import { createStandaloneWorldShimPackageFiles } from "./worldShim";
 import type {
   CompileResult,
@@ -42,6 +44,7 @@ type BuildProgressHandler = (event: BuildProgressEvent) => void;
 
 interface BuildInput {
   readonly files: Readonly<Record<string, string>>;
+  readonly githubToken?: string;
   readonly silenceWarnings: boolean;
   readonly network: string;
   readonly rootGit?: BuildRootGit;
@@ -322,12 +325,45 @@ function createRateLimitedDependencyDiagnostic(rawMessage: string): CompilerDiag
   };
 }
 
+function createGitHubCredentialDiagnostic(rawMessage: string): CompilerDiagnostic {
+  return {
+    severity: "error",
+    stage: "compilation",
+    rawMessage,
+    line: null,
+    reactFlowNodeId: null,
+    socketId: null,
+    userMessage: "GitHub-authenticated dependency access is no longer valid. Sign in with GitHub again, then retry compile.",
+  };
+}
+
+function createGitHubPermissionDiagnostic(rawMessage: string): CompilerDiagnostic {
+  return {
+    severity: "error",
+    stage: "compilation",
+    rawMessage,
+    line: null,
+    reactFlowNodeId: null,
+    socketId: null,
+    userMessage: "GitHub-authenticated dependency access could not read the required upstream source. Sign in again or continue anonymously, then retry compile.",
+  };
+}
+
 function createCompilationFailureDiagnostics(
   rawMessage: string,
   sourceMap: GeneratedContractArtifact["sourceMap"],
 ): readonly CompilerDiagnostic[] {
-  if (isDependencyRateLimited(rawMessage)) {
+  const githubFailure = classifyGitHubErrorMessage(rawMessage);
+  if (githubFailure?.kind === "rate-limit" || isDependencyRateLimited(rawMessage)) {
     return [createRateLimitedDependencyDiagnostic(rawMessage)];
+  }
+
+  if (githubFailure?.kind === "bad-credentials") {
+    return [createGitHubCredentialDiagnostic(rawMessage)];
+  }
+
+  if (githubFailure?.kind === "insufficient-permission") {
+    return [createGitHubPermissionDiagnostic(rawMessage)];
   }
 
   return parseCompilerOutput(rawMessage, sourceMap);
@@ -357,6 +393,7 @@ export async function compileMove(
 
   try {
     const compilerModule = await ensureCompilerInitialised();
+    const githubToken = getMoveBuilderGitHubAccessToken() ?? undefined;
     const files: Record<string, string> = {
       "Move.toml": artifact.moveToml,
     };
@@ -365,6 +402,7 @@ export async function compileMove(
     }
     const buildPromise = compilerModule.buildMovePackage({
       files,
+      githubToken,
       silenceWarnings: false,
       network: "testnet",
     });

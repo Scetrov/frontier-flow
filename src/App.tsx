@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCurrentAccount, useCurrentWallet, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 
+import { setMoveBuilderGitHubAccessTokenProvider } from "./compiler/moveBuilderLite";
 import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, DeploymentTargetId } from "./compiler/types";
 import AlphaBanner from "./components/AlphaBanner";
 import DeploymentProgressModal from "./components/DeploymentProgressModal";
@@ -11,11 +12,14 @@ import type { PrimaryView } from "./components/Header";
 import { seededExampleContracts } from "./data/exampleContracts";
 import { subscribeToLocalEnvironmentChanges } from "./data/localEnvironment";
 import { createDefaultContractFlow } from "./data/kitchenSinkFlow";
+import useGitHubAuth from "./hooks/useGitHubAuth";
 import { useDeployment } from "./hooks/useDeployment";
 import { useTutorial } from "./hooks/useTutorial";
 import type { GraphTransferWalletBridge } from "./hooks/useGraphTransfer";
+import type { GitHubAccessState, GitHubFailureClassification, PendingGitHubRetryContext } from "./types/githubAuth";
 import type { RemediationNotice } from "./types/nodes";
 import type { StoredDeploymentState } from "./types/authorization";
+import { classifyGitHubErrorMessage } from "./utils/githubAuthClient";
 import { createNamedFlowContract, loadContractLibrary } from "./utils/contractStorage";
 import { createCompilationGraphKey } from "./utils/compilationGraphKey";
 import { loadCompilationState, saveCompilationState, type PersistedCompilationState } from "./utils/compilationStateStorage";
@@ -93,13 +97,19 @@ interface StandardAppLayoutProps {
   readonly diagnostics: readonly CompilerDiagnostic[];
   readonly displayStatus: CompilationStatus;
   readonly focusedDiagnosticSelection: FocusedDiagnosticSelection | null;
+  readonly gitHubAccessState: GitHubAccessState;
+  readonly gitHubIncident: GitHubIncident | null;
+  readonly hasGitHubAuth: boolean;
   readonly graphTransferWalletBridge: GraphTransferWalletBridge;
   readonly isPrivacyNoticeVisible: boolean;
   readonly isCompiling: boolean;
   readonly isCompiledWorkflowReady: boolean;
   readonly isKitchenSinkRoute: boolean;
   readonly moveSourceCode: string | null;
+  readonly onDismissGitHubIncident: () => void;
   readonly onDismissPrivacyNotice: () => void;
+  readonly onGitHubSignIn: () => Promise<boolean>;
+  readonly onGitHubSignOut: () => void;
   readonly onMoveRebuild: () => Promise<void>;
   readonly onCompilationStateChange: AppMainContentProps["onCompilationStateChange"];
   readonly onRegisterContractPanelVisibility: (setContractPanelOpen: (open: boolean) => void) => void;
@@ -122,6 +132,12 @@ interface StandardAppLayoutProps {
 interface TransientStatusMessage {
   readonly tone: "error" | "info" | "success";
   readonly text: string;
+}
+
+interface GitHubIncident {
+  readonly failure: GitHubFailureClassification;
+  readonly rawMessage: string;
+  readonly signature: string;
 }
 
 interface StandardAppController {
@@ -222,6 +238,77 @@ function getValidatedDeploymentState(targetId: InitialAppState["selectedDeployme
   })
     ? deploymentState
     : null;
+}
+
+function createPendingGitHubRetryContext(): PendingGitHubRetryContext {
+  const capturedAt = Date.now();
+  return {
+    requestId: `compile:${getCurrentContractGraphKey()}:${String(capturedAt)}`,
+    workflow: "compile",
+    resource: "upstream Sui framework dependency fetch",
+    capturedAt,
+    retryCount: 0,
+    uiReturnHint: "move",
+  };
+}
+
+function getGitHubIncident(diagnostics: readonly CompilerDiagnostic[]): GitHubIncident | null {
+  const diagnostic = diagnostics.find((candidate) => candidate.severity === "error" && candidate.stage === "compilation");
+  if (diagnostic === undefined) {
+    return null;
+  }
+
+  const failure = classifyGitHubErrorMessage(`${diagnostic.rawMessage} ${diagnostic.userMessage}`);
+  if (failure === null) {
+    return null;
+  }
+
+  return {
+    failure,
+    rawMessage: diagnostic.rawMessage,
+    signature: `${failure.kind}:${diagnostic.rawMessage}`,
+  };
+}
+
+function GitHubAuthNotice(props: {
+  readonly accessState: GitHubAccessState;
+  readonly hasGitHubAuth: boolean;
+  readonly incident: GitHubIncident | null;
+  readonly onDismiss: () => void;
+  readonly onSignIn: () => Promise<boolean>;
+}) {
+  const { accessState, hasGitHubAuth, incident, onDismiss, onSignIn } = props;
+  const shouldRender = incident !== null || accessState.mode === "reauth-required" || accessState.lastFailureMessage !== null;
+
+  if (!shouldRender) {
+    return null;
+  }
+
+  const showSignIn = hasGitHubAuth && (accessState.mode === "anonymous" || accessState.mode === "reauth-required");
+  const message = accessState.lastFailureMessage
+    ?? (incident?.failure.kind === "rate-limit"
+      ? "GitHub rate limited the blocked dependency fetch. Sign in with GitHub to retry this compile without losing your current workspace."
+      : accessState.mode === "reauth-required"
+        ? "Your GitHub session needs to be renewed before the blocked dependency fetch can be retried."
+        : "GitHub dependency access needs attention before the blocked workflow can resume.");
+
+  return (
+    <div className="border-b border-[var(--ui-border-dark)] bg-[rgba(32,20,13,0.94)] px-4 py-3 text-[var(--cream-white)] sm:px-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <p className="text-sm leading-6 text-[var(--cream-white)]">{message}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {showSignIn ? (
+            <button className="ff-header__button" onClick={() => { void onSignIn(); }} type="button">
+              Sign in with GitHub
+            </button>
+          ) : null}
+          <button className="ff-header__button" onClick={onDismiss} type="button">
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function VisualWorkspaceView({
@@ -399,13 +486,19 @@ function StandardAppLayout({
   diagnostics,
   displayStatus,
   focusedDiagnosticSelection,
+  gitHubAccessState,
+  gitHubIncident,
+  hasGitHubAuth,
   graphTransferWalletBridge,
   isPrivacyNoticeVisible,
   isCompiling,
   isCompiledWorkflowReady,
   isKitchenSinkRoute,
   moveSourceCode,
+  onDismissGitHubIncident,
   onDismissPrivacyNotice,
+  onGitHubSignIn,
+  onGitHubSignOut,
   onMoveRebuild,
   onCompilationStateChange,
   onRegisterContractPanelVisibility,
@@ -427,16 +520,29 @@ function StandardAppLayout({
         activeView={activeView}
         canAccessDeploy={isCompiledWorkflowReady}
         canAccessMove={isCompiledWorkflowReady}
+        gitHubAccessState={gitHubAccessState}
+        hasGitHubAuth={hasGitHubAuth}
         hasAuthorizeAccess={authorizeDeploymentState !== null}
         isCompiling={isCompiling}
         onDetectedDeploymentTarget={(targetId) => {
           deployment.setSelectedTarget(targetId);
         }}
+        onGitHubSignIn={() => { void onGitHubSignIn(); }}
+        onGitHubSignOut={onGitHubSignOut}
         onStartTutorial={isKitchenSinkRoute ? undefined : onStartTutorial}
         onViewChange={isKitchenSinkRoute ? undefined : onViewChange}
         selectedDeploymentTarget={deployment.selectedTarget}
       />
       <AlphaBanner />
+      {isKitchenSinkRoute ? null : (
+        <GitHubAuthNotice
+          accessState={gitHubAccessState}
+          hasGitHubAuth={hasGitHubAuth}
+          incident={gitHubIncident}
+          onDismiss={onDismissGitHubIncident}
+          onSignIn={onGitHubSignIn}
+        />
+      )}
       {isKitchenSinkRoute ? (
         <Suspense fallback={<main className="flex flex-1 min-h-0" aria-label="Application shell"><h1 className="sr-only">Frontier Flow</h1></main>}>
           <KitchenSinkPage />
@@ -734,6 +840,9 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
   const { isConnected } = useCurrentWallet();
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
   const [isPrivacyNoticeVisible, setIsPrivacyNoticeVisible] = useState(() => shouldShowPrivacyNotice(getBrowserStorage()));
+  const [dismissedGitHubIncidentSignature, setDismissedGitHubIncidentSignature] = useState<string | null>(null);
+  const activeGitHubRetryRequestIdRef = useRef<string | null>(null);
+  const lastHandledGitHubIncidentSignatureRef = useRef<string | null>(null);
   const initialAppState = useMemo(() => getInitialAppState(), []);
   const {
     authorizeDeploymentState,
@@ -754,6 +863,21 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     setRemediationNotices,
     transientStatusMessage,
   } = useStandardAppController(initialAppState);
+  const {
+    accessState: gitHubAccessState,
+    accessToken: gitHubAccessToken,
+    beginSignIn: beginGitHubSignIn,
+    clearFailure: clearGitHubFailure,
+    hasClientConfiguration: hasGitHubAuth,
+    pendingRetryContext,
+    reportFailure: reportGitHubFailure,
+    setPendingRetryContext,
+    signOut: signOutFromGitHub,
+  } = useGitHubAuth();
+  const gitHubIncident = useMemo(() => getGitHubIncident(diagnostics), [diagnostics]);
+  const visibleGitHubIncident = gitHubIncident !== null && gitHubIncident.signature !== dismissedGitHubIncidentSignature
+    ? gitHubIncident
+    : null;
   const graphTransferWalletBridge = useMemo<GraphTransferWalletBridge>(() => ({
     accountAddress: currentAccount?.address ?? null,
     walletConnected: isConnected,
@@ -768,6 +892,76 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
   }, []);
   const { tutorial, setSidebarOpenRef, setContractPanelOpenRef, insertDemoNodeRef, removeDemoNodeRef } = useTutorialBridge(resolvedActiveView);
 
+  useEffect(() => {
+    setMoveBuilderGitHubAccessTokenProvider(() => gitHubAccessToken);
+
+    return () => {
+      setMoveBuilderGitHubAccessTokenProvider(null);
+    };
+  }, [gitHubAccessToken]);
+
+  useEffect(() => {
+    if (gitHubIncident === null) {
+      lastHandledGitHubIncidentSignatureRef.current = null;
+      return;
+    }
+
+    if (gitHubIncident.signature === lastHandledGitHubIncidentSignatureRef.current) {
+      return;
+    }
+
+    lastHandledGitHubIncidentSignatureRef.current = gitHubIncident.signature;
+
+    if (gitHubIncident.failure.kind === "rate-limit" && pendingRetryContext === null) {
+      setPendingRetryContext(createPendingGitHubRetryContext());
+    }
+
+    if (gitHubIncident.failure.kind === "bad-credentials" || gitHubIncident.failure.kind === "insufficient-permission") {
+      reportGitHubFailure(gitHubIncident.failure);
+    }
+  }, [gitHubIncident, pendingRetryContext, reportGitHubFailure, setPendingRetryContext]);
+
+  useEffect(() => {
+    if (
+      gitHubAccessState.mode !== "authenticated"
+      || pendingRetryContext === null
+      || pendingRetryContext.retryCount > 0
+      || activeGitHubRetryRequestIdRef.current !== null
+    ) {
+      return;
+    }
+
+    activeGitHubRetryRequestIdRef.current = pendingRetryContext.requestId;
+    setPendingRetryContext({
+      ...pendingRetryContext,
+      retryCount: 1,
+    });
+    void onMoveRebuild();
+  }, [gitHubAccessState.mode, onMoveRebuild, pendingRetryContext, setPendingRetryContext]);
+
+  useEffect(() => {
+    if (activeGitHubRetryRequestIdRef.current === null || displayStatus.state === "compiling") {
+      return;
+    }
+
+    setPendingRetryContext(null);
+    if (displayStatus.state === "compiled") {
+      clearGitHubFailure();
+    }
+
+    activeGitHubRetryRequestIdRef.current = null;
+  }, [clearGitHubFailure, displayStatus.state, setPendingRetryContext]);
+
+  const handleGitHubSignIn = useCallback(async () => {
+    setDismissedGitHubIncidentSignature(null);
+    return beginGitHubSignIn();
+  }, [beginGitHubSignIn]);
+
+  const handleGitHubSignOut = useCallback(() => {
+    setDismissedGitHubIncidentSignature(null);
+    signOutFromGitHub();
+  }, [signOutFromGitHub]);
+
   useEffect(() => subscribeToLocalEnvironmentChanges(() => {
     setLocalEnvironmentRevision((currentValue) => currentValue + 1);
   }), []);
@@ -780,13 +974,22 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       diagnostics={diagnostics}
       displayStatus={displayStatus}
       focusedDiagnosticSelection={focusedDiagnosticSelection}
+      gitHubAccessState={gitHubAccessState}
+      gitHubIncident={visibleGitHubIncident}
+      hasGitHubAuth={hasGitHubAuth}
       graphTransferWalletBridge={graphTransferWalletBridge}
       isPrivacyNoticeVisible={isPrivacyNoticeVisible}
       isCompiling={isCompiling}
       isCompiledWorkflowReady={isCompiledWorkflowReady}
       isKitchenSinkRoute={isKitchenSinkRoute}
       moveSourceCode={moveSourceCode}
+      onDismissGitHubIncident={() => {
+        setDismissedGitHubIncidentSignature(gitHubIncident?.signature ?? null);
+        clearGitHubFailure();
+      }}
       onDismissPrivacyNotice={handleDismissPrivacyNotice}
+      onGitHubSignIn={handleGitHubSignIn}
+      onGitHubSignOut={handleGitHubSignOut}
       onMoveRebuild={onMoveRebuild}
       onCompilationStateChange={onCompilationStateChange}
       onRegisterContractPanelVisibility={(setContractPanelOpen) => {

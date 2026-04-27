@@ -14,11 +14,12 @@ vi.mock("@zktx.io/sui-move-builder/lite", () => ({
   resolveDependencies: mockResolveDependencies,
 }));
 
-import { loadMoveBuilderLite, resetMoveBuilderLiteForTests } from "../../compiler/moveBuilderLite";
+import { loadMoveBuilderLite, resetMoveBuilderLiteForTests, setMoveBuilderGitHubAccessTokenProvider } from "../../compiler/moveBuilderLite";
 
 const RAW_SOURCE_URL = "https://raw.githubusercontent.com/MystenLabs/sui/04dd28d5c5d92bff685ddfecb86f8acce18ce6df/crates/sui-framework/packages/sui-framework/sources/token.move";
 const LOCAL_MIRROR_URL = "/upstream-sources/MystenLabs/sui/04dd28d5c5d92bff685ddfecb86f8acce18ce6df/crates/sui-framework/packages/sui-framework/sources/token.move";
 const UNMIRRORED_RAW_SOURCE_URL = "https://raw.githubusercontent.com/MystenLabs/sui/unmirrored-test-revision/crates/sui-framework/packages/sui-framework/sources/token.move";
+const UNMIRRORED_CONTENTS_API_URL = "https://api.github.com/repos/MystenLabs/sui/contents/crates/sui-framework/packages/sui-framework/sources/token.move?ref=unmirrored-test-revision";
 
 function toFetchUrl(input: RequestInfo | URL): string {
   if (input instanceof URL) {
@@ -208,6 +209,47 @@ describe("moveBuilderLite raw GitHub fetch cache", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(5);
     } finally {
       vi.useRealTimers();
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it("routes authenticated raw GitHub fetches through the GitHub contents API", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = toFetchUrl(input);
+      if (url === "/upstream-sources/MystenLabs/sui/unmirrored-test-revision/crates/sui-framework/packages/sui-framework/sources/token.move") {
+        return Promise.resolve(new Response("Not Found", { status: 404, statusText: "Not Found" }));
+      }
+
+      if (url === UNMIRRORED_CONTENTS_API_URL) {
+        const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
+        expect(headers.get("authorization")).toBe("Bearer test-token");
+        expect(headers.get("accept")).toBe("application/vnd.github.raw");
+        return Promise.resolve(new Response("module sui::token {}", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        }));
+      }
+
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    });
+    mockBuildMovePackage.mockImplementation(async () => {
+      const response = await fetch(UNMIRRORED_RAW_SOURCE_URL);
+      await response.text();
+
+      return {
+        modules: [],
+        dependencies: [],
+      };
+    });
+    setMoveBuilderGitHubAccessTokenProvider(() => "test-token");
+
+    try {
+      const module = await loadMoveBuilderLite();
+
+      await module.buildMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    } finally {
       fetchSpy.mockRestore();
     }
   });

@@ -87,13 +87,13 @@ updates:
 
 ### 2.3 Supply Chain Hardening
 
-| Control | Implementation |
-| --- | --- |
-| **Dependency audit** | Run `bunx npm-audit --audit-level=high` in CI. **Fail the build** on high/critical vulnerabilities |
-| **Socket.dev or Snyk** | Integrate a supply chain analysis tool that detects typosquatting, install scripts, and protestware |
+| Control                      | Implementation                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dependency audit**         | Run `bunx npm-audit --audit-level=high` in CI. **Fail the build** on high/critical vulnerabilities                                                                                                                                                                                                                                                                                                              |
+| **Socket.dev or Snyk**       | Integrate a supply chain analysis tool that detects typosquatting, install scripts, and protestware                                                                                                                                                                                                                                                                                                             |
 | **WASM binary verification** | `src/compiler/moveBuilderLite.ts` fetches the bundled `sui_move_wasm_bg.wasm`, hashes it with SHA-256, and exposes `verifyMoveBuilderLiteIntegrity()` for compiler entry points such as `src/compiler/moveCompiler.ts` to reject initialization unless the digest matches the pinned checksum `710212f879fef4feb0bf6932a8ecece1323ca3b675b07691df927977492105a0` (see [RISK-REGISTER R-11](./RISK-REGISTER.md)) |
-| **Deploy-grade compilation** | WASM binary verification applies to authoring-time compilation. ADR-009 introduces a deploy-grade path that may use server-assisted compilation for dependency resolution, which would introduce separate supply-chain considerations for server components (see [ADR-009](./ADR/ADR-009-deploy-grade-dependency-resolution.md)) |
-| **Provenance metadata** | Prefer packages that publish [npm provenance attestations](https://docs.npmjs.com/generating-provenance-statements). Track provenance adoption among critical dependencies |
+| **Deploy-grade compilation** | WASM binary verification applies to authoring-time compilation. ADR-009 introduces a deploy-grade path that may use server-assisted compilation for dependency resolution, which would introduce separate supply-chain considerations for server components (see [ADR-009](./ADR/ADR-009-deploy-grade-dependency-resolution.md))                                                                                |
+| **Provenance metadata**      | Prefer packages that publish [npm provenance attestations](https://docs.npmjs.com/generating-provenance-statements). Track provenance adoption among critical dependencies                                                                                                                                                                                                                                      |
 
 ---
 
@@ -352,13 +352,13 @@ jobs:
 
 ### 7.2 OAuth & Token Security
 
-| Control              | Detail                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------- |
-| **Token storage**    | GitHub OAuth tokens are held **in memory only** — never in `localStorage`, `sessionStorage`, or cookies |
-| **Token scope**      | Request the minimum GitHub OAuth scopes needed (e.g., `repo` for persistence, `read:user` for identity) |
-| **CORS enforcement** | The Netlify OAuth function validates `Origin` against an allowlist of production domains                |
-| **Token expiry**     | Implement token refresh or re-authentication prompts. Never assume tokens are perpetually valid         |
-| **PKCE**             | Use Proof Key for Code Exchange (PKCE) in the OAuth flow to prevent authorisation code interception     |
+| Control              | Detail                                                                                                                                       |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Token storage**    | GitHub OAuth tokens are held **in memory only** — never in `localStorage`, `sessionStorage`, or cookies                                      |
+| **Token scope**      | Request the minimum GitHub OAuth scopes needed. The current rate-limit recovery flow uses the default public-resource scope set              |
+| **State validation** | The popup flow sets a short-lived callback cookie and the Netlify function rejects mismatched OAuth `state` values                           |
+| **Origin checks**    | The Netlify OAuth function validates `Origin` / `Referer` against the request origin and any configured allowlist entries                    |
+| **Token expiry**     | Re-authentication prompts are shown when GitHub returns invalid-credential or permission failures. Never assume tokens are perpetually valid |
 
 ### 7.3 Wallet & Transaction Security
 
@@ -387,6 +387,8 @@ jobs:
 | **GitHub OAuth Client Secret** | Netlify environment variable     | Serverless function only  |
 | **GitHub Access Tokens**       | In-memory only                   | Frontend (per-session)    |
 | **Sui Wallet Private Keys**    | User's wallet extension          | Never accessed by the app |
+
+Non-secret GitHub auth state is limited to a public status snapshot in `localStorage` and one blocked-workflow retry record in `sessionStorage`. Neither record includes the OAuth access token.
 
 **Rules:**
 

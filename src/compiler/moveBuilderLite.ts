@@ -1,4 +1,5 @@
 import type * as MoveBuilderLiteModule from "@zktx.io/sui-move-builder/lite";
+import { GITHUB_API_VERSION } from "../utils/githubApi";
 
 export type BuildMovePackageFn = typeof MoveBuilderLiteModule.buildMovePackage;
 export type FetchPackageFromGitHubFn = typeof MoveBuilderLiteModule.fetchPackageFromGitHub;
@@ -41,6 +42,7 @@ let moveBuilderConsoleLogPatchDepth = 0;
 let originalMoveBuilderConsoleLog: ((...args: unknown[]) => void) | null = null;
 let moveBuilderFetchPatchDepth = 0;
 let originalMoveBuilderFetch: typeof fetch | null = null;
+let moveBuilderGitHubAccessTokenProvider: (() => string | null) | null = null;
 const rawGithubResponseCache = new Map<string, CachedRawGithubResponse>();
 const rawGithubRateLimitCache = new Map<string, TimedCachedRawGithubResponse>();
 const rawGithubInFlightRequests = new Map<string, Promise<CachedRawGithubResponse>>();
@@ -87,6 +89,14 @@ function shouldUseRawGithubFetchCache(): boolean {
   return !(typeof window === "undefined" && "Bun" in globalThis);
 }
 
+function getMoveBuilderGitHubAccessTokenInternal(): string | null {
+  return moveBuilderGitHubAccessTokenProvider?.() ?? null;
+}
+
+function getRawGithubCacheKey(rawUrl: string): string {
+  return `${getMoveBuilderGitHubAccessTokenInternal() === null ? "anonymous" : "authenticated"}:${rawUrl}`;
+}
+
 function getRawGithubRequestKey(input: RequestInfo | URL, init?: RequestInit): string | null {
   const method = init?.method ?? (isRequestObject(input) ? input.method : "GET");
   if (method.toUpperCase() !== "GET") {
@@ -119,9 +129,26 @@ function getLocalRawGithubMirrorRelativePath(rawUrl: string): string | null {
   return `${LOCAL_UPSTREAM_SOURCE_ROOT}/${owner}/${repo}/${revision}/${rest.join("/")}`;
 }
 
+function getGitHubContentsApiUrl(rawUrl: string): string | null {
+  const url = new URL(rawUrl);
+  if (url.hostname !== RAW_GITHUB_HOSTNAME) {
+    return null;
+  }
+
+  const segments = url.pathname.split("/").filter((segment) => segment.length > 0);
+  if (segments.length < 4) {
+    return null;
+  }
+
+  const [owner, repo, revision, ...rest] = segments;
+  const apiUrl = new URL(`https://api.github.com/repos/${owner}/${repo}/contents/${rest.join("/")}`);
+  apiUrl.searchParams.set("ref", revision);
+  return apiUrl.toString();
+}
+
 async function toCachedRawGithubResponse(response: Response): Promise<CachedRawGithubResponse> {
   return {
-    body: await response.text(),
+    body: await response.clone().text(),
     headers: Array.from(response.headers.entries()),
     status: response.status,
     statusText: response.statusText,
@@ -136,11 +163,39 @@ function createResponseFromCache(entry: CachedRawGithubResponse): Response {
   });
 }
 
+async function fetchRawGithubSource(
+  originalFetchImpl: typeof fetch,
+  rawUrl: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const githubAccessToken = getMoveBuilderGitHubAccessTokenInternal();
+  if (githubAccessToken === null) {
+    return originalFetchImpl(rawUrl, init);
+  }
+
+  const apiUrl = getGitHubContentsApiUrl(rawUrl);
+  if (apiUrl === null) {
+    return originalFetchImpl(rawUrl, init);
+  }
+
+  const headers = new Headers(init?.headers);
+  headers.set("Accept", "application/vnd.github.raw");
+  headers.set("Authorization", `Bearer ${githubAccessToken}`);
+  headers.set("User-Agent", "frontier-flow");
+  headers.set("X-GitHub-Api-Version", GITHUB_API_VERSION);
+
+  return originalFetchImpl(apiUrl, {
+    ...init,
+    headers,
+  });
+}
+
 async function fetchFromLocalRawGithubMirror(
   originalFetchImpl: typeof fetch,
+  rawUrl: string,
   cacheKey: string,
 ): Promise<CachedRawGithubResponse | null> {
-  const relativePath = getLocalRawGithubMirrorRelativePath(cacheKey);
+  const relativePath = getLocalRawGithubMirrorRelativePath(rawUrl);
   if (relativePath === null) {
     return null;
   }
@@ -183,17 +238,19 @@ async function fetchWithRawGithubCache(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
-  const cacheKey = getRawGithubRequestKey(input, init);
-  if (cacheKey === null) {
+  const rawGithubUrl = getRawGithubRequestKey(input, init);
+  if (rawGithubUrl === null) {
     return originalFetchImpl(input, init);
   }
+
+  const cacheKey = getRawGithubCacheKey(rawGithubUrl);
 
   const cachedResponse = rawGithubResponseCache.get(cacheKey);
   if (cachedResponse !== undefined) {
     return createResponseFromCache(cachedResponse);
   }
 
-  const mirroredResponse = await fetchFromLocalRawGithubMirror(originalFetchImpl, cacheKey);
+  const mirroredResponse = await fetchFromLocalRawGithubMirror(originalFetchImpl, rawGithubUrl, cacheKey);
   if (mirroredResponse !== null) {
     return createResponseFromCache(mirroredResponse);
   }
@@ -209,7 +266,7 @@ async function fetchWithRawGithubCache(
   }
 
   const pendingRequest = (async () => {
-    const response = await originalFetchImpl(input, init);
+    const response = await fetchRawGithubSource(originalFetchImpl, rawGithubUrl, init);
     const cachedEntry = await toCachedRawGithubResponse(response);
 
     if (response.ok) {
@@ -228,6 +285,21 @@ async function fetchWithRawGithubCache(
 
   rawGithubInFlightRequests.set(cacheKey, pendingRequest);
   return createResponseFromCache(await pendingRequest);
+}
+
+/**
+ * Configure how the Move builder fetch layer retrieves the current GitHub access token.
+ */
+export function setMoveBuilderGitHubAccessTokenProvider(provider: (() => string | null) | null): void {
+  moveBuilderGitHubAccessTokenProvider = provider;
+  rawGithubRateLimitCache.clear();
+}
+
+/**
+ * Read the current GitHub access token configured for Move builder fetches.
+ */
+export function getMoveBuilderGitHubAccessToken(): string | null {
+  return getMoveBuilderGitHubAccessTokenInternal();
 }
 
 async function withRawGithubFetchCache<T>(operation: () => Promise<T>): Promise<T> {
@@ -375,6 +447,7 @@ export function resetMoveBuilderLiteForTests(): void {
   originalMoveBuilderConsoleLog = null;
   moveBuilderFetchPatchDepth = 0;
   originalMoveBuilderFetch = null;
+  moveBuilderGitHubAccessTokenProvider = null;
   rawGithubResponseCache.clear();
   rawGithubRateLimitCache.clear();
   rawGithubInFlightRequests.clear();

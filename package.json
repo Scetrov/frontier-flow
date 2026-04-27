@@ -12,6 +12,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:netlify": "bunx netlify dev",
     "debug:turret-priority-mcve": "bun run ./scripts/debug-turret-priority-mcve.ts",
     "debug:remote-deploy-grade-mcve": "bun run ./scripts/debug-remote-deploy-grade-mcve.ts",
     "build": "tsc -b && vite build",
@@ -24,6 +25,7 @@
     "prepare": "husky",
     "preview": "vite preview",
     "test": "vitest",
+    "test:functions": "vitest run netlify/functions/__tests__",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
@@ -37,6 +39,7 @@
     "bun": ">=1.0.0"
   },
   "dependencies": {
+    "@netlify/functions": "^4.2.0",
     "@mysten/dapp-kit": "1.0.4",
     "@mysten/sui": "2.16.0",
     "@mysten/walrus": "^1.1.0",
