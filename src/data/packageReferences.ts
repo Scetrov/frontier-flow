@@ -1,5 +1,6 @@
 import type { PackageReferenceBundle } from "../compiler/types";
 import { getMoveBuilderGitHubAccessToken } from "../compiler/moveBuilderLite";
+import { GITHUB_API_VERSION } from "../utils/githubApi";
 import {
   DEFAULT_LOCAL_GRAPHQL_URL,
   DEFAULT_LOCAL_WORLD_PACKAGE_ID,
@@ -12,7 +13,6 @@ import {
 
 const RESOURCE_SOURCE = "https://docs.evefrontier.com/tools/resources";
 const LAST_VERIFIED_ON = "2026-04-02";
-const GITHUB_API_VERSION = "2022-11-28";
 const RAW_GITHUB_HOSTNAME = "raw.githubusercontent.com";
 export const PUBLISHED_WORLD_PACKAGE_MANIFEST_URL = "https://raw.githubusercontent.com/evefrontier/world-contracts/main/contracts/world/Published.toml";
 export const WORLD_PACKAGE_OVERRIDE_STORAGE_KEY = "frontier-flow:world-package-overrides";

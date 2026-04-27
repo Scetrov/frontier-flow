@@ -3,12 +3,12 @@ import type {
   GitHubFailureClassification,
   GitHubTokenValidationResult,
 } from "../types/githubAuth";
+import { GITHUB_API_VERSION } from "./githubApi";
+import { DEFAULT_GITHUB_AUTH_CALLBACK_PATH, normalizeGitHubAuthCallbackPath } from "./githubAuthConfig";
 
 const GITHUB_AUTHORIZE_ENDPOINT = "https://github.com/login/oauth/authorize";
 const GITHUB_VALIDATE_ENDPOINT = "https://api.github.com/user";
 const GITHUB_AUTH_STATE_COOKIE = "ff_github_auth_state";
-const DEFAULT_GITHUB_AUTH_CALLBACK_PATH = "/api/github-callback";
-const GITHUB_API_VERSION = "2022-11-28";
 
 interface BeginGitHubOAuthPopupOptions {
   readonly callbackPath?: string;
@@ -49,19 +49,6 @@ function parseGrantedScopes(scopeHeader: string): readonly string[] {
 
 function isSecureLocation(location: Location): boolean {
   return location.protocol === "https:";
-}
-
-function getSafeCallbackPath(callbackPath: string, location: Location): string {
-  if (!callbackPath.startsWith("/") || callbackPath.startsWith("//") || callbackPath.includes("?") || callbackPath.includes("#")) {
-    return DEFAULT_GITHUB_AUTH_CALLBACK_PATH;
-  }
-
-  try {
-    const normalizedUrl = new URL(callbackPath, location.origin);
-    return normalizedUrl.origin === location.origin ? normalizedUrl.pathname : DEFAULT_GITHUB_AUTH_CALLBACK_PATH;
-  } catch {
-    return DEFAULT_GITHUB_AUTH_CALLBACK_PATH;
-  }
 }
 
 function setAuthStateCookie(document: Document, callbackPath: string, state: string, location: Location): void {
@@ -242,7 +229,7 @@ export function beginGitHubOAuthPopup({
   openWindow = window.open.bind(window),
   windowImpl = window,
 }: BeginGitHubOAuthPopupOptions): Promise<GitHubAuthPopupPayload> {
-  const safeCallbackPath = getSafeCallbackPath(callbackPath, location);
+  const safeCallbackPath = normalizeGitHubAuthCallbackPath(callbackPath);
   const authState = globalThis.crypto.randomUUID();
   const authorizeUrl = createGitHubAuthorizeUrl({
     callbackPath: safeCallbackPath,

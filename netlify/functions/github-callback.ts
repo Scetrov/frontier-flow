@@ -17,11 +17,12 @@ interface GitHubCallbackResponse {
   readonly statusCode: number;
 }
 
+import { GITHUB_API_VERSION } from "../../src/utils/githubApi";
+import { normalizeGitHubAuthCallbackPath } from "../../src/utils/githubAuthConfig";
+
 const GITHUB_AUTH_STATE_COOKIE = "ff_github_auth_state";
-const GITHUB_CALLBACK_PATH = "/api/github-callback";
 const GITHUB_TOKEN_EXCHANGE_ENDPOINT = "https://github.com/login/oauth/access_token";
 const GITHUB_VALIDATE_ENDPOINT = "https://api.github.com/user";
-const GITHUB_API_VERSION = "2022-11-28";
 
 function getHeader(event: GitHubCallbackEvent, name: string): string | null {
   const targetName = name.toLowerCase();
@@ -67,15 +68,20 @@ function encodePayloadForHtmlAttribute(payload: object): string {
   return encodeURIComponent(JSON.stringify(payload));
 }
 
+function getGitHubCallbackPath(): string {
+  return normalizeGitHubAuthCallbackPath(process.env.VITE_GITHUB_AUTH_CALLBACK_PATH);
+}
+
 function createPopupBridgeResponse(payload: object, statusCode = 200): GitHubCallbackResponse {
   const encodedPayload = encodePayloadForHtmlAttribute(payload);
+  const callbackPath = getGitHubCallbackPath();
 
   return {
     statusCode,
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
-      "set-cookie": `${GITHUB_AUTH_STATE_COOKIE}=; Max-Age=0; Path=${GITHUB_CALLBACK_PATH}; SameSite=Lax`,
+      "set-cookie": `${GITHUB_AUTH_STATE_COOKIE}=; Max-Age=0; Path=${callbackPath}; SameSite=Lax`,
     },
     body: `<!doctype html>
 <html lang="en">
@@ -263,7 +269,7 @@ export const handler = async (event: GitHubCallbackEvent): Promise<GitHubCallbac
 
   try {
     const requestOrigin = getRequestOrigin(event);
-    const redirectUri = new URL(GITHUB_CALLBACK_PATH, requestOrigin).toString();
+    const redirectUri = new URL(getGitHubCallbackPath(), requestOrigin).toString();
     const tokenResult = await exchangeCodeForToken({
       clientId,
       clientSecret,

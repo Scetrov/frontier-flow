@@ -1,6 +1,10 @@
 const rawPayload = document.body.dataset.authPayload ?? "";
 
-let payload = null;
+let payload = {
+  type: "ff:github-auth:error",
+  reason: "exchange_failed",
+  message: "GitHub sign-in callback did not include a result payload.",
+};
 
 if (rawPayload.length > 0) {
   try {
@@ -14,7 +18,7 @@ if (rawPayload.length > 0) {
   }
 }
 
-if (window.opener && !window.opener.closed && payload !== null) {
+if (window.opener && !window.opener.closed) {
   window.opener.postMessage(payload, window.location.origin);
 }
 

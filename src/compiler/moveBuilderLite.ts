@@ -1,4 +1,5 @@
 import type * as MoveBuilderLiteModule from "@zktx.io/sui-move-builder/lite";
+import { GITHUB_API_VERSION } from "../utils/githubApi";
 
 export type BuildMovePackageFn = typeof MoveBuilderLiteModule.buildMovePackage;
 export type FetchPackageFromGitHubFn = typeof MoveBuilderLiteModule.fetchPackageFromGitHub;
@@ -181,7 +182,7 @@ async function fetchRawGithubSource(
   headers.set("Accept", "application/vnd.github.raw");
   headers.set("Authorization", `Bearer ${githubAccessToken}`);
   headers.set("User-Agent", "frontier-flow");
-  headers.set("X-GitHub-Api-Version", "2022-11-28");
+  headers.set("X-GitHub-Api-Version", GITHUB_API_VERSION);
 
   return originalFetchImpl(apiUrl, {
     ...init,

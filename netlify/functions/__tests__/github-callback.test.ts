@@ -168,6 +168,36 @@ describe("github-callback", () => {
     expect(extractPopupPayload(response.body).type).toBe("ff:github-auth:success");
   });
 
+  it("uses the configured callback path for redirect_uri and cookie cleanup", async () => {
+    process.env.VITE_GITHUB_AUTH_CALLBACK_PATH = "/auth/github/callback";
+
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "test-token", scope: "" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 42, login: "scetrov" }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+          "x-oauth-scopes": "",
+        },
+      }));
+
+    const response: GitHubCallbackResponse = await handler(createEvent());
+    const tokenExchangeCall = fetchMock.mock.calls[0];
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["set-cookie"]).toContain("Path=/auth/github/callback");
+    const tokenExchangeBody = tokenExchangeCall[1]?.body;
+    expect(tokenExchangeBody).toBeInstanceOf(URLSearchParams);
+    if (!(tokenExchangeBody instanceof URLSearchParams)) {
+      throw new Error("Expected URLSearchParams body.");
+    }
+
+    expect(tokenExchangeBody.get("redirect_uri")).toBe("https://frontier-flow.netlify.app/auth/github/callback");
+  });
+
   it("treats malformed auth state cookies as invalid state instead of crashing", async () => {
     const response: GitHubCallbackResponse = await handler(createEvent({
       headers: {
