@@ -7,6 +7,7 @@ import type {
 const GITHUB_AUTHORIZE_ENDPOINT = "https://github.com/login/oauth/authorize";
 const GITHUB_VALIDATE_ENDPOINT = "https://api.github.com/user";
 const GITHUB_AUTH_STATE_COOKIE = "ff_github_auth_state";
+const DEFAULT_GITHUB_AUTH_CALLBACK_PATH = "/api/github-callback";
 const GITHUB_API_VERSION = "2022-11-28";
 
 interface BeginGitHubOAuthPopupOptions {
@@ -46,12 +47,31 @@ function parseGrantedScopes(scopeHeader: string): readonly string[] {
     .filter((scope) => scope.length > 0);
 }
 
-function setAuthStateCookie(document: Document, callbackPath: string, state: string): void {
-  document.cookie = `${GITHUB_AUTH_STATE_COOKIE}=${encodeURIComponent(state)}; Max-Age=300; Path=${callbackPath}; SameSite=Lax`;
+function isSecureLocation(location: Location): boolean {
+  return location.protocol === "https:";
 }
 
-function clearAuthStateCookie(document: Document, callbackPath: string): void {
-  document.cookie = `${GITHUB_AUTH_STATE_COOKIE}=; Max-Age=0; Path=${callbackPath}; SameSite=Lax`;
+function getSafeCallbackPath(callbackPath: string, location: Location): string {
+  if (!callbackPath.startsWith("/") || callbackPath.startsWith("//") || callbackPath.includes("?") || callbackPath.includes("#")) {
+    return DEFAULT_GITHUB_AUTH_CALLBACK_PATH;
+  }
+
+  try {
+    const normalizedUrl = new URL(callbackPath, location.origin);
+    return normalizedUrl.origin === location.origin ? normalizedUrl.pathname : DEFAULT_GITHUB_AUTH_CALLBACK_PATH;
+  } catch {
+    return DEFAULT_GITHUB_AUTH_CALLBACK_PATH;
+  }
+}
+
+function setAuthStateCookie(document: Document, callbackPath: string, state: string, location: Location): void {
+  const secureAttribute = isSecureLocation(location) ? "; Secure" : "";
+  document.cookie = `${GITHUB_AUTH_STATE_COOKIE}=${encodeURIComponent(state)}; Max-Age=300; Path=${callbackPath}; SameSite=Lax${secureAttribute}`;
+}
+
+function clearAuthStateCookie(document: Document, callbackPath: string, location: Location): void {
+  const secureAttribute = isSecureLocation(location) ? "; Secure" : "";
+  document.cookie = `${GITHUB_AUTH_STATE_COOKIE}=; Max-Age=0; Path=${callbackPath}; SameSite=Lax${secureAttribute}`;
 }
 
 function createGitHubAuthorizeUrl(input: {
@@ -215,22 +235,23 @@ export function classifyGitHubErrorMessage(rawMessage: string): GitHubFailureCla
  * Open the GitHub OAuth popup and resolve once the callback bridge posts back.
  */
 export function beginGitHubOAuthPopup({
-  callbackPath = import.meta.env.VITE_GITHUB_AUTH_CALLBACK_PATH ?? "/api/github-callback",
+  callbackPath = import.meta.env.VITE_GITHUB_AUTH_CALLBACK_PATH ?? DEFAULT_GITHUB_AUTH_CALLBACK_PATH,
   clientId,
   document = window.document,
   location = window.location,
   openWindow = window.open.bind(window),
   windowImpl = window,
 }: BeginGitHubOAuthPopupOptions): Promise<GitHubAuthPopupPayload> {
+  const safeCallbackPath = getSafeCallbackPath(callbackPath, location);
   const authState = globalThis.crypto.randomUUID();
   const authorizeUrl = createGitHubAuthorizeUrl({
-    callbackPath,
+    callbackPath: safeCallbackPath,
     clientId,
     location,
     state: authState,
   });
 
-  setAuthStateCookie(document, callbackPath, authState);
+  setAuthStateCookie(document, safeCallbackPath, authState, location);
 
   const popup = openWindow(
     authorizeUrl,
@@ -239,7 +260,7 @@ export function beginGitHubOAuthPopup({
   ) as GitHubPopupWindow | null;
 
   if (popup === null) {
-    clearAuthStateCookie(document, callbackPath);
+    clearAuthStateCookie(document, safeCallbackPath, location);
     return Promise.reject(new Error("GitHub sign-in popup could not be opened."));
   }
 
@@ -252,7 +273,7 @@ export function beginGitHubOAuthPopup({
       }
 
       settled = true;
-      clearAuthStateCookie(document, callbackPath);
+      clearAuthStateCookie(document, safeCallbackPath, location);
       windowImpl.removeEventListener("message", handleMessage);
       windowImpl.clearInterval(popupPollId);
     };

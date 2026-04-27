@@ -92,4 +92,59 @@ describe("githubAuthClient", () => {
       token: "test-token",
     }));
   });
+
+  it("falls back to the default callback path and marks auth cookies Secure on https", async () => {
+    const cookieWrites: string[] = [];
+    const documentImpl = {
+      get cookie() {
+        return "";
+      },
+      set cookie(value: string) {
+        cookieWrites.push(value);
+      },
+    } as Document;
+    const location = {
+      origin: "https://frontier-flow.netlify.app",
+      protocol: "https:",
+    } as Location;
+    const popup = window;
+    let popupUrl = "";
+    const openWindow: Window["open"] = (url) => {
+      popupUrl = String(url);
+      return popup;
+    };
+
+    const popupPromise = beginGitHubOAuthPopup({
+      callbackPath: "https://evil.example/callback",
+      clientId: "client-id",
+      document: documentImpl,
+      location,
+      openWindow,
+      windowImpl: window,
+    });
+
+    window.dispatchEvent(new MessageEvent("message", {
+      data: {
+        type: "ff:github-auth:error",
+        reason: "oauth_denied",
+        message: "cancelled",
+      },
+      origin: location.origin,
+      source: popup,
+    }));
+
+    await expect(popupPromise).resolves.toEqual(expect.objectContaining({
+      type: "ff:github-auth:error",
+      reason: "oauth_denied",
+    }));
+
+    expect(cookieWrites[0]).toContain("Path=/api/github-callback");
+    expect(cookieWrites[0]).toContain("Secure");
+    expect(cookieWrites.at(-1)).toContain("Max-Age=0");
+    expect(cookieWrites.at(-1)).toContain("Path=/api/github-callback");
+    expect(cookieWrites.at(-1)).toContain("Secure");
+
+    const authorizeUrl = new URL(popupUrl);
+    expect(authorizeUrl.searchParams.get("redirect_uri")).toBe("https://frontier-flow.netlify.app/api/github-callback");
+  });
 });

@@ -1,4 +1,21 @@
-import type { Handler, HandlerEvent, HandlerResponse } from "@netlify/functions";
+interface GitHubCallbackEvent {
+  readonly body?: string | null;
+  readonly headers: Readonly<Record<string, string | undefined>>;
+  readonly httpMethod?: string;
+  readonly isBase64Encoded?: boolean;
+  readonly multiValueHeaders: Readonly<Record<string, readonly string[] | undefined>>;
+  readonly multiValueQueryStringParameters?: Readonly<Record<string, readonly string[] | undefined>>;
+  readonly path?: string;
+  readonly rawQuery?: string;
+  readonly queryStringParameters?: Readonly<Record<string, string | undefined>>;
+  readonly rawUrl?: string;
+}
+
+interface GitHubCallbackResponse {
+  readonly body: string;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly statusCode: number;
+}
 
 const GITHUB_AUTH_STATE_COOKIE = "ff_github_auth_state";
 const GITHUB_CALLBACK_PATH = "/api/github-callback";
@@ -6,7 +23,7 @@ const GITHUB_TOKEN_EXCHANGE_ENDPOINT = "https://github.com/login/oauth/access_to
 const GITHUB_VALIDATE_ENDPOINT = "https://api.github.com/user";
 const GITHUB_API_VERSION = "2022-11-28";
 
-function getHeader(event: HandlerEvent, name: string): string | null {
+function getHeader(event: GitHubCallbackEvent, name: string): string | null {
   const targetName = name.toLowerCase();
   const entry = Object.entries(event.headers).find(([headerName]) => headerName.toLowerCase() === targetName);
   if (entry?.[1] !== undefined) {
@@ -14,8 +31,8 @@ function getHeader(event: HandlerEvent, name: string): string | null {
   }
 
   const multiValueEntry = Object.entries(event.multiValueHeaders).find(([headerName]) => headerName.toLowerCase() === targetName);
-  const [firstValue] = multiValueEntry?.[1] ?? [];
-  return firstValue ?? null;
+  const firstValue = multiValueEntry === undefined ? undefined : multiValueEntry[1]?.[0];
+  return firstValue === undefined ? null : firstValue;
 }
 
 function parseCookie(cookieHeader: string | null, cookieName: string): string | null {
@@ -32,7 +49,11 @@ function parseCookie(cookieHeader: string | null, cookieName: string): string | 
     return null;
   }
 
-  return decodeURIComponent(cookieValue.slice(cookieName.length + 1));
+  try {
+    return decodeURIComponent(cookieValue.slice(cookieName.length + 1));
+  } catch {
+    return null;
+  }
 }
 
 function parseScopes(scopeHeader: string): readonly string[] {
@@ -46,7 +67,7 @@ function encodePayloadForHtmlAttribute(payload: object): string {
   return encodeURIComponent(JSON.stringify(payload));
 }
 
-function createPopupBridgeResponse(payload: object, statusCode = 200): HandlerResponse {
+function createPopupBridgeResponse(payload: object, statusCode = 200): GitHubCallbackResponse {
   const encodedPayload = encodePayloadForHtmlAttribute(payload);
 
   return {
@@ -69,7 +90,7 @@ function createPopupBridgeResponse(payload: object, statusCode = 200): HandlerRe
   };
 }
 
-function getRequestOrigin(event: HandlerEvent): string {
+function getRequestOrigin(event: GitHubCallbackEvent): string {
   if (typeof event.rawUrl === "string" && event.rawUrl.length > 0) {
     try {
       return new URL(event.rawUrl).origin;
@@ -83,7 +104,19 @@ function getRequestOrigin(event: HandlerEvent): string {
   return host === null ? "" : `${protocol}://${host}`;
 }
 
-function isAllowedRequestOrigin(event: HandlerEvent): boolean {
+function getSafeOrigin(rawUrl: string | null): string | null {
+  if (rawUrl === null) {
+    return null;
+  }
+
+  try {
+    return new URL(rawUrl).origin;
+  } catch {
+    return null;
+  }
+}
+
+function isAllowedRequestOrigin(event: GitHubCallbackEvent): boolean {
   const requestOrigin = getRequestOrigin(event);
   if (requestOrigin.length === 0) {
     return false;
@@ -96,7 +129,7 @@ function isAllowedRequestOrigin(event: HandlerEvent): boolean {
   const allowedOrigins = new Set([requestOrigin, ...configuredOrigins, "https://github.com"]);
   const originHeader = getHeader(event, "origin");
   const refererHeader = getHeader(event, "referer");
-  const refererOrigin = refererHeader === null ? null : new URL(refererHeader).origin;
+  const refererOrigin = getSafeOrigin(refererHeader);
 
   return (originHeader === null || allowedOrigins.has(originHeader))
     && (refererOrigin === null || allowedOrigins.has(refererOrigin));
@@ -179,7 +212,7 @@ function getGitHubClientId(): string | null {
   return typeof configuredClientId === "string" && configuredClientId.length > 0 ? configuredClientId : null;
 }
 
-export const handler: Handler = async (event) => {
+export const handler = async (event: GitHubCallbackEvent): Promise<GitHubCallbackResponse> => {
   if (!isAllowedRequestOrigin(event)) {
     return createPopupBridgeResponse({
       type: "ff:github-auth:error",

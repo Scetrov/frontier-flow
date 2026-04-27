@@ -18,6 +18,7 @@
         "panel": "dedicated",
         "clear": false
       },
+      "problemMatcher": [],
       "detail": "Run Netlify Dev, which now starts the Vite dev server automatically via netlify.toml."
     },
     {
@@ -31,30 +32,6 @@
         "--open"
       ],
       "isBackground": true,
-    },
-    {
-      "label": "Local Dev Stack",
-      "dependsOrder": "parallel",
-      "dependsOn": [
-        "Vite Dev Server",
-        "Netlify Dev (Proxy Vite)"
-      ],
-      "problemMatcher": [],
-      "detail": "Start both the Vite dev server and Netlify Dev proxy together."
-    }
-  ]
-}{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Dev Server",
-      "type": "shell",
-      "command": "bun",
-      "args": ["run", "dev", "--", "--open"],
-      "isBackground": true,
-      "runOptions": {
-        "runOn": "folderOpen"
-      },
       "presentation": {
         "clear": false,
         "echo": true,
@@ -65,10 +42,23 @@
       "problemMatcher": []
     },
     {
+      "label": "Local Dev Stack",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "Vite Dev Server",
+        "Netlify Dev"
+      ],
+      "problemMatcher": [],
+      "detail": "Start both the Vite dev server and Netlify Dev proxy together."
+    },
+    {
       "label": "Build",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "build"],
+      "args": [
+        "run",
+        "build"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -77,24 +67,34 @@
         "panel": "shared",
         "reveal": "always"
       },
-      "problemMatcher": ["$tsc"]
+      "problemMatcher": [
+        "$tsc"
+      ]
     },
     {
       "label": "Typecheck",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "typecheck"],
+      "args": [
+        "run",
+        "typecheck"
+      ],
       "presentation": {
         "panel": "shared",
         "reveal": "always"
       },
-      "problemMatcher": ["$tsc"]
+      "problemMatcher": [
+        "$tsc"
+      ]
     },
     {
       "label": "Lint",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "lint"],
+      "args": [
+        "run",
+        "lint"
+      ],
       "presentation": {
         "panel": "shared",
         "reveal": "always"
@@ -105,7 +105,10 @@
       "label": "Unit Tests (watch)",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "test"],
+      "args": [
+        "run",
+        "test"
+      ],
       "isBackground": true,
       "group": "test",
       "presentation": {
@@ -118,7 +121,10 @@
       "label": "Unit Tests",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "test:run"],
+      "args": [
+        "run",
+        "test:run"
+      ],
       "group": {
         "kind": "test",
         "isDefault": true
@@ -133,7 +139,10 @@
       "label": "Playwright E2E",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "test:e2e"],
+      "args": [
+        "run",
+        "test:e2e"
+      ],
       "group": "test",
       "presentation": {
         "panel": "shared",
@@ -145,7 +154,10 @@
       "label": "Preview",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "preview"],
+      "args": [
+        "run",
+        "preview"
+      ],
       "isBackground": true,
       "presentation": {
         "panel": "shared",
@@ -157,7 +169,11 @@
       "label": "Preload Deploy Cache",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "./scripts/preload-deploy-cache.ts", "./scripts/deploy-cache-packages.json"],
+      "args": [
+        "run",
+        "./scripts/preload-deploy-cache.ts",
+        "./scripts/deploy-cache-packages.json"
+      ],
       "presentation": {
         "panel": "shared",
         "reveal": "always"
@@ -167,7 +183,11 @@
     {
       "label": "Verify Workspace",
       "dependsOrder": "sequence",
-      "dependsOn": ["Typecheck", "Lint", "Unit Tests"],
+      "dependsOn": [
+        "Typecheck",
+        "Lint",
+        "Unit Tests"
+      ],
       "problemMatcher": []
     }
   ]
