@@ -80,6 +80,14 @@ export function normalizeNodeFields(nodeType: string, incoming: unknown): NodeFi
   const fields = asRecord(incoming);
 
   switch (nodeType) {
+    case "behaviourBonus":
+      return {
+        bonusStrategy: fields.bonusStrategy === "player-target" ? "player-target" : "behaviour-only",
+      };
+    case "damageBonus":
+      return {
+        damageStrategy: fields.damageStrategy === "remaining-total" ? "remaining-total" : "weighted-break",
+      };
     case "listTribe":
       return {
         selectedTribeIds: normalizeNumberList(fields.selectedTribeIds),

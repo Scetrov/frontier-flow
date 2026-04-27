@@ -1,11 +1,28 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 import { CONTRACT_LIBRARY_STORAGE_KEY, sanitizeContractName } from "../../../src/utils/contractStorage";
 import { SEEN_TUTORIAL_STORAGE_STATE, TUTORIAL_STORAGE_KEY } from "./storage";
+import { getCompilationStatusButton } from "./workflow";
 
 import { referenceGraphFixtures } from "../referenceGraphFixtures";
 
 export const AUTHORIZATION_READINESS_QUERY = "?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120";
+
+async function triggerReferenceContractCompile(page: Page, contractName: string): Promise<void> {
+  const contractSelector = page.getByRole("combobox", { name: "Saved contract" });
+  const alternateContractName = sanitizeContractName(
+    referenceGraphFixtures.find((entry) => sanitizeContractName(entry.contractName) !== contractName)?.contractName ?? contractName,
+  );
+
+  await expect(contractSelector).toBeVisible();
+
+  if (alternateContractName !== contractName) {
+    await contractSelector.selectOption(alternateContractName);
+  }
+
+  await contractSelector.selectOption(contractName);
+  await expect(getCompilationStatusButton(page)).toContainText("Compiled", { timeout: 15000 });
+}
 
 export async function openAuthorizationReadinessPage(page: Page, contractName = referenceGraphFixtures[0]?.contractName): Promise<void> {
   const contracts = referenceGraphFixtures.map((entry) => {
@@ -45,4 +62,5 @@ export async function openAuthorizationReadinessPage(page: Page, contractName = 
   );
 
   await page.goto(`/${AUTHORIZATION_READINESS_QUERY}`);
+  await triggerReferenceContractCompile(page, activeContract.name);
 }

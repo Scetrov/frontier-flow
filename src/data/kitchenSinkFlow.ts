@@ -1,7 +1,7 @@
 import { authorableNodeDefinitions, createFlowNodeData, nodeDefinitions } from "./node-definitions";
 
 import type { GraphFixture } from "../__fixtures__/graphs/smartTurretExtensionFixtures";
-import type { FlowEdge, FlowNode } from "../types/nodes";
+import type { FlowEdge, FlowNode, NodeFieldMap } from "../types/nodes";
 import { autoArrangeFlow } from "../utils/layoutFlow";
 import { deriveFlowEdgePresentation } from "../utils/socketTypes";
 
@@ -119,7 +119,7 @@ const DEFAULT_FLOW_CONNECTIONS: ReadonlyArray<{
   },
 ] as const;
 
-function createFlowNode(id: string, type: string, position: { readonly x: number; readonly y: number }): FlowNode {
+function createFlowNode(id: string, type: string, position: { readonly x: number; readonly y: number }, fields?: NodeFieldMap): FlowNode {
   const definition = nodeDefinitions.find((candidate) => candidate.type === type);
   if (definition === undefined) {
     throw new Error(`Unknown node type for flow fixture: ${type}`);
@@ -129,7 +129,10 @@ function createFlowNode(id: string, type: string, position: { readonly x: number
     id,
     type,
     position,
-    data: createFlowNodeData(definition),
+    data: {
+      ...createFlowNodeData(definition),
+      fields: fields ?? createFlowNodeData(definition).fields,
+    },
   };
 }
 
@@ -148,7 +151,7 @@ function createStyledFlowEdge(
  */
 export function createFlowFromGraphFixture(fixture: GraphFixture): { readonly nodes: FlowNode[]; readonly edges: FlowEdge[] } {
   const nodes = autoArrangeFlow(
-    fixture.nodes.map((node) => createFlowNode(node.id, node.type, node.position)),
+    fixture.nodes.map((node) => createFlowNode(node.id, node.type, node.position, node.fields)),
     fixture.edges.map((edge) => ({
       id: edge.id,
       source: edge.source,

@@ -31,7 +31,7 @@ function stripNodeAnnotations(code: string): string {
 
 function createFlowFromFixture(fixture: GraphFixture): { readonly nodes: FlowNode[]; readonly edges: FlowEdge[] } {
   return {
-    nodes: fixture.nodes.map((node) => createFlowNode(node.id, node.type, node.position)),
+    nodes: fixture.nodes.map((node) => createFlowNode(node.id, node.type, node.position, node.fields)),
     edges: fixture.edges.map((edge) => ({
       id: edge.id,
       source: edge.source,
@@ -298,7 +298,7 @@ describe("compilePipeline", () => {
   });
 
   it.each(compileableSmartTurretExtensions)(
-    "selects the reference template for $extensionId when compiled via display name",
+    "emits graph-driven Move for $extensionId even when compiled via display name",
     async ({ contractName, fixture }) => {
       const flow = createFlowFromFixture(fixture);
       const result = await compilePipeline({
@@ -307,17 +307,29 @@ describe("compilePipeline", () => {
         moduleName: contractName,
       });
 
-      expect(result.status.state).toBe("compiled");
-      expect(result.artifact?.moduleName).toBe(fixture.moduleName);
-      expect(result.artifact?.moveSource).toContain(`module builder_extensions::${fixture.moduleName}`);
+      const changedWeightEdge = fixture.edges.find((edge) => edge.targetHandle === "weight");
+      expect(changedWeightEdge).toBeDefined();
 
-      // All reference templates must include the critical safety rules
-      // that the world contract's default turret logic enforces
-      const moveSource = result.artifact?.moveSource ?? "";
+      const changedGraphResult = await compilePipeline({
+        nodes: flow.nodes,
+        edges: flow.edges.filter((edge) => edge.id !== changedWeightEdge?.id),
+        moduleName: contractName,
+      });
+
+      expect(result.status.state).toBe("compiled");
+      expect(changedGraphResult.status.state).toBe("compiled");
+      expect(result.artifact?.moduleName).toBe(fixture.moduleName);
+      expect(changedGraphResult.artifact?.moduleName).toBe(fixture.moduleName);
+      expect(result.artifact?.moveSource).toContain(`module builder_extensions::${fixture.moduleName}`);
+      expect(changedGraphResult.artifact?.moveSource).toContain(`module builder_extensions::${fixture.moduleName}`);
+
+      const moveSource = stripNodeAnnotations(result.artifact?.moveSource ?? "");
+      const changedMoveSource = stripNodeAnnotations(changedGraphResult.artifact?.moveSource ?? "");
+
       expect(moveSource).toContain("owner_character_id");
       expect(moveSource).toContain("BEHAVIOUR_STOPPED_ATTACK");
-      expect(moveSource).toContain("return (0, false)");
       expect(moveSource).toContain("BEHAVIOUR_STARTED_ATTACK");
+      expect(changedMoveSource).not.toBe(moveSource);
     },
   );
 });
