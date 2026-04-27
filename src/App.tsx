@@ -270,6 +270,35 @@ function getGitHubIncident(diagnostics: readonly CompilerDiagnostic[]): GitHubIn
   };
 }
 
+function getVisibleGitHubIncident(
+  gitHubIncident: GitHubIncident | null,
+  dismissedGitHubIncidentSignature: string | null,
+): GitHubIncident | null {
+  return gitHubIncident !== null && gitHubIncident.signature !== dismissedGitHubIncidentSignature
+    ? gitHubIncident
+    : null;
+}
+
+function shouldRenderGitHubAuthNotice(accessState: GitHubAccessState, incident: GitHubIncident | null): boolean {
+  return incident !== null || accessState.mode === "reauth-required" || accessState.lastFailureMessage !== null;
+}
+
+function getGitHubAuthNoticeMessage(accessState: GitHubAccessState, incident: GitHubIncident | null): string {
+  if (accessState.lastFailureMessage != null) {
+    return accessState.lastFailureMessage;
+  }
+
+  if (incident?.failure.kind === "rate-limit") {
+    return "GitHub rate limited the blocked dependency fetch. Sign in with GitHub to retry this compile without losing your current workspace.";
+  }
+
+  if (accessState.mode === "reauth-required") {
+    return "Your GitHub session needs to be renewed before the blocked dependency fetch can be retried.";
+  }
+
+  return "GitHub dependency access needs attention before the blocked workflow can resume.";
+}
+
 function GitHubAuthNotice(props: {
   readonly accessState: GitHubAccessState;
   readonly hasGitHubAuth: boolean;
@@ -278,19 +307,14 @@ function GitHubAuthNotice(props: {
   readonly onSignIn: () => Promise<boolean>;
 }) {
   const { accessState, hasGitHubAuth, incident, onDismiss, onSignIn } = props;
-  const shouldRender = incident !== null || accessState.mode === "reauth-required" || accessState.lastFailureMessage !== null;
+  const shouldRender = shouldRenderGitHubAuthNotice(accessState, incident);
 
   if (!shouldRender) {
     return null;
   }
 
   const showSignIn = hasGitHubAuth && (accessState.mode === "anonymous" || accessState.mode === "reauth-required");
-  const message = accessState.lastFailureMessage
-    ?? (incident?.failure.kind === "rate-limit"
-      ? "GitHub rate limited the blocked dependency fetch. Sign in with GitHub to retry this compile without losing your current workspace."
-      : accessState.mode === "reauth-required"
-        ? "Your GitHub session needs to be renewed before the blocked dependency fetch can be retried."
-        : "GitHub dependency access needs attention before the blocked workflow can resume.");
+  const message = getGitHubAuthNoticeMessage(accessState, incident);
 
   return (
     <div className="border-b border-[var(--ui-border-dark)] bg-[rgba(32,20,13,0.94)] px-4 py-3 text-[var(--cream-white)] sm:px-6">
@@ -479,6 +503,95 @@ function resolveActiveView(input: {
   return input.activeView;
 }
 
+function StandardAppMainShell(props: Pick<
+  StandardAppLayoutProps,
+  | "activeView"
+  | "authorizeDeploymentState"
+  | "deployment"
+  | "displayStatus"
+  | "focusedDiagnosticSelection"
+  | "graphTransferWalletBridge"
+  | "isKitchenSinkRoute"
+  | "moveSourceCode"
+  | "onMoveRebuild"
+  | "onCompilationStateChange"
+  | "onRegisterContractPanelVisibility"
+  | "onRegisterInsertDemoNode"
+  | "onRemediationNoticesChange"
+  | "onRegisterRemoveDemoNode"
+  | "onRegisterSidebarVisibility"
+  | "onViewChange"
+  | "selectedDeploymentTarget"
+>) {
+  if (props.isKitchenSinkRoute) {
+    return (
+      <Suspense fallback={<main className="flex flex-1 min-h-0" aria-label="Application shell"><h1 className="sr-only">Frontier Flow</h1></main>}>
+        <KitchenSinkPage />
+      </Suspense>
+    );
+  }
+
+  return (
+    <main className="relative flex flex-1 min-h-0 overflow-hidden" aria-label="Application shell">
+      <h1 className="sr-only">Frontier Flow</h1>
+      <AppMainContent
+        activeView={props.activeView}
+        authorizeDeploymentState={props.authorizeDeploymentState}
+        deployment={props.deployment}
+        displayStatus={props.displayStatus}
+        focusedDiagnosticSelection={props.focusedDiagnosticSelection}
+        graphTransferWalletBridge={props.graphTransferWalletBridge}
+        moveSourceCode={props.moveSourceCode}
+        onMoveRebuild={props.onMoveRebuild}
+        onCompilationStateChange={props.onCompilationStateChange}
+        onRegisterContractPanelVisibility={props.onRegisterContractPanelVisibility}
+        onRegisterInsertDemoNode={props.onRegisterInsertDemoNode}
+        onRemediationNoticesChange={props.onRemediationNoticesChange}
+        onRegisterRemoveDemoNode={props.onRegisterRemoveDemoNode}
+        onRegisterSidebarVisibility={props.onRegisterSidebarVisibility}
+        onSelectedDeploymentTargetChange={props.deployment.setSelectedTarget}
+        onViewChange={props.onViewChange}
+        selectedDeploymentTarget={props.selectedDeploymentTarget}
+      />
+    </main>
+  );
+}
+
+function StandardAppOverlays(props: Pick<
+  StandardAppLayoutProps,
+  | "deployment"
+  | "diagnostics"
+  | "isPrivacyNoticeVisible"
+  | "onDismissPrivacyNotice"
+  | "onSelectDiagnostic"
+  | "remediationNotices"
+  | "displayStatus"
+  | "transientStatusMessage"
+  | "tutorialOverlay"
+>) {
+  return (
+    <>
+      {props.tutorialOverlay}
+      {props.isPrivacyNoticeVisible ? <PrivacyNoticeBanner onDismiss={props.onDismissPrivacyNotice} /> : null}
+      <Footer
+        deploymentStatus={props.deployment.deploymentStatus}
+        diagnostics={props.diagnostics}
+        onSelectDiagnostic={props.onSelectDiagnostic}
+        remediationNotices={props.remediationNotices}
+        status={props.displayStatus}
+        transientStatusMessage={props.transientStatusMessage}
+      />
+      {props.deployment.isProgressModalOpen ? (
+        <DeploymentProgressModal
+          latestAttempt={props.deployment.latestAttempt}
+          onDismiss={props.deployment.dismissProgress}
+          progress={props.deployment.progress}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function StandardAppLayout({
   activeView,
   authorizeDeploymentState,
@@ -514,6 +627,8 @@ function StandardAppLayout({
   tutorialOverlay,
   transientStatusMessage,
 }: StandardAppLayoutProps) {
+  const hasAuthorizeAccess = authorizeDeploymentState !== null;
+
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Header
@@ -522,7 +637,7 @@ function StandardAppLayout({
         canAccessMove={isCompiledWorkflowReady}
         gitHubAccessState={gitHubAccessState}
         hasGitHubAuth={hasGitHubAuth}
-        hasAuthorizeAccess={authorizeDeploymentState !== null}
+        hasAuthorizeAccess={hasAuthorizeAccess}
         isCompiling={isCompiling}
         onDetectedDeploymentTarget={(targetId) => {
           deployment.setSelectedTarget(targetId);
@@ -543,51 +658,36 @@ function StandardAppLayout({
           onSignIn={onGitHubSignIn}
         />
       )}
-      {isKitchenSinkRoute ? (
-        <Suspense fallback={<main className="flex flex-1 min-h-0" aria-label="Application shell"><h1 className="sr-only">Frontier Flow</h1></main>}>
-          <KitchenSinkPage />
-        </Suspense>
-      ) : (
-        <main className="relative flex flex-1 min-h-0 overflow-hidden" aria-label="Application shell">
-          <h1 className="sr-only">Frontier Flow</h1>
-          <AppMainContent
-            activeView={activeView}
-            authorizeDeploymentState={authorizeDeploymentState}
-            deployment={deployment}
-            displayStatus={displayStatus}
-            focusedDiagnosticSelection={focusedDiagnosticSelection}
-            graphTransferWalletBridge={graphTransferWalletBridge}
-            moveSourceCode={moveSourceCode}
-            onMoveRebuild={onMoveRebuild}
-            onCompilationStateChange={onCompilationStateChange}
-            onRegisterContractPanelVisibility={onRegisterContractPanelVisibility}
-            onRegisterInsertDemoNode={onRegisterInsertDemoNode}
-            onRemediationNoticesChange={onRemediationNoticesChange}
-            onRegisterRemoveDemoNode={onRegisterRemoveDemoNode}
-            onRegisterSidebarVisibility={onRegisterSidebarVisibility}
-            onSelectedDeploymentTargetChange={deployment.setSelectedTarget}
-            onViewChange={onViewChange}
-            selectedDeploymentTarget={selectedDeploymentTarget}
-          />
-        </main>
-      )}
-      {tutorialOverlay}
-      {isPrivacyNoticeVisible ? <PrivacyNoticeBanner onDismiss={onDismissPrivacyNotice} /> : null}
-      <Footer
-        deploymentStatus={deployment.deploymentStatus}
+      <StandardAppMainShell
+        activeView={activeView}
+        authorizeDeploymentState={authorizeDeploymentState}
+        deployment={deployment}
+        displayStatus={displayStatus}
+        focusedDiagnosticSelection={focusedDiagnosticSelection}
+        graphTransferWalletBridge={graphTransferWalletBridge}
+        isKitchenSinkRoute={isKitchenSinkRoute}
+        moveSourceCode={moveSourceCode}
+        onMoveRebuild={onMoveRebuild}
+        onCompilationStateChange={onCompilationStateChange}
+        onRegisterContractPanelVisibility={onRegisterContractPanelVisibility}
+        onRegisterInsertDemoNode={onRegisterInsertDemoNode}
+        onRemediationNoticesChange={onRemediationNoticesChange}
+        onRegisterRemoveDemoNode={onRegisterRemoveDemoNode}
+        onRegisterSidebarVisibility={onRegisterSidebarVisibility}
+        onViewChange={onViewChange}
+        selectedDeploymentTarget={selectedDeploymentTarget}
+      />
+      <StandardAppOverlays
+        deployment={deployment}
         diagnostics={diagnostics}
+        displayStatus={displayStatus}
+        isPrivacyNoticeVisible={isPrivacyNoticeVisible}
+        onDismissPrivacyNotice={onDismissPrivacyNotice}
         onSelectDiagnostic={onSelectDiagnostic}
         remediationNotices={remediationNotices}
-        status={displayStatus}
         transientStatusMessage={transientStatusMessage}
+        tutorialOverlay={tutorialOverlay}
       />
-      {deployment.isProgressModalOpen ? (
-        <DeploymentProgressModal
-          latestAttempt={deployment.latestAttempt}
-          onDismiss={deployment.dismissProgress}
-          progress={deployment.progress}
-        />
-      ) : null}
     </div>
   );
 }
@@ -834,6 +934,211 @@ function useTutorialBridge(resolvedActiveView: PrimaryView) {
   return { tutorial, setSidebarOpenRef, setContractPanelOpenRef, insertDemoNodeRef, removeDemoNodeRef };
 }
 
+function useMoveBuilderAccessTokenProvider(gitHubAccessToken: string | null): void {
+  useEffect(() => {
+    setMoveBuilderGitHubAccessTokenProvider(() => gitHubAccessToken);
+
+    return () => {
+      setMoveBuilderGitHubAccessTokenProvider(null);
+    };
+  }, [gitHubAccessToken]);
+}
+
+function useInitialAppState(): InitialAppState {
+  return useMemo(() => getInitialAppState(), []);
+}
+
+function useLocalEnvironmentSubscription(setLocalEnvironmentRevision: React.Dispatch<React.SetStateAction<number>>): void {
+  useEffect(() => subscribeToLocalEnvironmentChanges(() => {
+    setLocalEnvironmentRevision((currentValue) => currentValue + 1);
+  }), [setLocalEnvironmentRevision]);
+}
+
+interface GraphTransferWalletMutation {
+  readonly mutateAsync: (input: {
+    readonly transaction: Parameters<GraphTransferWalletBridge["signAndExecuteTransaction"]>[0];
+  }) => Promise<{ readonly digest: string }>;
+}
+
+function useGraphTransferWalletBridge(
+  currentAccount: ReturnType<typeof useCurrentAccount>,
+  isConnected: boolean,
+  signAndExecuteTransaction: GraphTransferWalletMutation,
+): GraphTransferWalletBridge {
+  return useMemo<GraphTransferWalletBridge>(() => ({
+    accountAddress: currentAccount?.address ?? null,
+    walletConnected: isConnected,
+    signAndExecuteTransaction: async (transaction) => {
+      const result = await signAndExecuteTransaction.mutateAsync({ transaction });
+      return { digest: result.digest };
+    },
+  }), [currentAccount?.address, isConnected, signAndExecuteTransaction]);
+}
+
+function createTutorialOverlay(tutorial: ReturnType<typeof useTutorialBridge>["tutorial"]) {
+  return tutorial.isActive || tutorial.currentStep !== null ? (
+    <Suspense fallback={null}>
+      <TutorialOverlay
+        currentStep={tutorial.currentStep}
+        currentStepIndex={tutorial.currentStepIndex}
+        isActive={tutorial.isActive}
+        onDismiss={tutorial.dismiss}
+        onNext={tutorial.next}
+        targetRect={tutorial.targetRect}
+        totalSteps={tutorial.totalSteps}
+      />
+    </Suspense>
+  ) : null;
+}
+
+interface VisibilitySetterRef {
+  current: (open: boolean) => void;
+}
+
+interface DemoNodeSetterRef {
+  current: () => void;
+}
+
+function useStandardAppLayoutBindings(input: {
+  readonly beginGitHubSignIn: () => Promise<boolean>;
+  readonly clearGitHubFailure: () => void;
+  readonly gitHubIncident: GitHubIncident | null;
+  readonly insertDemoNodeRef: DemoNodeSetterRef;
+  readonly removeDemoNodeRef: DemoNodeSetterRef;
+  readonly setContractPanelOpenRef: VisibilitySetterRef;
+  readonly setDismissedGitHubIncidentSignature: (signature: string | null) => void;
+  readonly setIsPrivacyNoticeVisible: (visible: boolean) => void;
+  readonly setSidebarOpenRef: VisibilitySetterRef;
+  readonly signOutFromGitHub: () => void;
+  readonly tutorial: ReturnType<typeof useTutorialBridge>["tutorial"];
+}) {
+  const {
+    beginGitHubSignIn,
+    clearGitHubFailure,
+    gitHubIncident,
+    insertDemoNodeRef,
+    removeDemoNodeRef,
+    setContractPanelOpenRef,
+    setDismissedGitHubIncidentSignature,
+    setIsPrivacyNoticeVisible,
+    setSidebarOpenRef,
+    signOutFromGitHub,
+    tutorial,
+  } = input;
+
+  const handleDismissPrivacyNotice = useCallback(() => {
+    acknowledgePrivacyNotice(getBrowserStorage());
+    setIsPrivacyNoticeVisible(false);
+  }, [setIsPrivacyNoticeVisible]);
+
+  const handleGitHubSignIn = useCallback(async () => {
+    setDismissedGitHubIncidentSignature(null);
+    return beginGitHubSignIn();
+  }, [beginGitHubSignIn, setDismissedGitHubIncidentSignature]);
+
+  const handleGitHubSignOut = useCallback(() => {
+    setDismissedGitHubIncidentSignature(null);
+    signOutFromGitHub();
+  }, [setDismissedGitHubIncidentSignature, signOutFromGitHub]);
+
+  const handleDismissGitHubIncident = useCallback(() => {
+    setDismissedGitHubIncidentSignature(gitHubIncident?.signature ?? null);
+    clearGitHubFailure();
+  }, [clearGitHubFailure, gitHubIncident?.signature, setDismissedGitHubIncidentSignature]);
+
+  const tutorialOverlay = useMemo(() => createTutorialOverlay(tutorial), [tutorial]);
+  const registerContractPanelVisibility = useCallback((setContractPanelOpen: (open: boolean) => void) => {
+    setContractPanelOpenRef.current = setContractPanelOpen;
+  }, [setContractPanelOpenRef]);
+  const registerInsertDemoNode = useCallback((insertDemoNode: () => void) => {
+    insertDemoNodeRef.current = insertDemoNode;
+  }, [insertDemoNodeRef]);
+  const registerRemoveDemoNode = useCallback((removeDemoNode: () => void) => {
+    removeDemoNodeRef.current = removeDemoNode;
+  }, [removeDemoNodeRef]);
+  const registerSidebarVisibility = useCallback((setSidebarOpen: (open: boolean) => void) => {
+    setSidebarOpenRef.current = setSidebarOpen;
+  }, [setSidebarOpenRef]);
+
+  return {
+    handleDismissGitHubIncident,
+    handleDismissPrivacyNotice,
+    handleGitHubSignIn,
+    handleGitHubSignOut,
+    registerContractPanelVisibility,
+    registerInsertDemoNode,
+    registerRemoveDemoNode,
+    registerSidebarVisibility,
+    tutorialOverlay,
+  };
+}
+
+function useGitHubIncidentRecovery(input: {
+  readonly gitHubAccessStateMode: GitHubAccessState["mode"];
+  readonly gitHubIncident: GitHubIncident | null;
+  readonly pendingRetryContext: PendingGitHubRetryContext | null;
+  readonly reportGitHubFailure: (failure: GitHubFailureClassification) => void;
+  readonly setPendingRetryContext: (context: PendingGitHubRetryContext | null) => void;
+  readonly onMoveRebuild: () => Promise<void>;
+  readonly displayStatusState: CompilationStatus["state"] | DeploymentStatus["status"];
+  readonly clearGitHubFailure: () => void;
+}): void {
+  const activeGitHubRetryRequestIdRef = useRef<string | null>(null);
+  const lastHandledGitHubIncidentSignatureRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (input.gitHubIncident === null) {
+      lastHandledGitHubIncidentSignatureRef.current = null;
+      return;
+    }
+
+    if (input.gitHubIncident.signature === lastHandledGitHubIncidentSignatureRef.current) {
+      return;
+    }
+
+    lastHandledGitHubIncidentSignatureRef.current = input.gitHubIncident.signature;
+
+    if (input.gitHubIncident.failure.kind === "rate-limit" && input.pendingRetryContext === null) {
+      input.setPendingRetryContext(createPendingGitHubRetryContext());
+    }
+
+    if (input.gitHubIncident.failure.kind === "bad-credentials" || input.gitHubIncident.failure.kind === "insufficient-permission") {
+      input.reportGitHubFailure(input.gitHubIncident.failure);
+    }
+  }, [input]);
+
+  useEffect(() => {
+    if (
+      input.gitHubAccessStateMode !== "authenticated"
+      || input.pendingRetryContext === null
+      || input.pendingRetryContext.retryCount > 0
+      || activeGitHubRetryRequestIdRef.current !== null
+    ) {
+      return;
+    }
+
+    activeGitHubRetryRequestIdRef.current = input.pendingRetryContext.requestId;
+    input.setPendingRetryContext({
+      ...input.pendingRetryContext,
+      retryCount: 1,
+    });
+    void input.onMoveRebuild();
+  }, [input]);
+
+  useEffect(() => {
+    if (activeGitHubRetryRequestIdRef.current === null || input.displayStatusState === "compiling") {
+      return;
+    }
+
+    input.setPendingRetryContext(null);
+    if (input.displayStatusState === "compiled") {
+      input.clearGitHubFailure();
+    }
+
+    activeGitHubRetryRequestIdRef.current = null;
+  }, [input]);
+}
+
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
   const [, setLocalEnvironmentRevision] = useState(0);
   const currentAccount = useCurrentAccount();
@@ -841,9 +1146,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
   const [isPrivacyNoticeVisible, setIsPrivacyNoticeVisible] = useState(() => shouldShowPrivacyNotice(getBrowserStorage()));
   const [dismissedGitHubIncidentSignature, setDismissedGitHubIncidentSignature] = useState<string | null>(null);
-  const activeGitHubRetryRequestIdRef = useRef<string | null>(null);
-  const lastHandledGitHubIncidentSignatureRef = useRef<string | null>(null);
-  const initialAppState = useMemo(() => getInitialAppState(), []);
+  const initialAppState = useInitialAppState();
   const {
     authorizeDeploymentState,
     deployment,
@@ -875,96 +1178,24 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
     signOut: signOutFromGitHub,
   } = useGitHubAuth();
   const gitHubIncident = useMemo(() => getGitHubIncident(diagnostics), [diagnostics]);
-  const visibleGitHubIncident = gitHubIncident !== null && gitHubIncident.signature !== dismissedGitHubIncidentSignature
-    ? gitHubIncident
-    : null;
-  const graphTransferWalletBridge = useMemo<GraphTransferWalletBridge>(() => ({
-    accountAddress: currentAccount?.address ?? null,
-    walletConnected: isConnected,
-    signAndExecuteTransaction: async (transaction) => {
-      const result = await signAndExecuteTransaction.mutateAsync({ transaction });
-      return { digest: result.digest };
-    },
-  }), [currentAccount?.address, isConnected, signAndExecuteTransaction]);
-  const handleDismissPrivacyNotice = useCallback(() => {
-    acknowledgePrivacyNotice(getBrowserStorage());
-    setIsPrivacyNoticeVisible(false);
-  }, []);
+  const visibleGitHubIncident = getVisibleGitHubIncident(gitHubIncident, dismissedGitHubIncidentSignature);
+  const graphTransferWalletBridge = useGraphTransferWalletBridge(currentAccount, isConnected, signAndExecuteTransaction as GraphTransferWalletMutation);
   const { tutorial, setSidebarOpenRef, setContractPanelOpenRef, insertDemoNodeRef, removeDemoNodeRef } = useTutorialBridge(resolvedActiveView);
+  const layoutBindings = useStandardAppLayoutBindings({ beginGitHubSignIn, clearGitHubFailure, gitHubIncident, insertDemoNodeRef, removeDemoNodeRef, setContractPanelOpenRef, setDismissedGitHubIncidentSignature, setIsPrivacyNoticeVisible, setSidebarOpenRef, signOutFromGitHub, tutorial });
 
-  useEffect(() => {
-    setMoveBuilderGitHubAccessTokenProvider(() => gitHubAccessToken);
+  useMoveBuilderAccessTokenProvider(gitHubAccessToken);
+  useGitHubIncidentRecovery({
+    gitHubAccessStateMode: gitHubAccessState.mode,
+    gitHubIncident,
+    pendingRetryContext,
+    reportGitHubFailure,
+    setPendingRetryContext,
+    onMoveRebuild,
+    displayStatusState: displayStatus.state,
+    clearGitHubFailure,
+  });
 
-    return () => {
-      setMoveBuilderGitHubAccessTokenProvider(null);
-    };
-  }, [gitHubAccessToken]);
-
-  useEffect(() => {
-    if (gitHubIncident === null) {
-      lastHandledGitHubIncidentSignatureRef.current = null;
-      return;
-    }
-
-    if (gitHubIncident.signature === lastHandledGitHubIncidentSignatureRef.current) {
-      return;
-    }
-
-    lastHandledGitHubIncidentSignatureRef.current = gitHubIncident.signature;
-
-    if (gitHubIncident.failure.kind === "rate-limit" && pendingRetryContext === null) {
-      setPendingRetryContext(createPendingGitHubRetryContext());
-    }
-
-    if (gitHubIncident.failure.kind === "bad-credentials" || gitHubIncident.failure.kind === "insufficient-permission") {
-      reportGitHubFailure(gitHubIncident.failure);
-    }
-  }, [gitHubIncident, pendingRetryContext, reportGitHubFailure, setPendingRetryContext]);
-
-  useEffect(() => {
-    if (
-      gitHubAccessState.mode !== "authenticated"
-      || pendingRetryContext === null
-      || pendingRetryContext.retryCount > 0
-      || activeGitHubRetryRequestIdRef.current !== null
-    ) {
-      return;
-    }
-
-    activeGitHubRetryRequestIdRef.current = pendingRetryContext.requestId;
-    setPendingRetryContext({
-      ...pendingRetryContext,
-      retryCount: 1,
-    });
-    void onMoveRebuild();
-  }, [gitHubAccessState.mode, onMoveRebuild, pendingRetryContext, setPendingRetryContext]);
-
-  useEffect(() => {
-    if (activeGitHubRetryRequestIdRef.current === null || displayStatus.state === "compiling") {
-      return;
-    }
-
-    setPendingRetryContext(null);
-    if (displayStatus.state === "compiled") {
-      clearGitHubFailure();
-    }
-
-    activeGitHubRetryRequestIdRef.current = null;
-  }, [clearGitHubFailure, displayStatus.state, setPendingRetryContext]);
-
-  const handleGitHubSignIn = useCallback(async () => {
-    setDismissedGitHubIncidentSignature(null);
-    return beginGitHubSignIn();
-  }, [beginGitHubSignIn]);
-
-  const handleGitHubSignOut = useCallback(() => {
-    setDismissedGitHubIncidentSignature(null);
-    signOutFromGitHub();
-  }, [signOutFromGitHub]);
-
-  useEffect(() => subscribeToLocalEnvironmentChanges(() => {
-    setLocalEnvironmentRevision((currentValue) => currentValue + 1);
-  }), []);
+  useLocalEnvironmentSubscription(setLocalEnvironmentRevision);
 
   return (
     <StandardAppLayout
@@ -983,48 +1214,23 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
       isCompiledWorkflowReady={isCompiledWorkflowReady}
       isKitchenSinkRoute={isKitchenSinkRoute}
       moveSourceCode={moveSourceCode}
-      onDismissGitHubIncident={() => {
-        setDismissedGitHubIncidentSignature(gitHubIncident?.signature ?? null);
-        clearGitHubFailure();
-      }}
-      onDismissPrivacyNotice={handleDismissPrivacyNotice}
-      onGitHubSignIn={handleGitHubSignIn}
-      onGitHubSignOut={handleGitHubSignOut}
+      onDismissGitHubIncident={layoutBindings.handleDismissGitHubIncident}
+      onDismissPrivacyNotice={layoutBindings.handleDismissPrivacyNotice}
+      onGitHubSignIn={layoutBindings.handleGitHubSignIn}
+      onGitHubSignOut={layoutBindings.handleGitHubSignOut}
       onMoveRebuild={onMoveRebuild}
       onCompilationStateChange={onCompilationStateChange}
-      onRegisterContractPanelVisibility={(setContractPanelOpen) => {
-        setContractPanelOpenRef.current = setContractPanelOpen;
-      }}
-      onRegisterInsertDemoNode={(insertDemoNode) => {
-        insertDemoNodeRef.current = insertDemoNode;
-      }}
+      onRegisterContractPanelVisibility={layoutBindings.registerContractPanelVisibility}
+      onRegisterInsertDemoNode={layoutBindings.registerInsertDemoNode}
       onRemediationNoticesChange={setRemediationNotices}
-      onRegisterRemoveDemoNode={(removeDemoNode) => {
-        removeDemoNodeRef.current = removeDemoNode;
-      }}
-      onRegisterSidebarVisibility={(setSidebarOpen) => {
-        setSidebarOpenRef.current = setSidebarOpen;
-      }}
+      onRegisterRemoveDemoNode={layoutBindings.registerRemoveDemoNode}
+      onRegisterSidebarVisibility={layoutBindings.registerSidebarVisibility}
       onSelectDiagnostic={onSelectDiagnostic}
       onStartTutorial={tutorial.start}
       onViewChange={setActiveView}
       remediationNotices={remediationNotices}
       selectedDeploymentTarget={selectedDeploymentTarget}
-      tutorialOverlay={(
-        tutorial.isActive || tutorial.currentStep !== null ? (
-          <Suspense fallback={null}>
-            <TutorialOverlay
-              currentStep={tutorial.currentStep}
-              currentStepIndex={tutorial.currentStepIndex}
-              isActive={tutorial.isActive}
-              onDismiss={tutorial.dismiss}
-              onNext={tutorial.next}
-              targetRect={tutorial.targetRect}
-              totalSteps={tutorial.totalSteps}
-            />
-          </Suspense>
-        ) : null
-      )}
+      tutorialOverlay={layoutBindings.tutorialOverlay}
       transientStatusMessage={transientStatusMessage}
     />
   );

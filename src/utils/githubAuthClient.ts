@@ -36,6 +36,43 @@ function normalizeMessage(rawMessage: string): string {
   return rawMessage.trim().toLowerCase();
 }
 
+function hasAnyPattern(message: string, patterns: readonly string[]): boolean {
+  return patterns.some((pattern) => message.includes(pattern));
+}
+
+const RATE_LIMIT_PATTERNS = ["rate limit", "too many requests"] as const;
+const BAD_CREDENTIALS_PATTERNS = ["bad credentials", "requires authentication"] as const;
+const INSUFFICIENT_PERMISSION_PATTERNS = ["resource not accessible", "insufficient", "forbidden"] as const;
+const NETWORK_PATTERNS = ["failed to fetch", "network"] as const;
+
+function isRateLimitResponse(status: number, rateLimitRemaining: number | null, combinedMessage: string): boolean {
+  return status === 429 || rateLimitRemaining === 0 || hasAnyPattern(combinedMessage, RATE_LIMIT_PATTERNS);
+}
+
+function isBadCredentialsResponse(status: number, combinedMessage: string): boolean {
+  return status === 401 || hasAnyPattern(combinedMessage, BAD_CREDENTIALS_PATTERNS);
+}
+
+function isInsufficientPermissionResponse(status: number, combinedMessage: string): boolean {
+  return status === 403 || hasAnyPattern(combinedMessage, INSUFFICIENT_PERMISSION_PATTERNS);
+}
+
+function getFallbackFailureKind(status: number): GitHubFailureClassification["kind"] {
+  return status >= 500 ? "network" : "unknown";
+}
+
+function isRateLimitMessage(normalizedMessage: string, hasStatus429: boolean): boolean {
+  return hasStatus429 || hasAnyPattern(normalizedMessage, RATE_LIMIT_PATTERNS);
+}
+
+function isBadCredentialsMessage(normalizedMessage: string, hasStatus401: boolean): boolean {
+  return hasStatus401 || hasAnyPattern(normalizedMessage, [BAD_CREDENTIALS_PATTERNS[0]]);
+}
+
+function isInsufficientPermissionMessage(normalizedMessage: string, hasStatus403: boolean): boolean {
+  return hasStatus403 || hasAnyPattern(normalizedMessage, [INSUFFICIENT_PERMISSION_PATTERNS[0], INSUFFICIENT_PERMISSION_PATTERNS[2]]);
+}
+
 function getMessageKey(kind: GitHubFailureClassification["kind"]): GitHubFailureClassification["messageKey"] {
   return `github.${kind}`;
 }
@@ -104,12 +141,7 @@ export async function classifyGitHubApiFailure(response: Response): Promise<GitH
   const resetAtSeconds = parseHeaderNumber(response.headers.get("x-ratelimit-reset"));
   const resetAt = resetAtSeconds === null ? null : resetAtSeconds * 1000;
 
-  if (
-    response.status === 429
-    || rateLimitRemaining === 0
-    || combinedMessage.includes("rate limit")
-    || combinedMessage.includes("too many requests")
-  ) {
+  if (isRateLimitResponse(response.status, rateLimitRemaining, combinedMessage)) {
     return {
       httpStatus: response.status,
       kind: "rate-limit",
@@ -119,11 +151,7 @@ export async function classifyGitHubApiFailure(response: Response): Promise<GitH
     };
   }
 
-  if (
-    response.status === 401
-    || combinedMessage.includes("bad credentials")
-    || combinedMessage.includes("requires authentication")
-  ) {
+  if (isBadCredentialsResponse(response.status, combinedMessage)) {
     return {
       httpStatus: response.status,
       kind: "bad-credentials",
@@ -133,12 +161,7 @@ export async function classifyGitHubApiFailure(response: Response): Promise<GitH
     };
   }
 
-  if (
-    response.status === 403
-    || combinedMessage.includes("resource not accessible")
-    || combinedMessage.includes("insufficient")
-    || combinedMessage.includes("forbidden")
-  ) {
+  if (isInsufficientPermissionResponse(response.status, combinedMessage)) {
     return {
       httpStatus: response.status,
       kind: "insufficient-permission",
@@ -148,12 +171,14 @@ export async function classifyGitHubApiFailure(response: Response): Promise<GitH
     };
   }
 
+  const fallbackFailureKind = getFallbackFailureKind(response.status);
+
   return {
     httpStatus: response.status,
-    kind: response.status >= 500 ? "network" : "unknown",
+    kind: fallbackFailureKind,
     rateLimitRemaining,
     resetAt,
-    messageKey: getMessageKey(response.status >= 500 ? "network" : "unknown"),
+    messageKey: getMessageKey(fallbackFailureKind),
   };
 }
 
@@ -162,18 +187,17 @@ export async function classifyGitHubApiFailure(response: Response): Promise<GitH
  */
 export function classifyGitHubErrorMessage(rawMessage: string): GitHubFailureClassification | null {
   const normalizedMessage = normalizeMessage(rawMessage);
+  const hasStatus429 = normalizedMessage.includes("429");
+  const hasStatus401 = normalizedMessage.includes("401");
+  const hasStatus403 = normalizedMessage.includes("403");
 
   if (normalizedMessage.length === 0) {
     return null;
   }
 
-  if (
-    normalizedMessage.includes("429")
-    || normalizedMessage.includes("rate limit")
-    || normalizedMessage.includes("too many requests")
-  ) {
+  if (isRateLimitMessage(normalizedMessage, hasStatus429)) {
     return {
-      httpStatus: normalizedMessage.includes("429") ? 429 : 403,
+      httpStatus: hasStatus429 ? 429 : 403,
       kind: "rate-limit",
       rateLimitRemaining: normalizedMessage.includes("remaining 0") ? 0 : null,
       resetAt: null,
@@ -181,7 +205,7 @@ export function classifyGitHubErrorMessage(rawMessage: string): GitHubFailureCla
     };
   }
 
-  if (normalizedMessage.includes("401") || normalizedMessage.includes("bad credentials")) {
+  if (isBadCredentialsMessage(normalizedMessage, hasStatus401)) {
     return {
       httpStatus: 401,
       kind: "bad-credentials",
@@ -191,11 +215,7 @@ export function classifyGitHubErrorMessage(rawMessage: string): GitHubFailureCla
     };
   }
 
-  if (
-    normalizedMessage.includes("403")
-    || normalizedMessage.includes("forbidden")
-    || normalizedMessage.includes("resource not accessible")
-  ) {
+  if (isInsufficientPermissionMessage(normalizedMessage, hasStatus403)) {
     return {
       httpStatus: 403,
       kind: "insufficient-permission",
@@ -205,7 +225,7 @@ export function classifyGitHubErrorMessage(rawMessage: string): GitHubFailureCla
     };
   }
 
-  if (normalizedMessage.includes("failed to fetch") || normalizedMessage.includes("network")) {
+  if (hasAnyPattern(normalizedMessage, NETWORK_PATTERNS)) {
     return {
       httpStatus: 0,
       kind: "network",
