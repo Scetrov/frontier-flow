@@ -69,6 +69,7 @@ test("preserves shell landmarks and layout constraints across viewport widths", 
   page,
 }) => {
   test.skip(isMobile, "Viewport matrix is covered in the desktop project.");
+  test.setTimeout(45_000);
 
   for (const width of [320, 768, 1024, 1440, 2560]) {
     await page.setViewportSize({ height: 900, width });

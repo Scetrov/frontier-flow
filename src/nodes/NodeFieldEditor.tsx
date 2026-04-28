@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
+  BEHAVIOUR_CODE_OPTIONS,
   SHIP_GROUP_OPTIONS,
   getNumberFieldList,
   getStringFieldList,
@@ -214,6 +215,7 @@ function NodeFieldEditorBody({
   onRemoveCharacter,
   onSetDraftFields,
   remoteOptions,
+  selectedBehaviourCodes,
   selectedGroupIds,
   selectedShipIds,
   selectedTribeIds,
@@ -228,6 +230,7 @@ function NodeFieldEditorBody({
   readonly onRemoveCharacter: (value: string) => void;
   readonly onSetDraftFields: React.Dispatch<React.SetStateAction<NodeFieldMap>>;
   readonly remoteOptions: readonly SelectableOption[];
+  readonly selectedBehaviourCodes: ReadonlySet<number>;
   readonly selectedGroupIds: ReadonlySet<number>;
   readonly selectedShipIds: ReadonlySet<number>;
   readonly selectedTribeIds: ReadonlySet<number>;
@@ -267,6 +270,19 @@ function NodeFieldEditorBody({
           onAdd={onAddCharacter}
           onAddressChange={onAddressChange}
           onRemove={onRemoveCharacter}
+        />
+      ) : null}
+
+      {nodeType === "hasBehaviour" ? (
+        <NumericOptionEditor
+          error={null}
+          heading="Select one or more behaviour codes this predicate should match."
+          loading={false}
+          onToggle={(value) => {
+            onSetDraftFields((currentFields) => toggleNumericField(currentFields, "selectedBehaviourCodes", value, nodeType));
+          }}
+          options={BEHAVIOUR_CODE_OPTIONS}
+          selectedValues={selectedBehaviourCodes}
         />
       ) : null}
 
@@ -376,6 +392,7 @@ function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeF
 
   const selectedTribeIds = useMemo(() => new Set(getNumberFieldList(draftFields, "selectedTribeIds")), [draftFields]);
   const selectedShipIds = useMemo(() => new Set(getNumberFieldList(draftFields, "selectedShipIds")), [draftFields]);
+  const selectedBehaviourCodes = useMemo(() => new Set(getNumberFieldList(draftFields, "selectedBehaviourCodes")), [draftFields]);
   const selectedGroupIds = useMemo(() => new Set(getNumberFieldList(draftFields, "selectedGroupIds")), [draftFields]);
   const characterAddresses = getStringFieldList(draftFields, "characterAddresses");
 
@@ -421,6 +438,7 @@ function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeF
         }}
         onSetDraftFields={setDraftFields}
         remoteOptions={remoteOptions}
+        selectedBehaviourCodes={selectedBehaviourCodes}
         selectedGroupIds={selectedGroupIds}
         selectedShipIds={selectedShipIds}
         selectedTribeIds={selectedTribeIds}

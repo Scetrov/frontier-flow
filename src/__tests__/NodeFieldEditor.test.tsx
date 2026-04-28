@@ -137,4 +137,24 @@ describe("NodeFieldEditor", () => {
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ selectedTribeIds: [1, 2, 3] }));
   });
+
+  it("renders local behaviour options and saves them in deterministic sorted order", () => {
+    const onSave = vi.fn();
+
+    render(
+      <NodeFieldEditor
+        fields={{ selectedBehaviourCodes: [3] }}
+        nodeLabel="Has Behaviour"
+        nodeType="hasBehaviour"
+        onClose={() => undefined}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Entered/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Started Attack/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ selectedBehaviourCodes: [1, 2, 3] }));
+  });
 });

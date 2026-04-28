@@ -136,4 +136,29 @@ describe("restoreSavedFlow", () => {
     expect(restoredFlow.nodes[0]?.data.sockets.map((socket) => socket.id)).toEqual(["priority", "target"]);
     expect(restoredFlow.remediationNotices).toHaveLength(0);
   });
+
+  it("rehydrates deprecated Has Stopped Attack nodes instead of dropping saved graphs", () => {
+    const restoredFlow = restoreSavedFlow(
+      [
+        {
+          id: "legacy_has_stopped_attack",
+          type: "hasStoppedAttack",
+          position: { x: 0, y: 0 },
+          data: {
+            fields: {},
+          } as never,
+        },
+      ],
+      [],
+    );
+
+    expect(restoredFlow.nodes).toHaveLength(1);
+    expect(restoredFlow.nodes[0]?.type).toBe("hasStoppedAttack");
+    expect(restoredFlow.nodes[0]?.data.deprecation).toEqual(
+      expect.objectContaining({
+        status: "deprecated",
+        replacedBy: ["hasBehaviour"],
+      }),
+    );
+  });
 });

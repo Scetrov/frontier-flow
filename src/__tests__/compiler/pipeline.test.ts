@@ -75,6 +75,89 @@ describe("compilePipeline", () => {
     expect(stripNodeAnnotations(result.code ?? "").trim()).toBe(expectedDefaultTurret.trim());
   });
 
+  it("compiles Has Behaviour into an OR predicate across the selected behaviour codes", async () => {
+    const result = await compilePipeline({
+      moduleName: "behaviour_filter",
+      nodes: [
+        createFlowNode("trigger", "aggression"),
+        createFlowNode("get_behaviour", "getBehaviour"),
+        createFlowNode("has_behaviour", "hasBehaviour", { x: 0, y: 0 }, { selectedBehaviourCodes: [1, 3] }),
+        createFlowNode("get_weight", "getPriorityWeight"),
+        createFlowNode("queue", "addToQueue"),
+      ],
+      edges: [
+        { id: "edge_target_behaviour", source: "trigger", sourceHandle: "target", target: "get_behaviour", targetHandle: "target" },
+        { id: "edge_behaviour_match", source: "get_behaviour", sourceHandle: "behaviour", target: "has_behaviour", targetHandle: "behaviour" },
+        { id: "edge_target_weight", source: "trigger", sourceHandle: "target", target: "get_weight", targetHandle: "target" },
+        { id: "edge_priority_queue", source: "trigger", sourceHandle: "priority", target: "queue", targetHandle: "priority_in" },
+        { id: "edge_target_queue", source: "trigger", sourceHandle: "target", target: "queue", targetHandle: "target" },
+        { id: "edge_predicate_queue", source: "has_behaviour", sourceHandle: "matches", target: "queue", targetHandle: "predicate" },
+        { id: "edge_weight_queue", source: "get_weight", sourceHandle: "weight", target: "queue", targetHandle: "weight" },
+      ],
+    });
+
+    expect(result.status.state).toBe("compiled");
+    expect(result.artifact?.moveSource).toContain("== BEHAVIOUR_ENTERED ||");
+    expect(result.artifact?.moveSource).toContain("== BEHAVIOUR_STOPPED_ATTACK");
+  });
+
+  it("fails validation when Has Behaviour has no selected behaviour codes", async () => {
+    const result = await compilePipeline({
+      moduleName: "behaviour_filter_invalid",
+      nodes: [
+        createFlowNode("trigger", "aggression"),
+        createFlowNode("get_behaviour", "getBehaviour"),
+        createFlowNode("has_behaviour", "hasBehaviour"),
+        createFlowNode("get_weight", "getPriorityWeight"),
+        createFlowNode("queue", "addToQueue"),
+      ],
+      edges: [
+        { id: "edge_target_behaviour", source: "trigger", sourceHandle: "target", target: "get_behaviour", targetHandle: "target" },
+        { id: "edge_behaviour_match", source: "get_behaviour", sourceHandle: "behaviour", target: "has_behaviour", targetHandle: "behaviour" },
+        { id: "edge_target_weight", source: "trigger", sourceHandle: "target", target: "get_weight", targetHandle: "target" },
+        { id: "edge_priority_queue", source: "trigger", sourceHandle: "priority", target: "queue", targetHandle: "priority_in" },
+        { id: "edge_target_queue", source: "trigger", sourceHandle: "target", target: "queue", targetHandle: "target" },
+        { id: "edge_predicate_queue", source: "has_behaviour", sourceHandle: "matches", target: "queue", targetHandle: "predicate" },
+        { id: "edge_weight_queue", source: "get_weight", sourceHandle: "weight", target: "queue", targetHandle: "weight" },
+      ],
+    });
+
+    expect(result.status.state).toBe("error");
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reactFlowNodeId: "has_behaviour",
+          userMessage: "Select at least one behaviour before compiling Has Behaviour.",
+        }),
+      ]),
+    );
+  });
+
+  it("keeps deprecated Has Stopped Attack graphs compiling unchanged", async () => {
+    const result = await compilePipeline({
+      moduleName: "legacy_has_stopped_attack",
+      nodes: [
+        createFlowNode("trigger", "aggression"),
+        createFlowNode("get_behaviour", "getBehaviour"),
+        createFlowNode("has_stopped_attack", "hasStoppedAttack"),
+        createFlowNode("get_weight", "getPriorityWeight"),
+        createFlowNode("queue", "addToQueue"),
+      ],
+      edges: [
+        { id: "edge_target_behaviour", source: "trigger", sourceHandle: "target", target: "get_behaviour", targetHandle: "target" },
+        { id: "edge_behaviour_match", source: "get_behaviour", sourceHandle: "behaviour", target: "has_stopped_attack", targetHandle: "behaviour" },
+        { id: "edge_target_weight", source: "trigger", sourceHandle: "target", target: "get_weight", targetHandle: "target" },
+        { id: "edge_priority_queue", source: "trigger", sourceHandle: "priority", target: "queue", targetHandle: "priority_in" },
+        { id: "edge_target_queue", source: "trigger", sourceHandle: "target", target: "queue", targetHandle: "target" },
+        { id: "edge_predicate_queue", source: "has_stopped_attack", sourceHandle: "matches", target: "queue", targetHandle: "predicate" },
+        { id: "edge_weight_queue", source: "get_weight", sourceHandle: "weight", target: "queue", targetHandle: "weight" },
+      ],
+    });
+
+    expect(result.status.state).toBe("compiled");
+    expect(result.artifact?.moveSource).toContain("== BEHAVIOUR_STOPPED_ATTACK");
+  });
+
   it.each(referenceGraphCases)("compiles the $name reference graph into the expected artifact", async ({ fixture, expectedMove }) => {
     const flow = createFlowFromFixture(fixture);
     const result = await compilePipeline({

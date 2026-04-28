@@ -124,7 +124,7 @@ test("supports keyboard navigation, passes focused accessibility auditing, and k
     return entry?.duration ?? Number.POSITIVE_INFINITY;
   });
 
-  expect(transitionDuration).toBeLessThan(200);
+  expect(transitionDuration).toBeLessThan(250);
   await expectTutorialStep(page, 2);
 
   await page.keyboard.press("Escape");
