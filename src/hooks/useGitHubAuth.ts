@@ -26,21 +26,117 @@ interface UseGitHubAuthResult {
   readonly signOut: () => void;
 }
 
+interface AccessTokenRef {
+  current: string | null;
+}
+
+function publishAccessStateChange(mode: GitHubAccessState["mode"]): void {
+  publishGitHubAuthSyncSignal({
+    event: "github-auth-state-changed",
+    changedAt: Date.now(),
+    mode,
+  });
+}
+
+function persistPublicAccessState(nextState: GitHubAccessState): void {
+  saveGitHubPublicAuthState(nextState);
+  publishAccessStateChange(nextState.mode);
+}
+
+function clearInMemoryAccessToken(
+  accessTokenRef: AccessTokenRef,
+  setAccessToken: (token: string | null) => void,
+): void {
+  accessTokenRef.current = null;
+  setAccessToken(null);
+}
+
+function loadInitialAccessState(): GitHubAccessState {
+  const persistedState = loadGitHubPublicAuthState();
+  return persistedState !== null && persistedState.mode !== "authenticated"
+    ? persistedState
+    : createAnonymousGitHubAccessState();
+}
+
+function computeIndicatorVariant(
+  mode: GitHubAccessState["mode"],
+  lastFailureKind: GitHubAccessState["lastFailureKind"],
+): GitHubAccessState["indicatorVariant"] {
+  if (mode === "authenticated") {
+    return lastFailureKind === "rate-limit" ? "warning" : "active";
+  }
+
+  if (mode === "reauth-required") {
+    return "warning";
+  }
+
+  return lastFailureKind === null ? "neutral" : "error";
+}
+
+function createAuthenticatingState(currentState: GitHubAccessState): GitHubAccessState {
+  return buildAccessState({
+    mode: "authenticating",
+    grantedScopes: currentState.grantedScopes,
+    verifiedAt: currentState.verifiedAt,
+    loginLabel: currentState.loginLabel,
+    lastFailureKind: null,
+    lastFailureMessage: null,
+  });
+}
+
+function createAnonymousFailureState(lastFailureKind: GitHubAccessState["lastFailureKind"], lastFailureMessage: string | null): GitHubAccessState {
+  return buildAccessState({
+    mode: "anonymous",
+    lastFailureKind,
+    lastFailureMessage,
+  });
+}
+
+function createAuthenticatedState(validationResult: Awaited<ReturnType<typeof validateGitHubToken>>): GitHubAccessState {
+  return buildAccessState({
+    mode: "authenticated",
+    grantedScopes: validationResult.grantedScopes,
+    verifiedAt: validationResult.verifiedAt,
+    loginLabel: validationResult.loginLabel,
+    lastFailureKind: null,
+    lastFailureMessage: null,
+  });
+}
+
+function useGitHubAuthSyncSubscription(
+  accessTokenRef: AccessTokenRef,
+  setAccessToken: (token: string | null) => void,
+  setAccessState: (state: GitHubAccessState) => void,
+): void {
+  useEffect(() => subscribeToGitHubAuthSync((signal) => {
+    if (signal.mode === "anonymous") {
+      clearInMemoryAccessToken(accessTokenRef, setAccessToken);
+      setAccessState(createAnonymousGitHubAccessState());
+      return;
+    }
+
+    const publicState = loadGitHubPublicAuthState();
+    if (publicState === null) {
+      return;
+    }
+
+    if (signal.mode === "reauth-required") {
+      clearInMemoryAccessToken(accessTokenRef, setAccessToken);
+      setAccessState(publicState);
+      return;
+    }
+
+    if (accessTokenRef.current !== null) {
+      setAccessState(publicState);
+    }
+  }), [accessTokenRef, setAccessState, setAccessToken]);
+}
+
 function buildAccessState(input: Partial<GitHubAccessState> & Pick<GitHubAccessState, "mode">): GitHubAccessState {
   const anonymousState = createAnonymousGitHubAccessState();
   const lastFailureKind = input.lastFailureKind ?? null;
   const lastFailureMessage = input.lastFailureMessage ?? null;
-  const indicatorVariant = input.indicatorVariant ?? (
-    input.mode === "authenticated"
-      ? lastFailureKind === "rate-limit"
-        ? "warning"
-        : "active"
-      : input.mode === "reauth-required"
-        ? "warning"
-        : lastFailureKind === null
-          ? "neutral"
-          : "error"
-  );
+  const indicatorVariant = input.indicatorVariant ?? computeIndicatorVariant(input.mode, lastFailureKind);
 
   return {
     ...anonymousState,
@@ -71,24 +167,14 @@ function toReauthState(currentState: GitHubAccessState, failure: GitHubFailureCl
 export function useGitHubAuth(): UseGitHubAuthResult {
   const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID?.trim() ?? "";
   const hasClientConfiguration = clientId.length > 0;
-  const [accessState, setAccessState] = useState<GitHubAccessState>(() => {
-    const persistedState = loadGitHubPublicAuthState();
-    return persistedState !== null && persistedState.mode !== "authenticated"
-      ? persistedState
-      : createAnonymousGitHubAccessState();
-  });
+  const [accessState, setAccessState] = useState<GitHubAccessState>(loadInitialAccessState);
   const [pendingRetryContext, setPendingRetryContextState] = useState<PendingGitHubRetryContext | null>(() => loadPendingGitHubRetryContext());
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
 
   const persistAccessState = useCallback((nextState: GitHubAccessState) => {
     setAccessState(nextState);
-    saveGitHubPublicAuthState(nextState);
-    publishGitHubAuthSyncSignal({
-      event: "github-auth-state-changed",
-      changedAt: Date.now(),
-      mode: nextState.mode,
-    });
+    persistPublicAccessState(nextState);
   }, []);
 
   const setPendingRetryContext = useCallback((context: PendingGitHubRetryContext | null) => {
@@ -112,43 +198,27 @@ export function useGitHubAuth(): UseGitHubAuthResult {
         lastFailureKind: null,
         lastFailureMessage: null,
       });
-      saveGitHubPublicAuthState(nextState);
-      publishGitHubAuthSyncSignal({
-        event: "github-auth-state-changed",
-        changedAt: Date.now(),
-        mode: nextState.mode,
-      });
+      persistPublicAccessState(nextState);
       return nextState;
     });
   }, []);
 
   const signOut = useCallback(() => {
-    accessTokenRef.current = null;
-    setAccessToken(null);
+    clearInMemoryAccessToken(accessTokenRef, setAccessToken);
     setPendingRetryContext(null);
     clearGitHubPublicAuthState();
     const anonymousState = createAnonymousGitHubAccessState();
     setAccessState(anonymousState);
-    publishGitHubAuthSyncSignal({
-      event: "github-auth-state-changed",
-      changedAt: Date.now(),
-      mode: anonymousState.mode,
-    });
+    publishAccessStateChange(anonymousState.mode);
   }, [setPendingRetryContext]);
 
   const reportFailure = useCallback((failure: GitHubFailureClassification) => {
     setAccessState((currentState) => {
       const nextState = toReauthState(currentState, failure);
-      saveGitHubPublicAuthState(nextState);
-      publishGitHubAuthSyncSignal({
-        event: "github-auth-state-changed",
-        changedAt: Date.now(),
-        mode: nextState.mode,
-      });
+      persistPublicAccessState(nextState);
 
       if (nextState.mode === "reauth-required") {
-        accessTokenRef.current = null;
-        setAccessToken(null);
+        clearInMemoryAccessToken(accessTokenRef, setAccessToken);
       }
 
       return nextState;
@@ -160,73 +230,28 @@ export function useGitHubAuth(): UseGitHubAuthResult {
       return false;
     }
 
-    setAccessState((currentState) => buildAccessState({
-      mode: "authenticating",
-      grantedScopes: currentState.grantedScopes,
-      verifiedAt: currentState.verifiedAt,
-      loginLabel: currentState.loginLabel,
-      lastFailureKind: null,
-      lastFailureMessage: null,
-    }));
+    setAccessState((currentState) => createAuthenticatingState(currentState));
 
     try {
       const popupPayload = await beginGitHubOAuthPopup({ clientId });
       if (popupPayload.type === "ff:github-auth:error") {
-        persistAccessState(buildAccessState({
-          mode: "anonymous",
-          lastFailureKind: "unknown",
-          lastFailureMessage: popupPayload.message,
-        }));
+        persistAccessState(createAnonymousFailureState("unknown", popupPayload.message));
         return false;
       }
 
       const validationResult = await validateGitHubToken(popupPayload.token);
       accessTokenRef.current = popupPayload.token;
       setAccessToken(popupPayload.token);
-      persistAccessState(buildAccessState({
-        mode: "authenticated",
-        grantedScopes: validationResult.grantedScopes,
-        verifiedAt: validationResult.verifiedAt,
-        loginLabel: validationResult.loginLabel,
-        lastFailureKind: null,
-        lastFailureMessage: null,
-      }));
+      persistAccessState(createAuthenticatedState(validationResult));
       return true;
     } catch (error: unknown) {
       const parsedFailure = error instanceof Error ? classifyGitHubErrorMessage(error.message) : null;
-      persistAccessState(buildAccessState({
-        mode: "anonymous",
-        lastFailureKind: parsedFailure?.kind ?? "unknown",
-        lastFailureMessage: null,
-      }));
+      persistAccessState(createAnonymousFailureState(parsedFailure?.kind ?? "unknown", null));
       return false;
     }
   }, [clientId, hasClientConfiguration, persistAccessState]);
 
-  useEffect(() => subscribeToGitHubAuthSync((signal) => {
-    if (signal.mode === "anonymous") {
-      accessTokenRef.current = null;
-      setAccessToken(null);
-      setAccessState(createAnonymousGitHubAccessState());
-      return;
-    }
-
-    const publicState = loadGitHubPublicAuthState();
-    if (publicState === null) {
-      return;
-    }
-
-    if (signal.mode === "reauth-required") {
-      accessTokenRef.current = null;
-      setAccessToken(null);
-      setAccessState(publicState);
-      return;
-    }
-
-    if (accessTokenRef.current !== null) {
-      setAccessState(publicState);
-    }
-  }), []);
+  useGitHubAuthSyncSubscription(accessTokenRef, setAccessToken, setAccessState);
 
   return {
     accessState,

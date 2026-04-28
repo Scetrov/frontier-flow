@@ -65,7 +65,7 @@ export function createFlowFromFixture(fixture: GraphFixture): {
   }>;
 } {
   return {
-    nodes: fixture.nodes.map((node) => createFlowNode(node.id, node.type, node.position)),
+    nodes: fixture.nodes.map((node) => createFlowNode(node.id, node.type, node.position, node.fields)),
     edges: fixture.edges.map((edge) => ({
       id: edge.id,
       source: edge.source,

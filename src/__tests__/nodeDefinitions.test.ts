@@ -6,6 +6,7 @@ const retiredNodeTypes = ["excludeOwner", "excludeSameTribe", "excludeStoppedAtt
 const primitiveNodeTypes = [
   "isOwner",
   "isSameTribe",
+  "hasBehaviour",
   "hasStoppedAttack",
   "isNpc",
   "booleanNot",
@@ -16,8 +17,8 @@ const primitiveNodeTypes = [
 
 describe("nodeDefinitions", () => {
   it("contains the complete runtime catalogue and a filtered authoring catalogue", () => {
-    expect(nodeDefinitions).toHaveLength(32);
-    expect(authorableNodeDefinitions).toHaveLength(28);
+    expect(nodeDefinitions).toHaveLength(33);
+    expect(authorableNodeDefinitions).toHaveLength(29);
     expect(authorableNodeDefinitions.map((definition) => definition.type)).not.toEqual(
       expect.arrayContaining([...retiredNodeTypes]),
     );
@@ -44,6 +45,13 @@ describe("nodeDefinitions", () => {
   });
 
   it("adds primitive predicate and boolean operator metadata", () => {
+    expect(nodeDefinitions.find((definition) => definition.type === "hasBehaviour")).toMatchObject({
+      label: "Has Behaviour",
+      sockets: [
+        { id: "behaviour", direction: "input" },
+        { id: "matches", direction: "output" },
+      ],
+    });
     expect(nodeDefinitions.find((definition) => definition.type === "isSameTribe")).toMatchObject({
       label: "Is Same Tribe",
       sockets: [
@@ -80,6 +88,12 @@ describe("nodeDefinitions", () => {
       expect.objectContaining({
         status: "retired",
         replacedBy: ["isSameTribe", "booleanNot", "booleanOr"],
+      }),
+    );
+    expect(nodeDefinitions.find((definition) => definition.type === "hasStoppedAttack")?.deprecation).toEqual(
+      expect.objectContaining({
+        status: "deprecated",
+        replacedBy: ["hasBehaviour"],
       }),
     );
   });

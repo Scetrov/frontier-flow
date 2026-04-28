@@ -345,6 +345,98 @@ describe("turretQueries", () => {
     ]);
   });
 
+  it("parses turret online state from explicit boolean fields and omits it when unavailable", () => {
+    expect(parseTurretResponse({
+      address: {
+        objects: {
+          nodes: [
+            {
+              address: "0x111",
+              contents: {
+                json: {
+                  metadata: { name: "Perimeter Lancer" },
+                  fields: {
+                    online: true,
+                  },
+                },
+              },
+            },
+            {
+              address: "0x222",
+              contents: {
+                json: {
+                  metadata: { name: "Outer Bastion" },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }, deploymentState)).toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Perimeter Lancer",
+        currentExtension: null,
+        isOnline: true,
+      },
+      {
+        objectId: "0x222",
+        displayName: "Outer Bastion",
+        currentExtension: null,
+      },
+    ]);
+  });
+
+  it("parses structured turret status fields without matching unrelated nested statuses", () => {
+    expect(parseTurretResponse({
+      address: {
+        objects: {
+          nodes: [
+            {
+              address: "0x111",
+              contents: {
+                json: {
+                  metadata: { name: "Status Bastion" },
+                  extension: {
+                    status: "offline",
+                  },
+                  fields: {
+                    status: {
+                      "@variant": "Offline",
+                    },
+                  },
+                },
+              },
+            },
+            {
+              address: "0x222",
+              contents: {
+                json: {
+                  metadata: { name: "Nested Status Bastion" },
+                  extension: {
+                    status: "offline",
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }, deploymentState)).toEqual([
+      {
+        objectId: "0x111",
+        displayName: "Status Bastion",
+        currentExtension: null,
+        isOnline: false,
+      },
+      {
+        objectId: "0x222",
+        displayName: "Nested Status Bastion",
+        currentExtension: null,
+      },
+    ]);
+  });
+
   it("parses TypeName-wrapped turret extensions from Move object fields", () => {
     expect(parseTurretResponse({
       address: {

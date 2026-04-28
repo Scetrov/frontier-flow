@@ -6,6 +6,11 @@ import { hashCharacterAddress } from "./listHash";
 import { bindOutput, createCommentBlock, okValidationResult, resolveInput } from "./shared";
 
 const SUPPORTED_LIST_NODE_TYPES = new Set(["listTribe", "listShip", "listCharacter"]);
+const BEHAVIOUR_CONSTANT_BY_CODE: Readonly<Partial<Record<number, string>>> = {
+  1: "BEHAVIOUR_ENTERED",
+  2: "BEHAVIOUR_STARTED_ATTACK",
+  3: "BEHAVIOUR_STOPPED_ATTACK",
+};
 
 function createValidationDiagnostic(node: Parameters<NodeCodeGenerator["validate"]>[0], message: string) {
   return {
@@ -25,6 +30,21 @@ function createMembershipExpression(candidate: string, values: readonly number[]
   }
 
   return values.map((value) => `${candidate} == ${String(value)}`).join(" || ");
+}
+
+function createConstantMembershipExpression(candidate: string, values: readonly string[]): string {
+  if (values.length === 0) {
+    return "false";
+  }
+
+  return values.map((value) => `${candidate} == ${value}`).join(" || ");
+}
+
+function getSelectedBehaviourConstants(node: Parameters<NodeCodeGenerator["emit"]>[0]): readonly string[] {
+  return getNumberFieldList(node.fields, "selectedBehaviourCodes").flatMap((value) => {
+    const constant = BEHAVIOUR_CONSTANT_BY_CODE[value];
+    return constant === undefined ? [] : [constant];
+  });
 }
 
 function getConnectedSourceNode(
@@ -88,6 +108,28 @@ const logicGateGenerators: readonly NodeCodeGenerator[] = [
     const ownerTribeBinding = resolveInput(context, node, "owner_tribe", "owner_tribe");
     return `${tribeBinding} == ${ownerTribeBinding}`;
   }),
+  {
+    nodeType: "hasBehaviour",
+    validate(node) {
+      return getSelectedBehaviourConstants(node).length > 0
+        ? okValidationResult()
+        : { valid: false, diagnostics: [createValidationDiagnostic(node, "Select at least one behaviour before compiling Has Behaviour.")] };
+    },
+    emit(node, context) {
+      const includeBinding = bindOutput(context, node, "matches");
+      const behaviourBinding = resolveInput(context, node, "behaviour", "0");
+      const selectedBehaviourConstants = getSelectedBehaviourConstants(node);
+
+      return [
+        ...createCommentBlock(node, ["logic gate hasBehaviour", "check whether the target behaviour matches any configured behaviour code"]),
+        {
+          code: `let ${includeBinding}: bool = ${createConstantMembershipExpression(behaviourBinding, selectedBehaviourConstants)};`,
+          nodeId: node.id,
+          indent: 2,
+        },
+      ];
+    },
+  },
   createBooleanGateGenerator("hasStoppedAttack", "check whether the target stopped attacking", "matches", (node, context) => {
     const behaviourBinding = resolveInput(context, node, "behaviour", "0");
     return `${behaviourBinding} == BEHAVIOUR_STOPPED_ATTACK`;

@@ -356,6 +356,37 @@ describe("CanvasWorkspace", () => {
     });
   });
 
+  it("persists Has Behaviour selections through the shared node field editor", async () => {
+    renderPreviewCanvas({
+      initialNodes: [
+        createTestFlowNode("behaviour_gate_1", "hasBehaviour", {
+          label: "Has Behaviour",
+          description: "Emit whether the latest behaviour matches any selected behaviour code.",
+          category: "logic-gate",
+          color: "var(--socket-signal)",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByLabelText("Edit Has Behaviour"));
+    expect(await screen.findByRole("dialog", { name: "Has Behaviour" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Started Attack/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText("Edit Has Behaviour"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox", { name: /Started Attack/i })).toBeChecked();
+    });
+
+    expect(screen.getByRole("checkbox", { name: /Stopped Attack/i })).not.toBeChecked();
+  });
+
   it("creates independent nodes for repeated drops", () => {
     render(<CanvasWorkspace />);
 

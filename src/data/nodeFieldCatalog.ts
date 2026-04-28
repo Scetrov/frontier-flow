@@ -15,7 +15,14 @@ export const SHIP_GROUP_OPTIONS: readonly NumericOption[] = [
   { value: 419, label: "Combat Battlecruiser", description: "Heavy frontline hull" },
 ] as const;
 
+export const BEHAVIOUR_CODE_OPTIONS: readonly NumericOption[] = [
+  { value: 1, label: "Entered", description: "Target entered turret range" },
+  { value: 2, label: "Started Attack", description: "Target began attacking" },
+  { value: 3, label: "Stopped Attack", description: "Target stopped attacking" },
+] as const;
+
 const DEFAULT_FIELDS_BY_NODE_TYPE: Readonly<Partial<Record<string, NodeFieldMap>>> = {
+  hasBehaviour: { selectedBehaviourCodes: [] },
   listTribe: { selectedTribeIds: [] },
   listShip: { selectedShipIds: [] },
   listCharacter: { characterAddresses: [] },
@@ -80,6 +87,18 @@ export function normalizeNodeFields(nodeType: string, incoming: unknown): NodeFi
   const fields = asRecord(incoming);
 
   switch (nodeType) {
+    case "behaviourBonus":
+      return {
+        bonusStrategy: fields.bonusStrategy === "player-target" ? "player-target" : "behaviour-only",
+      };
+    case "damageBonus":
+      return {
+        damageStrategy: fields.damageStrategy === "remaining-total" ? "remaining-total" : "weighted-break",
+      };
+    case "hasBehaviour":
+      return {
+        selectedBehaviourCodes: normalizeNumberList(fields.selectedBehaviourCodes),
+      };
     case "listTribe":
       return {
         selectedTribeIds: normalizeNumberList(fields.selectedTribeIds),
@@ -146,7 +165,17 @@ function summarizeShipGroups(fields: NodeFieldMap | undefined): readonly string[
   return selectedLabels.length === 0 ? ["No ship groups selected"] : [selectedLabels.join(", ")];
 }
 
+function summarizeBehaviours(fields: NodeFieldMap | undefined): readonly string[] {
+  const selectedBehaviourCodes = new Set(getNumberFieldList(fields, "selectedBehaviourCodes"));
+  const selectedLabels = BEHAVIOUR_CODE_OPTIONS
+    .filter((option) => selectedBehaviourCodes.has(option.value))
+    .map((option) => option.label);
+
+  return selectedLabels.length === 0 ? ["No behaviours selected"] : [selectedLabels.join(", ")];
+}
+
 const NODE_FIELD_SUMMARY_BUILDERS: Readonly<Partial<Record<string, NodeFieldSummaryBuilder>>> = {
+  hasBehaviour: summarizeBehaviours,
   isInGroup: summarizeShipGroups,
   listCharacter: summarizeCharacters,
   listShip: summarizeShips,

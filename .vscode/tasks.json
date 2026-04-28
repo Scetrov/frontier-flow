@@ -19,7 +19,10 @@
         "clear": false
       },
       "problemMatcher": [],
-      "detail": "Run Netlify Dev, which now starts the Vite dev server automatically via netlify.toml."
+      "detail": "Run Netlify Dev",
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
     },
     {
       "label": "Vite Dev Server",

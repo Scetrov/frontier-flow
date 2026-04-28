@@ -1,6 +1,5 @@
 import { createGenerationContext, getGenerator } from "./generators";
 import { createGeneratedContractArtifact, socketBindingKey } from "./generators/shared";
-import { emitReferenceContractTemplate } from "./referenceTemplates";
 import { createWorldShimSourceFiles } from "./worldShim";
 import { getDeploymentTarget } from "../data/deploymentTargets";
 import { getPackageReferenceBundle } from "../data/packageReferences";
@@ -367,25 +366,6 @@ function emitGenericSynthesizedContract(graph: IRGraph, annotatedLines: readonly
  * Emit deterministic Move source and source map output from the validated IR graph.
  */
 export function emitMove(graph: IRGraph): EmitterOutput {
-  const referenceTemplate = emitReferenceContractTemplate(graph);
-  if (referenceTemplate !== null) {
-    const moveToml = createMoveToml(graph.moduleName);
-    const sourceFiles = createArtifactSourceFiles(graph.moduleName, referenceTemplate.code);
-    return {
-      code: referenceTemplate.code,
-      moveToml,
-      sourceMap: referenceTemplate.sourceMap,
-      artifact: createGeneratedContractArtifact({
-        moduleName: graph.moduleName,
-        requestedModuleName: graph.requestedModuleName,
-        moveToml,
-        moveSource: referenceTemplate.code,
-        sourceMap: referenceTemplate.sourceMap,
-        sourceFiles,
-      }),
-    };
-  }
-
   const context = {
     ...createGenerationContext(graph.moduleName),
     graph,

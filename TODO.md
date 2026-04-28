@@ -109,7 +109,6 @@ files have no dedicated test coverage. Items are grouped by risk level.
 - [x] `src/utils/deploymentValidation.ts` — deployment pre-flight checks
 - [ ] `src/utils/mergeDeploymentStatus.ts` — artifact + deployment status merging
 - [ ] `src/compiler/determinism.ts` — deterministic output guarantees
-- [ ] `src/compiler/referenceTemplates.ts` — Move template generation
 - [ ] `src/data/nodeMigration.ts` — legacy node migration logic
 - [ ] `src/nodes/createNode.tsx` — node factory
 

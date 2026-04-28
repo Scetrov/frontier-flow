@@ -94,6 +94,42 @@ describe("TurretSimulationModal", () => {
     expect(handleRefresh).toHaveBeenCalledTimes(1);
   });
 
+  it("renders online and offline status badges from the selected turret state", () => {
+    const { rerender } = render(
+      <TurretSimulationModal
+        onClose={() => undefined}
+        onRefreshContext={() => undefined}
+        session={createSimulationSession({
+          turret: {
+            currentExtension: null,
+            displayName: "Perimeter Lancer",
+            isOnline: false,
+            objectId: "0x111",
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Offline")).toBeVisible();
+
+    rerender(
+      <TurretSimulationModal
+        onClose={() => undefined}
+        onRefreshContext={() => undefined}
+        session={createSimulationSession({
+          turret: {
+            currentExtension: null,
+            displayName: "Perimeter Lancer",
+            isOnline: true,
+            objectId: "0x111",
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Online")).toBeVisible();
+  });
+
   it("forwards the close action", () => {
     const handleClose = vi.fn();
 

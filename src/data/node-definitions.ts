@@ -305,11 +305,28 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     ],
   },
   {
-    type: "hasStoppedAttack",
-    label: "Has Stopped Attack",
-    description: "Emit whether the latest behaviour indicates the target stopped attacking.",
+    type: "hasBehaviour",
+    label: "Has Behaviour",
+    description: "Emit whether the latest behaviour matches any selected behaviour code.",
     color: "var(--socket-signal)",
     category: "logic-gate",
+    sockets: [
+      { id: "behaviour", type: "number", position: "left", direction: "input", label: "behaviour" },
+      { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
+    ],
+  },
+  {
+    type: "hasStoppedAttack",
+    label: "Has Stopped Attack",
+    description: "Legacy stopped-attack predicate kept for saved graph compatibility.",
+    color: "var(--socket-signal)",
+    category: "logic-gate",
+    deprecation: {
+      status: "deprecated",
+      reason: "Use Has Behaviour with Stopped Attack selected for the configurable behaviour predicate.",
+      replacedBy: ["hasBehaviour"],
+      remediationMessage: "Prefer Has Behaviour for new rules; existing graphs still compile unchanged.",
+    },
     sockets: [
       { id: "behaviour", type: "number", position: "left", direction: "input", label: "behaviour" },
       { id: "matches", type: "boolean", position: "right", direction: "output", label: "matches" },
