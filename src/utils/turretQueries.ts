@@ -108,11 +108,13 @@ export function parseTurretResponse(response: unknown, deploymentState: StoredDe
     }
 
     const content = node.contents?.json;
+    const isOnline = extractTurretOnlineStatus(content);
 
     return {
       objectId: node.address,
       displayName: extractTurretDisplayName(content),
       currentExtension: extractTurretExtension(content, deploymentState),
+      ...(isOnline === undefined ? {} : { isOnline }),
     } satisfies TurretInfo;
   });
 }
@@ -309,6 +311,66 @@ function extractTurretDisplayName(content: unknown): string | null {
   const displayName = findFirstStringAtKeys(content, ["name", "displayName", "label"]);
 
   return displayName === null || displayName.trim().length === 0 ? null : displayName;
+}
+
+function extractTurretOnlineStatus(content: unknown): boolean | undefined {
+  const explicitOnlineState = parseTurretOnlineStateValue(findFirstValueAtKeys(content, ["online", "is_online", "isOnline"]));
+
+  if (explicitOnlineState !== undefined) {
+    return explicitOnlineState;
+  }
+
+  if (!isRecord(content)) {
+    return undefined;
+  }
+
+  const directStatus = "status" in content ? content.status : undefined;
+
+  if (directStatus !== undefined) {
+    return parseTurretOnlineStateValue(directStatus);
+  }
+
+  const fieldStatus = isRecord(content.fields) && "status" in content.fields ? content.fields.status : undefined;
+
+  return parseTurretOnlineStateValue(fieldStatus);
+}
+
+function parseTurretOnlineStateValue(value: unknown): boolean | undefined {
+  if (value === true) {
+    return true;
+  }
+
+  if (value === false) {
+    return false;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+
+    if (normalized === "online") {
+      return true;
+    }
+
+    if (normalized === "offline") {
+      return false;
+    }
+  }
+
+  const variant = findFirstStringAtKeys(value, ["@variant", "variant"]);
+
+  if (variant !== null) {
+    const normalized = variant.trim().toLowerCase();
+
+    if (normalized === "online") {
+      return true;
+    }
+
+    if (normalized === "offline") {
+      return false;
+    }
+  }
+
+  return undefined;
 }
 
 function extractTurretExtension(content: unknown, deploymentState: StoredDeploymentState): TurretExtensionInfo | null {

@@ -40,6 +40,7 @@ export interface TurretInfo {
   readonly objectId: string;
   readonly displayName: string | null;
   readonly currentExtension: TurretExtensionInfo | null;
+  readonly isOnline?: boolean;
 }
 
 export type AuthorizationTurretStatus = "pending" | "submitting" | "confirming" | "confirmed" | "failed" | "warning";

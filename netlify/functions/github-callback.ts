@@ -263,7 +263,7 @@ export const handler = async (event: GitHubCallbackEvent): Promise<GitHubCallbac
     return createPopupBridgeResponse({
       type: "ff:github-auth:error",
       reason: "exchange_failed",
-      message: "GitHub sign-in is not configured for this environment.",
+      message: "GitHub sign-in is not configured properly. The exchange failed, please contact Scetrov using GitHub issues.",
     }, 500);
   }
 

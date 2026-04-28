@@ -45,21 +45,40 @@ function parseOptionalInteger(value: string): number | null {
 }
 
 function SessionStatusBadge({ session }: { readonly session: TurretSimulationSession }) {
-  const copy = useMemo(() => {
+  const { copy, className } = useMemo(() => {
     if (session.status === "stale") {
-      return "Stale";
+      return {
+        copy: "Stale",
+        className: "border-[rgba(255,211,141,0.4)] bg-[rgba(255,166,0,0.12)] text-[#ffd38d]",
+      };
     }
 
     if (session.status === "running") {
-      return "Running";
+      return {
+        copy: "Running",
+        className: "border-[rgba(117,203,255,0.34)] bg-[rgba(49,132,214,0.12)] text-[#9fd8ff]",
+      };
     }
 
-    return "Ready";
-  }, [session.status]);
+    if (session.turret?.isOnline === false) {
+      return {
+        copy: "Offline",
+        className: "border-[rgba(255,100,100,0.4)] bg-[rgba(255,60,60,0.12)] text-[#ff8f8f]",
+      };
+    }
 
-  const className = session.status === "stale"
-    ? "border-[rgba(255,211,141,0.4)] bg-[rgba(255,166,0,0.12)] text-[#ffd38d]"
-    : "border-[rgba(102,226,159,0.28)] bg-[rgba(102,226,159,0.12)] text-[#8ff2b5]";
+    if (session.turret?.isOnline === true) {
+      return {
+        copy: "Online",
+        className: "border-[rgba(102,226,159,0.28)] bg-[rgba(102,226,159,0.12)] text-[#8ff2b5]",
+      };
+    }
+
+    return {
+      copy: "Ready",
+      className: "border-[rgba(102,226,159,0.28)] bg-[rgba(102,226,159,0.12)] text-[#8ff2b5]",
+    };
+  }, [session.status, session.turret?.isOnline]);
 
   return (
     <span className={`inline-flex items-center border px-3 py-1 font-heading text-[0.62rem] uppercase tracking-[0.14em] ${className}`}>

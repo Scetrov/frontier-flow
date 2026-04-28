@@ -2,7 +2,6 @@
 agent: agent
 name: address-pr-comments
 description: Review and address all unresolved comments on a GitHub Pull Request, implement the requested changes, and commit the fixes.
-model: GPT-5.4 (copilot)
 ---
 
 # Address PR Comments Agent
