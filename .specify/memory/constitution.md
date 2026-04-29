@@ -197,6 +197,10 @@ build`, `bun run lint`, `bun run test`).
   disable signing.
 - **Conventional Commits**: Use `feat:`, `fix:`, `docs:`,
   `chore:`, etc.
+- **Commit Hygiene**: Write clear, descriptive commit messages
+  with the first line as a concise summary (≤ 50 characters)
+  and a detailed body if needed. Use the imperative mood
+  ("Add feature" not "Added feature").
 - **Pre-PR Checks**: Run linters, type checks (`tsc -b`), and
   formatters before submitting.
 - **Branch Policy**: Feature branches only. Never commit
