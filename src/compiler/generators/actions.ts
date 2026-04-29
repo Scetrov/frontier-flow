@@ -9,10 +9,13 @@ const actionGenerators: readonly NodeCodeGenerator[] = [
     emit(node, context) {
       const priorityInBinding = resolveInput(context, node, "priority_in", "0");
       const predicateBinding = resolveInput(context, node, "predicate", "true");
-      const weightBinding = resolveInput(context, node, "weight", "0");
-      const priorityOutBinding = bindOutput(context, node, "priority_out");
+      const normalizedWeight = typeof node.fields.weight === "number" ? String(node.fields.weight) : "100";
+      const weightBinding = resolveInput(context, node, "weight", normalizedWeight);
+      const resultWeightBinding = bindOutput(context, node, "result_weight");
       const includeBinding = bindOutput(context, node, "include_result");
-      const resultWeightExpression = node.inputs.weight === undefined ? priorityInBinding : weightBinding;
+      const resultWeightExpression = node.inputs.weight === undefined && typeof node.fields.weight !== "number"
+        ? priorityInBinding
+        : weightBinding;
 
       return [
         ...createCommentBlock(node, ["action addToQueue", "append candidate to the outgoing priority queue"]),
@@ -22,7 +25,7 @@ const actionGenerators: readonly NodeCodeGenerator[] = [
           indent: 2,
         },
         {
-          code: `let ${priorityOutBinding}: u64 = ${resultWeightExpression};`,
+          code: `let ${resultWeightBinding}: u64 = ${resultWeightExpression};`,
           nodeId: node.id,
           indent: 2,
         },

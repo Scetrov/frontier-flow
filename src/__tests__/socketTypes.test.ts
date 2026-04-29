@@ -33,12 +33,12 @@ describe("socketTypes", () => {
   });
 
   it("validates a target-to-target canvas connection", () => {
-    const nodes = [createNode("proximity", "proximity"), createNode("tribe", "getTribe")];
+    const nodes = [createNode("event", "enteredAttacked"), createNode("tribe", "getTribe")];
 
     expect(
       isValidFlowConnection(
         {
-          source: "proximity",
+          source: "event",
           target: "tribe",
           sourceHandle: "target",
           targetHandle: "target",
@@ -66,6 +66,23 @@ describe("socketTypes", () => {
     ).toBe(false);
   });
 
+  it("accepts a priority connection from Entered / Attacked into Add to Queue", () => {
+    const nodes = [createNode("event", "enteredAttacked"), createNode("queue", "addToQueue")];
+
+    expect(
+      isValidFlowConnection(
+        {
+          source: "event",
+          target: "queue",
+          sourceHandle: "priority",
+          targetHandle: "priority_in",
+        },
+        nodes,
+        [],
+      ),
+    ).toBe(true);
+  });
+
   it("accepts numeric output into the any input of Add to Queue", () => {
     const nodes = [createNode("group", "getGroupId"), createNode("queue", "addToQueue")];
 
@@ -84,7 +101,7 @@ describe("socketTypes", () => {
   });
 
   it("derives edge styling from the source socket type", () => {
-    const priorityNode = createNode("event", "aggression");
+    const priorityNode = createNode("event", "enteredAttacked");
     const valueNode = createNode("source", "getGroupId");
 
     expect(getEdgeColor(priorityNode, "target")).toBe("var(--socket-entity)");

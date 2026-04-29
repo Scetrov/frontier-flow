@@ -3492,6 +3492,15 @@ body,
   align-items: start;
 }
 
+.ff-node__body--left-only,
+.ff-node__body--right-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ff-node__body--right-only {
+  justify-items: end;
+}
+
 .ff-node--diamond .ff-node__body {
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;

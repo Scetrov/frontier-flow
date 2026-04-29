@@ -16,7 +16,7 @@ const DEFAULT_FLOW_NODES: ReadonlyArray<{
   readonly type: string;
   readonly position: { readonly x: number; readonly y: number };
 }> = [
-  { id: "default_aggression", type: "aggression", position: { x: 0, y: 0 } },
+  { id: "default_entered_attacked", type: "enteredAttacked", position: { x: 0, y: 0 } },
   { id: "default_get_tribe", type: "getTribe", position: { x: 0, y: 0 } },
   { id: "default_is_aggressor", type: "isAggressor", position: { x: 0, y: 0 } },
   { id: "default_is_same_tribe", type: "isSameTribe", position: { x: 0, y: 0 } },
@@ -34,15 +34,15 @@ const DEFAULT_FLOW_CONNECTIONS: ReadonlyArray<{
   readonly targetHandle: string;
 }> = [
   {
-    id: "default_edge_aggression_target_get_tribe",
-    source: "default_aggression",
+    id: "default_edge_entered_attacked_target_get_tribe",
+    source: "default_entered_attacked",
     sourceHandle: "target",
     target: "default_get_tribe",
     targetHandle: "target",
   },
   {
-    id: "default_edge_aggression_target_is_aggressor",
-    source: "default_aggression",
+    id: "default_edge_entered_attacked_target_is_aggressor",
+    source: "default_entered_attacked",
     sourceHandle: "target",
     target: "default_is_aggressor",
     targetHandle: "target",
@@ -83,22 +83,22 @@ const DEFAULT_FLOW_CONNECTIONS: ReadonlyArray<{
     targetHandle: "right",
   },
   {
-    id: "default_edge_aggression_target_get_priority_weight",
-    source: "default_aggression",
+    id: "default_edge_entered_attacked_target_get_priority_weight",
+    source: "default_entered_attacked",
     sourceHandle: "target",
     target: "default_get_priority_weight",
     targetHandle: "target",
   },
   {
-    id: "default_edge_aggression_priority_add_to_queue",
-    source: "default_aggression",
+    id: "default_edge_entered_attacked_priority_add_to_queue",
+    source: "default_entered_attacked",
     sourceHandle: "priority",
     target: "default_add_to_queue",
     targetHandle: "priority_in",
   },
   {
-    id: "default_edge_aggression_target_add_to_queue",
-    source: "default_aggression",
+    id: "default_edge_entered_attacked_target_add_to_queue",
+    source: "default_entered_attacked",
     sourceHandle: "target",
     target: "default_add_to_queue",
     targetHandle: "target",

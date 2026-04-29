@@ -22,6 +22,7 @@ function createTriggerGenerator(nodeType: string): NodeCodeGenerator {
 }
 
 const eventTriggerGenerators: readonly NodeCodeGenerator[] = [
+  createTriggerGenerator("enteredAttacked"),
   createTriggerGenerator("aggression"),
   createTriggerGenerator("proximity"),
 ];

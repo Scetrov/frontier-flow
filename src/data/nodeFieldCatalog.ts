@@ -29,7 +29,55 @@ const DEFAULT_FIELDS_BY_NODE_TYPE: Readonly<Partial<Record<string, NodeFieldMap>
   isInGroup: { selectedGroupIds: [] },
 };
 
-const EDITABLE_NODE_TYPES = new Set(Object.keys(DEFAULT_FIELDS_BY_NODE_TYPE));
+const EDITABLE_NODE_TYPES = new Set(["hasBehaviour", "listTribe", "listShip", "listCharacter", "isInGroup"]);
+const MAX_SAFE_QUEUE_WEIGHT = Number.MAX_SAFE_INTEGER;
+
+function normalizeQueueWeight(value: NodeFieldValue | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 100;
+  }
+
+  const clampedValue = Math.min(Math.trunc(value), MAX_SAFE_QUEUE_WEIGHT);
+
+  return clampedValue <= 0 ? 100 : clampedValue;
+}
+
+type NodeFieldNormalizer = (fields: Readonly<Record<string, NodeFieldValue>>) => NodeFieldMap;
+
+function normalizeAddToQueueFields(fields: Readonly<Record<string, NodeFieldValue>>): NodeFieldMap {
+  if (!("weight" in fields)) {
+    return {};
+  }
+
+  return {
+    weight: normalizeQueueWeight(fields.weight),
+  };
+}
+
+const NODE_FIELD_NORMALIZERS: Readonly<Partial<Record<string, NodeFieldNormalizer>>> = {
+  behaviourBonus: (fields) => ({
+    bonusStrategy: fields.bonusStrategy === "player-target" ? "player-target" : "behaviour-only",
+  }),
+  damageBonus: (fields) => ({
+    damageStrategy: fields.damageStrategy === "remaining-total" ? "remaining-total" : "weighted-break",
+  }),
+  hasBehaviour: (fields) => ({
+    selectedBehaviourCodes: normalizeNumberList(fields.selectedBehaviourCodes),
+  }),
+  listTribe: (fields) => ({
+    selectedTribeIds: normalizeNumberList(fields.selectedTribeIds),
+  }),
+  listShip: (fields) => ({
+    selectedShipIds: normalizeNumberList(fields.selectedShipIds),
+  }),
+  listCharacter: (fields) => ({
+    characterAddresses: normalizeStringList(fields.characterAddresses),
+  }),
+  isInGroup: (fields) => ({
+    selectedGroupIds: normalizeNumberList(fields.selectedGroupIds),
+  }),
+  addToQueue: normalizeAddToQueueFields,
+};
 
 function readNumberList(value: NodeFieldValue | undefined): readonly number[] {
   return Array.isArray(value) ? value.filter((item): item is number => typeof item === "number") : [];
@@ -85,39 +133,7 @@ export function getDefaultNodeFields(nodeType: string): NodeFieldMap {
 
 export function normalizeNodeFields(nodeType: string, incoming: unknown): NodeFieldMap {
   const fields = asRecord(incoming);
-
-  switch (nodeType) {
-    case "behaviourBonus":
-      return {
-        bonusStrategy: fields.bonusStrategy === "player-target" ? "player-target" : "behaviour-only",
-      };
-    case "damageBonus":
-      return {
-        damageStrategy: fields.damageStrategy === "remaining-total" ? "remaining-total" : "weighted-break",
-      };
-    case "hasBehaviour":
-      return {
-        selectedBehaviourCodes: normalizeNumberList(fields.selectedBehaviourCodes),
-      };
-    case "listTribe":
-      return {
-        selectedTribeIds: normalizeNumberList(fields.selectedTribeIds),
-      };
-    case "listShip":
-      return {
-        selectedShipIds: normalizeNumberList(fields.selectedShipIds),
-      };
-    case "listCharacter":
-      return {
-        characterAddresses: normalizeStringList(fields.characterAddresses),
-      };
-    case "isInGroup":
-      return {
-        selectedGroupIds: normalizeNumberList(fields.selectedGroupIds),
-      };
-    default:
-      return {};
-  }
+  return NODE_FIELD_NORMALIZERS[nodeType]?.(fields) ?? {};
 }
 
 export function getNumberFieldList(fields: NodeFieldMap | undefined, key: string): readonly number[] {

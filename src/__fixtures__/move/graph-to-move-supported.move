@@ -104,8 +104,8 @@ module builder_extensions::graph_to_move_supported {
         // action addToQueue
         // append candidate to the outgoing priority queue
         let addtoqueue_supported_add_to_queue_include_result: bool = true;
-        let addtoqueue_supported_add_to_queue_priority_out: u64 = aggression_supported_aggression_priority;
-        (addtoqueue_supported_add_to_queue_priority_out, addtoqueue_supported_add_to_queue_include_result)
+        let addtoqueue_supported_add_to_queue_result_weight: u64 = aggression_supported_aggression_priority;
+        (addtoqueue_supported_add_to_queue_result_weight, addtoqueue_supported_add_to_queue_include_result)
     }
 
     fun unpack_candidate_list(candidate_list_bytes: vector<u8>): vector<TargetCandidateArg> {

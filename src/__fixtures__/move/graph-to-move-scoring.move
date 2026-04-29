@@ -113,8 +113,8 @@ module builder_extensions::graph_to_move_scoring {
         // action addToQueue
         // append candidate to the outgoing priority queue
         let addtoqueue_e_scoring_add_to_queue_include_result: bool = true;
-        let addtoqueue_e_scoring_add_to_queue_priority_out: u64 = aggressorbonus_d_scoring_aggressor_bonus_weight_out;
-        (addtoqueue_e_scoring_add_to_queue_priority_out, addtoqueue_e_scoring_add_to_queue_include_result)
+        let addtoqueue_e_scoring_add_to_queue_result_weight: u64 = aggressorbonus_d_scoring_aggressor_bonus_weight_out;
+        (addtoqueue_e_scoring_add_to_queue_result_weight, addtoqueue_e_scoring_add_to_queue_include_result)
     }
 
     fun unpack_candidate_list(candidate_list_bytes: vector<u8>): vector<TargetCandidateArg> {

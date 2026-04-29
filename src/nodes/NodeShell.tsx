@@ -261,6 +261,18 @@ function getNodeSurfaceClassName(shape: NodeShellProps["shape"]): string {
   return `ff-node__surface ${shape === "diamond" ? "ff-node__surface--diamond" : ""}`;
 }
 
+function getNodeBodyClassName(hasLeftSockets: boolean, hasRightSockets: boolean): string {
+  if (hasLeftSockets && !hasRightSockets) {
+    return "ff-node__body ff-node__body--left-only";
+  }
+
+  if (!hasLeftSockets && hasRightSockets) {
+    return "ff-node__body ff-node__body--right-only";
+  }
+
+  return "ff-node__body";
+}
+
 function getNodeValidationAttributes(nodeData: RenderableNodeData, editing: boolean, mode: NodeShellProps["mode"]) {
   return {
     "data-editing": editing ? "true" : undefined,
@@ -414,6 +426,8 @@ function NodeShell({
   const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
   const confirmDeleteButtonRef = useRef<HTMLButtonElement | null>(null);
   const { bottomSockets, leftSockets, rightSockets, topSockets } = useMemo(() => splitSockets(nodeData.sockets), [nodeData.sockets]);
+  const hasLeftSockets = leftSockets.length > 0;
+  const hasRightSockets = rightSockets.length > 0;
   const isEditable = getIsEditable(mode, nodeData.type);
   const fieldSummary = useMemo(() => getNodeFieldSummary(nodeData.type, nodeData.fields), [nodeData.fields, nodeData.type]);
   const nodeStyle = { "--ff-node-accent": nodeData.color } as CSSProperties;
@@ -458,9 +472,9 @@ function NodeShell({
         <NodeFieldSummary lines={fieldSummary} />
         <NodeSupplementalDescriptions nodeData={nodeData} />
 
-        <div className="ff-node__body">
-          <SocketColumn mode={mode} nodeId={nodeId} side="left" sockets={leftSockets} />
-          <SocketColumn mode={mode} nodeId={nodeId} side="right" sockets={rightSockets} />
+        <div className={getNodeBodyClassName(hasLeftSockets, hasRightSockets)}>
+          {hasLeftSockets ? <SocketColumn mode={mode} nodeId={nodeId} side="left" sockets={leftSockets} /> : null}
+          {hasRightSockets ? <SocketColumn mode={mode} nodeId={nodeId} side="right" sockets={rightSockets} /> : null}
         </div>
 
         <SocketRow mode={mode} nodeId={nodeId} position="bottom" sockets={bottomSockets} />

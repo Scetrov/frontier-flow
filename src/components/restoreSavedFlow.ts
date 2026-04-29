@@ -77,11 +77,28 @@ export function restoreSavedFlow(
 
   const restoredNodesById = new Map(restoredNodes.map((node) => [node.id, node]));
   const restoredEdges = [...initialEdges, ...migratedEdges]
-    .filter(
-      (edge) =>
-        hasValidHandle(restoredNodesById.get(edge.source), edge.sourceHandle, "output") &&
-        hasValidHandle(restoredNodesById.get(edge.target), edge.targetHandle, "input"),
-    )
+    .filter((edge) => {
+      const sourceNode = restoredNodesById.get(edge.source);
+      const targetNode = restoredNodesById.get(edge.target);
+      const sourceHandleValid = hasValidHandle(sourceNode, edge.sourceHandle, "output");
+      const targetHandleValid = hasValidHandle(targetNode, edge.targetHandle, "input");
+
+      if (sourceHandleValid && targetHandleValid) {
+        return true;
+      }
+
+      if (sourceNode !== undefined && targetNode !== undefined) {
+        remediationNotices.push(createDroppedEdgeRemediationNotice({
+          edge,
+          sourceHandleValid,
+          sourceNode,
+          targetHandleValid,
+          targetNode,
+        }));
+      }
+
+      return false;
+    })
     .map((edge) => ({
       ...edge,
       ...deriveFlowEdgePresentation(edge, restoredNodesById),
@@ -92,6 +109,58 @@ export function restoreSavedFlow(
     edges: restoredEdges,
     remediationNotices,
   };
+}
+
+function createDroppedEdgeRemediationNotice(input: {
+  readonly edge: FlowEdge;
+  readonly sourceHandleValid: boolean;
+  readonly sourceNode: FlowNode | undefined;
+  readonly targetHandleValid: boolean;
+  readonly targetNode: FlowNode | undefined;
+}): RemediationNotice {
+  const { edge, sourceHandleValid, sourceNode, targetHandleValid, targetNode } = input;
+  const sourceType = typeof sourceNode?.type === "string" ? sourceNode.type : "unknown";
+  const invalidHandleDescriptions = getInvalidHandleDescriptions({
+    edge,
+    sourceHandleValid,
+    sourceType,
+    targetHandleValid,
+    targetType: typeof targetNode?.type === "string" ? targetNode.type : "unknown",
+  });
+
+  return {
+    nodeId: sourceNode?.id ?? targetNode?.id ?? edge.source,
+    legacyType: sourceType,
+    severity: "warning",
+    message: `Dropped saved edge "${edge.id}" because ${invalidHandleDescriptions.join(" and ")} no longer exist.`,
+    suggestedAction: "Reconnect this path with the current node handles and verify the restored graph before saving again.",
+  };
+}
+
+function getInvalidHandleDescriptions(input: {
+  readonly edge: FlowEdge;
+  readonly sourceHandleValid: boolean;
+  readonly sourceType: string;
+  readonly targetHandleValid: boolean;
+  readonly targetType: string;
+}): string[] {
+  return [
+    describeInvalidHandle(input.sourceHandleValid, input.edge.sourceHandle, input.sourceType, "source"),
+    describeInvalidHandle(input.targetHandleValid, input.edge.targetHandle, input.targetType, "target"),
+  ].filter((description): description is string => description !== null);
+}
+
+function describeInvalidHandle(
+  handleValid: boolean,
+  handleId: string | null | undefined,
+  nodeType: string,
+  position: "source" | "target",
+): string | null {
+  if (handleValid) {
+    return null;
+  }
+
+  return `${position} handle "${handleId ?? "(default)"}" on ${nodeType}`;
 }
 
 function hasValidHandle(

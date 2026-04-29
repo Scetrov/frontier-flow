@@ -74,7 +74,7 @@ test("auto-compiles after idle and unlocks the workflow", async ({ page, isMobil
 
   await expect(statusButton).toBeVisible();
   await ensureCategoryExpanded(page, "Event Trigger");
-  await dropNode(page, "Proximity", 360, 260);
+  await dropNode(page, "Entered / Attacked", 360, 260);
   await expect(statusButton).toContainText("Compiled");
 
   await expect(moveTab).toBeEnabled();

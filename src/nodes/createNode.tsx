@@ -28,6 +28,7 @@ import {
 import BaseNode from "./BaseNode";
 
 export const iconByNodeType: Readonly<Partial<Record<string, LucideIcon>>> = {
+  enteredAttacked: Radar,
   aggression: Swords,
   proximity: Radar,
   getTribe: Users,

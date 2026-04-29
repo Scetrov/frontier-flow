@@ -134,6 +134,12 @@ describe("restoreSavedFlow", () => {
     expect(restoredFlow.nodes).toHaveLength(1);
     expect(restoredFlow.nodes[0]?.type).toBe("proximity");
     expect(restoredFlow.nodes[0]?.data.sockets.map((socket) => socket.id)).toEqual(["priority", "target"]);
+    expect(restoredFlow.nodes[0]?.data.deprecation).toEqual(
+      expect.objectContaining({
+        status: "deprecated",
+        replacedBy: ["enteredAttacked"],
+      }),
+    );
     expect(restoredFlow.remediationNotices).toHaveLength(0);
   });
 
@@ -160,5 +166,33 @@ describe("restoreSavedFlow", () => {
         replacedBy: ["hasBehaviour"],
       }),
     );
+  });
+
+  it("surfaces a remediation notice when saved edges point at removed handles", () => {
+    const restoredFlow = restoreSavedFlow(
+      [createNode("queue_source", "addToQueue"), createNode("queue_target", "addToQueue")],
+      [
+        {
+          id: "legacy-priority-out",
+          source: "queue_source",
+          sourceHandle: "priority_out",
+          target: "queue_target",
+          targetHandle: "priority_in",
+        },
+      ],
+    );
+
+    expect(restoredFlow.edges).toHaveLength(0);
+    expect(restoredFlow.remediationNotices).toHaveLength(1);
+
+    const [notice] = restoredFlow.remediationNotices;
+
+    expect(notice).toMatchObject({
+      nodeId: "queue_source",
+      legacyType: "addToQueue",
+      severity: "warning",
+      suggestedAction: "Reconnect this path with the current node handles and verify the restored graph before saving again.",
+    });
+    expect(notice.message).toContain('source handle "priority_out" on addToQueue');
   });
 });

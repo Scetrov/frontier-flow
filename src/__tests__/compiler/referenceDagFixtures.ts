@@ -43,7 +43,7 @@ export const unsupportedReferenceDagCases: readonly ReferenceDagCase[] = [
     contractName: "Unsupported Missing Priority",
     expectedModuleName: "unsupported_missing_priority",
     supported: false,
-    expectedBlockingDiagnostic: "Required input 'priority in' is not connected.",
+    expectedBlockingDiagnostic: "Required input 'priority queue' is not connected.",
     profile: {
       id: "unsupported_missing_priority_input",
       name: "Missing Priority Input",

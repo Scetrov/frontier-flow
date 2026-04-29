@@ -248,7 +248,7 @@ function resolveActionResultBindings(graph: IRGraph, bindings: ReadonlyMap<strin
 
   return {
     includeBinding: bindings.get(socketBindingKey(actionNode.id, "include_result")) ?? "true",
-    weightBinding: bindings.get(socketBindingKey(actionNode.id, "priority_out")) ?? "candidate.priority_weight",
+    weightBinding: bindings.get(socketBindingKey(actionNode.id, "result_weight")) ?? "candidate.priority_weight",
   };
 }
 

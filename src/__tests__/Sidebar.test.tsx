@@ -2,14 +2,14 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Sidebar from "../components/Sidebar";
-import { nodeDefinitions } from "../data/node-definitions";
+import { authorableNodeDefinitions } from "../data/node-definitions";
 import type { NodeDefinition } from "../types/nodes";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
 
 const singleCategoryDefinitions: readonly NodeDefinition[] = [
   {
-    type: "aggression",
-    label: "Aggression",
+    type: "enteredAttacked",
+    label: "Entered / Attacked",
     description: "Trigger combat automations.",
     color: "var(--brand-orange)",
     category: "event-trigger",
@@ -27,8 +27,8 @@ const singleCategoryDefinitions: readonly NodeDefinition[] = [
 
 const twoCategoryDefinitions: readonly NodeDefinition[] = [
   {
-    type: "aggression",
-    label: "Aggression",
+    type: "enteredAttacked",
+    label: "Entered / Attacked",
     description: "Trigger combat automations.",
     color: "var(--brand-orange)",
     category: "event-trigger",
@@ -46,8 +46,8 @@ const twoCategoryDefinitions: readonly NodeDefinition[] = [
 
 const splitDataCategoryDefinitions: readonly NodeDefinition[] = [
   {
-    type: "aggression",
-    label: "Aggression",
+    type: "enteredAttacked",
+    label: "Entered / Attacked",
     description: "Trigger combat automations.",
     color: "var(--brand-orange)",
     category: "event-trigger",
@@ -111,7 +111,7 @@ describe("Sidebar", () => {
   });
 
   it("renders the split top-level category headings in deterministic order", () => {
-    render(<Sidebar definitions={nodeDefinitions} />);
+    render(<Sidebar definitions={authorableNodeDefinitions} />);
 
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
       "Event Trigger",
@@ -123,7 +123,7 @@ describe("Sidebar", () => {
   });
 
   it("expands only the first category on initial load", () => {
-    render(<Sidebar definitions={nodeDefinitions} />);
+    render(<Sidebar definitions={authorableNodeDefinitions} />);
 
     const toolbox = screen.getByRole("complementary", { name: "Node toolbox" });
 
@@ -141,13 +141,14 @@ describe("Sidebar", () => {
   });
 
   it("shows first-category node buttons and hides collapsed-category node buttons on load", () => {
-    render(<Sidebar definitions={nodeDefinitions} />);
+    render(<Sidebar definitions={authorableNodeDefinitions} />);
     const toolbox = screen.getByRole("complementary", { name: "Node toolbox" });
 
     // event-trigger nodes visible (expanded by default)
-    expect(within(toolbox).getByRole("button", { name: /Aggression/ })).toBeInTheDocument();
-    expect(within(toolbox).getByRole("button", { name: /Proximity/ })).toBeInTheDocument();
-    expect(within(toolbox).getByText("Emit priority and target data when a hostile action is detected.")).toBeInTheDocument();
+    expect(within(toolbox).getByRole("button", { name: /Entered \/ Attacked/ })).toBeInTheDocument();
+    expect(within(toolbox).queryByRole("button", { name: /Aggression/ })).not.toBeInTheDocument();
+    expect(within(toolbox).queryByRole("button", { name: /Proximity/ })).not.toBeInTheDocument();
+    expect(within(toolbox).getByText("Emit priority and target data when a candidate enters range or starts attacking.")).toBeInTheDocument();
 
     // action node not in DOM (collapsed)
     expect(within(toolbox).queryByRole("button", { name: /Add to Queue/ })).not.toBeInTheDocument();
@@ -156,7 +157,7 @@ describe("Sidebar", () => {
   it("renders toolbox entries with shared node chrome and no edit or delete controls", () => {
     render(<Sidebar definitions={singleCategoryDefinitions} />);
 
-    const preview = screen.getByRole("button", { name: "Aggression" });
+    const preview = screen.getByRole("button", { name: "Entered / Attacked" });
 
     expect(preview.querySelector(".ff-node__surface")).not.toBeNull();
     expect(preview.querySelector(".ff-node__edit-button")).toBeNull();
@@ -190,11 +191,11 @@ describe("Sidebar", () => {
   it("collapses an expanded category when its header is clicked", () => {
     render(<Sidebar definitions={twoCategoryDefinitions} />);
 
-    expect(screen.getByRole("button", { name: /Aggression/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Entered \/ Attacked/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Event Trigger category" }));
 
-    expect(screen.queryByRole("button", { name: /Aggression/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Entered \/ Attacked/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Event Trigger category" })).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -205,7 +206,7 @@ describe("Sidebar", () => {
   });
 
   it("collapses and reopens the toolbox from the chevron handle", () => {
-    render(<Sidebar definitions={nodeDefinitions} />);
+    render(<Sidebar definitions={authorableNodeDefinitions} />);
 
     const toggle = screen.getByRole("button", { name: "Close node toolbox" });
     const toolbox = screen.getByRole("complementary", { name: "Node toolbox" });
@@ -235,14 +236,14 @@ describe("Sidebar", () => {
       }),
     );
 
-    render(<Sidebar definitions={nodeDefinitions} />);
+    render(<Sidebar definitions={authorableNodeDefinitions} />);
 
     expect(document.getElementById("node-toolbox")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("button", { name: "Open node toolbox" })).toBeInTheDocument();
   });
 
   it("persists the toolbox state when toggled", () => {
-    render(<Sidebar definitions={nodeDefinitions} />);
+    render(<Sidebar definitions={authorableNodeDefinitions} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Close node toolbox" }));
 
@@ -257,7 +258,7 @@ describe("Sidebar", () => {
     render(<Sidebar definitions={singleCategoryDefinitions} />);
 
     const setData = vi.fn();
-    const button = screen.getByRole("button", { name: /^Aggression$/ });
+    const button = screen.getByRole("button", { name: /^Entered \/ Attacked$/ });
 
     fireEvent.dragStart(button, {
       dataTransfer: {
@@ -266,8 +267,8 @@ describe("Sidebar", () => {
       },
     });
 
-    expect(setData).toHaveBeenCalledWith("application/reactflow", "aggression");
-    expect(setData).toHaveBeenCalledWith("application/label", "Aggression");
+    expect(setData).toHaveBeenCalledWith("application/reactflow", "enteredAttacked");
+    expect(setData).toHaveBeenCalledWith("application/label", "Entered / Attacked");
     expect(setData).toHaveBeenCalledWith("application/x-offset", expect.stringMatching(/^\d+,\d+$/));
   });
 });

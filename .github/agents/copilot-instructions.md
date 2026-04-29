@@ -1,1 +1,1 @@
-- 021-github-token-auth: Added TypeScript `~6.0.2` (strict, ES Modules), React `19.2.0` + React, `@tanstack/react-query`, `@zktx.io/sui-move-builder`, Rolldown Vite, `@netlify/functions` (planned)
+- 024-node-engine-refactor: Added TypeScript `5.9`, React `19`, ES Modules, strict typing + `@xyflow/react`, React, Vite, Bun, Vitest, Testing Library

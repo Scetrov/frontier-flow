@@ -62,7 +62,7 @@ test("asks before replacing unsaved canvas work with a seeded example contract",
   await page.goto("/");
 
   await ensureCategoryExpanded(page, "Event Trigger");
-  await dropNode(page, "Proximity", 420, 220);
+  await dropNode(page, "Entered / Attacked", 420, 220);
 
   const [dialog] = await selectSavedContractAndWaitForDialog(page, "Example · Turret Aggressor First");
 
@@ -71,5 +71,6 @@ test("asks before replacing unsaved canvas work with a seeded example contract",
 
   const canvasNodes = getCanvasNodes(page);
   await expect(canvasNodes.filter({ hasText: "Aggressor Bonus" })).toHaveCount(1);
-  await expect(canvasNodes.filter({ hasText: "Proximity" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Delete Entered / Attacked" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Delete Aggression" })).toHaveCount(1);
 });

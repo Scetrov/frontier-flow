@@ -38,7 +38,7 @@ test("drops representative contract nodes onto the canvas", async ({ page, isMob
   const workspace = page.getByTestId("canvas-workspace");
   await expect(page.getByRole("button", { name: "Data Extractor category" })).toBeVisible();
 
-  await dropNode(page, "Aggression", 220, 180);
+  await dropNode(page, "Entered / Attacked", 220, 180);
   await ensureCategoryExpanded(page, "Data Extractor");
   await dropNode(page, "Get Behaviour", 360, 260);
   await ensureCategoryExpanded(page, "Logic");
@@ -46,7 +46,7 @@ test("drops representative contract nodes onto the canvas", async ({ page, isMob
   await ensureCategoryExpanded(page, "Action");
   await dropNode(page, "Add to Queue", 680, 380);
 
-  await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Aggression$/ })).toHaveCount(2);
+  await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Entered \/ Attacked$/ })).toHaveCount(2);
   await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Get Behaviour$/ })).toHaveCount(1);
   await expect(workspace.locator(".ff-node__title").filter({ hasText: /^OR$/ })).toHaveCount(2);
   await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Add to Queue$/ })).toHaveCount(2);

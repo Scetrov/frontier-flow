@@ -288,7 +288,7 @@ describe("compilePipeline", () => {
           stage: "compilation",
           rawMessage: "warning: unused binding at sources/starter_contract.move:8:9",
           line: 8,
-          reactFlowNodeId: "default_aggression",
+          reactFlowNodeId: "default_entered_attacked",
           socketId: null,
           userMessage: "unused binding at sources/starter_contract.move:8:9",
         },
@@ -315,7 +315,7 @@ describe("compilePipeline", () => {
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
         severity: "warning",
-        reactFlowNodeId: "default_aggression",
+        reactFlowNodeId: "default_entered_attacked",
       }),
     ]);
     expect(result.artifact?.bytecodeModules).toEqual([new Uint8Array([7, 8, 9])]);
