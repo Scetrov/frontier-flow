@@ -71,5 +71,6 @@ test("asks before replacing unsaved canvas work with a seeded example contract",
 
   const canvasNodes = getCanvasNodes(page);
   await expect(canvasNodes.filter({ hasText: "Aggressor Bonus" })).toHaveCount(1);
-  await expect(canvasNodes.filter({ hasText: "Entered / Attacked" })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Delete Entered / Attacked" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Delete Aggression" })).toHaveCount(1);
 });

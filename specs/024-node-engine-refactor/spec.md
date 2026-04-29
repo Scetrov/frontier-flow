@@ -3,7 +3,7 @@
 **Feature Branch**: `[024-node-engine-refactor]`  
 **Created**: 2026-04-29  
 **Status**: Draft  
-**Input**: User description: "Refactor the visual node engine by combining Proximity and Aggression into Entered / Attacked, preserving deprecated node compatibility, updating Add to Queue ports, renaming Priority to Priority Queue, auto-wiring Add to Queue from Entered / Attacked, normalizing zero weights to 100, and updating automated tests."
+**Input**: User description: "Refactor the visual node engine by combining Proximity and Aggression into Entered / Attacked, preserving deprecated node compatibility, updating Add to Queue ports, renaming Priority to Priority Queue, adding explicit trigger-input wiring for Add to Queue from Entered / Attacked, normalizing zero weights to 100, and updating automated tests."
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -45,11 +45,11 @@ As a contract author, I want queue-related nodes to use consistent naming and co
 
 **Why this priority**: Queue authoring is a frequent workflow, and reducing redundant labels, ports, and manual edge creation lowers friction without changing the underlying intent of the flow.
 
-**Independent Test**: Can be fully tested by dropping `Add to Queue` into a graph that already contains `Entered / Attacked`, then confirming the expected queue-related connections appear automatically and the redundant output is no longer exposed.
+**Independent Test**: Can be fully tested by placing `Add to Queue` into a graph that already contains `Entered / Attacked`, then using the queue node's `Wire trigger inputs` context-menu action to confirm the expected queue-related connections appear and the redundant output is no longer exposed.
 
 **Acceptance Scenarios**:
 
-1. **Given** a graph with one compatible `Entered / Attacked` node and no conflicting queue connections, **When** the author adds `Add to Queue`, **Then** the new node auto-connects to the compatible priority and target outputs.
+1. **Given** a graph with one compatible `Entered / Attacked` node and no conflicting queue connections, **When** the author chooses `Wire trigger inputs` on `Add to Queue`, **Then** the system adds the compatible priority and target connections.
 2. **Given** an `Add to Queue` node, **When** the author reviews its available ports and labels, **Then** the redundant `Priority Out` port is absent and queue-related labels use `Priority Queue`.
 3. **Given** an `Add to Queue` node whose relevant inputs are already connected, **When** another queue node is added, **Then** the system does not create duplicate or conflicting automatic connections.
 
@@ -126,7 +126,7 @@ As a contract author, I want zero-valued queue weights to normalize to the defau
 
 - Primary registry files: `/home/scetrov/source/frontier-flow/src/data/node-definitions.ts` and `/home/scetrov/source/frontier-flow/src/types/nodes.ts`.
 - Toolbox entry point: `/home/scetrov/source/frontier-flow/src/components/Sidebar.tsx`. Current drag payload uses `application/reactflow`, `application/label`, and `application/x-offset`.
-- Canvas drop and auto-wiring entry point: `/home/scetrov/source/frontier-flow/src/components/CanvasWorkspace.tsx`, specifically the `useCanvasInteractions` drop flow.
+- Canvas context-menu wiring entry point: `/home/scetrov/source/frontier-flow/src/components/CanvasWorkspace.tsx`, specifically the node context-menu `Wire trigger inputs` action inside `useCanvasInteractions`.
 - Existing trigger socket ids: `aggression` and `proximity` both expose `priority` and `target` outputs in `/home/scetrov/source/frontier-flow/src/data/node-definitions.ts`.
 - Current `addToQueue` socket ids: inputs `priority_in`, `target`, `predicate`, `weight`; output `priority_out` in `/home/scetrov/source/frontier-flow/src/data/node-definitions.ts`.
 - Existing field-normalization hook: `/home/scetrov/source/frontier-flow/src/data/nodeFieldCatalog.ts` via `normalizeNodeFields(...)`.

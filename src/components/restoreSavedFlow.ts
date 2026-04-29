@@ -132,7 +132,7 @@ function createDroppedEdgeRemediationNotice(input: {
     nodeId: sourceNode?.id ?? targetNode?.id ?? edge.source,
     legacyType: sourceType,
     severity: "warning",
-    message: `Dropped saved edge "${edge.id}" because ${invalidHandleDescriptions.join(" and ")} no longer exists.`,
+    message: `Dropped saved edge "${edge.id}" because ${invalidHandleDescriptions.join(" and ")} no longer exist.`,
     suggestedAction: "Reconnect this path with the current node handles and verify the restored graph before saving again.",
   };
 }

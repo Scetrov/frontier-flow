@@ -15,7 +15,7 @@
 1. Open the toolbox and verify `Entered / Attacked` is present in the event-trigger category.
 2. Verify `Aggression` and `Proximity` are not offered in the toolbox.
 3. Drag `Entered / Attacked` onto the canvas.
-4. Drag `Add to Queue` onto the canvas and verify the queue node auto-connects from the trigger for both `priority` and `target` when those inputs are free.
+4. Drag `Add to Queue` onto the canvas, open its context menu, choose `Wire trigger inputs`, and verify the queue node receives `priority` and `target` connections when those inputs are free.
 5. Inspect the queue node and verify `Priority Out` is no longer rendered.
 6. Load or restore a saved graph containing `Aggression` or `Proximity` and verify the nodes still render.
 7. Exercise a queue weight value of `0` through save/compile behavior and verify the resulting stored or emitted value is `100`.

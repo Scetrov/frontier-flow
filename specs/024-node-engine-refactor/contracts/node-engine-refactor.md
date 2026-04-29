@@ -19,8 +19,8 @@
 
 | Handle Id     | Direction | Required Behavior                              |
 | ------------- | --------- | ---------------------------------------------- |
-| `priority_in` | Input     | Accepts inherited or auto-wired priority input |
-| `target`      | Input     | Accepts inherited or auto-wired target input   |
+| `priority_in` | Input     | Accepts inherited or explicitly wired priority input |
+| `target`      | Input     | Accepts inherited or explicitly wired target input   |
 | `predicate`   | Input     | Remains unchanged                              |
 | `weight`      | Input     | Remains available for explicit weight override |
 
@@ -32,15 +32,15 @@
 - Canvas restore and render must continue to support legacy nodes that are no longer authorable.
 - Existing deprecated/retired semantics must remain consistent for all node types, not only the new trigger change.
 
-## 1.4. Drop Auto-Wiring Contract
+## 1.4. Trigger-Input Wiring Contract
 
-When a user drops `addToQueue` onto the canvas:
+When an author invokes `Wire trigger inputs` on an `addToQueue` node:
 
 1. The system checks for at least one compatible `enteredAttacked` node.
 2. The system selects the first compatible trigger in stable node order.
 3. The system proposes up to two edges: `priority -> priority_in` and `target -> target`.
 4. The system creates only edges that do not already exist and do not target an input that is already connected.
-5. If no compatible trigger exists, the queue node is created with no auto-generated edges.
+5. If no compatible trigger exists, the queue node remains unchanged and no helper edges are created.
 
 ## 1.5. Restore Compatibility Contract
 

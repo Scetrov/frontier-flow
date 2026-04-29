@@ -72,22 +72,22 @@
 
 ## Phase 5: User Story 3 - Build queue flows with fewer manual steps (Priority: P2)
 
-**Goal**: Remove redundant queue output, rename queue-facing priority labels, and auto-wire a dropped `Add to Queue` from `Entered / Attacked`.
+**Goal**: Remove redundant queue output, rename queue-facing priority labels, and add explicit trigger-input wiring from `Entered / Attacked` to `Add to Queue`.
 
-**Independent Test**: Place `Entered / Attacked` on a fresh canvas, drop `Add to Queue`, confirm deterministic `priority` and `target` auto-wiring, verify neither compatible input is overwritten when already connected, and verify no `Priority Out` port is rendered.
+**Independent Test**: Place `Entered / Attacked` on a fresh canvas, drop `Add to Queue`, run `Wire trigger inputs`, confirm deterministic `priority` and `target` connections, verify neither compatible input is overwritten when already connected, and verify no `Priority Out` port is rendered.
 
 ### Tests for User Story 3
 
-- [X] T014 [P] [US3] Add auto-wiring and removed-port regression tests covering both compatible inputs, duplicate suppression, and pre-connected-input protection in `src/__tests__/canvasFlow.test.tsx` and `src/__tests__/compiler/irBuilder.test.ts`
-- [X] T015 [P] [US3] Add queue terminology plus Playwright and `axe-core` workflow coverage for toolbox/drop auto-wiring in `src/__tests__/nodeDefinitions.test.ts`, `src/__tests__/Sidebar.test.tsx`, and `tests/e2e/canvas-workflow.spec.ts`
+- [X] T014 [P] [US3] Add trigger-input wiring and removed-port regression tests covering both compatible inputs, duplicate suppression, and pre-connected-input protection in `src/__tests__/canvasFlow.test.tsx` and `src/__tests__/compiler/irBuilder.test.ts`
+- [X] T015 [P] [US3] Add queue terminology plus Playwright and `axe-core` workflow coverage for toolbox/context-menu trigger-input wiring in `src/__tests__/nodeDefinitions.test.ts`, `src/__tests__/Sidebar.test.tsx`, and `tests/e2e/canvas-workflow.spec.ts`
 
 ### Implementation for User Story 3
 
 - [X] T016 [US3] Rename queue-facing `Priority` copy and remove `priority_out` from `addToQueue` in `src/data/node-definitions.ts`
-- [X] T017 [US3] Implement deterministic `Add to Queue` auto-wiring on drop with guards for both `priority_in` and `target` inputs in `src/components/CanvasWorkspace.tsx`
+- [X] T017 [US3] Implement deterministic `Wire trigger inputs` queue wiring with guards for both `priority_in` and `target` inputs in `src/components/CanvasWorkspace.tsx`
 - [X] T018 [US3] Remove public `priority_out` compiler assumptions in `src/compiler/generators/actions.ts` and `src/compiler/emitter.ts`
 
-**Checkpoint**: User Story 3 should now make queue authoring faster without duplicate or conflicting auto-generated edges.
+**Checkpoint**: User Story 3 should now make queue authoring faster without duplicate or conflicting helper-generated edges.
 
 ---
 
@@ -129,7 +129,7 @@
 - **Foundational (Phase 2)**: Depends on Setup. Blocks all user story work.
 - **User Story 1 (Phase 3)**: Depends on Foundational. Delivers MVP authoring path.
 - **User Story 2 (Phase 4)**: Depends on Foundational. Can run in parallel with User Story 1 after shared plumbing lands.
-- **User Story 3 (Phase 5)**: Depends on Foundational and benefits from User Story 1 because auto-wiring targets `enteredAttacked`.
+- **User Story 3 (Phase 5)**: Depends on Foundational and benefits from User Story 1 because trigger-input wiring targets `enteredAttacked`.
 - **User Story 4 (Phase 6)**: Depends on Foundational. Can run in parallel with User Story 2 once shared compile plumbing is in place.
 - **Polish (Phase 7)**: Depends on all desired user stories completing.
 
@@ -137,7 +137,7 @@
 
 - **US1**: No dependency on other user stories.
 - **US2**: No dependency on other user stories.
-- **US3**: Depends on US1 node type availability for `enteredAttacked` auto-wiring.
+- **US3**: Depends on US1 node type availability for `enteredAttacked` trigger-input wiring.
 - **US4**: No dependency on other user stories.
 
 ### Within Each User Story
@@ -184,12 +184,12 @@ Task: "Refresh persisted/default flow expectations for legacy trigger compatibil
 
 ```bash
 # Launch US3 test work together
-Task: "Add auto-wiring and removed-port regression tests covering both compatible inputs, duplicate suppression, and pre-connected-input protection in src/__tests__/canvasFlow.test.tsx and src/__tests__/compiler/irBuilder.test.ts"
-Task: "Add queue terminology plus Playwright and axe-core workflow coverage for toolbox/drop auto-wiring in src/__tests__/nodeDefinitions.test.ts, src/__tests__/Sidebar.test.tsx, and tests/e2e/canvas-workflow.spec.ts"
+Task: "Add trigger-input wiring and removed-port regression tests covering both compatible inputs, duplicate suppression, and pre-connected-input protection in src/__tests__/canvasFlow.test.tsx and src/__tests__/compiler/irBuilder.test.ts"
+Task: "Add queue terminology plus Playwright and axe-core workflow coverage for toolbox/context-menu trigger-input wiring in src/__tests__/nodeDefinitions.test.ts, src/__tests__/Sidebar.test.tsx, and tests/e2e/canvas-workflow.spec.ts"
 
 # Then split implementation by concern
 Task: "Rename queue-facing Priority copy and remove priority_out from addToQueue in src/data/node-definitions.ts"
-Task: "Implement deterministic Add to Queue auto-wiring on drop in src/components/CanvasWorkspace.tsx"
+Task: "Implement deterministic Wire trigger inputs queue wiring in src/components/CanvasWorkspace.tsx"
 ```
 
 ## Parallel Example: User Story 4

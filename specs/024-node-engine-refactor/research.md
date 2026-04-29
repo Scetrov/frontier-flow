@@ -18,15 +18,15 @@
 - **Rationale**: The project already distinguishes deprecated and retired nodes, and `NodeShell` can surface deprecation state on canvas nodes. Extending the authoring filter is simpler than introducing parallel visibility state.
 - **Alternatives considered**: Add a standalone visibility boolean. Rejected because it duplicates meaning already represented by `NodeDeprecation` and increases maintenance overhead.
 
-## 1.4. Auto-Wiring Placement
+## 1.4. Trigger-Input Wiring Placement
 
-- **Decision**: Extend the `handleDrop` flow inside `src/components/CanvasWorkspace.tsx` so adding `addToQueue` can create edges immediately after the node is placed.
-- **Rationale**: The drop handler already has the new node id, the current node list, and the edge setter. This keeps the behavior localized to authoring-time node creation and avoids mutating restored or imported graphs after the fact.
-- **Alternatives considered**: Hook auto-wiring into `onNodesChange` or a post-render effect. Rejected because those paths make it harder to distinguish user-created nodes from restored nodes and can introduce duplicate work during React Flow state updates.
+- **Decision**: Reuse the existing `createAutoWiredAddToQueueEdges` helper behind the `Wire trigger inputs` node context-menu action inside `src/components/CanvasWorkspace.tsx`.
+- **Rationale**: The context menu keeps the helper local to the selected queue node, makes the graph mutation explicit, and still reuses the same deterministic edge-generation logic.
+- **Alternatives considered**: Trigger wiring inside `handleDrop` or a post-render effect. Rejected because those paths add implicit graph mutations during placement and make it harder to distinguish author intent from background automation.
 
-## 1.5. Deterministic Auto-Wire Targeting
+## 1.5. Deterministic Trigger-Input Targeting
 
-- **Decision**: Auto-wire to the first compatible `enteredAttacked` node in stable node order and only create missing `priority -> priority_in` and `target -> target` edges.
+- **Decision**: When the author invokes `Wire trigger inputs`, wire to the first compatible `enteredAttacked` node in stable node order and only create missing `priority -> priority_in` and `target -> target` edges.
 - **Rationale**: The feature must avoid duplicates and ambiguous multi-trigger behavior. Stable first-match selection keeps the behavior deterministic and easy to test.
 - **Alternatives considered**: Wire to the nearest trigger by coordinates or connect to every compatible trigger. Rejected because spatial heuristics are harder to reason about and multi-connect would violate the spec’s duplicate/conflict constraints.
 

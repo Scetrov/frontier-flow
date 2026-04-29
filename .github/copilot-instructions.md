@@ -26,7 +26,7 @@ Frontier Flow is a visual low-code programming interface for EVE Frontier game a
 
 ## Agent Hygiene
 
-- Always use caveman when talking, save tokens, use simple language.
+- Keep agent replies terse and plain; prefer simple language and low-token phrasing.
 - Always use context-mode when calling tools, save input tokens.
 
 ## Commit Hygiene

@@ -5,7 +5,7 @@
 
 ## 1.1. Summary
 
-Introduce a new `enteredAttacked` authoring node that supersedes `aggression` and `proximity`, preserve legacy graph hydration for both retired trigger types, remove the visible `addToQueue.priority_out` authoring port, rename queue-facing `Priority` language to `Priority Queue`, auto-wire a newly dropped `addToQueue` node from an existing `enteredAttacked` trigger, and normalize queue weight values so `0` becomes `100` before restore and compilation outputs are produced.
+Introduce a new `enteredAttacked` authoring node that supersedes `aggression` and `proximity`, preserve legacy graph hydration for both retired trigger types, remove the visible `addToQueue.priority_out` authoring port, rename queue-facing `Priority` language to `Priority Queue`, add an explicit `Wire trigger inputs` action for wiring `addToQueue` from an existing `enteredAttacked` trigger, and normalize queue weight values so `0` becomes `100` before restore and compilation outputs are produced.
 
 The implementation will stay inside the existing React Flow + TypeScript frontend and deterministic compiler pipeline. The main touchpoints are the node registry and hydration path in `src/data`, toolbox filtering in `src/components/Sidebar.tsx`, drag-drop behavior in `src/components/CanvasWorkspace.tsx`, weight normalization in `src/data/nodeFieldCatalog.ts`, and compiler socket/binding updates in `src/compiler/generators` and the emitter fallback logic.
 
@@ -28,7 +28,7 @@ The implementation will stay inside the existing React Flow + TypeScript fronten
 ### 1.3.1. Pre-Research Gate
 
 - **I. Type Safety Above All**: Pass. The plan stays in strict TypeScript types already defined around `NodeDefinition`, `FlowNodeData`, and compiler node bindings.
-- **II. Visual Feedback is Paramount**: Pass. Auto-wiring is attached to the existing drop interaction so queue connections appear immediately after placement.
+- **II. Visual Feedback is Paramount**: Pass. Queue wiring stays in the existing canvas workflow through a node context-menu action, so the affordance remains local to the queue node without implicit graph edits on drop.
 - **IV. Predictable Code Generation**: Pass. Legacy node restore remains deterministic, and queue-weight normalization is centralized before IR/code emission.
 - **V. Security by Default**: Pass. No secret handling or new external content surface is introduced.
 - **VI. Test-First Quality**: Pass with required follow-up. The execution plan fronts shared failing regression tests before shared implementation work, then keeps tests-first ordering inside each user story.
@@ -97,7 +97,7 @@ src/
 ### 1.5.1. Phase 0 Research Outcomes
 
 - Keep legacy trigger node types in the runtime catalog and hydration path; hide them from authoring by filtering deprecated nodes from `authorableNodeDefinitions`.
-- Place auto-wiring in the existing React Flow drop flow so new connections are created at the moment a queue node is added.
+- Place trigger-input wiring in the existing React Flow workspace layer behind the queue node context menu so authors opt into the helper when needed.
 - Use the same socket ids, `priority` and `target`, on the new `enteredAttacked` node so saved and newly created edges stay compatible with the current queue and target-processing pipeline.
 - Normalize queue weight values at the node-field normalization layer so restore, edit, IR build, and compile paths see the same canonical value.
 
@@ -105,7 +105,7 @@ src/
 
 - Update `NodeDefinition` usage to represent authoring visibility through the existing deprecation metadata rather than a parallel flag.
 - Treat `enteredAttacked` as the current authoring trigger and `aggression`/`proximity` as legacy runtime definitions with deprecation metadata and remediation messaging where helpful.
-- Define deterministic auto-wiring to the first compatible `enteredAttacked` node in stable node order, while skipping any already-connected compatible input (`priority_in` or `target`) and any duplicate edge tuple.
+- Define deterministic trigger-input wiring to the first compatible `enteredAttacked` node in stable node order, while skipping any already-connected compatible input (`priority_in` or `target`) and any duplicate edge tuple.
 - Remove `priority_out` from `addToQueue` authoring metadata and align generator/emitter behavior so queue output weight still resolves through the action result without exposing the deprecated handle.
 
 ## 1.6. Complexity Tracking
