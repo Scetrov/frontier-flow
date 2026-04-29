@@ -120,11 +120,13 @@ function createDroppedEdgeRemediationNotice(input: {
 }): RemediationNotice {
   const { edge, sourceHandleValid, sourceNode, targetHandleValid, targetNode } = input;
   const sourceType = typeof sourceNode?.type === "string" ? sourceNode.type : "unknown";
-  const targetType = typeof targetNode?.type === "string" ? targetNode.type : "unknown";
-  const invalidHandleDescriptions = [
-    sourceHandleValid ? null : `source handle "${edge.sourceHandle ?? "(default)"}" on ${sourceType}`,
-    targetHandleValid ? null : `target handle "${edge.targetHandle ?? "(default)"}" on ${targetType}`,
-  ].filter((description): description is string => description !== null);
+  const invalidHandleDescriptions = getInvalidHandleDescriptions({
+    edge,
+    sourceHandleValid,
+    sourceType,
+    targetHandleValid,
+    targetType: typeof targetNode?.type === "string" ? targetNode.type : "unknown",
+  });
 
   return {
     nodeId: sourceNode?.id ?? targetNode?.id ?? edge.source,
@@ -133,6 +135,32 @@ function createDroppedEdgeRemediationNotice(input: {
     message: `Dropped saved edge "${edge.id}" because ${invalidHandleDescriptions.join(" and ")} no longer exists.`,
     suggestedAction: "Reconnect this path with the current node handles and verify the restored graph before saving again.",
   };
+}
+
+function getInvalidHandleDescriptions(input: {
+  readonly edge: FlowEdge;
+  readonly sourceHandleValid: boolean;
+  readonly sourceType: string;
+  readonly targetHandleValid: boolean;
+  readonly targetType: string;
+}): string[] {
+  return [
+    describeInvalidHandle(input.sourceHandleValid, input.edge.sourceHandle, input.sourceType, "source"),
+    describeInvalidHandle(input.targetHandleValid, input.edge.targetHandle, input.targetType, "target"),
+  ].filter((description): description is string => description !== null);
+}
+
+function describeInvalidHandle(
+  handleValid: boolean,
+  handleId: string | null | undefined,
+  nodeType: string,
+  position: "source" | "target",
+): string | null {
+  if (handleValid) {
+    return null;
+  }
+
+  return `${position} handle "${handleId ?? "(default)"}" on ${nodeType}`;
 }
 
 function hasValidHandle(

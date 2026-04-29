@@ -314,6 +314,88 @@ function ContractDrawerHeader() {
   );
 }
 
+function createDroppedFlowNode(input: {
+  readonly event: ReactDragEvent<HTMLDivElement>;
+  readonly nodeCounterRef: { current: number };
+  readonly reactFlow: ReturnType<typeof useReactFlow<FlowNode, FlowEdge>>;
+}): FlowNode | null {
+  const type = input.event.dataTransfer.getData("application/reactflow");
+  const definition = getNodeDefinition(type);
+  if (definition === undefined) {
+    return null;
+  }
+
+  input.nodeCounterRef.current += 1;
+  const [rawX = "0", rawY = "0"] = input.event.dataTransfer.getData("application/x-offset").split(",");
+  const position = input.reactFlow.screenToFlowPosition({
+    x: input.event.clientX - Number(rawX || 0),
+    y: input.event.clientY - Number(rawY || 0),
+  });
+  return {
+    id: ["dnd", String(input.nodeCounterRef.current), String(Date.now())].join("_"),
+    type: definition.type,
+    position,
+    data: createFlowNodeData(definition),
+  } satisfies FlowNode;
+}
+
+function openCanvasContextMenu(input: {
+  readonly clientX: number;
+  readonly clientY: number;
+  readonly selectTarget: (target: CanvasContextMenuTarget) => void;
+  readonly setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
+  readonly target: CanvasContextMenuTarget;
+}): void {
+  input.selectTarget(input.target);
+  input.setContextMenu({ x: input.clientX, y: input.clientY, target: input.target });
+}
+
+function deleteContextMenuTarget(input: {
+  readonly contextMenu: ContextMenuState | null;
+  readonly deleteEdgeById: (edgeId: string) => void;
+  readonly deleteNodeById: (nodeId: string) => void;
+  readonly setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
+}): void {
+  if (input.contextMenu === null) {
+    return;
+  }
+
+  if (input.contextMenu.target.kind === "node") {
+    input.deleteNodeById(input.contextMenu.target.targetId);
+  }
+
+  if (input.contextMenu.target.kind === "edge") {
+    input.deleteEdgeById(input.contextMenu.target.targetId);
+  }
+
+  input.setContextMenu(null);
+}
+
+function autoWireContextMenuTarget(input: {
+  readonly contextMenu: ContextMenuState | null;
+  readonly edges: readonly FlowEdge[];
+  readonly nodes: readonly FlowNode[];
+  readonly setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
+  readonly setEdges: SetFlowEdges;
+}): void {
+  if (input.contextMenu?.target.kind !== "node") {
+    return;
+  }
+
+  const targetNode = input.nodes.find((node) => node.id === input.contextMenu?.target.targetId);
+  if (targetNode === undefined) {
+    input.setContextMenu(null);
+    return;
+  }
+
+  const autoWiredEdges = createAutoWiredAddToQueueEdges(input.nodes, input.edges, targetNode);
+  if (autoWiredEdges.length > 0) {
+    input.setEdges((currentEdges) => currentEdges.concat(autoWiredEdges));
+  }
+
+  input.setContextMenu(null);
+}
+
 function ContractActionButton({
   children,
   className,
@@ -1256,21 +1338,10 @@ function useCanvasInteractions({
   const handleDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setContextMenu(null);
-    const type = event.dataTransfer.getData("application/reactflow");
-    const definition = getNodeDefinition(type);
-    if (definition === undefined) {
+    const addedNode = createDroppedFlowNode({ event, nodeCounterRef, reactFlow });
+    if (addedNode === null) {
       return;
     }
-
-    nodeCounterRef.current += 1;
-    const [rawX = "0", rawY = "0"] = event.dataTransfer.getData("application/x-offset").split(",");
-    const position = reactFlow.screenToFlowPosition({ x: event.clientX - Number(rawX || 0), y: event.clientY - Number(rawY || 0) });
-    const addedNode = {
-      id: ["dnd", String(nodeCounterRef.current), String(Date.now())].join("_"),
-      type: definition.type,
-      position,
-      data: createFlowNodeData(definition),
-    } satisfies FlowNode;
 
     setNodes((currentNodes) => currentNodes.concat(addedNode));
   }, [reactFlow, setContextMenu, setNodes]);
@@ -1292,22 +1363,19 @@ function useCanvasInteractions({
   const handlePaneContextMenu = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     event.preventDefault();
     const target = { kind: "canvas", targetId: null } satisfies CanvasContextMenuTarget;
-    selectTarget(target);
-    setContextMenu({ x: event.clientX, y: event.clientY, target });
+    openCanvasContextMenu({ clientX: event.clientX, clientY: event.clientY, selectTarget, setContextMenu, target });
   }, [selectTarget, setContextMenu]);
   const handleNodeContextMenu = useCallback((event: ReactMouseEvent, node: FlowNode) => {
     event.preventDefault();
     event.stopPropagation();
     const target = { kind: "node", targetId: node.id } satisfies CanvasContextMenuTarget;
-    selectTarget(target);
-    setContextMenu({ x: event.clientX, y: event.clientY, target });
+    openCanvasContextMenu({ clientX: event.clientX, clientY: event.clientY, selectTarget, setContextMenu, target });
   }, [selectTarget, setContextMenu]);
   const handleEdgeContextMenu = useCallback((event: ReactMouseEvent, edge: FlowEdge) => {
     event.preventDefault();
     event.stopPropagation();
     const target = { kind: "edge", targetId: edge.id } satisfies CanvasContextMenuTarget;
-    selectTarget(target);
-    setContextMenu({ x: event.clientX, y: event.clientY, target });
+    openCanvasContextMenu({ clientX: event.clientX, clientY: event.clientY, selectTarget, setContextMenu, target });
   }, [selectTarget, setContextMenu]);
   const handleAutoArrange = useCallback(() => {
     setNodes((currentNodes) => autoArrangeFlow(currentNodes, edges));
@@ -1315,34 +1383,10 @@ function useCanvasInteractions({
     requestAnimationFrame(() => { void reactFlow.fitView({ duration: 240, padding: 0.24 }); });
   }, [edges, reactFlow, setContextMenu, setNodes]);
   const handleDeleteFromContextMenu = useCallback((contextMenu: ContextMenuState | null) => {
-    if (contextMenu === null) {
-      return;
-    }
-
-    if (contextMenu.target.kind === "node") {
-      deleteNodeById(contextMenu.target.targetId);
-    }
-    if (contextMenu.target.kind === "edge") {
-      deleteEdgeById(contextMenu.target.targetId);
-    }
-    setContextMenu(null);
+    deleteContextMenuTarget({ contextMenu, deleteEdgeById, deleteNodeById, setContextMenu });
   }, [deleteEdgeById, deleteNodeById, setContextMenu]);
   const handleAutoWireFromContextMenu = useCallback((contextMenu: ContextMenuState | null) => {
-    if (contextMenu?.target.kind !== "node") {
-      return;
-    }
-
-    const targetNode = nodes.find((node) => node.id === contextMenu.target.targetId);
-    if (targetNode === undefined) {
-      setContextMenu(null);
-      return;
-    }
-
-    const autoWiredEdges = createAutoWiredAddToQueueEdges(nodes, edges, targetNode);
-    if (autoWiredEdges.length > 0) {
-      setEdges((currentEdges) => currentEdges.concat(autoWiredEdges));
-    }
-    setContextMenu(null);
+    autoWireContextMenuTarget({ contextMenu, edges, nodes, setContextMenu, setEdges });
   }, [edges, nodes, setContextMenu, setEdges]);
   const validateConnection = useCallback((connection: Connection | Edge) => isValidFlowConnection({
     source: connection.source,
@@ -1521,41 +1565,124 @@ interface FlowEditorViewProps {
   readonly walletConnected: boolean;
 }
 
-function FlowEditorView({
+type ContractDrawerOverlayProps = Pick<FlowEditorViewProps, "initialMode" | "isContractPanelOpen" | "isDesktop" | "setIsContractPanelOpen">;
+
+function ContractDrawerOverlay({ initialMode, isContractPanelOpen, isDesktop, setIsContractPanelOpen }: ContractDrawerOverlayProps) {
+  if (initialMode !== "persistent" || isDesktop || !isContractPanelOpen) {
+    return null;
+  }
+
+  return (
+    <button
+      aria-label="Close saved contract controls overlay"
+      className="ff-canvas__drawer-overlay"
+      onClick={() => { setIsContractPanelOpen(false); }}
+      style={{ left: "calc(min(24rem, 88vw) + 2.75rem)" }}
+      type="button"
+    />
+  );
+}
+
+type FlowEditorContractDrawerProps = Pick<FlowEditorViewProps,
+  "activeContract"
+  | "activeContractDescription"
+  | "activeRemediationNotices"
+  | "contractLibrary"
+  | "draftContractName"
+  | "handleCreateContractCopy"
+  | "handleDeleteContract"
+  | "handleExportContract"
+  | "handleImportFromFile"
+  | "handleImportFromWalrus"
+  | "handlePublishContract"
+  | "handleSaveAsContract"
+  | "handleSelectContract"
+  | "initialMode"
+  | "isContractPanelOpen"
+  | "setDraftContractName"
+  | "setIsContractPanelOpen"
+  | "walletConnected"
+>;
+
+function FlowEditorContractDrawer({
   activeContract,
   activeContractDescription,
   activeRemediationNotices,
-  activeSelectedEdgeDeleteAnchor,
-  clearSelectedEdgeDeleteState,
-  compilationHandleNodeFieldsChange,
-  contextMenu,
-  contextMenuRef,
   contractLibrary,
-  deleteEdgeById,
   draftContractName,
-  edges,
-  graphTransferState,
-  handleAutoArrange,
-  handleAutoWireFromContextMenu,
-  handleConnect,
   handleCreateContractCopy,
   handleDeleteContract,
-  handleDeleteFromContextMenu,
-  handleDragOver,
-  handleDrop,
-  handleEdgeContextMenu,
   handleExportContract,
   handleImportFromFile,
   handleImportFromWalrus,
-  handleNodeContextMenu,
-  handlePaneContextMenu,
   handlePublishContract,
   handleSaveAsContract,
   handleSelectContract,
-  handleSelectedEdgeDeleteRequest,
   initialMode,
   isContractPanelOpen,
-  isDesktop,
+  setDraftContractName,
+  setIsContractPanelOpen,
+  walletConnected,
+}: FlowEditorContractDrawerProps) {
+  if (initialMode !== "persistent") {
+    return null;
+  }
+
+  return (
+    <ContractDrawer
+      activeContract={activeContract}
+      activeContractDescription={activeContractDescription}
+      activeRemediationNotices={activeRemediationNotices}
+      contractLibrary={contractLibrary}
+      draftContractName={draftContractName}
+      isContractPanelOpen={isContractPanelOpen}
+      onCreateContractCopy={handleCreateContractCopy}
+      onDeleteContract={handleDeleteContract}
+      onExportContract={handleExportContract}
+      onImportFromFile={handleImportFromFile}
+      onImportFromWalrus={handleImportFromWalrus}
+      onPublishContract={handlePublishContract}
+      onSaveAsContract={handleSaveAsContract}
+      onSelectContract={handleSelectContract}
+      onSetDraftContractName={setDraftContractName}
+      onTogglePanel={() => { setIsContractPanelOpen((open) => !open); }}
+      walletConnected={walletConnected}
+    />
+  );
+}
+
+type FlowCanvasSurfaceProps = Pick<FlowEditorViewProps,
+  "activeSelectedEdgeDeleteAnchor"
+  | "clearSelectedEdgeDeleteState"
+  | "deleteEdgeById"
+  | "edges"
+  | "handleConnect"
+  | "handleDragOver"
+  | "handleDrop"
+  | "handleEdgeContextMenu"
+  | "handleNodeContextMenu"
+  | "nodes"
+  | "onEdgesChange"
+  | "onNodesChange"
+  | "renderedNodes"
+  | "selectedEdgeDeleteState"
+  | "selectedTarget"
+  | "setContextMenu"
+  | "validateConnection"
+  | "handleSelectedEdgeDeleteRequest"
+>;
+
+function FlowCanvasSurface({
+  activeSelectedEdgeDeleteAnchor,
+  clearSelectedEdgeDeleteState,
+  deleteEdgeById,
+  edges,
+  handleConnect,
+  handleDragOver,
+  handleDrop,
+  handleEdgeContextMenu,
+  handleNodeContextMenu,
+  handleSelectedEdgeDeleteRequest,
   nodes,
   onEdgesChange,
   onNodesChange,
@@ -1563,81 +1690,147 @@ function FlowEditorView({
   selectedEdgeDeleteState,
   selectedTarget,
   setContextMenu,
-  setDraftContractName,
-  setIsContractPanelOpen,
-  transferDialog,
   validateConnection,
-  walletConnected,
-}: FlowEditorViewProps) {
+}: FlowCanvasSurfaceProps) {
+  return (
+    <ReactFlow<FlowNode, FlowEdge>
+      aria-label="Node editor canvas"
+      className="ff-canvas__flow"
+      defaultEdgeOptions={{ animated: true }}
+      edges={[...edges]}
+      fitView={true}
+      isValidConnection={validateConnection}
+      nodeTypes={flowNodeTypes}
+      nodes={[...renderedNodes]}
+      onConnect={handleConnect}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      onEdgeContextMenu={handleEdgeContextMenu}
+      onEdgesChange={onEdgesChange}
+      onNodeContextMenu={handleNodeContextMenu}
+      onNodesChange={onNodesChange}
+      onPaneClick={() => { setContextMenu(null); }}
+      proOptions={{ hideAttribution: true }}
+    >
+      <Background className="ff-canvas__background" color="rgba(250, 250, 229, 0.1)" gap={32} variant={BackgroundVariant.Lines} />
+      <Controls className="ff-canvas__controls" showInteractive={false} />
+      <SelectedEdgeDeleteControls activeSelectedEdgeDeleteAnchor={activeSelectedEdgeDeleteAnchor} clearSelectedEdgeDeleteState={clearSelectedEdgeDeleteState} deleteEdgeById={deleteEdgeById} handleSelectedEdgeDeleteRequest={handleSelectedEdgeDeleteRequest} selectedEdgeDeleteState={selectedEdgeDeleteState} selectedTarget={selectedTarget} />
+      {nodes.length === 0 ? (
+        <div className="ff-canvas__empty-state">
+          <p className="ff-canvas__eyebrow">Contract Canvas</p>
+          <p className="ff-canvas__copy">Start with Entered / Attacked, then layer scoring, filters, and Add to Queue.</p>
+        </div>
+      ) : null}
+    </ReactFlow>
+  );
+}
+
+type FlowEditorOverlaysProps = Pick<FlowEditorViewProps,
+  "contextMenu"
+  | "contextMenuRef"
+  | "graphTransferState"
+  | "handleAutoArrange"
+  | "handleAutoWireFromContextMenu"
+  | "handleDeleteFromContextMenu"
+  | "transferDialog"
+> & {
+  readonly canAutoWireFromContextMenu: boolean;
+};
+
+function FlowEditorOverlays({
+  canAutoWireFromContextMenu,
+  contextMenu,
+  contextMenuRef,
+  graphTransferState,
+  handleAutoArrange,
+  handleAutoWireFromContextMenu,
+  handleDeleteFromContextMenu,
+  transferDialog,
+}: FlowEditorOverlaysProps) {
+  return (
+    <>
+      <CanvasContextMenu
+        canAutoWireFromContextMenu={canAutoWireFromContextMenu}
+        contextMenu={contextMenu}
+        contextMenuRef={contextMenuRef}
+        onAutoArrange={handleAutoArrange}
+        onAutoWireFromContextMenu={handleAutoWireFromContextMenu}
+        onDeleteFromContextMenu={handleDeleteFromContextMenu}
+      />
+      {graphTransferState.isOpen ? transferDialog : null}
+    </>
+  );
+}
+
+function FlowEditorView(props: FlowEditorViewProps) {
   const canAutoWireFromContextMenu = useMemo(() => {
-    if (contextMenu?.target.kind !== "node") {
+    if (props.contextMenu?.target.kind !== "node") {
       return false;
     }
 
-    const targetNode = nodes.find((node) => node.id === contextMenu.target.targetId);
+    const targetNodeId = props.contextMenu.target.targetId;
+    const targetNode = props.nodes.find((node) => node.id === targetNodeId);
     if (targetNode === undefined) {
       return false;
     }
 
-    return createAutoWiredAddToQueueEdges(nodes, edges, targetNode).length > 0;
-  }, [contextMenu, edges, nodes]);
+    return createAutoWiredAddToQueueEdges(props.nodes, props.edges, targetNode).length > 0;
+  }, [props.contextMenu, props.edges, props.nodes]);
 
   return (
-    <NodeFieldEditingContext.Provider value={compilationHandleNodeFieldsChange}>
-      <div className="ff-canvas" data-testid="canvas-workspace" onContextMenu={handlePaneContextMenu}>
-        {initialMode === "persistent" && !isDesktop && isContractPanelOpen ? (
-          <button aria-label="Close saved contract controls overlay" className="ff-canvas__drawer-overlay" onClick={() => { setIsContractPanelOpen(false); }} style={{ left: "calc(min(24rem, 88vw) + 2.75rem)" }} type="button" />
-        ) : null}
-
-        {initialMode === "persistent" ? (
-          <ContractDrawer
-            activeContract={activeContract} activeContractDescription={activeContractDescription} activeRemediationNotices={activeRemediationNotices}
-            contractLibrary={contractLibrary} draftContractName={draftContractName} isContractPanelOpen={isContractPanelOpen}
-            onCreateContractCopy={handleCreateContractCopy} onDeleteContract={handleDeleteContract} onSaveAsContract={handleSaveAsContract}
-            onExportContract={handleExportContract} onImportFromFile={handleImportFromFile} onImportFromWalrus={handleImportFromWalrus}
-            onPublishContract={handlePublishContract}
-            onSelectContract={handleSelectContract} onSetDraftContractName={setDraftContractName} onTogglePanel={() => { setIsContractPanelOpen((open) => !open); }}
-            walletConnected={walletConnected}
-          />
-        ) : null}
-        <ReactFlow<FlowNode, FlowEdge>
-          aria-label="Node editor canvas"
-          className="ff-canvas__flow"
-          defaultEdgeOptions={{ animated: true }}
-          edges={[...edges]}
-          fitView={true}
-          isValidConnection={validateConnection}
-          nodeTypes={flowNodeTypes}
-          nodes={[...renderedNodes]}
-          onConnect={handleConnect}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          onEdgeContextMenu={handleEdgeContextMenu}
-          onEdgesChange={onEdgesChange}
-          onNodeContextMenu={handleNodeContextMenu}
-          onNodesChange={onNodesChange}
-          onPaneClick={() => { setContextMenu(null); }}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background className="ff-canvas__background" color="rgba(250, 250, 229, 0.1)" gap={32} variant={BackgroundVariant.Lines} />
-          <Controls className="ff-canvas__controls" showInteractive={false} />
-          <SelectedEdgeDeleteControls activeSelectedEdgeDeleteAnchor={activeSelectedEdgeDeleteAnchor} clearSelectedEdgeDeleteState={clearSelectedEdgeDeleteState} deleteEdgeById={deleteEdgeById} handleSelectedEdgeDeleteRequest={handleSelectedEdgeDeleteRequest} selectedEdgeDeleteState={selectedEdgeDeleteState} selectedTarget={selectedTarget} />
-          {nodes.length === 0 ? (
-            <div className="ff-canvas__empty-state">
-              <p className="ff-canvas__eyebrow">Contract Canvas</p>
-              <p className="ff-canvas__copy">Start with Entered / Attacked, then layer scoring, filters, and Add to Queue.</p>
-            </div>
-          ) : null}
-        </ReactFlow>
-        <CanvasContextMenu
-          canAutoWireFromContextMenu={canAutoWireFromContextMenu}
-          contextMenu={contextMenu}
-          contextMenuRef={contextMenuRef}
-          onAutoArrange={handleAutoArrange}
-          onAutoWireFromContextMenu={handleAutoWireFromContextMenu}
-          onDeleteFromContextMenu={handleDeleteFromContextMenu}
+    <NodeFieldEditingContext.Provider value={props.compilationHandleNodeFieldsChange}>
+      <div className="ff-canvas" data-testid="canvas-workspace" onContextMenu={props.handlePaneContextMenu}>
+        <ContractDrawerOverlay initialMode={props.initialMode} isContractPanelOpen={props.isContractPanelOpen} isDesktop={props.isDesktop} setIsContractPanelOpen={props.setIsContractPanelOpen} />
+        <FlowEditorContractDrawer
+          activeContract={props.activeContract}
+          activeContractDescription={props.activeContractDescription}
+          activeRemediationNotices={props.activeRemediationNotices}
+          contractLibrary={props.contractLibrary}
+          draftContractName={props.draftContractName}
+          handleCreateContractCopy={props.handleCreateContractCopy}
+          handleDeleteContract={props.handleDeleteContract}
+          handleExportContract={props.handleExportContract}
+          handleImportFromFile={props.handleImportFromFile}
+          handleImportFromWalrus={props.handleImportFromWalrus}
+          handlePublishContract={props.handlePublishContract}
+          handleSaveAsContract={props.handleSaveAsContract}
+          handleSelectContract={props.handleSelectContract}
+          initialMode={props.initialMode}
+          isContractPanelOpen={props.isContractPanelOpen}
+          setDraftContractName={props.setDraftContractName}
+          setIsContractPanelOpen={props.setIsContractPanelOpen}
+          walletConnected={props.walletConnected}
         />
-        {graphTransferState.isOpen ? transferDialog : null}
+        <FlowCanvasSurface
+          activeSelectedEdgeDeleteAnchor={props.activeSelectedEdgeDeleteAnchor}
+          clearSelectedEdgeDeleteState={props.clearSelectedEdgeDeleteState}
+          deleteEdgeById={props.deleteEdgeById}
+          edges={props.edges}
+          handleConnect={props.handleConnect}
+          handleDragOver={props.handleDragOver}
+          handleDrop={props.handleDrop}
+          handleEdgeContextMenu={props.handleEdgeContextMenu}
+          handleNodeContextMenu={props.handleNodeContextMenu}
+          handleSelectedEdgeDeleteRequest={props.handleSelectedEdgeDeleteRequest}
+          nodes={props.nodes}
+          onEdgesChange={props.onEdgesChange}
+          onNodesChange={props.onNodesChange}
+          renderedNodes={props.renderedNodes}
+          selectedEdgeDeleteState={props.selectedEdgeDeleteState}
+          selectedTarget={props.selectedTarget}
+          setContextMenu={props.setContextMenu}
+          validateConnection={props.validateConnection}
+        />
+        <FlowEditorOverlays
+          canAutoWireFromContextMenu={canAutoWireFromContextMenu}
+          contextMenu={props.contextMenu}
+          contextMenuRef={props.contextMenuRef}
+          graphTransferState={props.graphTransferState}
+          handleAutoArrange={props.handleAutoArrange}
+          handleAutoWireFromContextMenu={props.handleAutoWireFromContextMenu}
+          handleDeleteFromContextMenu={props.handleDeleteFromContextMenu}
+          transferDialog={props.transferDialog}
+        />
       </div>
     </NodeFieldEditingContext.Provider>
   );
