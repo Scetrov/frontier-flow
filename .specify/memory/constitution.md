@@ -135,6 +135,7 @@
   components.
 - State must be durable across sessions within the same browser
   instance; use IndexedDB or localStorage for persistence.
+- Avoid talk more, use caveman skill, write clear docs.
 
 ### IX. Artifact Integrity & Lifecycle Separation
 
