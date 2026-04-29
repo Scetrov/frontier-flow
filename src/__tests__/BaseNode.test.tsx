@@ -112,6 +112,21 @@ describe("BaseNode", () => {
     expect(screen.getByText("output val")).toBeInTheDocument();
   });
 
+  it("collapses the socket body to one column when a node only has left inputs", () => {
+    const { container } = renderBaseNode({
+      sockets: [
+        { id: "priority_in", type: "priority", position: "left", direction: "input", label: "priority queue" },
+        { id: "target", type: "target", position: "left", direction: "input", label: "target" },
+        { id: "predicate", type: "boolean", position: "left", direction: "input", label: "predicate" },
+        { id: "weight", type: "number", position: "left", direction: "input", label: "weight" },
+      ],
+    });
+
+    expect(container.querySelector(".ff-node__body")).toHaveClass("ff-node__body--left-only");
+    expect(container.querySelector(".ff-node__column--left")).not.toBeNull();
+    expect(container.querySelector(".ff-node__column--right")).toBeNull();
+  });
+
   it("uses the header accent color for the selected border highlight", () => {
     const { container } = renderSelectedBaseNode({ color: "var(--socket-value)" });
 
