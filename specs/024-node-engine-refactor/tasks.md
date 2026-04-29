@@ -11,8 +11,8 @@
 
 **Purpose**: Create failing shared regression coverage before shared implementation work begins.
 
-- [ ] T001 [P] Add failing shared catalog and toolbox regression coverage in `src/__tests__/nodeDefinitions.test.ts`, `src/__tests__/socketTypes.test.ts`, and `src/__tests__/Sidebar.test.tsx`
-- [ ] T002 [P] Add failing shared restore/compiler regression coverage in `src/__tests__/canvasFlow.test.tsx`, `src/__tests__/compiler/generators/actions.test.ts`, and `src/__tests__/compiler/irBuilder.test.ts`
+- [X] T001 [P] Add failing shared catalog and toolbox regression coverage in `src/__tests__/nodeDefinitions.test.ts`, `src/__tests__/socketTypes.test.ts`, and `src/__tests__/Sidebar.test.tsx`
+- [X] T002 [P] Add failing shared restore/compiler regression coverage in `src/__tests__/canvasFlow.test.tsx`, `src/__tests__/compiler/generators/actions.test.ts`, and `src/__tests__/compiler/irBuilder.test.ts`
 
 ---
 
@@ -22,9 +22,9 @@
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T003 Update shared node catalog, authorable filtering, and render registration in `src/types/nodes.ts`, `src/data/node-definitions.ts`, and `src/nodes/createNode.tsx`
-- [ ] T004 [P] Update shared hydration, restore, and default fixture plumbing in `src/data/node-definitions.ts`, `src/components/restoreSavedFlow.ts`, and `src/data/kitchenSinkFlow.ts`
-- [ ] T005 [P] Update shared trigger/action compiler plumbing for socket changes in `src/compiler/generators/eventTriggers.ts`, `src/compiler/generators/actions.ts`, and `src/compiler/emitter.ts`
+- [X] T003 Update shared node catalog, authorable filtering, and render registration in `src/types/nodes.ts`, `src/data/node-definitions.ts`, and `src/nodes/createNode.tsx`
+- [X] T004 [P] Update shared hydration, restore, and default fixture plumbing in `src/data/node-definitions.ts`, `src/components/restoreSavedFlow.ts`, and `src/data/kitchenSinkFlow.ts`
+- [X] T005 [P] Update shared trigger/action compiler plumbing for socket changes in `src/compiler/generators/eventTriggers.ts`, `src/compiler/generators/actions.ts`, and `src/compiler/emitter.ts`
 
 **Checkpoint**: Foundation ready. User story work can begin.
 
@@ -38,14 +38,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T006 [P] [US1] Add `enteredAttacked` catalog and socket coverage in `src/__tests__/nodeDefinitions.test.ts` and `src/__tests__/socketTypes.test.ts`
-- [ ] T007 [P] [US1] Add toolbox visibility coverage for `Entered / Attacked` and hidden legacy triggers in `src/__tests__/Sidebar.test.tsx`
+- [X] T006 [P] [US1] Add `enteredAttacked` catalog and socket coverage in `src/__tests__/nodeDefinitions.test.ts` and `src/__tests__/socketTypes.test.ts`
+- [X] T007 [P] [US1] Add toolbox visibility coverage for `Entered / Attacked` and hidden legacy triggers in `src/__tests__/Sidebar.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement `enteredAttacked` node metadata and legacy trigger deprecation details in `src/data/node-definitions.ts`
-- [ ] T009 [P] [US1] Register `enteredAttacked` icon/render support in `src/nodes/createNode.tsx`
-- [ ] T010 [US1] Update toolbox grouping and hidden-deprecated filtering in `src/components/Sidebar.tsx`
+- [X] T008 [US1] Implement `enteredAttacked` node metadata and legacy trigger deprecation details in `src/data/node-definitions.ts`
+- [X] T009 [P] [US1] Register `enteredAttacked` icon/render support in `src/nodes/createNode.tsx`
+- [X] T010 [US1] Update toolbox grouping and hidden-deprecated filtering in `src/components/Sidebar.tsx`
 
 **Checkpoint**: User Story 1 should now support current trigger authoring without exposing legacy trigger choices.
 
@@ -59,12 +59,12 @@
 
 ### Tests for User Story 2
 
-- [ ] T011 [P] [US2] Add legacy restore, post-reopen edit, and round-trip persistence coverage for `aggression` and `proximity` graphs in `src/__tests__/restoreSavedFlow.test.ts` and `src/__tests__/canvasFlow.test.tsx`
+- [X] T011 [P] [US2] Add legacy restore, post-reopen edit, and round-trip persistence coverage for `aggression` and `proximity` graphs in `src/__tests__/restoreSavedFlow.test.ts` and `src/__tests__/canvasFlow.test.tsx`
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Preserve legacy trigger hydration, editability after reopen, and remediation behavior in `src/data/node-definitions.ts` and `src/components/restoreSavedFlow.ts`
-- [ ] T013 [US2] Refresh persisted/default flow expectations and round-trip graph serialization coverage for legacy trigger compatibility in `src/data/kitchenSinkFlow.ts` and `src/__tests__/graphYaml.test.ts`
+- [X] T012 [US2] Preserve legacy trigger hydration, editability after reopen, and remediation behavior in `src/data/node-definitions.ts` and `src/components/restoreSavedFlow.ts`
+- [X] T013 [US2] Refresh persisted/default flow expectations and round-trip graph serialization coverage for legacy trigger compatibility in `src/data/kitchenSinkFlow.ts` and `src/__tests__/graphYaml.test.ts`
 
 **Checkpoint**: User Story 2 should now restore legacy trigger graphs without breaking the new authoring path.
 
@@ -78,14 +78,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T014 [P] [US3] Add auto-wiring and removed-port regression tests covering both compatible inputs, duplicate suppression, and pre-connected-input protection in `src/__tests__/canvasFlow.test.tsx` and `src/__tests__/compiler/irBuilder.test.ts`
-- [ ] T015 [P] [US3] Add queue terminology plus Playwright and `axe-core` workflow coverage for toolbox/drop auto-wiring in `src/__tests__/nodeDefinitions.test.ts`, `src/__tests__/Sidebar.test.tsx`, and `tests/e2e/canvas-workflow.spec.ts`
+- [X] T014 [P] [US3] Add auto-wiring and removed-port regression tests covering both compatible inputs, duplicate suppression, and pre-connected-input protection in `src/__tests__/canvasFlow.test.tsx` and `src/__tests__/compiler/irBuilder.test.ts`
+- [X] T015 [P] [US3] Add queue terminology plus Playwright and `axe-core` workflow coverage for toolbox/drop auto-wiring in `src/__tests__/nodeDefinitions.test.ts`, `src/__tests__/Sidebar.test.tsx`, and `tests/e2e/canvas-workflow.spec.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Rename queue-facing `Priority` copy and remove `priority_out` from `addToQueue` in `src/data/node-definitions.ts`
-- [ ] T017 [US3] Implement deterministic `Add to Queue` auto-wiring on drop with guards for both `priority_in` and `target` inputs in `src/components/CanvasWorkspace.tsx`
-- [ ] T018 [US3] Remove public `priority_out` compiler assumptions in `src/compiler/generators/actions.ts` and `src/compiler/emitter.ts`
+- [X] T016 [US3] Rename queue-facing `Priority` copy and remove `priority_out` from `addToQueue` in `src/data/node-definitions.ts`
+- [X] T017 [US3] Implement deterministic `Add to Queue` auto-wiring on drop with guards for both `priority_in` and `target` inputs in `src/components/CanvasWorkspace.tsx`
+- [X] T018 [US3] Remove public `priority_out` compiler assumptions in `src/compiler/generators/actions.ts` and `src/compiler/emitter.ts`
 
 **Checkpoint**: User Story 3 should now make queue authoring faster without duplicate or conflicting auto-generated edges.
 
@@ -99,13 +99,13 @@
 
 ### Tests for User Story 4
 
-- [ ] T019 [P] [US4] Add zero-weight normalization unit coverage in `src/__tests__/nodeFieldCatalog.test.ts` and `src/__tests__/compiler/generators/actions.test.ts`
-- [ ] T020 [P] [US4] Add restore and canvas regression coverage for zero queue weights in `src/__tests__/restoreSavedFlow.test.ts` and `src/__tests__/canvasFlow.test.tsx`
+- [X] T019 [P] [US4] Add zero-weight normalization unit coverage in `src/__tests__/nodeFieldCatalog.test.ts` and `src/__tests__/compiler/generators/actions.test.ts`
+- [X] T020 [P] [US4] Add restore and canvas regression coverage for zero queue weights in `src/__tests__/restoreSavedFlow.test.ts` and `src/__tests__/canvasFlow.test.tsx`
 
 ### Implementation for User Story 4
 
-- [ ] T021 [US4] Normalize `addToQueue` zero weights in `src/data/nodeFieldCatalog.ts` and `src/data/node-definitions.ts`
-- [ ] T022 [US4] Thread normalized queue weights through restore, IR build, and action emission in `src/components/restoreSavedFlow.ts`, `src/compiler/irBuilder.ts`, and `src/compiler/generators/actions.ts`
+- [X] T021 [US4] Normalize `addToQueue` zero weights in `src/data/nodeFieldCatalog.ts` and `src/data/node-definitions.ts`
+- [X] T022 [US4] Thread normalized queue weights through restore, IR build, and action emission in `src/components/restoreSavedFlow.ts`, `src/compiler/irBuilder.ts`, and `src/compiler/generators/actions.ts`
 
 **Checkpoint**: User Story 4 should now block zero queue weights from reaching persisted or compiled outputs.
 
@@ -115,9 +115,9 @@
 
 **Purpose**: Close remaining regressions and validate feature end-to-end.
 
-- [ ] T023 [P] Update remaining legacy-node and queue-label regression expectations in `src/__tests__/BaseNode.test.tsx` and `src/__tests__/graphDocument.test.ts`
-- [ ] T024 [P] Revalidate quickstart flow notes and final canvas assertions in `specs/024-node-engine-refactor/quickstart.md` and `src/__tests__/canvasFlow.test.tsx`
-- [ ] T025 Run workspace verification for changes touching `src/data/node-definitions.ts`, `src/components/CanvasWorkspace.tsx`, and `src/data/nodeFieldCatalog.ts` with `bun run typecheck`, `bun run lint`, `bun run test:run`, and `bun run test:e2e`
+- [X] T023 [P] Update remaining legacy-node and queue-label regression expectations in `src/__tests__/BaseNode.test.tsx` and `src/__tests__/graphDocument.test.ts`
+- [X] T024 [P] Revalidate quickstart flow notes and final canvas assertions in `specs/024-node-engine-refactor/quickstart.md` and `src/__tests__/canvasFlow.test.tsx`
+- [X] T025 Run workspace verification for changes touching `src/data/node-definitions.ts`, `src/components/CanvasWorkspace.tsx`, and `src/data/nodeFieldCatalog.ts` with `bun run typecheck`, `bun run lint`, `bun run test:run`, and `bun run test:e2e`
 
 ---
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { authorableNodeDefinitions, nodeDefinitions } from "../data/node-definitions";
 
+const deprecatedAuthoringNodeTypes = ["aggression", "proximity", "hasStoppedAttack"] as const;
 const retiredNodeTypes = ["excludeOwner", "excludeSameTribe", "excludeStoppedAttack", "excludeNpc"] as const;
 const primitiveNodeTypes = [
   "isOwner",
@@ -17,13 +18,13 @@ const primitiveNodeTypes = [
 
 describe("nodeDefinitions", () => {
   it("contains the complete runtime catalogue and a filtered authoring catalogue", () => {
-    expect(nodeDefinitions).toHaveLength(33);
-    expect(authorableNodeDefinitions).toHaveLength(29);
+    expect(nodeDefinitions).toHaveLength(34);
+    expect(authorableNodeDefinitions).toHaveLength(27);
     expect(authorableNodeDefinitions.map((definition) => definition.type)).not.toEqual(
-      expect.arrayContaining([...retiredNodeTypes]),
+      expect.arrayContaining([...retiredNodeTypes, ...deprecatedAuthoringNodeTypes]),
     );
     expect(nodeDefinitions.map((definition) => definition.type)).toEqual(
-      expect.arrayContaining([...primitiveNodeTypes, ...retiredNodeTypes]),
+      expect.arrayContaining(["enteredAttacked", ...primitiveNodeTypes, ...retiredNodeTypes, ...deprecatedAuthoringNodeTypes]),
     );
   });
 
@@ -78,6 +79,18 @@ describe("nodeDefinitions", () => {
   });
 
   it("marks bundled exclusion nodes as retired with replacement guidance", () => {
+    expect(nodeDefinitions.find((definition) => definition.type === "aggression")?.deprecation).toEqual(
+      expect.objectContaining({
+        status: "deprecated",
+        replacedBy: ["enteredAttacked"],
+      }),
+    );
+    expect(nodeDefinitions.find((definition) => definition.type === "proximity")?.deprecation).toEqual(
+      expect.objectContaining({
+        status: "deprecated",
+        replacedBy: ["enteredAttacked"],
+      }),
+    );
     expect(nodeDefinitions.find((definition) => definition.type === "excludeOwner")?.deprecation).toEqual(
       expect.objectContaining({
         status: "retired",
@@ -98,7 +111,8 @@ describe("nodeDefinitions", () => {
     );
   });
 
-  it("keeps the canonical primitive targeting flow sockets available", () => {
+  it("keeps the current and legacy targeting flow sockets available without the queue output port", () => {
+    const enteredAttacked = nodeDefinitions.find((definition) => definition.type === "enteredAttacked");
     const proximity = nodeDefinitions.find((definition) => definition.type === "proximity");
     const getTribe = nodeDefinitions.find((definition) => definition.type === "getTribe");
     const isSameTribe = nodeDefinitions.find((definition) => definition.type === "isSameTribe");
@@ -106,18 +120,15 @@ describe("nodeDefinitions", () => {
     const booleanOr = nodeDefinitions.find((definition) => definition.type === "booleanOr");
     const addToQueue = nodeDefinitions.find((definition) => definition.type === "addToQueue");
 
+    expect(enteredAttacked?.label).toBe("Entered / Attacked");
+    expect(enteredAttacked?.sockets.map((socket) => socket.id)).toEqual(["priority", "target"]);
     expect(proximity?.sockets.map((socket) => socket.id)).toEqual(["priority", "target"]);
     expect(getTribe?.sockets.map((socket) => socket.id)).toEqual(["target", "tribe", "owner_tribe"]);
     expect(isSameTribe?.sockets.map((socket) => socket.id)).toEqual(["tribe", "owner_tribe", "matches"]);
     expect(booleanNot?.sockets.map((socket) => socket.id)).toEqual(["input", "result"]);
     expect(booleanOr?.sockets.map((socket) => socket.id)).toEqual(["left", "right", "result"]);
-    expect(addToQueue?.sockets.map((socket) => socket.id)).toEqual([
-      "priority_in",
-      "target",
-      "predicate",
-      "weight",
-      "priority_out",
-    ]);
+    expect(addToQueue?.sockets.map((socket) => socket.id)).toEqual(["priority_in", "target", "predicate", "weight"]);
+    expect(addToQueue?.sockets.find((socket) => socket.id === "priority_in")?.label).toBe("priority queue");
   });
 
   it("assigns the split data taxonomy to the expected node families", () => {

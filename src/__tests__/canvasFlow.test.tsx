@@ -221,9 +221,9 @@ describe("CanvasWorkspace", () => {
 
   it("recomputes restored edge colour and width from its source handle", () => {
     const defaultContractFlow = createDefaultContractFlow();
-    const sourceNode = defaultContractFlow.nodes.find((node) => node.id === "default_aggression");
+    const sourceNode = defaultContractFlow.nodes.find((node) => node.id === "default_entered_attacked");
     const targetNode = defaultContractFlow.nodes.find((node) => node.id === "default_add_to_queue");
-    const persistedEdge = defaultContractFlow.edges.find((edge) => edge.id === "default_edge_aggression_priority_add_to_queue");
+    const persistedEdge = defaultContractFlow.edges.find((edge) => edge.id === "default_edge_entered_attacked_priority_add_to_queue");
 
     if (sourceNode === undefined || targetNode === undefined || persistedEdge === undefined) {
       throw new Error("Default contract flow fixtures are missing the required priority edge.");
@@ -255,7 +255,7 @@ describe("CanvasWorkspace", () => {
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "Start with Aggression or Proximity, then layer scoring, filters, and Add to Queue.",
+        "Start with Entered / Attacked, then layer scoring, filters, and Add to Queue.",
       ),
     ).toBeInTheDocument();
   });
@@ -264,16 +264,41 @@ describe("CanvasWorkspace", () => {
     render(<CanvasWorkspace />);
 
     const canvas = screen.getByLabelText("Node editor canvas");
-    fireEvent.dragOver(canvas, { dataTransfer: createDropData("proximity") });
+    fireEvent.dragOver(canvas, { dataTransfer: createDropData("enteredAttacked") });
     fireEvent.drop(canvas, {
       clientX: 240,
       clientY: 180,
-      dataTransfer: createDropData("proximity"),
+      dataTransfer: createDropData("enteredAttacked"),
     });
 
-    expect(screen.getByText("Proximity")).toBeInTheDocument();
+    expect(screen.getByText("Entered / Attacked")).toBeInTheDocument();
     expect(screen.getByText("priority")).toBeInTheDocument();
     expect(screen.getByText("target")).toBeInTheDocument();
+  });
+
+  it("auto-wires Add to Queue from Entered / Attacked and hides the legacy output port", async () => {
+    render(
+      <CanvasWorkspace
+        initialContractName="Auto Wire Contract"
+        initialNodes={[createFlowNode("trigger", "enteredAttacked")]}
+      />,
+    );
+
+    const canvas = screen.getByLabelText("Node editor canvas");
+    fireEvent.drop(canvas, {
+      clientX: 320,
+      clientY: 220,
+      dataTransfer: createDropData("addToQueue"),
+    });
+
+    expect(screen.getByText("Add to Queue")).toBeInTheDocument();
+    expect(screen.getByText("priority queue")).toBeInTheDocument();
+    expect(screen.queryByText("priority out")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      const activeContract = readStoredContractLibrary().contracts.find((contract) => contract.name === "Auto Wire Contract");
+      expect(activeContract?.edges).toHaveLength(2);
+    });
   });
 
   it("opens a node field editor and saves live tribe selections", async () => {
@@ -412,7 +437,7 @@ describe("CanvasWorkspace", () => {
     fireEvent.drop(canvas, {
       clientX: 180,
       clientY: 160,
-      dataTransfer: createDropData("aggression"),
+      dataTransfer: createDropData("enteredAttacked"),
     });
     fireEvent.drop(canvas, {
       clientX: 300,
@@ -430,7 +455,7 @@ describe("CanvasWorkspace", () => {
       dataTransfer: createDropData("addToQueue"),
     });
 
-    expect(screen.getByText("Aggression")).toBeInTheDocument();
+    expect(screen.getByText("Entered / Attacked")).toBeInTheDocument();
     expect(screen.getByText("Get Behaviour")).toBeInTheDocument();
     expect(screen.getByText("OR")).toBeInTheDocument();
     expect(screen.getByText("Add to Queue")).toBeInTheDocument();
@@ -447,10 +472,10 @@ describe("CanvasWorkspace", () => {
     fireEvent.drop(canvas, {
       clientX: 350,
       clientY: 250,
-      dataTransfer: createDropData("proximity", { x: 30, y: 20 }),
+      dataTransfer: createDropData("enteredAttacked", { x: 30, y: 20 }),
     });
 
-    expect(screen.getByText("Proximity")).toBeInTheDocument();
+    expect(screen.getByText("Entered / Attacked")).toBeInTheDocument();
   });
 
   it("omits unknown saved node types and warns instead of crashing", () => {
@@ -516,7 +541,7 @@ describe("CanvasWorkspace", () => {
       />,
     );
 
-    expect(screen.getByText("Aggression")).toBeInTheDocument();
+    expect(screen.getByText("Entered / Attacked")).toBeInTheDocument();
     expect(screen.getByText("Get Tribe")).toBeInTheDocument();
     expect(screen.getByText("Is Same Tribe")).toBeInTheDocument();
     expect(screen.getByText("NOT")).toBeInTheDocument();

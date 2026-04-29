@@ -13,7 +13,7 @@ describe("buildIrGraph", () => {
 
     expect(graph.nodes.size).toBe(flow.nodes.length);
     expect(graph.connections).toHaveLength(flow.edges.length);
-    expect(graph.executionOrder[0]).toBe("default_aggression");
+    expect(graph.executionOrder[0]).toBe("default_entered_attacked");
     expect(graph.moduleName).toBe("starter_contract");
   });
 
@@ -79,28 +79,46 @@ describe("buildIrGraph", () => {
 
   it("tracks nodes whose execution order cannot be resolved", () => {
     const graph = buildIrGraph(
-      [createFlowNode("queue_1", "addToQueue"), createFlowNode("queue_2", "addToQueue")],
+      [createFlowNode("not_1", "booleanNot"), createFlowNode("not_2", "booleanNot")],
       [
         {
-          id: "edge_queue_1",
-          source: "queue_1",
-          sourceHandle: "priority_out",
-          target: "queue_2",
-          targetHandle: "priority_in",
+          id: "edge_not_1",
+          source: "not_1",
+          sourceHandle: "result",
+          target: "not_2",
+          targetHandle: "input",
         },
         {
-          id: "edge_queue_2",
-          source: "queue_2",
-          sourceHandle: "priority_out",
-          target: "queue_1",
-          targetHandle: "priority_in",
+          id: "edge_not_2",
+          source: "not_2",
+          sourceHandle: "result",
+          target: "not_1",
+          targetHandle: "input",
         },
       ],
       "Cyclic Contract",
     );
 
-    expect(graph.unresolvedNodeIds).toEqual(["queue_1", "queue_2"]);
-    expect(graph.executionOrder).toEqual(["queue_1", "queue_2"]);
+    expect(graph.unresolvedNodeIds).toEqual(["not_1", "not_2"]);
+    expect(graph.executionOrder).toEqual(["not_1", "not_2"]);
+  });
+
+  it("normalizes legacy add-to-queue zero weights before generation", () => {
+    const graph = buildIrGraph(
+      [createFlowNode("trigger_1", "enteredAttacked"), createFlowNode("queue_1", "addToQueue", { x: 0, y: 0 }, { weight: 0 })],
+      [
+        {
+          id: "edge_trigger_queue",
+          source: "trigger_1",
+          sourceHandle: "target",
+          target: "queue_1",
+          targetHandle: "target",
+        },
+      ],
+      "Normalized Queue Contract",
+    );
+
+    expect(graph.nodes.get("queue_1")?.fields).toEqual({ weight: 100 });
   });
 
   it("uses the deterministic helper to produce the same canonical order on repeated runs", () => {

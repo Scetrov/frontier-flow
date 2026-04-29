@@ -98,19 +98,19 @@ module builder_extensions::starter_contract {
         owner_tribe: u32,
         candidate: &TargetCandidateArg,
     ): (u64, bool) {
-        // event trigger aggression
+        // event trigger enteredAttacked
         // bind the current target candidate into the scoring pipeline
-        let aggression_default_aggression_target: &TargetCandidateArg = candidate;
+        let enteredattacked_default_entered_attacked_target: &TargetCandidateArg = candidate;
         // accessor getPriorityWeight
         // read base priority weight
-        let getpriorityweight_default_get_priority_weight_weight: u64 = aggression_default_aggression_target.priority_weight;
+        let getpriorityweight_default_get_priority_weight_weight: u64 = enteredattacked_default_entered_attacked_target.priority_weight;
         // accessor getTribe
         // extract tribe and owner tribe
-        let gettribe_default_get_tribe_tribe: u32 = aggression_default_aggression_target.character_tribe;
+        let gettribe_default_get_tribe_tribe: u32 = enteredattacked_default_entered_attacked_target.character_tribe;
         let gettribe_default_get_tribe_owner_tribe: u32 = owner_tribe;
         // accessor isAggressor
         // read aggressor flag
-        let isaggressor_default_is_aggressor_is_aggressor: bool = aggression_default_aggression_target.is_aggressor;
+        let isaggressor_default_is_aggressor_is_aggressor: bool = enteredattacked_default_entered_attacked_target.is_aggressor;
         // logic gate isSameTribe
         // check whether the candidate tribe matches the owner tribe
         let issametribe_default_is_same_tribe_matches: bool = gettribe_default_get_tribe_tribe == gettribe_default_get_tribe_owner_tribe;
@@ -123,8 +123,8 @@ module builder_extensions::starter_contract {
         // action addToQueue
         // append candidate to the outgoing priority queue
         let addtoqueue_default_add_to_queue_include_result: bool = booleanor_default_include_rule_result;
-        let addtoqueue_default_add_to_queue_priority_out: u64 = getpriorityweight_default_get_priority_weight_weight;
-        (addtoqueue_default_add_to_queue_priority_out, addtoqueue_default_add_to_queue_include_result)
+        let addtoqueue_default_add_to_queue_result_weight: u64 = getpriorityweight_default_get_priority_weight_weight;
+        (addtoqueue_default_add_to_queue_result_weight, addtoqueue_default_add_to_queue_include_result)
     }
 
     fun unpack_candidate_list(candidate_list_bytes: vector<u8>): vector<TargetCandidateArg> {

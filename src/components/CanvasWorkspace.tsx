@@ -159,6 +159,82 @@ function isTextEntryElement(target: EventTarget | null): boolean {
   return false;
 }
 
+const addToQueueAutoWirePairs = [
+  { sourceHandle: "priority", targetHandle: "priority_in" },
+  { sourceHandle: "target", targetHandle: "target" },
+] as const;
+
+function hasIncomingHandleConnection(edges: readonly FlowEdge[], targetNodeId: string, targetHandle: string): boolean {
+  return edges.some((edge) => edge.target === targetNodeId && edge.targetHandle === targetHandle);
+}
+
+function hasMatchingConnection(edges: readonly FlowEdge[], connection: {
+  readonly sourceNodeId: string;
+  readonly sourceHandle: string;
+  readonly targetNodeId: string;
+  readonly targetHandle: string;
+}): boolean {
+  return edges.some((edge) =>
+    edge.source === connection.sourceNodeId
+    && edge.sourceHandle === connection.sourceHandle
+    && edge.target === connection.targetNodeId
+    && edge.targetHandle === connection.targetHandle);
+}
+
+function createAutoWiredAddToQueueEdges(
+  nodes: readonly FlowNode[],
+  edges: readonly FlowEdge[],
+  addedNode: FlowNode,
+): readonly FlowEdge[] {
+  if (addedNode.type !== "addToQueue") {
+    return [];
+  }
+
+  const triggerNode = nodes.find((node) => node.type === "enteredAttacked");
+  if (triggerNode === undefined) {
+    return [];
+  }
+
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const nextEdges: FlowEdge[] = [];
+
+  for (const pair of addToQueueAutoWirePairs) {
+    const edgeConnection = {
+      sourceNodeId: triggerNode.id,
+      sourceHandle: pair.sourceHandle,
+      targetNodeId: addedNode.id,
+      targetHandle: pair.targetHandle,
+    };
+
+    if (hasIncomingHandleConnection(edges, addedNode.id, pair.targetHandle)) {
+      continue;
+    }
+
+    if (hasMatchingConnection(edges, edgeConnection)) {
+      continue;
+    }
+
+    if (hasMatchingConnection(nextEdges, edgeConnection)) {
+      continue;
+    }
+
+    const edge: FlowEdge = {
+      id: ["auto", triggerNode.id, pair.sourceHandle, addedNode.id, pair.targetHandle, String(Date.now()), String(nextEdges.length)].join("__"),
+      source: triggerNode.id,
+      sourceHandle: pair.sourceHandle,
+      target: addedNode.id,
+      targetHandle: pair.targetHandle,
+    };
+
+    nextEdges.push({
+      ...edge,
+      ...deriveFlowEdgePresentation(edge, nodesById),
+    });
+  }
+
+  return nextEdges;
+}
+
 function getNodeCenter(node: FlowNode) {
   const width = node.measured?.width ?? node.width ?? 0;
   const height = node.measured?.height ?? node.height ?? 0;
@@ -1173,13 +1249,20 @@ function useCanvasInteractions({
     nodeCounterRef.current += 1;
     const [rawX = "0", rawY = "0"] = event.dataTransfer.getData("application/x-offset").split(",");
     const position = reactFlow.screenToFlowPosition({ x: event.clientX - Number(rawX || 0), y: event.clientY - Number(rawY || 0) });
-    setNodes((currentNodes) => currentNodes.concat({
+    const addedNode = {
       id: ["dnd", String(nodeCounterRef.current), String(Date.now())].join("_"),
       type: definition.type,
       position,
       data: createFlowNodeData(definition),
-    } satisfies FlowNode));
-  }, [reactFlow, setContextMenu, setNodes]);
+    } satisfies FlowNode;
+    const nextNodes = nodes.concat(addedNode);
+    const autoWiredEdges = createAutoWiredAddToQueueEdges(nextNodes, edges, addedNode);
+
+    setNodes((currentNodes) => currentNodes.concat(addedNode));
+    if (autoWiredEdges.length > 0) {
+      setEdges((currentEdges) => currentEdges.concat(autoWiredEdges));
+    }
+  }, [edges, nodes, reactFlow, setContextMenu, setEdges, setNodes]);
   const handleConnect = useCallback((connection: Connection) => {
     if (!isValidFlowConnection(connection, nodes, edges)) {
       return;
@@ -1499,7 +1582,7 @@ function FlowEditorView({
           {nodes.length === 0 ? (
             <div className="ff-canvas__empty-state">
               <p className="ff-canvas__eyebrow">Contract Canvas</p>
-              <p className="ff-canvas__copy">Start with Aggression or Proximity, then layer scoring, filters, and Add to Queue.</p>
+              <p className="ff-canvas__copy">Start with Entered / Attacked, then layer scoring, filters, and Add to Queue.</p>
             </div>
           ) : null}
         </ReactFlow>
@@ -1529,7 +1612,7 @@ function useFlowEditorDemoNode(input: {
       return;
     }
 
-    const definition = getNodeDefinition("aggression");
+    const definition = getNodeDefinition("enteredAttacked");
     if (definition === undefined) {
       return;
     }

@@ -37,14 +37,14 @@ test("supports graph-editor QoL deletion and taxonomy flows", async ({ page, isM
 
   await page.getByRole("button", { name: "Close saved contract controls" }).click();
 
-  await dropNode(page, "Aggression", 240, 180);
-  const node = page.locator(".ff-node").filter({ has: page.getByText("Aggression", { exact: true }) }).first();
+  await dropNode(page, "Entered / Attacked", 240, 180);
+  const node = page.locator(".ff-node").filter({ has: page.getByText("Entered / Attacked", { exact: true }) }).first();
   const workspace = page.getByTestId("canvas-workspace");
 
-  await node.getByRole("button", { name: "Delete Aggression" }).click();
-  await expect(node.getByRole("button", { name: "Confirm delete Aggression" })).toBeVisible();
-  await node.getByRole("button", { name: "Confirm delete Aggression" }).click();
-  await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Aggression$/ })).toHaveCount(1);
+  await node.getByRole("button", { name: "Delete Entered / Attacked" }).click();
+  await expect(node.getByRole("button", { name: "Confirm delete Entered / Attacked" })).toBeVisible();
+  await node.getByRole("button", { name: "Confirm delete Entered / Attacked" }).click();
+  await expect(workspace.locator(".ff-node__title").filter({ hasText: /^Entered \/ Attacked$/ })).toHaveCount(1);
 
   await ensureCategoryExpanded(page, "Static Data");
   await expect(page.getByRole("button", { name: "List of Tribe", exact: true })).toBeVisible();

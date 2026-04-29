@@ -4,11 +4,28 @@ import { getDefaultNodeFields, normalizeNodeFields } from "./nodeFieldCatalog";
 
 export const nodeDefinitions: readonly NodeDefinition[] = [
   {
+    type: "enteredAttacked",
+    label: "Entered / Attacked",
+    description: "Emit priority and target data when a candidate enters range or starts attacking.",
+    color: "var(--brand-orange)",
+    category: "event-trigger",
+    sockets: [
+      { id: "priority", type: "priority", position: "right", direction: "output", label: "priority" },
+      { id: "target", type: "target", position: "right", direction: "output", label: "target" },
+    ],
+  },
+  {
     type: "aggression",
     label: "Aggression",
     description: "Emit priority and target data when a hostile action is detected.",
     color: "var(--brand-orange)",
     category: "event-trigger",
+    deprecation: {
+      status: "deprecated",
+      reason: "Use Entered / Attacked for new encounter-trigger authoring.",
+      replacedBy: ["enteredAttacked"],
+      remediationMessage: "Aggression remains supported for saved graphs, but new flows should use Entered / Attacked.",
+    },
     sockets: [
       { id: "priority", type: "priority", position: "right", direction: "output", label: "priority" },
       { id: "target", type: "target", position: "right", direction: "output", label: "target" },
@@ -20,6 +37,12 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     description: "Emit priority and target data when a candidate enters turret range.",
     color: "var(--brand-orange)",
     category: "event-trigger",
+    deprecation: {
+      status: "deprecated",
+      reason: "Use Entered / Attacked for new encounter-trigger authoring.",
+      replacedBy: ["enteredAttacked"],
+      remediationMessage: "Proximity remains supported for saved graphs, but new flows should use Entered / Attacked.",
+    },
     sockets: [
       { id: "priority", type: "priority", position: "right", direction: "output", label: "priority" },
       { id: "target", type: "target", position: "right", direction: "output", label: "target" },
@@ -397,17 +420,16 @@ export const nodeDefinitions: readonly NodeDefinition[] = [
     color: "var(--socket-vector)",
     category: "action",
     sockets: [
-      { id: "priority_in", type: "priority", position: "left", direction: "input", label: "priority in" },
+      { id: "priority_in", type: "priority", position: "left", direction: "input", label: "priority queue" },
       { id: "target", type: "target", position: "left", direction: "input", label: "target" },
       { id: "predicate", type: "boolean", position: "left", direction: "input", label: "predicate" },
       { id: "weight", type: "number", position: "left", direction: "input", label: "weight" },
-      { id: "priority_out", type: "priority", position: "right", direction: "output", label: "priority out" },
     ],
   },
 ] as const;
 
 export const authorableNodeDefinitions: readonly NodeDefinition[] = nodeDefinitions.filter(
-  (definition) => definition.deprecation?.status !== "retired",
+  (definition) => definition.deprecation === undefined,
 );
 
 const nodeDefinitionsByType = new Map(nodeDefinitions.map((definition) => [definition.type, definition]));

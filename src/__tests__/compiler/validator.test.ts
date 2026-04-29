@@ -49,7 +49,7 @@ describe("validateGraph", () => {
     const result = validateGraph(graph);
 
     expect(result.valid).toBe(false);
-    expect(result.diagnostics.some((diagnostic) => diagnostic.userMessage.includes("Required input 'priority in'"))).toBe(true);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.userMessage.includes("Required input 'priority queue'"))).toBe(true);
     expect(result.diagnostics.some((diagnostic) => diagnostic.severity === "warning" && diagnostic.userMessage.includes("disconnected"))).toBe(true);
   });
 

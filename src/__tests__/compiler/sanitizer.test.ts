@@ -32,15 +32,15 @@ describe("sanitizer", () => {
   it("reports node labels that collapse to an empty identifier", () => {
     const flow = createDefaultContractFlow();
     const graph = buildIrGraph(flow.nodes, flow.edges, "starter_contract");
-    const aggressionNode = graph.nodes.get("default_aggression");
-    if (aggressionNode === undefined) {
-      throw new Error("Expected default_aggression to exist.");
+    const enteredAttackedNode = graph.nodes.get("default_entered_attacked");
+    if (enteredAttackedNode === undefined) {
+      throw new Error("Expected default_entered_attacked to exist.");
     }
 
     const invalidGraph = {
       ...graph,
-      nodes: new Map(graph.nodes).set("default_aggression", {
-        ...aggressionNode,
+      nodes: new Map(graph.nodes).set("default_entered_attacked", {
+        ...enteredAttackedNode,
         label: "!!!",
       }),
     };
@@ -49,7 +49,7 @@ describe("sanitizer", () => {
 
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.stage).toBe("sanitization");
-    expect(diagnostics[0]?.reactFlowNodeId).toBe("default_aggression");
+    expect(diagnostics[0]?.reactFlowNodeId).toBe("default_entered_attacked");
     expect(diagnostics[0]?.userMessage).toContain("Node label");
   });
 

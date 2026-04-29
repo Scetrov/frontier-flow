@@ -134,6 +134,12 @@ describe("restoreSavedFlow", () => {
     expect(restoredFlow.nodes).toHaveLength(1);
     expect(restoredFlow.nodes[0]?.type).toBe("proximity");
     expect(restoredFlow.nodes[0]?.data.sockets.map((socket) => socket.id)).toEqual(["priority", "target"]);
+    expect(restoredFlow.nodes[0]?.data.deprecation).toEqual(
+      expect.objectContaining({
+        status: "deprecated",
+        replacedBy: ["enteredAttacked"],
+      }),
+    );
     expect(restoredFlow.remediationNotices).toHaveLength(0);
   });
 
@@ -160,5 +166,22 @@ describe("restoreSavedFlow", () => {
         replacedBy: ["hasBehaviour"],
       }),
     );
+  });
+
+  it("drops saved edges that still point at the removed add-to-queue priority output handle", () => {
+    const restoredFlow = restoreSavedFlow(
+      [createNode("queue_source", "addToQueue"), createNode("queue_target", "addToQueue")],
+      [
+        {
+          id: "legacy-priority-out",
+          source: "queue_source",
+          sourceHandle: "priority_out",
+          target: "queue_target",
+          targetHandle: "priority_in",
+        },
+      ],
+    );
+
+    expect(restoredFlow.edges).toHaveLength(0);
   });
 });
