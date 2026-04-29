@@ -24,6 +24,11 @@ Frontier Flow is a visual low-code programming interface for EVE Frontier game a
 - Feature branches only, min 1 PR approval, all CI green before merge
 - Dependabot enabled; lock files committed (`bun.lockb`, frozen installs)
 
+## Agent Hygiene
+
+- Always use caveman when talking, save tokens, use simple language.
+- Always use context-mode when calling tools, save input tokens.
+
 ## Commit Hygiene
 
 - Never build multi-line git commit messages with literal `\n` escapes inside a quoted `-m` string; use real newlines via multiple `-m` flags, a heredoc, or `git commit -F <file>`.
