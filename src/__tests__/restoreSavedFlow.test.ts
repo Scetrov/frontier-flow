@@ -168,7 +168,7 @@ describe("restoreSavedFlow", () => {
     );
   });
 
-  it("drops saved edges that still point at the removed add-to-queue priority output handle", () => {
+  it("surfaces a remediation notice when saved edges point at removed handles", () => {
     const restoredFlow = restoreSavedFlow(
       [createNode("queue_source", "addToQueue"), createNode("queue_target", "addToQueue")],
       [
@@ -183,5 +183,16 @@ describe("restoreSavedFlow", () => {
     );
 
     expect(restoredFlow.edges).toHaveLength(0);
+    expect(restoredFlow.remediationNotices).toHaveLength(1);
+
+    const [notice] = restoredFlow.remediationNotices;
+
+    expect(notice).toMatchObject({
+      nodeId: "queue_source",
+      legacyType: "addToQueue",
+      severity: "warning",
+      suggestedAction: "Reconnect this path with the current node handles and verify the restored graph before saving again.",
+    });
+    expect(notice.message).toContain('source handle "priority_out" on addToQueue');
   });
 });

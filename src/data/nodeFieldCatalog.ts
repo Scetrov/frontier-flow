@@ -30,13 +30,16 @@ const DEFAULT_FIELDS_BY_NODE_TYPE: Readonly<Partial<Record<string, NodeFieldMap>
 };
 
 const EDITABLE_NODE_TYPES = new Set(["hasBehaviour", "listTribe", "listShip", "listCharacter", "isInGroup"]);
+const MAX_SAFE_QUEUE_WEIGHT = Number.MAX_SAFE_INTEGER;
 
 function normalizeQueueWeight(value: NodeFieldValue | undefined): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return 100;
   }
 
-  return value === 0 ? 100 : value;
+  const clampedValue = Math.min(Math.trunc(value), MAX_SAFE_QUEUE_WEIGHT);
+
+  return clampedValue <= 0 ? 100 : clampedValue;
 }
 
 type NodeFieldNormalizer = (fields: Readonly<Record<string, NodeFieldValue>>) => NodeFieldMap;

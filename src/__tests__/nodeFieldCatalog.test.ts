@@ -23,9 +23,12 @@ describe("nodeFieldCatalog", () => {
     expect(createFlowNodeData(definition).fields).toEqual({});
   });
 
-  it("normalizes legacy add-to-queue zero weights to 100 while preserving non-zero values", () => {
+  it("normalizes add-to-queue weights to safe emitted u64-compatible integers", () => {
     expect(normalizeNodeFields("addToQueue", { weight: 0 })).toEqual({ weight: 100 });
+    expect(normalizeNodeFields("addToQueue", { weight: -1 })).toEqual({ weight: 100 });
+    expect(normalizeNodeFields("addToQueue", { weight: 1.5 })).toEqual({ weight: 1 });
     expect(normalizeNodeFields("addToQueue", { weight: 75 })).toEqual({ weight: 75 });
+    expect(normalizeNodeFields("addToQueue", { weight: Number.MAX_SAFE_INTEGER + 1_000 })).toEqual({ weight: Number.MAX_SAFE_INTEGER });
     expect(normalizeNodeFields("addToQueue", {})).toEqual({});
   });
 });

@@ -276,11 +276,11 @@ describe("CanvasWorkspace", () => {
     expect(screen.getByText("target")).toBeInTheDocument();
   });
 
-  it("auto-wires Add to Queue from Entered / Attacked and hides the legacy output port", async () => {
+  it("offers a right-click helper to wire Add to Queue from supported triggers and hides the legacy output port", async () => {
     render(
       <CanvasWorkspace
         initialContractName="Auto Wire Contract"
-        initialNodes={[createFlowNode("trigger", "enteredAttacked")]}
+        initialNodes={[createFlowNode("trigger", "aggression")]}
       />,
     );
 
@@ -297,7 +297,20 @@ describe("CanvasWorkspace", () => {
 
     await waitFor(() => {
       const activeContract = readStoredContractLibrary().contracts.find((contract) => contract.name === "Auto Wire Contract");
+      expect(activeContract?.edges).toHaveLength(0);
+    });
+
+    fireEvent.contextMenu(screen.getByText("Add to Queue"), {
+      clientX: 320,
+      clientY: 220,
+    });
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Wire trigger inputs" }));
+
+    await waitFor(() => {
+      const activeContract = readStoredContractLibrary().contracts.find((contract) => contract.name === "Auto Wire Contract");
       expect(activeContract?.edges).toHaveLength(2);
+      expect(activeContract?.edges.map((edge) => edge.source)).toEqual(["trigger", "trigger"]);
     });
   });
 

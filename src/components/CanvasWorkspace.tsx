@@ -163,6 +163,7 @@ const addToQueueAutoWirePairs = [
   { sourceHandle: "priority", targetHandle: "priority_in" },
   { sourceHandle: "target", targetHandle: "target" },
 ] as const;
+const addToQueueAutoWireTriggerTypes = new Set(["enteredAttacked", "aggression", "proximity"]);
 
 function hasIncomingHandleConnection(edges: readonly FlowEdge[], targetNodeId: string, targetHandle: string): boolean {
   return edges.some((edge) => edge.target === targetNodeId && edge.targetHandle === targetHandle);
@@ -190,7 +191,7 @@ function createAutoWiredAddToQueueEdges(
     return [];
   }
 
-  const triggerNode = nodes.find((node) => node.type === "enteredAttacked");
+  const triggerNode = nodes.find((node) => typeof node.type === "string" && addToQueueAutoWireTriggerTypes.has(node.type));
   if (triggerNode === undefined) {
     return [];
   }
@@ -611,13 +612,22 @@ function SelectedEdgeDeleteControls({
 }
 
 interface CanvasContextMenuProps {
+  readonly canAutoWireFromContextMenu: boolean;
   readonly contextMenu: ContextMenuState | null;
   readonly contextMenuRef: React.RefObject<HTMLDivElement | null>;
   readonly onAutoArrange: () => void;
+  readonly onAutoWireFromContextMenu: () => void;
   readonly onDeleteFromContextMenu: () => void;
 }
 
-function CanvasContextMenu({ contextMenu, contextMenuRef, onAutoArrange, onDeleteFromContextMenu }: CanvasContextMenuProps) {
+function CanvasContextMenu({
+  canAutoWireFromContextMenu,
+  contextMenu,
+  contextMenuRef,
+  onAutoArrange,
+  onAutoWireFromContextMenu,
+  onDeleteFromContextMenu,
+}: CanvasContextMenuProps) {
   if (contextMenu === null) {
     return null;
   }
@@ -634,6 +644,12 @@ function CanvasContextMenu({ contextMenu, contextMenuRef, onAutoArrange, onDelet
         <button className="ff-canvas__context-action" role="menuitem" type="button" onClick={onAutoArrange}>
           <LayoutGrid aria-hidden="true" className="ff-canvas__context-action-icon" />
           <span>Auto-arrange contract</span>
+        </button>
+      ) : null}
+      {contextMenu.target.kind === "node" && canAutoWireFromContextMenu ? (
+        <button className="ff-canvas__context-action" role="menuitem" type="button" onClick={onAutoWireFromContextMenu}>
+          <FileInput aria-hidden="true" className="ff-canvas__context-action-icon" />
+          <span>Wire trigger inputs</span>
         </button>
       ) : null}
       {contextMenu.target.kind === "node" ? (
@@ -1255,14 +1271,9 @@ function useCanvasInteractions({
       position,
       data: createFlowNodeData(definition),
     } satisfies FlowNode;
-    const nextNodes = nodes.concat(addedNode);
-    const autoWiredEdges = createAutoWiredAddToQueueEdges(nextNodes, edges, addedNode);
 
     setNodes((currentNodes) => currentNodes.concat(addedNode));
-    if (autoWiredEdges.length > 0) {
-      setEdges((currentEdges) => currentEdges.concat(autoWiredEdges));
-    }
-  }, [edges, nodes, reactFlow, setContextMenu, setEdges, setNodes]);
+  }, [reactFlow, setContextMenu, setNodes]);
   const handleConnect = useCallback((connection: Connection) => {
     if (!isValidFlowConnection(connection, nodes, edges)) {
       return;
@@ -1316,13 +1327,30 @@ function useCanvasInteractions({
     }
     setContextMenu(null);
   }, [deleteEdgeById, deleteNodeById, setContextMenu]);
+  const handleAutoWireFromContextMenu = useCallback((contextMenu: ContextMenuState | null) => {
+    if (contextMenu?.target.kind !== "node") {
+      return;
+    }
+
+    const targetNode = nodes.find((node) => node.id === contextMenu.target.targetId);
+    if (targetNode === undefined) {
+      setContextMenu(null);
+      return;
+    }
+
+    const autoWiredEdges = createAutoWiredAddToQueueEdges(nodes, edges, targetNode);
+    if (autoWiredEdges.length > 0) {
+      setEdges((currentEdges) => currentEdges.concat(autoWiredEdges));
+    }
+    setContextMenu(null);
+  }, [edges, nodes, setContextMenu, setEdges]);
   const validateConnection = useCallback((connection: Connection | Edge) => isValidFlowConnection({
     source: connection.source,
     target: connection.target,
     sourceHandle: connection.sourceHandle ?? null,
     targetHandle: connection.targetHandle ?? null,
   }, nodes, edges), [edges, nodes]);
-  return { handleAutoArrange, handleConnect, handleDeleteFromContextMenu, handleDragOver, handleDrop, handleEdgeContextMenu, handleNodeContextMenu, handlePaneContextMenu, validateConnection };
+  return { handleAutoArrange, handleAutoWireFromContextMenu, handleConnect, handleDeleteFromContextMenu, handleDragOver, handleDrop, handleEdgeContextMenu, handleNodeContextMenu, handlePaneContextMenu, validateConnection };
 }
 
 type UseFlowEditorEffectsOptions = {
@@ -1459,6 +1487,7 @@ interface FlowEditorViewProps {
   readonly edges: readonly FlowEdge[];
   readonly graphTransferState: GraphTransferState;
   readonly handleAutoArrange: () => void;
+  readonly handleAutoWireFromContextMenu: () => void;
   readonly handleConnect: (connection: Connection) => void;
   readonly handleCreateContractCopy: () => void;
   readonly handleDeleteContract: () => void;
@@ -1507,6 +1536,7 @@ function FlowEditorView({
   edges,
   graphTransferState,
   handleAutoArrange,
+  handleAutoWireFromContextMenu,
   handleConnect,
   handleCreateContractCopy,
   handleDeleteContract,
@@ -1539,6 +1569,19 @@ function FlowEditorView({
   validateConnection,
   walletConnected,
 }: FlowEditorViewProps) {
+  const canAutoWireFromContextMenu = useMemo(() => {
+    if (contextMenu?.target.kind !== "node") {
+      return false;
+    }
+
+    const targetNode = nodes.find((node) => node.id === contextMenu.target.targetId);
+    if (targetNode === undefined) {
+      return false;
+    }
+
+    return createAutoWiredAddToQueueEdges(nodes, edges, targetNode).length > 0;
+  }, [contextMenu, edges, nodes]);
+
   return (
     <NodeFieldEditingContext.Provider value={compilationHandleNodeFieldsChange}>
       <div className="ff-canvas" data-testid="canvas-workspace" onContextMenu={handlePaneContextMenu}>
@@ -1586,7 +1629,14 @@ function FlowEditorView({
             </div>
           ) : null}
         </ReactFlow>
-        <CanvasContextMenu contextMenu={contextMenu} contextMenuRef={contextMenuRef} onAutoArrange={handleAutoArrange} onDeleteFromContextMenu={handleDeleteFromContextMenu} />
+        <CanvasContextMenu
+          canAutoWireFromContextMenu={canAutoWireFromContextMenu}
+          contextMenu={contextMenu}
+          contextMenuRef={contextMenuRef}
+          onAutoArrange={handleAutoArrange}
+          onAutoWireFromContextMenu={handleAutoWireFromContextMenu}
+          onDeleteFromContextMenu={handleDeleteFromContextMenu}
+        />
         {graphTransferState.isOpen ? transferDialog : null}
       </div>
     </NodeFieldEditingContext.Provider>
@@ -1708,7 +1758,7 @@ function FlowEditor({
       contextMenu={deleteManager.contextMenu} contextMenuRef={deleteManager.contextMenuRef} contractLibrary={contractManager.contractLibrary}
       deleteEdgeById={deleteManager.deleteEdgeById} draftContractName={contractManager.draftContractName} edges={edges}
       graphTransferState={graphTransfer.state}
-      handleAutoArrange={interactionHandlers.handleAutoArrange} handleConnect={interactionHandlers.handleConnect} handleCreateContractCopy={contractManager.handleCreateContractCopy}
+      handleAutoArrange={interactionHandlers.handleAutoArrange} handleAutoWireFromContextMenu={() => { interactionHandlers.handleAutoWireFromContextMenu(deleteManager.contextMenu); }} handleConnect={interactionHandlers.handleConnect} handleCreateContractCopy={contractManager.handleCreateContractCopy}
       handleDeleteContract={contractManager.handleDeleteContract} handleDeleteFromContextMenu={() => { interactionHandlers.handleDeleteFromContextMenu(deleteManager.contextMenu); }}
       handleDragOver={interactionHandlers.handleDragOver} handleDrop={interactionHandlers.handleDrop} handleEdgeContextMenu={interactionHandlers.handleEdgeContextMenu}
       handleExportContract={() => { graphTransfer.open("export"); }} handleImportFromFile={() => { graphTransfer.open("import-file"); }}
