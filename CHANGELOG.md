@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.1](https://github.com/Scetrov/frontier-flow/compare/v0.11.0...v0.11.1) (2026-04-29)
+
+
+### Bug Fixes
+
+* **canvas:** finish add-to-queue cleanup ([#37](https://github.com/Scetrov/frontier-flow/issues/37)) ([5e0ff53](https://github.com/Scetrov/frontier-flow/commit/5e0ff536c20b9b711b45aef767f0acb307240e47))
+
 ## [0.11.0](https://github.com/Scetrov/frontier-flow/compare/v0.10.0...v0.11.0) (2026-04-27)
 
 
