@@ -14,6 +14,36 @@ const mockInitMoveCompiler = vi.fn<() => Promise<void>>().mockResolvedValue(unde
 const mockBuildMovePackage = vi.fn<BuildMovePackageFn>();
 const mockFetchPackageFromGitHub = vi.fn<FetchPackageFromGitHubFn>();
 
+type BuildMovePackageSuccess = Exclude<Awaited<ReturnType<BuildMovePackageFn>>, { readonly error: string }>;
+type TestMoveCompilerLoader = Parameters<typeof setMoveCompilerLoaderForTests>[0];
+type TestMoveCompilerModule = Awaited<ReturnType<TestMoveCompilerLoader>>;
+
+interface TestLocalFetcher {
+  fetchLocal(localPath: string, context?: unknown): Promise<Record<string, string>>;
+}
+
+function createDumpSuccess({
+  modules,
+  dependencies,
+  digest = [],
+  warnings,
+}: {
+  readonly modules: readonly string[];
+  readonly dependencies: readonly string[];
+  readonly digest?: readonly number[];
+  readonly warnings?: string;
+}): BuildMovePackageSuccess {
+  return {
+    modules,
+    dependencies,
+    digest,
+    moveLock: "",
+    environment: "testnet",
+    warnings,
+    intent: "dump",
+  };
+}
+
 function getBuildMovePackageInput(
   mockFn: Mock<BuildMovePackageFn>,
   callIndex: number,
@@ -26,14 +56,16 @@ function getBuildMovePackageInput(
   return call[0] as Parameters<BuildMovePackageFn>[0];
 }
 
-function getLocalFetcher(fetcher: unknown): { fetchLocal(localPath: string, context?: unknown): Promise<Record<string, string>> } {
-  if (
-    fetcher === null
-    || fetcher === undefined
-    || typeof fetcher !== "object"
-    || !("fetchLocal" in fetcher)
-    || typeof fetcher.fetchLocal !== "function"
-  ) {
+function hasLocalFetcher(fetcher: unknown): fetcher is TestLocalFetcher {
+  if (fetcher === null || fetcher === undefined || typeof fetcher !== "object" || !("fetchLocal" in fetcher)) {
+    return false;
+  }
+
+  return typeof (fetcher as Record<string, unknown>).fetchLocal === "function";
+}
+
+function getLocalFetcher(fetcher: unknown): TestLocalFetcher {
+  if (!hasLocalFetcher(fetcher)) {
     throw new Error("Expected buildMovePackage input to provide a local fetcher.");
   }
 
@@ -104,11 +136,11 @@ describe("compileMove", () => {
   it("compiles the generated artifact package and attaches decoded bytecode plus dependencies", async () => {
     const artifact = createArtifact();
 
-    mockBuildMovePackage.mockResolvedValueOnce({
+    mockBuildMovePackage.mockResolvedValueOnce(createDumpSuccess({
       modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
       dependencies: graphToMoveDependencyFixture,
       warnings: graphToMoveMultipleCompilerMessages,
-    });
+    }));
 
     const result = await compileMove(artifact);
 
@@ -137,10 +169,10 @@ describe("compileMove", () => {
   it("passes the active GitHub token into build requests when authenticated access is configured", async () => {
     const artifact = createArtifact();
     setMoveBuilderGitHubAccessTokenProvider(() => "test-token");
-    mockBuildMovePackage.mockResolvedValueOnce({
+    mockBuildMovePackage.mockResolvedValueOnce(createDumpSuccess({
       modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
       dependencies: graphToMoveDependencyFixture,
-    });
+    }));
 
     const result = await compileMove(artifact);
 
@@ -291,20 +323,20 @@ describe("compileMove", () => {
 
   it("retries the compiler module import after a transient loader failure", async () => {
     const artifact = createArtifact();
-    const fallbackModule = {
+    const fallbackModule: TestMoveCompilerModule = {
       initMovePackageBuilder: mockInitMoveCompiler,
-      dumpMovePackage: mockBuildMovePackage,
+      dumpMovePackage: async (input) => mockBuildMovePackage(input as Parameters<BuildMovePackageFn>[0]),
     };
     const transientImportError = new Error("dynamic import failed once");
-    const loader = vi.fn<() => Promise<typeof fallbackModule>>()
+    const loader = vi.fn<TestMoveCompilerLoader>()
       .mockRejectedValueOnce(transientImportError)
       .mockResolvedValue(fallbackModule);
 
     setMoveCompilerLoaderForTests(loader);
-    mockBuildMovePackage.mockResolvedValueOnce({
+    mockBuildMovePackage.mockResolvedValueOnce(createDumpSuccess({
       modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
       dependencies: graphToMoveDependencyFixture,
-    });
+    }));
 
     const firstResult = await compileMove(artifact);
     const secondResult = await compileMove(artifact);
@@ -324,10 +356,10 @@ describe("compileMove", () => {
     mockInitMoveCompiler
       .mockRejectedValueOnce(new Error("init failed once"))
       .mockResolvedValue(undefined);
-    mockBuildMovePackage.mockResolvedValueOnce({
+    mockBuildMovePackage.mockResolvedValueOnce(createDumpSuccess({
       modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
       dependencies: graphToMoveDependencyFixture,
-    });
+    }));
 
     const firstResult = await compileMove(artifact);
     const secondResult = await compileMove(artifact);
@@ -350,10 +382,10 @@ describe("compileMove", () => {
       console.log("[Compile] pkgId=Sui, pkgName=Sui, hasFiles=true, manifestName=Sui");
       console.log("[V3 Files] Storing: Sui (manifest: Sui)");
 
-      return {
+      return Promise.resolve(createDumpSuccess({
         modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
         dependencies: graphToMoveDependencyFixture,
-      };
+      }));
     });
 
     try {
@@ -374,10 +406,10 @@ describe("compileMove", () => {
     mockBuildMovePackage.mockImplementationOnce(() => {
       console.log("[Compile] pkgId=Sui, pkgName=Sui, hasFiles=true, manifestName=Sui");
 
-      return {
+      return Promise.resolve(createDumpSuccess({
         modules: graphToMoveBytecodeFixture.map((moduleBytes) => encodeBase64(moduleBytes)),
         dependencies: graphToMoveDependencyFixture,
-      };
+      }));
     });
 
     try {
@@ -424,21 +456,21 @@ describe("compileMove", () => {
     } as const;
 
     mockBuildMovePackage
-      .mockResolvedValueOnce({
+      .mockResolvedValueOnce(createDumpSuccess({
         modules: [encodeBase64(rootModuleBytes), encodeBase64(shimModuleBytes)],
         dependencies: graphToMoveDependencyFixture,
-      })
-      .mockResolvedValueOnce({
+      }))
+      .mockResolvedValueOnce(createDumpSuccess({
         modules: [encodeBase64(shimModuleBytes)],
         dependencies: [],
-      });
+      }));
 
     const result = await compileMove(artifact);
 
     expect(result.success).toBe(true);
     expect(result.modules).toEqual([rootModuleBytes]);
     expect(result.artifact?.bytecodeModules).toEqual([rootModuleBytes]);
-    expect(mockBuildMovePackage).toHaveBeenNthCalledWith(1, {
+    expect(mockBuildMovePackage).toHaveBeenNthCalledWith(1, expect.objectContaining({
       files: {
         "Move.toml": artifact.moveToml,
         "sources/graph_to_move_supported.move": "module builder_extensions::graph_to_move_supported {}",
@@ -449,7 +481,7 @@ describe("compileMove", () => {
       },
       silenceWarnings: false,
       network: "testnet",
-    });
+    }));
     expect(mockBuildMovePackage).toHaveBeenNthCalledWith(2, {
       files: createStandaloneWorldShimPackageFiles(),
       silenceWarnings: true,
@@ -486,23 +518,23 @@ describe("compileMove", () => {
     const rateLimitError = new Error("429 Too Many Requests");
 
     mockBuildMovePackage
-      .mockResolvedValueOnce({
+      .mockResolvedValueOnce(createDumpSuccess({
         modules: [encodeBase64(rootModuleBytes), encodeBase64(shimModuleBytes)],
         dependencies: graphToMoveDependencyFixture,
-      })
+      }))
       .mockRejectedValueOnce(rateLimitError)
-      .mockResolvedValueOnce({
+      .mockResolvedValueOnce(createDumpSuccess({
         modules: [encodeBase64(rootModuleBytes), encodeBase64(shimModuleBytes)],
         dependencies: graphToMoveDependencyFixture,
-      })
-      .mockResolvedValueOnce({
+      }))
+      .mockResolvedValueOnce(createDumpSuccess({
         modules: [encodeBase64(rootModuleBytes), encodeBase64(shimModuleBytes)],
         dependencies: graphToMoveDependencyFixture,
-      })
-      .mockResolvedValueOnce({
+      }))
+      .mockResolvedValueOnce(createDumpSuccess({
         modules: [encodeBase64(shimModuleBytes)],
         dependencies: [],
-      });
+      }));
 
     try {
       const firstResult = await compileMove(artifact);

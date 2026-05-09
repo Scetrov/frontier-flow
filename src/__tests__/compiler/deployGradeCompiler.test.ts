@@ -9,6 +9,31 @@ import { compileForDeployment, resetDeployGradeCompilerStateForTests } from "../
 import type { BuildMovePackageFn } from "../../compiler/moveBuilderLite";
 import { createGeneratedArtifactStub, createPackageReferenceBundle, createResolvedDependenciesFixture, createResolvedDependencyPackageSnapshot } from "../compiler/helpers";
 
+interface TestLocalFetcher {
+  fetchLocal(localPath: string, context?: unknown): Promise<Record<string, string>>;
+}
+
+type BuildMovePackageSuccess = Exclude<Awaited<ReturnType<BuildMovePackageFn>>, { readonly error: string }>;
+
+function createDumpSuccess({
+  modules,
+  dependencies,
+  digest = [],
+}: {
+  readonly modules: readonly string[];
+  readonly dependencies: readonly string[];
+  readonly digest?: readonly number[];
+}): BuildMovePackageSuccess {
+  return {
+    modules,
+    dependencies,
+    digest,
+    moveLock: "",
+    environment: "testnet",
+    intent: "dump",
+  };
+}
+
 function toBase64(bytes: readonly number[]): string {
   return btoa(String.fromCharCode(...bytes));
 }
@@ -64,14 +89,16 @@ function getBuildMovePackageInput(
   return call[0] as Parameters<BuildMovePackageFn>[0];
 }
 
-function getLocalFetcher(fetcher: unknown): { fetchLocal(localPath: string, context?: unknown): Promise<Record<string, string>> } {
-  if (
-    fetcher === null
-    || fetcher === undefined
-    || typeof fetcher !== "object"
-    || !("fetchLocal" in fetcher)
-    || typeof fetcher.fetchLocal !== "function"
-  ) {
+function hasLocalFetcher(fetcher: unknown): fetcher is TestLocalFetcher {
+  if (fetcher === null || fetcher === undefined || typeof fetcher !== "object" || !("fetchLocal" in fetcher)) {
+    return false;
+  }
+
+  return typeof (fetcher as Record<string, unknown>).fetchLocal === "function";
+}
+
+function getLocalFetcher(fetcher: unknown): TestLocalFetcher {
+  if (!hasLocalFetcher(fetcher)) {
     throw new Error("Expected deploy-grade build input to provide a local fetcher.");
   }
 
@@ -151,7 +178,7 @@ describe("deployGradeCompiler", () => {
   it("reuses cached resolution snapshots for repeated compilations on the same target and version", async () => {
     const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture();
     const resolveDependencies = vi.fn(() => Promise.resolve(resolvedDependencies));
-    const buildMovePackage = vi.fn<BuildMovePackageFn>(() => Promise.resolve({
+    const buildMovePackage = vi.fn<BuildMovePackageFn>().mockResolvedValue(createDumpSuccess({
       modules: [toBase64([4, 5, 6])],
       dependencies: ["0x3"],
       digest: [1, 2, 3],
