@@ -25,8 +25,8 @@ export interface LocalPublishResult {
 }
 
 interface LocalPublishCompilerModule {
-  initMoveCompiler(options?: { readonly wasm?: string | URL }): Promise<void>;
-  buildMovePackage(input: {
+  initMovePackageBuilder(options?: { readonly wasm?: string | URL }): Promise<void>;
+  dumpMovePackage(input: {
     readonly files: Readonly<Record<string, string>>;
     readonly silenceWarnings: boolean;
     readonly network: string;
@@ -93,8 +93,8 @@ export async function resolveLocalPublishModules(
   await verifyCompilerIntegrity();
   const compilerModule = await loadCompilerModule();
   await prewarmCompilerWasm(moveBuilderLiteWasmUrl);
-  await compilerModule.initMoveCompiler({ wasm: moveBuilderLiteWasmUrl });
-  const result = await compilerModule.buildMovePackage({
+  await compilerModule.initMovePackageBuilder({ wasm: moveBuilderLiteWasmUrl });
+  const result = await compilerModule.dumpMovePackage({
     files: createArtifactFileMap(artifact),
     silenceWarnings: false,
     network: "testnet",

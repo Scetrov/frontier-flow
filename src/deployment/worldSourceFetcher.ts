@@ -74,7 +74,7 @@ export async function fetchWorldSource(
     return cachedResult;
   }
 
-  const fetchPackage = dependencies.fetchPackage ?? (await loadMoveBuilderLite()).fetchPackageFromGitHub;
+  const fetchPackage = dependencies.fetchPackage ?? (await loadMoveBuilderLite()).fetchMovePackageFromGitHub;
 
   try {
     const files = await withAbort(fetchPackage(createPackageUrl(request)), request.signal, request.versionTag);

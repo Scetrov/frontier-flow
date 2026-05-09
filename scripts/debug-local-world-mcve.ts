@@ -3,7 +3,7 @@
  * No resolveDependencies — directly embed world source files and compile.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { initMoveCompiler, buildMovePackage, getSuiMoveVersion } from "@zktx.io/sui-move-builder/lite";
+import { initMovePackageBuilder, dumpMovePackage, getPinnedSuiMoveVersion } from "@zktx.io/sui-move-builder";
 
 const WASM_URL = new URL(
   "../node_modules/@zktx.io/sui-move-builder/dist/lite/sui_move_wasm_bg.wasm",
@@ -64,8 +64,8 @@ async function main(): Promise<void> {
   console.log("=== Local World Source MCVE ===");
   console.log(`world package id: ${WORLD_PKG_ID}`);
 
-  await initMoveCompiler({ wasm: WASM_URL });
-  const version = await getSuiMoveVersion({ wasm: WASM_URL });
+  await initMovePackageBuilder({ wasm: WASM_URL });
+  const version = await getPinnedSuiMoveVersion({ wasm: WASM_URL });
   console.log(`compiler version: ${version}`);
 
   // Load world source files from vendor directory
@@ -129,7 +129,7 @@ async function main(): Promise<void> {
 
   // Build
   console.log("\n--- Build ---");
-  const result = await buildMovePackage({
+  const result = await dumpMovePackage({
     files,
     wasm: WASM_URL,
     network: "testnet",
@@ -170,7 +170,7 @@ async function main(): Promise<void> {
     "",
   ].join("\n");
 
-  const worldOnlyResult = await buildMovePackage({
+  const worldOnlyResult = await dumpMovePackage({
     files: worldOnlyFiles,
     wasm: WASM_URL,
     network: "testnet",

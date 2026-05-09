@@ -1,5 +1,5 @@
 import { attachArtifactDiagnostics, attachCompiledArtifactResult } from "./generators/shared";
-import type { BuildProgressEvent } from "@zktx.io/sui-move-builder/lite";
+import type { MovePackageProgressEvent } from "@zktx.io/sui-move-builder";
 import {
   getMoveBuilderGitHubAccessToken,
   loadMoveBuilderLite,
@@ -40,10 +40,11 @@ interface BuildRootGit {
   readonly subdir?: string;
 }
 
-type BuildProgressHandler = (event: BuildProgressEvent) => void;
+type BuildProgressHandler = (event: MovePackageProgressEvent) => void;
 
 interface BuildInput {
   readonly files: Readonly<Record<string, string>>;
+  readonly fetcher?: LocalPackageFetcher;
   readonly githubToken?: string;
   readonly silenceWarnings: boolean;
   readonly network: string;
@@ -53,8 +54,8 @@ interface BuildInput {
 }
 
 interface MoveCompilerModule {
-  initMoveCompiler(options?: MoveCompilerInitOptions): Promise<void>;
-  buildMovePackage(input: BuildInput): Promise<BuildResult>;
+  initMovePackageBuilder(options?: MoveCompilerInitOptions): Promise<void>;
+  dumpMovePackage(input: BuildInput): Promise<BuildResult>;
 }
 
 type MoveCompilerLoader = () => Promise<MoveCompilerModule>;
@@ -64,6 +65,12 @@ type MoveCompilerWasmPrewarmer = (wasm: string | URL) => Promise<void>;
 interface WorldShimModuleSetFailure {
   readonly error: Error;
   readonly failedAt: number;
+}
+
+interface LocalPackageFetcher {
+  fetch(gitUrl: string, rev: string, subdir?: string): Promise<Record<string, string>>;
+  fetchLocal(localPath: string, context?: unknown): Promise<Record<string, string>>;
+  getResolvedSha?(gitUrl: string, rev: string): string | undefined;
 }
 
 const WORLD_SHIM_FAILURE_RETRY_MS = 30_000;
@@ -217,7 +224,7 @@ async function ensureCompilerInitialised(): Promise<MoveCompilerModule> {
   const compilerModule = await loadCompilerModule();
   if (initialisationPromise === null) {
     initialisationPromise = moveCompilerWasmPrewarmer(moveBuilderLiteWasmUrl)
-      .then(() => compilerModule.initMoveCompiler({ wasm: moveBuilderLiteWasmUrl }))
+      .then(() => compilerModule.initMovePackageBuilder({ wasm: moveBuilderLiteWasmUrl }))
       .catch((error: unknown) => {
         resetCompilerState();
         throw error;
@@ -239,7 +246,7 @@ async function getWorldShimModuleSet(compilerModule: MoveCompilerModule): Promis
   }
 
   if (worldShimModuleSetPromise === null) {
-    worldShimModuleSetPromise = compilerModule.buildMovePackage({
+    worldShimModuleSetPromise = compilerModule.dumpMovePackage({
       files: createStandaloneWorldShimPackageFiles(),
       silenceWarnings: true,
       network: "testnet",
@@ -263,6 +270,27 @@ async function getWorldShimModuleSet(compilerModule: MoveCompilerModule): Promis
   return worldShimModuleSetPromise;
 }
 
+function getLocalPackageFiles(
+  files: Readonly<Record<string, string>>,
+  localPath: string,
+): Record<string, string> {
+  const localFiles: Record<string, string> = {};
+  const normalizedLocalPath = localPath.replace(/^\.\//, "").replace(/\/+$/g, "");
+  const prefixes = [
+    `${normalizedLocalPath}/`,
+    normalizedLocalPath.length === 0 ? "" : `./${normalizedLocalPath}/`,
+  ].filter((prefix) => prefix.length > 0);
+
+  for (const [filePath, content] of Object.entries(files)) {
+    const matchingPrefix = prefixes.find((prefix) => filePath.startsWith(prefix));
+    if (matchingPrefix !== undefined) {
+      localFiles[filePath.slice(matchingPrefix.length)] = content;
+    }
+  }
+
+  return localFiles;
+}
+
 function filterBundledDependencyModules(modules: readonly string[], bundledDependencyModules: ReadonlySet<string>): readonly string[] {
   const filteredModules = modules.filter((moduleBytes) => !bundledDependencyModules.has(moduleBytes));
   return filteredModules.length === 0 ? modules : filteredModules;
@@ -270,6 +298,30 @@ function filterBundledDependencyModules(modules: readonly string[], bundledDepen
 
 function artifactBundlesWorldShim(artifact: GeneratedContractArtifact): boolean {
   return (artifact.sourceFiles ?? []).some((file) => file.path.startsWith("deps/world/"));
+}
+
+async function createBuildFetcher(
+  files: Readonly<Record<string, string>>,
+  artifact: GeneratedContractArtifact,
+  githubToken: string | undefined,
+): Promise<LocalPackageFetcher | undefined> {
+  if (!artifactBundlesWorldShim(artifact)) {
+    return undefined;
+  }
+
+  const moveBuilderModule = await import("@zktx.io/sui-move-builder");
+
+  class VirtualFileSystemFetcher extends moveBuilderModule.GitHubMovePackageFetcher {
+    constructor() {
+      super(githubToken);
+    }
+
+    override fetchLocal = (localPath: string): Promise<Record<string, string>> => {
+      return Promise.resolve(getLocalPackageFiles(files, localPath));
+    };
+  }
+
+  return new VirtualFileSystemFetcher();
 }
 
 function handleBuildSuccess(
@@ -400,8 +452,10 @@ export async function compileMove(
     for (const file of artifact.sourceFiles ?? [{ path: artifact.sourceFilePath, content: artifact.moveSource }]) {
       files[file.path] = file.content;
     }
-    const buildPromise = compilerModule.buildMovePackage({
+    const fetcher = await createBuildFetcher(files, artifact, githubToken);
+    const buildPromise = compilerModule.dumpMovePackage({
       files,
+      fetcher,
       githubToken,
       silenceWarnings: false,
       network: "testnet",
