@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.2](https://github.com/Scetrov/frontier-flow/compare/v0.11.1...v0.11.2) (2026-05-09)
+
+
+### Bug Fixes
+
+* **ci:** skip frozen-lockfile for dependabot PRs and auto-commit lockfile ([#40](https://github.com/Scetrov/frontier-flow/issues/40)) ([9e37989](https://github.com/Scetrov/frontier-flow/commit/9e379899f966fef4d850f6c3b8d052f8a17f9f3c))
+
 ## [0.11.1](https://github.com/Scetrov/frontier-flow/compare/v0.11.0...v0.11.1) (2026-04-29)
 
 
