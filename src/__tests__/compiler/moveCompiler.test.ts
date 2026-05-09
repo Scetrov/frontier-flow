@@ -14,6 +14,12 @@ const mockBuildMovePackage = vi.fn();
 const mockFetchPackageFromGitHub = vi.fn();
 
 vi.mock("@zktx.io/sui-move-builder", () => ({
+  GitHubMovePackageFetcher: class {
+    constructor(_: string | undefined = undefined) {}
+    fetch = vi.fn();
+    fetchFile = vi.fn();
+    getResolvedSha = vi.fn();
+  },
   initMovePackageBuilder: mockInitMoveCompiler,
   dumpMovePackage: mockBuildMovePackage,
   fetchMovePackageFromGitHub: mockFetchPackageFromGitHub,
@@ -411,6 +417,7 @@ describe("compileMove", () => {
         "deps/world/sources/in_game_id.move": "module world::in_game_id;",
         "deps/world/sources/turret.move": "module world::turret;",
       },
+      fetcher: expect.any(Object),
       silenceWarnings: false,
       network: "testnet",
     });
@@ -418,6 +425,16 @@ describe("compileMove", () => {
       files: createStandaloneWorldShimPackageFiles(),
       silenceWarnings: true,
       network: "testnet",
+    });
+
+    const firstBuildInput = mockBuildMovePackage.mock.calls[0]?.[0] as {
+      readonly fetcher?: { fetchLocal(localPath: string): Promise<Record<string, string>> };
+    };
+    await expect(firstBuildInput.fetcher?.fetchLocal("deps/world")).resolves.toEqual({
+      "Move.toml": "[package]\nname = \"world\"\n\n[addresses]\nworld = \"0x0\"\n",
+      "sources/character.move": "module world::character;",
+      "sources/in_game_id.move": "module world::in_game_id;",
+      "sources/turret.move": "module world::turret;",
     });
   });
 

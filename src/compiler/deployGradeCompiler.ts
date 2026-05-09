@@ -41,11 +41,16 @@ class VirtualFileSystemFetcher extends GitHubMovePackageFetcher {
 
   override fetchLocal = (localPath: string): Promise<Record<string, string>> => {
     const files: Record<string, string> = {};
-    const prefix = `${localPath}/`;
+    const normalizedLocalPath = localPath.replace(/^\.\//, "").replace(/\/+$/g, "");
+    const prefixes = [
+      `${normalizedLocalPath}/`,
+      normalizedLocalPath.length === 0 ? "" : `./${normalizedLocalPath}/`,
+    ].filter((prefix) => prefix.length > 0);
 
     for (const [filePath, content] of Object.entries(this.files)) {
-      if (filePath.startsWith(prefix)) {
-        files[filePath] = content;
+      const matchingPrefix = prefixes.find((prefix) => filePath.startsWith(prefix));
+      if (matchingPrefix !== undefined) {
+        files[filePath.slice(matchingPrefix.length)] = content;
       }
     }
 

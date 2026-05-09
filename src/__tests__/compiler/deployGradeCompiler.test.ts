@@ -119,6 +119,19 @@ describe("deployGradeCompiler", () => {
     expect(typeof mainBuildInput.files["deps/world/Move.toml"]).toBe("string");
     expect(mainBuildInput.files["deps/sui/Move.toml"]).toBeUndefined();
     expect(mainBuildInput.files["deps/move-stdlib/Move.toml"]).toBeUndefined();
+    expect(mainBuildInput.fetcher).toBeDefined();
+    const localFetcher = mainBuildInput.fetcher;
+    if (localFetcher === undefined || localFetcher.fetchLocal === undefined) {
+      throw new Error("Expected deploy-grade build input to provide a local fetcher.");
+    }
+    await expect(localFetcher.fetchLocal("deps/world", {
+      dependencyName: "world",
+      parentPackageName: "starter_contract",
+      network: "testnet",
+    })).resolves.toEqual(expect.objectContaining({
+      "Move.toml": expect.stringContaining("[package]"),
+      "sources/world.move": "module world::world {}",
+    }));
   });
 
   it("reuses cached resolution snapshots for repeated compilations on the same target and version", async () => {
