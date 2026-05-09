@@ -96,11 +96,11 @@ async function main(): Promise<void> {
   const compilerModule = await loadMoveBuilderLite();
 
   await verifyMoveBuilderLiteIntegrity();
-  await compilerModule.initMoveCompiler({ wasm: moveBuilderLiteWasmUrl });
+  await compilerModule.initMovePackageBuilder({ wasm: moveBuilderLiteWasmUrl });
 
   for (const snapshot of manifest.snapshots) {
     const files = createSyntheticFiles(snapshot.sourceVersionTag, snapshot.repositoryUrl, snapshot.subdirectory);
-    const resolvedDependencies = await compilerModule.resolveDependencies({
+    const resolvedDependencies = await compilerModule.resolveMovePackageDependencies({
       files,
       wasm: moveBuilderLiteWasmUrl,
       rootGit: {

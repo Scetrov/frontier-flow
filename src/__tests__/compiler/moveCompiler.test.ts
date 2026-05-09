@@ -13,10 +13,10 @@ const mockInitMoveCompiler = vi.fn<() => Promise<void>>().mockResolvedValue(unde
 const mockBuildMovePackage = vi.fn();
 const mockFetchPackageFromGitHub = vi.fn();
 
-vi.mock("@zktx.io/sui-move-builder/lite", () => ({
-  initMoveCompiler: mockInitMoveCompiler,
-  buildMovePackage: mockBuildMovePackage,
-  fetchPackageFromGitHub: mockFetchPackageFromGitHub,
+vi.mock("@zktx.io/sui-move-builder", () => ({
+  initMovePackageBuilder: mockInitMoveCompiler,
+  dumpMovePackage: mockBuildMovePackage,
+  fetchMovePackageFromGitHub: mockFetchPackageFromGitHub,
 }));
 
 import {
@@ -256,8 +256,8 @@ describe("compileMove", () => {
   it("retries the compiler module import after a transient loader failure", async () => {
     const artifact = createArtifact();
     const fallbackModule = {
-      initMoveCompiler: mockInitMoveCompiler,
-      buildMovePackage: mockBuildMovePackage,
+      initMovePackageBuilder: mockInitMoveCompiler,
+      dumpMovePackage: mockBuildMovePackage,
     };
     const transientImportError = new Error("dynamic import failed once");
     const loader = vi.fn<() => Promise<typeof fallbackModule>>()

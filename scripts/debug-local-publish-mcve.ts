@@ -76,7 +76,7 @@ function decodeBase64(value: string): Uint8Array {
 async function compileArtifactWithBundledWorldShim(artifact: GeneratedContractArtifact): Promise<readonly Uint8Array[]> {
   await verifyMoveBuilderLiteIntegrity();
   const compilerModule = await loadMoveBuilderLite();
-  await compilerModule.initMoveCompiler({ wasm: moveBuilderLiteWasmUrl });
+  await compilerModule.initMovePackageBuilder({ wasm: moveBuilderLiteWasmUrl });
 
   const files: Record<string, string> = {
     "Move.toml": artifact.moveToml,
@@ -85,7 +85,7 @@ async function compileArtifactWithBundledWorldShim(artifact: GeneratedContractAr
     files[file.path] = file.content;
   }
 
-  const result = await compilerModule.buildMovePackage({
+  const result = await compilerModule.dumpMovePackage({
     files,
     silenceWarnings: false,
     network: "testnet",

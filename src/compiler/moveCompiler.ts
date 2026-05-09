@@ -1,5 +1,5 @@
 import { attachArtifactDiagnostics, attachCompiledArtifactResult } from "./generators/shared";
-import type { BuildProgressEvent } from "@zktx.io/sui-move-builder/lite";
+import type { MovePackageProgressEvent } from "@zktx.io/sui-move-builder";
 import {
   getMoveBuilderGitHubAccessToken,
   loadMoveBuilderLite,
@@ -40,7 +40,7 @@ interface BuildRootGit {
   readonly subdir?: string;
 }
 
-type BuildProgressHandler = (event: BuildProgressEvent) => void;
+type BuildProgressHandler = (event: MovePackageProgressEvent) => void;
 
 interface BuildInput {
   readonly files: Readonly<Record<string, string>>;
@@ -53,8 +53,8 @@ interface BuildInput {
 }
 
 interface MoveCompilerModule {
-  initMoveCompiler(options?: MoveCompilerInitOptions): Promise<void>;
-  buildMovePackage(input: BuildInput): Promise<BuildResult>;
+  initMovePackageBuilder(options?: MoveCompilerInitOptions): Promise<void>;
+  dumpMovePackage(input: BuildInput): Promise<BuildResult>;
 }
 
 type MoveCompilerLoader = () => Promise<MoveCompilerModule>;
@@ -217,7 +217,7 @@ async function ensureCompilerInitialised(): Promise<MoveCompilerModule> {
   const compilerModule = await loadCompilerModule();
   if (initialisationPromise === null) {
     initialisationPromise = moveCompilerWasmPrewarmer(moveBuilderLiteWasmUrl)
-      .then(() => compilerModule.initMoveCompiler({ wasm: moveBuilderLiteWasmUrl }))
+      .then(() => compilerModule.initMovePackageBuilder({ wasm: moveBuilderLiteWasmUrl }))
       .catch((error: unknown) => {
         resetCompilerState();
         throw error;
@@ -239,7 +239,7 @@ async function getWorldShimModuleSet(compilerModule: MoveCompilerModule): Promis
   }
 
   if (worldShimModuleSetPromise === null) {
-    worldShimModuleSetPromise = compilerModule.buildMovePackage({
+    worldShimModuleSetPromise = compilerModule.dumpMovePackage({
       files: createStandaloneWorldShimPackageFiles(),
       silenceWarnings: true,
       network: "testnet",
@@ -400,7 +400,7 @@ export async function compileMove(
     for (const file of artifact.sourceFiles ?? [{ path: artifact.sourceFilePath, content: artifact.moveSource }]) {
       files[file.path] = file.content;
     }
-    const buildPromise = compilerModule.buildMovePackage({
+    const buildPromise = compilerModule.dumpMovePackage({
       files,
       githubToken,
       silenceWarnings: false,

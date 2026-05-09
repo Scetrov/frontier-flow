@@ -95,10 +95,10 @@ describe("deployGradeCompiler", () => {
       });
 
     const result = await compileForDeployment(createRequest(), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies,
-      buildMovePackage,
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: resolveDependencies,
+      dumpMovePackage: buildMovePackage,
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 42,
     });
@@ -131,10 +131,10 @@ describe("deployGradeCompiler", () => {
     }));
     const request = createRequest();
     const dependencies = {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies,
-      buildMovePackage,
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: resolveDependencies,
+      dumpMovePackage: buildMovePackage as unknown as BuildMovePackageFn,
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 99,
     };
@@ -167,10 +167,10 @@ describe("deployGradeCompiler", () => {
       window.history.replaceState({}, "", `${window.location.pathname}?ff_debug_deploy_grade_modules=1${window.location.hash}`);
 
       const result = await compileForDeployment(createRequest(), {
-        initMoveCompiler: vi.fn(() => Promise.resolve()),
-        resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
-        buildMovePackage,
-        getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+        initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+        resolveMovePackageDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+        dumpMovePackage: buildMovePackage,
+        getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
         verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
         now: () => 42,
       });
@@ -243,10 +243,10 @@ describe("deployGradeCompiler", () => {
         resolvedAt: 1,
       },
     }), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies,
-      buildMovePackage,
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: resolveDependencies,
+      dumpMovePackage: buildMovePackage as unknown as BuildMovePackageFn,
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 99,
     });
@@ -256,10 +256,10 @@ describe("deployGradeCompiler", () => {
 
   it("classifies dependency resolution failures with a deploy-grade error type", async () => {
     await expect(compileForDeployment(createRequest(), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies: vi.fn(() => Promise.reject(new Error("Network fetch failed while resolving GitHub dependency graph"))),
-      buildMovePackage: vi.fn(),
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: vi.fn(() => Promise.reject(new Error("Network fetch failed while resolving GitHub dependency graph"))),
+      dumpMovePackage: vi.fn(),
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
     })).rejects.toMatchObject({
       name: "DependencyResolutionError",
@@ -269,16 +269,16 @@ describe("deployGradeCompiler", () => {
 
   it("classifies linkage failures from buildMovePackage as deploy compilation errors", async () => {
     await expect(compileForDeployment(createRequest(), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies: vi.fn(() => Promise.resolve({
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: vi.fn(() => Promise.resolve({
         files: "{}",
         dependencies: createResolvedDependenciesFixture().dependencies,
         lockfileDependencies: "{}",
       })),
-      buildMovePackage: vi.fn(() => Promise.resolve({
+      dumpMovePackage: vi.fn(() => Promise.resolve({
         error: "address with no value",
       })),
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
     })).rejects.toMatchObject({
       name: "DeployCompilationError",
@@ -318,10 +318,10 @@ describe("deployGradeCompiler", () => {
       });
 
     await compileForDeployment(createRequest(), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
-      buildMovePackage,
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      dumpMovePackage: buildMovePackage,
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 42,
     });
@@ -365,10 +365,10 @@ describe("deployGradeCompiler", () => {
       });
 
     await compileForDeployment(createRequest(), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
-      buildMovePackage,
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      dumpMovePackage: buildMovePackage,
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 42,
     });
@@ -424,10 +424,10 @@ describe("deployGradeCompiler", () => {
     await compileForDeployment(
       createRequest({ target: createPackageReferenceBundle("local", { worldPackageId: targetWorldPackageId, originalWorldPackageId: targetWorldPackageId }) }),
       {
-        initMoveCompiler: vi.fn(() => Promise.resolve()),
-        resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
-        buildMovePackage,
-        getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+        initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+        resolveMovePackageDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+        dumpMovePackage: buildMovePackage,
+        getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
         verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
         now: () => 42,
       },
@@ -481,10 +481,10 @@ describe("deployGradeCompiler", () => {
       });
 
     await compileForDeployment(createRequest(), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
-      buildMovePackage,
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      dumpMovePackage: buildMovePackage,
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 42,
     });
@@ -529,10 +529,10 @@ describe("deployGradeCompiler", () => {
         }),
       }),
       {
-        initMoveCompiler: vi.fn(() => Promise.resolve()),
-        resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
-        buildMovePackage,
-        getSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
+        initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+        resolveMovePackageDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+        dumpMovePackage: buildMovePackage,
+        getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
         verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
         now: () => 42,
       },
@@ -572,10 +572,10 @@ describe("deployGradeCompiler", () => {
       });
 
     await compileForDeployment(createRequest(), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
-      buildMovePackage,
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      dumpMovePackage: buildMovePackage,
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 42,
     });
@@ -607,10 +607,10 @@ describe("deployGradeCompiler", () => {
       });
 
     await compileForDeployment(createRequest(), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
-      buildMovePackage,
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      dumpMovePackage: buildMovePackage,
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.68.0")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 42,
     });
@@ -622,14 +622,14 @@ describe("deployGradeCompiler", () => {
 
   it("fails fast when bundled dependency payloads are not parseable", async () => {
     await expect(compileForDeployment(createRequest(), {
-      initMoveCompiler: vi.fn(() => Promise.resolve()),
-      resolveDependencies: vi.fn(() => Promise.resolve({
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: vi.fn(() => Promise.resolve({
         files: "{}",
         dependencies: "not-json",
         lockfileDependencies: "{}",
       })),
-      buildMovePackage: vi.fn(),
-      getSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      dumpMovePackage: vi.fn(),
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
     })).rejects.toMatchObject({
       name: "DependencyResolutionError",

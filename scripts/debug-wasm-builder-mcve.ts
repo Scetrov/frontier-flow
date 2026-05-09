@@ -5,7 +5,7 @@
  * Caches resolved dependencies to .resolved-deps-cache.json to avoid GitHub rate limits.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { initMoveCompiler, buildMovePackage, resolveDependencies, getSuiMoveVersion } from "@zktx.io/sui-move-builder/lite";
+import { initMovePackageBuilder, dumpMovePackage, resolveMovePackageDependencies, getPinnedSuiMoveVersion } from "@zktx.io/sui-move-builder";
 
 const WASM_URL = new URL(
   "../node_modules/@zktx.io/sui-move-builder/dist/lite/sui_move_wasm_bg.wasm",
@@ -56,8 +56,8 @@ async function main(): Promise<void> {
 
   // Step 1: Init
   console.log("\n--- Step 1: Init compiler ---");
-  await initMoveCompiler({ wasm: WASM_URL });
-  const version = await getSuiMoveVersion({ wasm: WASM_URL });
+  await initMovePackageBuilder({ wasm: WASM_URL });
+  const version = await getPinnedSuiMoveVersion({ wasm: WASM_URL });
   console.log(`compiler version: ${version}`);
 
   // Step 2: Create files
@@ -70,13 +70,13 @@ async function main(): Promise<void> {
   // Step 3: Resolve dependencies (with disk cache)
   console.log("\n--- Step 3: Resolve dependencies ---");
   const CACHE_FILE = ".resolved-deps-cache.json";
-  let resolvedDeps: Awaited<ReturnType<typeof resolveDependencies>>;
+  let resolvedDeps: Awaited<ReturnType<typeof resolveMovePackageDependencies>>;
 
   if (existsSync(CACHE_FILE)) {
     console.log("  (using cached resolved dependencies from disk)");
     resolvedDeps = JSON.parse(readFileSync(CACHE_FILE, "utf-8"));
   } else {
-    resolvedDeps = await resolveDependencies({
+    resolvedDeps = await resolveMovePackageDependencies({
       files,
       wasm: WASM_URL,
       rootGit,
@@ -155,7 +155,7 @@ async function main(): Promise<void> {
 
   // Step 5: Build with resolved deps
   console.log("\n--- Step 5: Build package ---");
-  const buildResult = await buildMovePackage({
+  const buildResult = await dumpMovePackage({
     files,
     wasm: WASM_URL,
     rootGit,

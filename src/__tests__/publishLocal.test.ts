@@ -59,8 +59,8 @@ describe("resolveLocalPublishModules", () => {
     });
     const verifyCompilerIntegrity = vi.fn(() => Promise.resolve());
     const prewarmCompilerWasm = vi.fn(() => Promise.resolve());
-    const initMoveCompiler = vi.fn(() => Promise.resolve());
-    const buildMovePackage = vi.fn(() => Promise.resolve({
+    const initMovePackageBuilder = vi.fn(() => Promise.resolve());
+    const dumpMovePackage = vi.fn(() => Promise.resolve({
       modules: ["AQID", "BAUG"],
     }));
 
@@ -68,15 +68,15 @@ describe("resolveLocalPublishModules", () => {
       verifyCompilerIntegrity,
       prewarmCompilerWasm,
       loadCompilerModule: () => Promise.resolve({
-        initMoveCompiler,
-        buildMovePackage,
+        initMovePackageBuilder,
+        dumpMovePackage,
       }),
     })).resolves.toEqual([new Uint8Array([4, 5, 6])]);
 
     expect(verifyCompilerIntegrity).toHaveBeenCalledTimes(1);
     expect(prewarmCompilerWasm).toHaveBeenCalledTimes(1);
-    expect(initMoveCompiler).toHaveBeenCalledTimes(1);
-    expect(buildMovePackage).toHaveBeenCalledTimes(1);
+    expect(initMovePackageBuilder).toHaveBeenCalledTimes(1);
+    expect(dumpMovePackage).toHaveBeenCalledTimes(1);
   });
 
   it("blocks local publish transactions when the final module list is empty", async () => {

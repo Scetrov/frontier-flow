@@ -6,12 +6,12 @@ const mockGetSuiMoveVersion = vi.fn();
 const mockInitMoveCompiler = vi.fn();
 const mockResolveDependencies = vi.fn();
 
-vi.mock("@zktx.io/sui-move-builder/lite", () => ({
-  buildMovePackage: mockBuildMovePackage,
-  fetchPackageFromGitHub: mockFetchPackageFromGitHub,
-  getSuiMoveVersion: mockGetSuiMoveVersion,
-  initMoveCompiler: mockInitMoveCompiler,
-  resolveDependencies: mockResolveDependencies,
+vi.mock("@zktx.io/sui-move-builder", () => ({
+  dumpMovePackage: mockBuildMovePackage,
+  fetchMovePackageFromGitHub: mockFetchPackageFromGitHub,
+  getPinnedSuiMoveVersion: mockGetSuiMoveVersion,
+  initMovePackageBuilder: mockInitMoveCompiler,
+  resolveMovePackageDependencies: mockResolveDependencies,
 }));
 
 import { loadMoveBuilderLite, resetMoveBuilderLiteForTests, setMoveBuilderGitHubAccessTokenProvider } from "../../compiler/moveBuilderLite";
@@ -59,8 +59,8 @@ describe("moveBuilderLite raw GitHub fetch cache", () => {
     try {
       const module = await loadMoveBuilderLite();
 
-      await module.buildMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
-      await module.buildMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
+      await module.dumpMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
+      await module.dumpMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     } finally {
@@ -93,7 +93,7 @@ describe("moveBuilderLite raw GitHub fetch cache", () => {
     try {
       const module = await loadMoveBuilderLite();
 
-      await module.buildMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
+      await module.dumpMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(fetchSpy).toHaveBeenCalledWith(LOCAL_MIRROR_URL);
@@ -141,7 +141,7 @@ describe("moveBuilderLite raw GitHub fetch cache", () => {
 
       const module = await loadMoveBuilderLite();
 
-      await module.buildMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
+      await module.dumpMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(fetchSpy).toHaveBeenCalledWith(RAW_SOURCE_URL);
@@ -196,13 +196,13 @@ describe("moveBuilderLite raw GitHub fetch cache", () => {
     try {
       const module = await loadMoveBuilderLite();
 
-      await expect(module.buildMovePackage({ files: {}, silenceWarnings: true, network: "testnet" })).rejects.toThrow("429 Too Many Requests");
-      await expect(module.buildMovePackage({ files: {}, silenceWarnings: true, network: "testnet" })).rejects.toThrow("429 Too Many Requests");
+      await expect(module.dumpMovePackage({ files: {}, silenceWarnings: true, network: "testnet" })).rejects.toThrow("429 Too Many Requests");
+      await expect(module.dumpMovePackage({ files: {}, silenceWarnings: true, network: "testnet" })).rejects.toThrow("429 Too Many Requests");
       expect(fetchSpy).toHaveBeenCalledTimes(3);
 
       vi.advanceTimersByTime(30_001);
 
-      await expect(module.buildMovePackage({ files: {}, silenceWarnings: true, network: "testnet" })).resolves.toEqual({
+      await expect(module.dumpMovePackage({ files: {}, silenceWarnings: true, network: "testnet" })).resolves.toEqual({
         modules: [],
         dependencies: [],
       });
@@ -246,7 +246,7 @@ describe("moveBuilderLite raw GitHub fetch cache", () => {
     try {
       const module = await loadMoveBuilderLite();
 
-      await module.buildMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
+      await module.dumpMovePackage({ files: {}, silenceWarnings: true, network: "testnet" });
 
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     } finally {

@@ -72,6 +72,7 @@ export interface ResolvedDependencies {
 export interface ResolvedDependencyPackageSnapshot {
   readonly name?: string;
   readonly files?: Readonly<Record<string, string>>;
+  readonly source?: { readonly type: string; readonly git?: string; readonly rev?: string; readonly local?: string; readonly subdir?: string };
 }
 
 export interface BundledDependencySnapshot {

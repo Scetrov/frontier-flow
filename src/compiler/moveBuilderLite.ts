@@ -1,11 +1,11 @@
-import type * as MoveBuilderLiteModule from "@zktx.io/sui-move-builder/lite";
+import type * as MoveBuilderLiteModule from "@zktx.io/sui-move-builder";
 import { GITHUB_API_VERSION } from "../utils/githubApi";
 
-export type BuildMovePackageFn = typeof MoveBuilderLiteModule.buildMovePackage;
-export type FetchPackageFromGitHubFn = typeof MoveBuilderLiteModule.fetchPackageFromGitHub;
-export type GetSuiMoveVersionFn = typeof MoveBuilderLiteModule.getSuiMoveVersion;
-export type InitMoveCompilerFn = typeof MoveBuilderLiteModule.initMoveCompiler;
-export type ResolveDependenciesFn = typeof MoveBuilderLiteModule.resolveDependencies;
+export type BuildMovePackageFn = typeof MoveBuilderLiteModule.dumpMovePackage;
+export type FetchPackageFromGitHubFn = typeof MoveBuilderLiteModule.fetchMovePackageFromGitHub;
+export type GetSuiMoveVersionFn = typeof MoveBuilderLiteModule.getPinnedSuiMoveVersion;
+export type InitMoveCompilerFn = typeof MoveBuilderLiteModule.initMovePackageBuilder;
+export type ResolveDependenciesFn = typeof MoveBuilderLiteModule.resolveMovePackageDependencies;
 
 interface MoveBuilderLiteRawWasmModule {
   readonly default: (options?: { readonly module_or_path?: string | URL | BufferSource }) => Promise<unknown>;
@@ -22,7 +22,7 @@ interface TimedCachedRawGithubResponse extends CachedRawGithubResponse {
   readonly cachedAt: number;
 }
 
-const MOVE_BUILDER_LITE_WASM_SHA256 = "710212f879fef4feb0bf6932a8ecece1323ca3b675b07691df927977492105a0";
+const MOVE_BUILDER_LITE_WASM_SHA256 = "703827f9d4ed734341419a4f04c1fdadb38ea7d4fcb6f0dcf758f5d31b5e0941";
 const LOCAL_UPSTREAM_SOURCE_ROOT = "upstream-sources";
 const RAW_GITHUB_HOSTNAME = "raw.githubusercontent.com";
 const RAW_GITHUB_RATE_LIMIT_RETRY_MS = 30_000;
@@ -367,18 +367,18 @@ async function withMoveBuilderLogFilter<T>(operation: () => Promise<T>): Promise
 function wrapMoveBuilderLiteModule(module: typeof MoveBuilderLiteModule): typeof MoveBuilderLiteModule {
   return {
     ...module,
-    buildMovePackage: async (input) => withMoveBuilderLogFilter(() => module.buildMovePackage(input)),
-    // Note: don't wrap `fetchPackageFromGitHub` since its typing is not
+    dumpMovePackage: async (input) => withMoveBuilderLogFilter(() => module.dumpMovePackage(input)),
+    // Note: don't wrap `fetchMovePackageFromGitHub` since its typing is not
     // reliably available and wrapping can cause unsafe any[] spread errors
     // under strict lint rules. Use the original implementation directly.
-    fetchPackageFromGitHub: module.fetchPackageFromGitHub,
-    resolveDependencies: async (input) => withMoveBuilderLogFilter(() => module.resolveDependencies(input)),
+    fetchMovePackageFromGitHub: module.fetchMovePackageFromGitHub,
+    resolveMovePackageDependencies: async (input) => withMoveBuilderLogFilter(() => module.resolveMovePackageDependencies(input)),
   };
 }
 
 export async function loadMoveBuilderLite(): Promise<typeof MoveBuilderLiteModule> {
   if (moveBuilderLitePromise === null) {
-    moveBuilderLitePromise = (import("@zktx.io/sui-move-builder/lite") as Promise<typeof MoveBuilderLiteModule>)
+    moveBuilderLitePromise = (import("@zktx.io/sui-move-builder") as Promise<typeof MoveBuilderLiteModule>)
       .then((module) => wrapMoveBuilderLiteModule(module));
   }
 

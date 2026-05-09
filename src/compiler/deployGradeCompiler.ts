@@ -1,4 +1,5 @@
-import type { BuildProgressEvent } from "@zktx.io/sui-move-builder/lite";
+import { GitHubMovePackageFetcher } from "@zktx.io/sui-move-builder";
+import type { MovePackageProgressEvent } from "@zktx.io/sui-move-builder";
 import {
   loadMoveBuilderLite,
   moveBuilderLiteWasmUrl,
@@ -33,6 +34,25 @@ const COMPATIBLE_CHARACTER_TRANSFER_CHECK = [
   "    assert!(!is_character, ECharacterTransfer);",
 ].join("\n");
 
+class VirtualFileSystemFetcher extends GitHubMovePackageFetcher {
+  constructor(private readonly files: Readonly<Record<string, string>>) {
+    super();
+  }
+
+  override fetchLocal = async (localPath: string): Promise<Record<string, string>> => {
+    const files: Record<string, string> = {};
+    const prefix = `${localPath}/`;
+
+    for (const [filePath, content] of Object.entries(this.files)) {
+      if (filePath.startsWith(prefix)) {
+        files[filePath] = content;
+      }
+    }
+
+    return files;
+  };
+}
+
 interface BuildSuccessResult {
   readonly modules: readonly string[];
   readonly dependencies: readonly string[];
@@ -63,11 +83,11 @@ interface DeployGradeModuleSetDiagnostics {
 }
 
 interface DeployGradeCompilerDependencies {
-  readonly buildMovePackage?: BuildMovePackageFn;
-  readonly getSuiMoveVersion?: GetSuiMoveVersionFn;
-  readonly initMoveCompiler?: InitMoveCompilerFn;
+  readonly dumpMovePackage?: BuildMovePackageFn;
+  readonly getPinnedSuiMoveVersion?: GetSuiMoveVersionFn;
+  readonly initMovePackageBuilder?: InitMoveCompilerFn;
   readonly now?: () => number;
-  readonly resolveDependencies?: ResolveDependenciesFn;
+  readonly resolveMovePackageDependencies?: ResolveDependenciesFn;
   readonly verifyMoveCompilerIntegrity?: () => Promise<void>;
 }
 
@@ -174,16 +194,24 @@ function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies
   const sanitizedDependencyPackages: ResolvedDependencyPackageSnapshot[] = [];
 
   for (const dependencyPackage of dependencyPackages) {
-    if (normalizeDependencyPackageName(dependencyPackage.name ?? "") !== RESOLVED_WORLD_PACKAGE_NAME || dependencyPackage.files === undefined) {
-      sanitizedDependencyPackages.push(dependencyPackage);
+    let pkg = dependencyPackage;
+
+    // Add source type for packages without a source (required by new @zktx.io/sui-move-builder API)
+    if (pkg.source === null || pkg.source === undefined) {
+      pkg = { ...pkg, source: { type: "local", local: pkg.name ?? "" } };
+      changed = true;
+    }
+
+    if (normalizeDependencyPackageName(pkg.name ?? "") !== RESOLVED_WORLD_PACKAGE_NAME || pkg.files === undefined) {
+      sanitizedDependencyPackages.push(pkg);
       continue;
     }
 
-    const sanitizedSnapshot = sanitizeWorldDependencyFiles(dependencyPackage.files);
+    const sanitizedSnapshot = sanitizeWorldDependencyFiles(pkg.files);
     changed ||= sanitizedSnapshot.changed;
 
     sanitizedDependencyPackages.push({
-      ...dependencyPackage,
+      ...pkg,
       files: sanitizedSnapshot.files,
     });
   }
@@ -200,10 +228,10 @@ function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies
 
 function getCompilerDependencies(dependencies: DeployGradeCompilerDependencies) {
   return {
-    init: dependencies.initMoveCompiler,
-    resolve: dependencies.resolveDependencies,
-    build: dependencies.buildMovePackage,
-    getVersion: dependencies.getSuiMoveVersion,
+    init: dependencies.initMovePackageBuilder,
+    resolve: dependencies.resolveMovePackageDependencies,
+    build: dependencies.dumpMovePackage,
+    getVersion: dependencies.getPinnedSuiMoveVersion,
     now: dependencies.now ?? Date.now,
     verifyIntegrity: dependencies.verifyMoveCompilerIntegrity ?? verifyMoveBuilderLiteIntegrity,
   };
@@ -694,19 +722,20 @@ function createWorldDepMoveToml(worldPackageId: string, sourceMoveToml?: string)
 
   return rewritten.result.join("\n");
 }
-
 async function buildExtensionWithLocalWorld(
   request: DeployGradeCompileRequest,
   files: Record<string, string>,
   buildCompilerPackage: BuildMovePackageFn,
 ): Promise<BuildSuccessResult> {
   request.onProgress?.({ phase: "compiling" });
+  const fetcher = new VirtualFileSystemFetcher(files);
 
   let buildResult: BuildSuccessResult | BuildErrorResult;
   try {
     buildResult = await buildCompilerPackage({
       files,
       wasm: moveBuilderLiteWasmUrl,
+      fetcher,
       network: "testnet",
       silenceWarnings: false,
       onProgress: (event) => {
@@ -795,7 +824,7 @@ function selectExtensionModules(input: {
   return fallbackApplied ? input.buildModules : filteredModules;
 }
 
-function toDeployProgress(event: BuildProgressEvent): DeployCompileProgressEvent | null {
+function toDeployProgress(event: MovePackageProgressEvent): DeployCompileProgressEvent | null {
   switch (event.type) {
     case "resolve_start":
       return { phase: "resolving-dependencies", current: 0, total: 0 };
@@ -816,8 +845,12 @@ function toDeployProgress(event: BuildProgressEvent): DeployCompileProgressEvent
     case "compile_complete":
       return { phase: "complete" };
     case "lockfile_generate":
+    case "fetch_failed":
+    case "stage_trace":
       return null;
   }
+
+  return null;
 }
 
 function classifyResolutionError(error: unknown) {
@@ -915,10 +948,10 @@ export async function compileForDeployment(
 ): Promise<DeployGradeCompileResult> {
   const { init, resolve, build, getVersion, now, verifyIntegrity } = getCompilerDependencies(dependencies);
   const compilerModule = await loadMoveBuilderLite();
-  const initCompiler = init ?? compilerModule.initMoveCompiler;
-  const resolveCompilerDependencies = resolve ?? compilerModule.resolveDependencies;
-  const buildCompilerPackage = build ?? compilerModule.buildMovePackage;
-  const getCompilerVersion = getVersion ?? compilerModule.getSuiMoveVersion;
+  const initCompiler = init ?? compilerModule.initMovePackageBuilder;
+  const resolveCompilerDependencies = resolve ?? compilerModule.resolveMovePackageDependencies;
+  const buildCompilerPackage = build ?? compilerModule.dumpMovePackage;
+  const getCompilerVersion = getVersion ?? compilerModule.getPinnedSuiMoveVersion;
   const cacheKey = getResolutionCacheKey(request.target.targetId, request.worldSource.sourceVersionTag);
   const rootGit = createRootGit(request.worldSource.sourceVersionTag);
 
