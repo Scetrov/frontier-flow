@@ -39,7 +39,7 @@ class VirtualFileSystemFetcher extends GitHubMovePackageFetcher {
     super();
   }
 
-  override fetchLocal = async (localPath: string): Promise<Record<string, string>> => {
+  override fetchLocal = (localPath: string): Promise<Record<string, string>> => {
     const files: Record<string, string> = {};
     const prefix = `${localPath}/`;
 
@@ -49,7 +49,7 @@ class VirtualFileSystemFetcher extends GitHubMovePackageFetcher {
       }
     }
 
-    return files;
+    return Promise.resolve(files);
   };
 }
 
@@ -184,6 +184,22 @@ function sanitizeWorldDependencyFiles(files: Record<string, string>): {
   return { files: nextFiles, changed };
 }
 
+function ensureResolvedDependencyPackageSource(
+  dependencyPackage: ResolvedDependencyPackageSnapshot,
+): { readonly dependencyPackage: ResolvedDependencyPackageSnapshot; readonly changed: boolean } {
+  if (dependencyPackage.source !== undefined) {
+    return { dependencyPackage, changed: false };
+  }
+
+  return {
+    dependencyPackage: {
+      ...dependencyPackage,
+      source: { type: "local", local: dependencyPackage.name ?? "" },
+    },
+    changed: true,
+  };
+}
+
 function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies): ResolvedDependencies {
   const dependencyPackages = parseResolvedDependencyPackages(resolvedDependencies);
   if (dependencyPackages === null) {
@@ -194,13 +210,9 @@ function sanitizeResolvedDependencies(resolvedDependencies: ResolvedDependencies
   const sanitizedDependencyPackages: ResolvedDependencyPackageSnapshot[] = [];
 
   for (const dependencyPackage of dependencyPackages) {
-    let pkg = dependencyPackage;
-
-    // Add source type for packages without a source (required by new @zktx.io/sui-move-builder API)
-    if (pkg.source === null || pkg.source === undefined) {
-      pkg = { ...pkg, source: { type: "local", local: pkg.name ?? "" } };
-      changed = true;
-    }
+    const normalizedPackage = ensureResolvedDependencyPackageSource(dependencyPackage);
+    const pkg = normalizedPackage.dependencyPackage;
+    changed ||= normalizedPackage.changed;
 
     if (normalizeDependencyPackageName(pkg.name ?? "") !== RESOLVED_WORLD_PACKAGE_NAME || pkg.files === undefined) {
       sanitizedDependencyPackages.push(pkg);
