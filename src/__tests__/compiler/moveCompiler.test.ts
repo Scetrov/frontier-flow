@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Mock } from "vitest";
 
 import {
   graphToMoveBytecodeFixture,
@@ -10,12 +11,37 @@ import {
 } from "../../__fixtures__/compiler/graph-to-move-errors";
 
 const mockInitMoveCompiler = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
-const mockBuildMovePackage = vi.fn();
-const mockFetchPackageFromGitHub = vi.fn();
+const mockBuildMovePackage = vi.fn<BuildMovePackageFn>();
+const mockFetchPackageFromGitHub = vi.fn<FetchPackageFromGitHubFn>();
+
+function getBuildMovePackageInput(
+  mockFn: Mock<BuildMovePackageFn>,
+  callIndex: number,
+): Parameters<BuildMovePackageFn>[0] {
+  const call = mockFn.mock.calls[callIndex] as readonly [unknown] | undefined;
+  if (call === undefined) {
+    throw new Error(`Expected buildMovePackage call at index ${String(callIndex)}.`);
+  }
+
+  return call[0] as Parameters<BuildMovePackageFn>[0];
+}
+
+function getLocalFetcher(fetcher: unknown): { fetchLocal(localPath: string, context?: unknown): Promise<Record<string, string>> } {
+  if (
+    fetcher === null
+    || fetcher === undefined
+    || typeof fetcher !== "object"
+    || !("fetchLocal" in fetcher)
+    || typeof fetcher.fetchLocal !== "function"
+  ) {
+    throw new Error("Expected buildMovePackage input to provide a local fetcher.");
+  }
+
+  return fetcher;
+}
 
 vi.mock("@zktx.io/sui-move-builder", () => ({
   GitHubMovePackageFetcher: class {
-    constructor(_: string | undefined = undefined) {}
     fetch = vi.fn();
     fetchFile = vi.fn();
     getResolvedSha = vi.fn();
@@ -31,7 +57,11 @@ import {
   setMoveCompilerIntegrityVerifierForTests,
   setMoveCompilerLoaderForTests,
 } from "../../compiler/moveCompiler";
-import { setMoveBuilderGitHubAccessTokenProvider } from "../../compiler/moveBuilderLite";
+import {
+  setMoveBuilderGitHubAccessTokenProvider,
+  type BuildMovePackageFn,
+  type FetchPackageFromGitHubFn,
+} from "../../compiler/moveBuilderLite";
 import { createStandaloneWorldShimPackageFiles } from "../../compiler/worldShim";
 
 function encodeBase64(bytes: Uint8Array): string {
@@ -91,7 +121,7 @@ describe("compileMove", () => {
       silenceWarnings: false,
       network: "testnet",
     });
-    const buildInput = mockBuildMovePackage.mock.calls[0]?.[0] as { readonly rootGit?: unknown; readonly resolvedDependencies?: unknown };
+    const buildInput = getBuildMovePackageInput(mockBuildMovePackage, 0);
     expect(buildInput.rootGit).toBeUndefined();
     expect(buildInput.resolvedDependencies).toBeUndefined();
     expect(mockFetchPackageFromGitHub).not.toHaveBeenCalled();
@@ -417,7 +447,6 @@ describe("compileMove", () => {
         "deps/world/sources/in_game_id.move": "module world::in_game_id;",
         "deps/world/sources/turret.move": "module world::turret;",
       },
-      fetcher: expect.any(Object),
       silenceWarnings: false,
       network: "testnet",
     });
@@ -427,10 +456,10 @@ describe("compileMove", () => {
       network: "testnet",
     });
 
-    const firstBuildInput = mockBuildMovePackage.mock.calls[0]?.[0] as {
-      readonly fetcher?: { fetchLocal(localPath: string): Promise<Record<string, string>> };
-    };
-    await expect(firstBuildInput.fetcher?.fetchLocal("deps/world")).resolves.toEqual({
+    const firstBuildInput = getBuildMovePackageInput(mockBuildMovePackage, 0);
+    expect(firstBuildInput.fetcher).toBeDefined();
+    const localFetcher = getLocalFetcher(firstBuildInput.fetcher as unknown);
+    await expect(localFetcher.fetchLocal("deps/world")).resolves.toEqual({
       "Move.toml": "[package]\nname = \"world\"\n\n[addresses]\nworld = \"0x0\"\n",
       "sources/character.move": "module world::character;",
       "sources/in_game_id.move": "module world::in_game_id;",

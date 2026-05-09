@@ -53,11 +53,29 @@ function createRequest(overrides: Partial<DeployGradeCompileRequest> = {}): Depl
 }
 
 function getBuildMovePackageInput(
-  buildMovePackage: Mock,
+  buildMovePackage: Mock<BuildMovePackageFn>,
   callIndex: number,
 ): Parameters<BuildMovePackageFn>[0] {
-  const calls = buildMovePackage.mock.calls as unknown as ReadonlyArray<readonly [Parameters<BuildMovePackageFn>[0]]>;
-  return calls[callIndex][0];
+  const call = buildMovePackage.mock.calls[callIndex] as readonly [unknown] | undefined;
+  if (call === undefined) {
+    throw new Error(`Expected buildMovePackage call at index ${String(callIndex)}.`);
+  }
+
+  return call[0] as Parameters<BuildMovePackageFn>[0];
+}
+
+function getLocalFetcher(fetcher: unknown): { fetchLocal(localPath: string, context?: unknown): Promise<Record<string, string>> } {
+  if (
+    fetcher === null
+    || fetcher === undefined
+    || typeof fetcher !== "object"
+    || !("fetchLocal" in fetcher)
+    || typeof fetcher.fetchLocal !== "function"
+  ) {
+    throw new Error("Expected deploy-grade build input to provide a local fetcher.");
+  }
+
+  return fetcher;
 }
 
 describe("deployGradeCompiler", () => {
@@ -120,24 +138,20 @@ describe("deployGradeCompiler", () => {
     expect(mainBuildInput.files["deps/sui/Move.toml"]).toBeUndefined();
     expect(mainBuildInput.files["deps/move-stdlib/Move.toml"]).toBeUndefined();
     expect(mainBuildInput.fetcher).toBeDefined();
-    const localFetcher = mainBuildInput.fetcher;
-    if (localFetcher === undefined || localFetcher.fetchLocal === undefined) {
-      throw new Error("Expected deploy-grade build input to provide a local fetcher.");
-    }
-    await expect(localFetcher.fetchLocal("deps/world", {
+    const localFetcher = getLocalFetcher(mainBuildInput.fetcher as unknown);
+    const fetchedWorldFiles = await localFetcher.fetchLocal("deps/world", {
       dependencyName: "world",
       parentPackageName: "starter_contract",
       network: "testnet",
-    })).resolves.toEqual(expect.objectContaining({
-      "Move.toml": expect.stringContaining("[package]"),
-      "sources/world.move": "module world::world {}",
-    }));
+    });
+    expect(fetchedWorldFiles["Move.toml"]).toContain("[package]");
+    expect(fetchedWorldFiles["sources/world.move"]).toBe("module world::world {}");
   });
 
   it("reuses cached resolution snapshots for repeated compilations on the same target and version", async () => {
     const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture();
     const resolveDependencies = vi.fn(() => Promise.resolve(resolvedDependencies));
-    const buildMovePackage = vi.fn(() => Promise.resolve({
+    const buildMovePackage = vi.fn<BuildMovePackageFn>(() => Promise.resolve({
       modules: [toBase64([4, 5, 6])],
       dependencies: ["0x3"],
       digest: [1, 2, 3],
@@ -146,7 +160,7 @@ describe("deployGradeCompiler", () => {
     const dependencies = {
       initMovePackageBuilder: vi.fn(() => Promise.resolve()),
       resolveMovePackageDependencies: resolveDependencies,
-      dumpMovePackage: buildMovePackage as unknown as BuildMovePackageFn,
+      dumpMovePackage: buildMovePackage,
       getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
       verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
       now: () => 99,
