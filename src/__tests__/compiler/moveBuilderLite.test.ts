@@ -102,6 +102,53 @@ describe("moveBuilderLite raw GitHub fetch cache", () => {
     }
   });
 
+  it("falls back to raw GitHub when a missing local mirror path serves the app shell html", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = toFetchUrl(input);
+      if (url === "/upstream-sources/MystenLabs/sui/unmirrored-test-revision/crates/sui-framework/packages/sui-framework/sources/token.move") {
+        return Promise.resolve(new Response("<!doctype html><html><head><title>Frontier Flow</title></head><body></body></html>", {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }));
+      }
+
+      if (url === UNMIRRORED_RAW_SOURCE_URL) {
+        return Promise.resolve(new Response("module sui::token {}", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        }));
+      }
+
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    });
+    mockBuildMovePackage.mockImplementation(async () => {
+      const response = await fetch(UNMIRRORED_RAW_SOURCE_URL);
+      const body = await response.text();
+      if (/^<!doctype html>/i.test(body)) {
+        throw new Error("Failed to parse Move.toml for 'std': TOML parse error at line 1, column 1");
+      }
+
+      return {
+        modules: [],
+        dependencies: [],
+      };
+    });
+
+    try {
+      const module = await loadMoveBuilderLite();
+
+      await expect(module.dumpMovePackage({ files: {}, silenceWarnings: true, network: "testnet" })).resolves.toEqual({
+        modules: [],
+        dependencies: [],
+      });
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy).toHaveBeenNthCalledWith(1, "/upstream-sources/MystenLabs/sui/unmirrored-test-revision/crates/sui-framework/packages/sui-framework/sources/token.move");
+      expect(fetchSpy).toHaveBeenNthCalledWith(2, UNMIRRORED_RAW_SOURCE_URL, undefined);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it("skips the raw GitHub cache shim in headless Bun environments", async () => {
     const originalWindow = globalThis.window;
     const globalObject = globalThis as typeof globalThis & { Bun?: unknown };

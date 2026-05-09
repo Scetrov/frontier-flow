@@ -163,6 +163,17 @@ function createResponseFromCache(entry: CachedRawGithubResponse): Response {
   });
 }
 
+function isHtmlFallbackResponse(entry: CachedRawGithubResponse): boolean {
+  const contentType = entry.headers.find(([headerName]) => headerName.toLowerCase() === "content-type")?.[1] ?? "";
+  if (/\btext\/html\b|\bapplication\/xhtml\+xml\b/i.test(contentType)) {
+    return true;
+  }
+
+  const trimmedBody = entry.body.trimStart();
+  return /^<!doctype html\b/i.test(trimmedBody)
+    || /^<html\b/i.test(trimmedBody);
+}
+
 async function fetchRawGithubSource(
   originalFetchImpl: typeof fetch,
   rawUrl: string,
@@ -206,6 +217,10 @@ async function fetchFromLocalRawGithubMirror(
   }
 
   const cachedEntry = await toCachedRawGithubResponse(response);
+  if (isHtmlFallbackResponse(cachedEntry)) {
+    return null;
+  }
+
   rawGithubResponseCache.set(cacheKey, cachedEntry);
   return cachedEntry;
 }
