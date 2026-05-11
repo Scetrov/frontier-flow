@@ -31,7 +31,7 @@
         "npm:@vitejs/plugin-react@^6.0.1",
         "npm:@vitest/coverage-v8@^4.1.0",
         "npm:@xyflow/react@^12.10.0",
-        "npm:@zktx.io/sui-move-builder@0.5.0",
+        "npm:@zktx.io/sui-move-builder@0.5.1",
         "npm:autoprefixer@^10.4.24",
         "npm:dagre@~0.8.5",
         "npm:eslint-plugin-jsx-a11y@^6.10.2",
