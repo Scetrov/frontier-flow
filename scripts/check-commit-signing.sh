@@ -1,6 +1,13 @@
 #!/usr/bin/env sh
 set -eu
 
+# Skip commit signing check in CI environments (e.g., GitHub Actions)
+# CI runners operate as authenticated bots (e.g., dependabot[bot]) where
+# GitHub already guarantees commit authenticity. This check is for local devs.
+if [ -n "${CI:-}" ]; then
+  exit 0
+fi
+
 signing_enabled="$(git config --type=bool --get commit.gpgsign 2>/dev/null || printf 'false')"
 if [ "$signing_enabled" != "true" ]; then
   echo "This repository requires Git commit signing to be enabled via commit.gpgsign." >&2
