@@ -26,7 +26,7 @@ concurrency:
 jobs:
   dependabot-lockfile:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && startsWith(github.actor, 'dependabot')
+    if: github.event_name == 'pull_request' && startsWith(github.event.pull_request.user.login, 'dependabot')
     permissions:
       contents: write
     steps:
@@ -67,7 +67,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
+        run: bun install ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.user.login, 'dependabot')) && '--frozen-lockfile' || '' }}
 
       - name: Lint commit messages
         run: |
@@ -93,7 +93,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
+        run: bun install ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.user.login, 'dependabot')) && '--frozen-lockfile' || '' }}
 
       - name: Run ESLint
         run: bun run lint
@@ -112,7 +112,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
+        run: bun install ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.user.login, 'dependabot')) && '--frozen-lockfile' || '' }}
 
       - name: Run TypeScript build check
         run: bun run typecheck
@@ -131,7 +131,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
+        run: bun install ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.user.login, 'dependabot')) && '--frozen-lockfile' || '' }}
 
       - name: Run Vitest suite with coverage gates
         run: bun run test:coverage
@@ -158,7 +158,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
+        run: bun install ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.user.login, 'dependabot')) && '--frozen-lockfile' || '' }}
 
       - name: Run vulnerability audit
         run: bun run audit
@@ -181,7 +181,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
+        run: bun install ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.user.login, 'dependabot')) && '--frozen-lockfile' || '' }}
 
       - name: Build production bundle
         run: bun run build
@@ -200,7 +200,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
+        run: bun install ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.user.login, 'dependabot')) && '--frozen-lockfile' || '' }}
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
