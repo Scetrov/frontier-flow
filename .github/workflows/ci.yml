@@ -24,7 +24,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  dependabot-lockfile:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && startsWith(github.actor, 'dependabot')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout pull request branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Commit updated lockfile
+        run: |
+          bun install
+          git config user.name "dependabot[bot]"
+          git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
+          git add bun.lock
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(deps): update bun.lock"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+
   commit-messages:
+    needs: dependabot-lockfile
+    if: always() && (needs.dependabot-lockfile.result == 'success' || needs.dependabot-lockfile.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -40,18 +69,6 @@ jobs:
       - name: Install dependencies
         run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
 
-      - name: Commit updated lockfile (dependabot)
-        if: github.event_name == 'pull_request' && startsWith(github.actor, 'dependabot')
-        run: |
-          bun install
-          git config user.name "dependabot[bot]"
-          git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
-          git add bun.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(deps): update bun.lock"
-            git push
-          fi
-
       - name: Lint commit messages
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -63,6 +80,8 @@ jobs:
           fi
 
   lint:
+    needs: dependabot-lockfile
+    if: always() && (needs.dependabot-lockfile.result == 'success' || needs.dependabot-lockfile.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -75,23 +94,13 @@ jobs:
 
       - name: Install dependencies
         run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
-
-      - name: Commit updated lockfile (dependabot)
-        if: github.event_name == 'pull_request' && startsWith(github.actor, 'dependabot')
-        run: |
-          bun install
-          git config user.name "dependabot[bot]"
-          git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
-          git add bun.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(deps): update bun.lock"
-            git push
-          fi
 
       - name: Run ESLint
         run: bun run lint
 
   typecheck:
+    needs: dependabot-lockfile
+    if: always() && (needs.dependabot-lockfile.result == 'success' || needs.dependabot-lockfile.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -104,23 +113,13 @@ jobs:
 
       - name: Install dependencies
         run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
-
-      - name: Commit updated lockfile (dependabot)
-        if: github.event_name == 'pull_request' && startsWith(github.actor, 'dependabot')
-        run: |
-          bun install
-          git config user.name "dependabot[bot]"
-          git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
-          git add bun.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(deps): update bun.lock"
-            git push
-          fi
 
       - name: Run TypeScript build check
         run: bun run typecheck
 
   unit-tests:
+    needs: dependabot-lockfile
+    if: always() && (needs.dependabot-lockfile.result == 'success' || needs.dependabot-lockfile.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -133,18 +132,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
-
-      - name: Commit updated lockfile (dependabot)
-        if: github.event_name == 'pull_request' && startsWith(github.actor, 'dependabot')
-        run: |
-          bun install
-          git config user.name "dependabot[bot]"
-          git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
-          git add bun.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(deps): update bun.lock"
-            git push
-          fi
 
       - name: Run Vitest suite with coverage gates
         run: bun run test:coverage
@@ -158,6 +145,8 @@ jobs:
           if-no-files-found: ignore
 
   audit:
+    needs: dependabot-lockfile
+    if: always() && (needs.dependabot-lockfile.result == 'success' || needs.dependabot-lockfile.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -170,18 +159,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
-
-      - name: Commit updated lockfile (dependabot)
-        if: github.event_name == 'pull_request' && startsWith(github.actor, 'dependabot')
-        run: |
-          bun install
-          git config user.name "dependabot[bot]"
-          git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
-          git add bun.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(deps): update bun.lock"
-            git push
-          fi
 
       - name: Run vulnerability audit
         run: bun run audit
@@ -206,18 +183,6 @@ jobs:
       - name: Install dependencies
         run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
 
-      - name: Commit updated lockfile (dependabot)
-        if: github.event_name == 'pull_request' && startsWith(github.actor, 'dependabot')
-        run: |
-          bun install
-          git config user.name "dependabot[bot]"
-          git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
-          git add bun.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(deps): update bun.lock"
-            git push
-          fi
-
       - name: Build production bundle
         run: bun run build
 
@@ -236,18 +201,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install ${{ !startsWith(github.actor, 'dependabot') && '--frozen-lockfile' || '' }}
-
-      - name: Commit updated lockfile (dependabot)
-        if: github.event_name == 'pull_request' && startsWith(github.actor, 'dependabot')
-        run: |
-          bun install
-          git config user.name "dependabot[bot]"
-          git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
-          git add bun.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(deps): update bun.lock"
-            git push
-          fi
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
