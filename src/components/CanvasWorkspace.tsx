@@ -271,12 +271,12 @@ function getFallbackEdgeDeleteAnchor(edge: FlowEdge, nodes: readonly FlowNode[])
 }
 
 function getSelectedTarget(nodes: readonly FlowNode[], edges: readonly FlowEdge[]): CanvasSelectionTarget {
-  const selectedNode = nodes.find((node) => node.selected);
+  const selectedNode = nodes.find((node) => node.selected === true);
   if (selectedNode !== undefined) {
     return { kind: "node", targetId: selectedNode.id, origin: "programmatic" };
   }
 
-  const selectedEdge = edges.find((edge) => edge.selected);
+  const selectedEdge = edges.find((edge) => edge.selected === true);
   if (selectedEdge !== undefined) {
     return { kind: "edge", targetId: selectedEdge.id, origin: "programmatic" };
   }
@@ -765,7 +765,7 @@ function getActiveContractDescription(activeContract: NamedFlowContract): string
     return activeContract.description;
   }
 
-  if (activeContract.isSeeded) {
+  if (activeContract.isSeeded === true) {
     return "Curated example contract.";
   }
 
@@ -1356,7 +1356,7 @@ function useCanvasInteractions({
       id: [connection.source, connection.sourceHandle ?? "source", connection.target, connection.targetHandle ?? "target", String(Date.now())].join("__"),
       source: connection.source,
       target: connection.target,
-    } as FlowEdge, nodesById);
+    }, nodesById);
     setContextMenu(null);
     setEdges((currentEdges) => addEdge({ ...connection, ...edgePresentation }, currentEdges));
   }, [edges, nodes, setContextMenu, setEdges]);
@@ -1474,7 +1474,7 @@ function useFlowEditorEffects({
     }
 
     const handleWindowPointerDown = (event: PointerEvent) => {
-      if (!contextMenuRef.current?.contains(event.target as Node)) {
+      if (contextMenuRef.current?.contains(event.target as Node) !== true) {
         setContextMenu(null);
       }
     };

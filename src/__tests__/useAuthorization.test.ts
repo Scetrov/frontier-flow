@@ -34,7 +34,7 @@ function createConnectedAccount(): CurrentAccount {
     icon: undefined,
     label: undefined,
     publicKey: new Uint8Array(),
-  } as CurrentAccount;
+  };
 }
 
 function createConnectedWallet(): CurrentWallet {

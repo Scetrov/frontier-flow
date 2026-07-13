@@ -119,7 +119,7 @@ function createAbortError(): Error {
 }
 
 async function sleep(delayMs: number, signal?: AbortSignal): Promise<void> {
-  if (signal?.aborted) {
+  if (signal?.aborted === true) {
     throw createAbortError();
   }
 

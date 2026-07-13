@@ -18,7 +18,7 @@ interface DeployWorkflowViewProps {
 }
 
 function formatBalance(balanceMist: string | null | undefined): string {
-  if (!balanceMist) {
+  if (balanceMist == null || balanceMist === "") {
     return "-- SUI";
   }
 
@@ -109,7 +109,7 @@ function ChecklistItem({
       </span>
       <div className="min-w-0 space-y-1">
         <p className="font-heading text-xs uppercase tracking-[0.18em] text-[var(--cream-white)]">{label}</p>
-        {detail ? <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{detail}</p> : null}
+        {(detail != null && detail !== "") ? <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{detail}</p> : null}
       </div>
     </li>
   );
@@ -126,7 +126,7 @@ function toChecklistState(tone: "neutral" | "positive" | "warning"): "blocked" |
   }
 }
 
-// eslint-disable-next-line complexity
+// oxlint-disable-next-line complexity
 function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
   const account = useCurrentAccount();
   const currentWallet = useCurrentWallet();
@@ -250,24 +250,24 @@ function DeploymentStatusSummary({ deployment }: DeployWorkflowViewProps) {
 
       <div className="space-y-3 text-sm leading-relaxed text-[var(--cream-white)]">
         <p>{statusHeadline}</p>
-        {statusDetails ? (
+        {(statusDetails != null && statusDetails !== "") ? (
           <pre className="overflow-x-auto border border-[var(--ui-border-dark)] bg-[rgba(10,6,6,0.92)] px-4 py-3 font-mono text-xs leading-6 text-[var(--text-secondary)] whitespace-pre-wrap" aria-label="Deployment status details">
             <code>{statusDetails}</code>
           </pre>
         ) : null}
-        {deployment.deploymentStatus?.packageId ? <p>Package ID: {deployment.deploymentStatus.packageId}</p> : null}
-        {deployment.deploymentStatus?.confirmationReference ? <p>Transaction digest: {deployment.deploymentStatus.confirmationReference}</p> : null}
+        {(deployment.deploymentStatus?.packageId != null && deployment.deploymentStatus.packageId !== "") ? <p>Package ID: {deployment.deploymentStatus.packageId}</p> : null}
+        {(deployment.deploymentStatus?.confirmationReference != null && deployment.deploymentStatus.confirmationReference !== "") ? <p>Transaction digest: {deployment.deploymentStatus.confirmationReference}</p> : null}
       </div>
     </section>
   );
 }
 
 function getDeploymentStatusHeadline(deployment: DeploymentState): string {
-  if (deployment.statusMessage?.headline) {
+  if (deployment.statusMessage?.headline != null && deployment.statusMessage.headline !== "") {
     return deployment.statusMessage.headline;
   }
 
-  if (deployment.deploymentStatus?.headline) {
+  if (deployment.deploymentStatus?.headline != null && deployment.deploymentStatus.headline !== "") {
     return deployment.deploymentStatus.headline;
   }
 
@@ -275,7 +275,7 @@ function getDeploymentStatusHeadline(deployment: DeploymentState): string {
 }
 
 function getDeploymentStatusDetails(deployment: DeploymentState): string | null {
-  if (deployment.statusMessage?.details) {
+  if (deployment.statusMessage?.details != null && deployment.statusMessage.details !== "") {
     return deployment.statusMessage.details;
   }
 

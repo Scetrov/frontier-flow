@@ -165,7 +165,7 @@ describe("deployGradeCompiler", () => {
     expect(mainBuildInput.files["deps/sui/Move.toml"]).toBeUndefined();
     expect(mainBuildInput.files["deps/move-stdlib/Move.toml"]).toBeUndefined();
     expect(mainBuildInput.fetcher).toBeDefined();
-    const localFetcher = getLocalFetcher(mainBuildInput.fetcher as unknown);
+    const localFetcher = getLocalFetcher(mainBuildInput.fetcher);
     const fetchedWorldFiles = await localFetcher.fetchLocal("deps/world", {
       dependencyName: "world",
       parentPackageName: "starter_contract",

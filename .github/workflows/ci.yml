@@ -95,7 +95,7 @@ jobs:
       - name: Install dependencies
         run: bun install ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.user.login, 'dependabot')) && '--frozen-lockfile' || '' }}
 
-      - name: Run ESLint
+      - name: Run Oxlint
         run: bun run lint
 
   typecheck:

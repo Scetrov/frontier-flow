@@ -761,7 +761,7 @@ async function buildExtensionWithLocalWorld(
           request.onProgress?.(mapped);
         }
       },
-    }) as BuildSuccessResult | BuildErrorResult;
+    });
   } catch (error) {
     throw classifyCompilationError(error);
   }

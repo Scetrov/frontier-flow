@@ -115,7 +115,8 @@ The application models game automation logic (e.g., EVE Frontier mechanics) wher
 | `@tailwindcss/postcss` | ^4.1.18             | PostCSS integration for Tailwind |
 | `postcss`              | ^8.5.6              | CSS processing                   |
 | `autoprefixer`         | ^10.4.24            | CSS vendor prefixing             |
-| `eslint`               | ^10.0.0             | Code linting                     |
+| `oxlint`               | ^1.73.0             | Code linting (type-aware)        |
+| `oxlint-tsgolint`      | ^0.24.0             | TypeScript 7 type-aware engine   |
 | `@vitejs/plugin-react` | ^6.0.1              | React plugin for Vite            |
 | `vitest`               | ^4.1.0              | Unit / component test framework  |
 | `@testing-library/react` | ^16.3.2           | React component test utilities   |
@@ -139,7 +140,7 @@ frontierflow/
 ├── tsconfig.json                 # TypeScript project references
 ├── tsconfig.app.json             # App TypeScript config
 ├── tsconfig.node.json            # Node TypeScript config
-├── eslint.config.js              # ESLint configuration
+├── .oxlintrc.json                # Oxlint configuration
 ├── public/                       # Static assets
 │   └── vite.svg
 └── src/

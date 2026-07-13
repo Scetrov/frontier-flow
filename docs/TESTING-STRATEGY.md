@@ -236,7 +236,7 @@ bun run vitest run --reporter=verbose security
 
 - **Static analysis (CodeQL):** The `.github/workflows/codeql.yml` workflow runs weekly and on push to `main`, scanning TypeScript and GitHub Actions for known vulnerability patterns (CWE matching).
 - **Dependency auditing:** `bun run audit` (via `bunx npm-audit --audit-level=high`) runs on every PR in the CI pipeline (`.github/workflows/ci.yml`), blocking merges with high-severity advisories.
-- **Lint-time prevention:** `eslint-plugin-jsx-a11y` catches unsafe DOM patterns; TypeScript strict mode prevents `any`-typed bypass of sanitisation boundaries.
+- **Lint-time prevention:** Oxlint's native `jsx-a11y` plugin catches unsafe DOM patterns; TypeScript strict mode prevents `any`-typed bypass of sanitisation boundaries.
 - **Accessibility enforcement:** `@axe-core/playwright` audits the default editor shell, generated Move view, and deployment status review flows. Accessibility regressions now fail the browser test job.
 
 ### 7.3 OWASP Top 10 Mapping

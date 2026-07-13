@@ -106,7 +106,7 @@ function readSnapshot(storage: Storage): MockAuthorizationSnapshot {
 
   try {
     const parsed: unknown = JSON.parse(rawValue);
-    return parsed !== null && typeof parsed === "object" ? parsed as MockAuthorizationSnapshot : {};
+    return parsed !== null && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
   }

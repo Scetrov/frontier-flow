@@ -56,7 +56,7 @@ bun dev
 | `build:with-world-contracts`   | `bun run build:with-world-contracts`                    | Fetch the pinned `world-contracts` reference checkout, then build          |
 | `fetch:sui-upstream-sources`   | `bun run fetch:sui-upstream-sources`                    | Refresh the pinned locally hosted `MystenLabs/sui` framework sources       |
 | `fetch:world-contracts`        | `bun run fetch:world-contracts`                         | Materialize the pinned ignored `vendor/world-contracts` checkout on demand |
-| `lint`                         | `bun run lint`                                          | Run ESLint                                                                 |
+| `lint`                         | `bun run lint`                                          | Run Oxlint                                                                 |
 | `preview`                      | `bun run preview`                                       | Preview production build                                                   |
 | `test`                         | `bunx vitest`                                           | Run unit/component tests                                                   |
 | `test:run`                     | `bunx vitest run`                                       | Run tests once (CI mode)                                                   |

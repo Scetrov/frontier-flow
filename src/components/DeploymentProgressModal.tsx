@@ -243,7 +243,7 @@ function DeploymentStageList({
   );
 }
 
-// eslint-disable-next-line complexity
+// oxlint-disable-next-line complexity
 function DeploymentProgressModal({ latestAttempt, progress, onDismiss }: DeploymentProgressModalProps) {
   const dismissButtonRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);

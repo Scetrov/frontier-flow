@@ -191,7 +191,7 @@ describe("useDeployment blocker handling", () => {
 
   it("blocks published targets when package reference validation fails", () => {
     window.history.replaceState({}, "", "/?ff_mock_invalid_package_refs=1");
-    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
 
@@ -208,7 +208,7 @@ describe("useDeployment blocker handling", () => {
 
   it("blocks local deployment when the local target is unavailable", async () => {
     window.history.replaceState({}, "", "/?ff_local_deploy_ready=0");
-    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
     const { result } = renderHook(() => useDeployment({
@@ -281,7 +281,7 @@ describe("useDeployment blocker handling", () => {
 
   it("marks rejected wallet approval as a cancelled deployment", async () => {
     window.history.replaceState({}, "", "/?ff_mock_deploy_reject=1&ff_mock_deploy_stage_delay_ms=25");
-    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
     const { result } = renderHook(() => useDeployment({
@@ -308,7 +308,7 @@ describe("useDeployment blocker handling", () => {
 
   it("marks mocked submission failures as failed deployments without surfacing success", async () => {
     window.history.replaceState({}, "", "/?ff_mock_deploy_fail=1&ff_mock_deploy_stage_delay_ms=25");
-    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
 
@@ -335,7 +335,7 @@ describe("useDeployment blocker handling", () => {
 
   it("marks mocked confirmation timeouts as unresolved deployments without surfacing success", async () => {
     window.history.replaceState({}, "", "/?ff_mock_deploy_unresolved=1&ff_mock_deploy_stage_delay_ms=25");
-    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     const artifact = createGeneratedArtifactStub({ bytecodeModules: [new Uint8Array([1, 2, 3])] });
 
@@ -364,7 +364,7 @@ describe("useDeployment blocker handling", () => {
 
   it("surfaces executor-blocked empty publish payloads with actionable remediation", async () => {
     window.history.replaceState({}, "", "/");
-    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     mockDeploymentExecutor.mockResolvedValueOnce({
       outcome: "blocked",
@@ -397,7 +397,7 @@ describe("useDeployment blocker handling", () => {
 
   it("treats artifact-level empty publish payload blockers as blocked-before-submission outcomes", async () => {
     window.history.replaceState({}, "", "/");
-    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     mockDeploymentExecutor.mockResolvedValueOnce({
       outcome: "blocked",
@@ -427,7 +427,7 @@ describe("useDeployment blocker handling", () => {
 
   it("preserves blocked empty-publish history when a later retry succeeds in the same session", async () => {
     window.history.replaceState({}, "", "/");
-    mockUseCurrentAccount.mockReturnValue(connectedAccount as CurrentAccount);
+    mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     mockDeploymentExecutor
       .mockResolvedValueOnce({

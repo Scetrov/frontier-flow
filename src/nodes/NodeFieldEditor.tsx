@@ -361,9 +361,11 @@ function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeF
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const { remoteOptions, isLoadingOptions, loadError } = useRemoteNodeFieldOptions(nodeType);
 
+  /* oxlint-disable react/react-compiler -- Derived state sync: reset draftFields when nodeType/fields change. React Compiler suggests computing during render, but the reference-based reset semantics are intentional. */
   useEffect(() => {
     setDraftFields(normalizeNodeFields(nodeType, fields));
   }, [fields, nodeType]);
+  /* oxlint-enable react/react-compiler */
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;

@@ -103,12 +103,12 @@ function ModalField(input: {
         </dt>
         {input.onCopy ? (
           <button
-            aria-label={input.isCopied ? `Copied ${input.label}` : `Copy ${input.label}`}
+            aria-label={input.isCopied === true ? `Copied ${input.label}` : `Copy ${input.label}`}
             className={CONTEXT_COPY_BUTTON_CLASS}
             onClick={input.onCopy}
             type="button"
           >
-            {input.isCopied ? "Copied" : "Copy"}
+            {input.isCopied === true ? "Copied" : "Copy"}
           </button>
         ) : null}
       </div>
@@ -153,8 +153,8 @@ function DraftFieldShell(input: {
       </span>
       {input.children}
       <span
-        className={`min-h-4 break-words text-xs ${input.errorMessage ? "text-[#ffd38d]" : "text-[var(--text-secondary)]"}`}
-        role={input.errorMessage ? "alert" : undefined}
+        className={`min-h-4 break-words text-xs ${(input.errorMessage != null && input.errorMessage !== "") ? "text-[#ffd38d]" : "text-[var(--text-secondary)]"}`}
+        role={(input.errorMessage != null && input.errorMessage !== "") ? "alert" : undefined}
         title={input.errorMessage ?? input.helperText}
       >
         {input.errorMessage ?? input.helperText ?? ""}
@@ -552,7 +552,7 @@ function getCharacterHelperText(input: {
   readonly ownerCharacterErrorMessage: string | null;
   readonly selectedCharacter: SimulationCharacterOption | null;
 }): string | undefined {
-  if (input.characterSuggestionState?.errorMessage) {
+  if (input.characterSuggestionState?.errorMessage != null && input.characterSuggestionState.errorMessage !== "") {
     return input.characterSuggestionState.errorMessage;
   }
 
@@ -560,7 +560,7 @@ function getCharacterHelperText(input: {
     return input.ownerCharacterErrorMessage ?? undefined;
   }
 
-  return `${input.selectedCharacter.label}${input.selectedCharacter.description ? ` · ${input.selectedCharacter.description}` : ""}`;
+  return `${input.selectedCharacter.label}${(input.selectedCharacter.description != null && input.selectedCharacter.description !== "") ? ` · ${input.selectedCharacter.description}` : ""}`;
 }
 
 function shouldShowCharacterSuggestions(input: {
@@ -611,14 +611,14 @@ function CharacterSuggestionMenu(input: {
               type="button"
             >
               <span className="font-mono text-xs text-[var(--cream-white)]">{suggestion.label}</span>
-              {suggestion.description ? (
+              {(suggestion.description != null && suggestion.description !== "") ? (
                 <span className="text-xs text-[var(--text-secondary)]">{suggestion.description}</span>
               ) : null}
             </button>
           ))}
         </div>
       ) : null}
-      {input.characterSuggestionState?.isLoading ? (
+      {input.characterSuggestionState?.isLoading === true ? (
         <span className="text-xs text-[var(--text-secondary)]">Searching characters...</span>
       ) : null}
       {input.characterSearchQuery.trim().length > 0
@@ -991,7 +991,7 @@ function TurretSimulationFeedback(input: { readonly session: TurretSimulationSes
         <div className="grid gap-2 border border-[rgba(255,166,0,0.28)] bg-[rgba(255,166,0,0.1)] px-4 py-3 text-sm text-[#ffd38d]" role="alert">
           <p className="font-heading text-[0.62rem] uppercase tracking-[0.18em]">Simulation Error</p>
           <p>{session.latestError.message}</p>
-          {session.latestError.details ? (
+          {(session.latestError.details != null && session.latestError.details !== "") ? (
             <p className="font-mono text-xs text-[#ffe7bf] break-all">{session.latestError.details}</p>
           ) : null}
         </div>
@@ -1080,7 +1080,7 @@ function TurretSimulationDraftPanel(input: TurretSimulationModalProps) {
         </p>
       </div>
 
-      {referenceData.loadErrorMessage ? (
+      {(referenceData.loadErrorMessage != null && referenceData.loadErrorMessage !== "") ? (
         <div className="border border-[rgba(255,211,141,0.4)] bg-[rgba(255,166,0,0.12)] px-4 py-3 text-sm text-[#ffd38d]" role="alert">
           {referenceData.loadErrorMessage}
         </div>

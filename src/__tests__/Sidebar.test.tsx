@@ -98,7 +98,9 @@ describe("Sidebar", () => {
       onchange: null,
       addEventListener() {},
       removeEventListener() {},
+      // oxlint-disable-next-line no-deprecated
       addListener() {},
+      // oxlint-disable-next-line no-deprecated
       removeListener() {},
       dispatchEvent() {
         return false;

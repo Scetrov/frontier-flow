@@ -27,7 +27,7 @@
 - [ ] I have added tests that cover my changes
 - [ ] All new and existing tests pass (`bun run test:run`)
 - [ ] TypeScript compiles cleanly (`bun run typecheck`)
-- [ ] ESLint reports no errors (`bun run lint`)
+- [ ] Oxlint reports no errors (`bun run lint`)
 - [ ] I have updated documentation where necessary
 
 ## Screenshots

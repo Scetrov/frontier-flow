@@ -153,12 +153,12 @@ function coerceSuggestionFields(suggestion: SimulationSuggestion): Partial<Simul
   if (suggestion.field === "characterId" || suggestion.field === "characterTribe") {
     return {
       [suggestion.field]: Number(suggestion.value),
-    } as Pick<SimulationCandidateDraft, "characterId" | "characterTribe">;
+    };
   }
 
   return {
     [suggestion.field]: suggestion.value,
-  } as Partial<SimulationCandidateDraft>;
+  };
 }
 
 function getNextFieldSources(
@@ -644,7 +644,7 @@ function useDraftFieldUpdater(setSession: SessionStateSetter) {
         ...currentSession.draft.candidate,
         [key]: value,
       } as SimulationCandidateDraft;
-      const fieldSources = getNextFieldSources(currentSession.draft.fieldSources, { [key]: value } as Pick<SimulationCandidateDraft, TKey>, "manual");
+      const fieldSources = getNextFieldSources(currentSession.draft.fieldSources, { [key]: value }, "manual");
 
       return {
         ...currentSession,

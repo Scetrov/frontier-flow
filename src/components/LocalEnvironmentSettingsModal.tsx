@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
-/* eslint-disable max-lines-per-function */
+/* oxlint-disable max-lines-per-function */
 
 import {
   loadLocalEnvironmentConfig,
@@ -138,7 +138,7 @@ function LocalEnvironmentField({ error, label, onBlur, onChange, value }: LocalE
         type="text"
         value={value}
       />
-      {error ? <span className="ff-local-environment-modal__error">{error}</span> : null}
+      {(error != null && error !== "") ? <span className="ff-local-environment-modal__error">{error}</span> : null}
     </label>
   );
 }
@@ -250,7 +250,7 @@ function LocalEnvironmentSettingsPanel({
           </label>
         </div>
 
-        {graphQlValidationMessage ? (
+        {(graphQlValidationMessage != null && graphQlValidationMessage !== "") ? (
           <p className="ff-local-environment-modal__validation" role="alert">{graphQlValidationMessage}</p>
         ) : null}
 

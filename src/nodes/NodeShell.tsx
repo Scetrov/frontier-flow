@@ -29,7 +29,7 @@ interface NodeShellProps {
 
 function getDeprecationMessage(deprecation: NonNullable<FlowNodeData["deprecation"]>): string {
   const statusLabel = deprecation.status === "deprecated" ? "Deprecated node." : "Retired node.";
-  const remediationMessage = deprecation.remediationMessage ? ` ${deprecation.remediationMessage}` : "";
+  const remediationMessage = (deprecation.remediationMessage != null && deprecation.remediationMessage !== "") ? ` ${deprecation.remediationMessage}` : "";
 
   return `${statusLabel} ${deprecation.reason}${remediationMessage}`;
 }
@@ -59,7 +59,7 @@ function SocketGlyph({ nodeId, socket, mode }: { readonly nodeId: string; readon
         <span
           aria-hidden="true"
           className="ff-node__handle ff-node__handle-indicator"
-          style={{ backgroundColor: getSocketColor(socket.type) } as CSSProperties}
+          style={{ backgroundColor: getSocketColor(socket.type) }}
         />
       )}
       {!isOutput ? <span className="ff-node__socket-label">{socket.label}</span> : null}

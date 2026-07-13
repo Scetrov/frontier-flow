@@ -160,7 +160,7 @@ function createAuthorizationResult(overrides: Partial<UseAuthorizationResult> = 
     startAuthorization,
     summary,
     ...overrides,
-  } as UseAuthorizationResult;
+  };
 }
 
 function createSuiClient(overrides: Partial<SuiClient> = {}): SuiClient {
@@ -360,7 +360,7 @@ describe("AuthorizeView", () => {
       return 0;
     });
     const scrollWidthGetter = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function scrollWidth(this: HTMLElement) {
-      if (this instanceof HTMLSpanElement && this.dataset.measurement?.startsWith("authorize-selected-turret-")) {
+      if (this instanceof HTMLSpanElement && this.dataset.measurement?.startsWith("authorize-selected-turret-") === true) {
         return 640;
       }
 

@@ -68,7 +68,7 @@ describe("useDeployment progress flow", () => {
       icon: undefined,
       label: undefined,
       publicKey: new Uint8Array(),
-    } as CurrentAccount);
+    });
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
     mockUseSuiClient.mockReturnValue({} as SuiClient);

@@ -1177,7 +1177,7 @@ Key scripts and configuration (see root `package.json` for full listing):
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "oxlint .",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
@@ -1423,7 +1423,7 @@ A structured error summary is simultaneously rendered in the Testing Panel, disp
 
 The CI pipeline integrates automated audits to maintain the WCAG 2.1 Level AA mandate:
 
-- **Lint-time (ESLint):** `eslint-plugin-jsx-a11y` catches missing ARIA roles, unlabelled inputs, and invalid interactive element semantics during development.
+- **Lint-time (Oxlint):** Oxlint's native `jsx-a11y` plugin catches missing ARIA roles, unlabelled inputs, and invalid interactive element semantics during development.
 - **E2E (Axe-core):** The Playwright testing suite includes a11y audit steps using `@axe-core/playwright`. The enforced audit surfaces currently cover:
   - Default editor shell after the auto-compile cycle settles
   - Generated Move source view

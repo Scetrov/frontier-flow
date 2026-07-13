@@ -3,7 +3,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetDeployGradeCompilerStateForTests } from "../../compiler/deployGradeCompiler";
-import { resetMoveBuilderLiteForTests } from "../../compiler/moveBuilderLite";
+import { resetMoveBuilderLiteForTests, setMoveBuilderGitHubAccessTokenProvider } from "../../compiler/moveBuilderLite";
 
 interface ExecFileSyncForTests {
   (command: string, args: readonly string[], options: {
@@ -33,15 +33,16 @@ async function runRealDeployGradeFixtureCompile(): Promise<RealBuilderFixtureRes
   const processModule = await import("node:process") as ProcessModuleForTests;
   const pathModule = await import("node:path") as PathModuleForTests;
   const repositoryRoot = processModule.cwd();
-  const bunExecutable = processModule.env.BUN_INSTALL
+  const bunExecutable = (processModule.env.BUN_INSTALL != null && processModule.env.BUN_INSTALL !== "")
     ? pathModule.resolve(processModule.env.BUN_INSTALL, "bin/bun")
-    : processModule.env.HOME
+    : (processModule.env.HOME != null && processModule.env.HOME !== "")
       ? pathModule.resolve(processModule.env.HOME, ".bun/bin/bun")
       : "bun";
+  const githubToken = processModule.env.GITHUB_TOKEN ?? processModule.env.GH_TOKEN ?? "";
   const script = [
     'import { readFileSync } from "node:fs";',
     'import { compileForDeployment } from "./src/compiler/deployGradeCompiler.ts";',
-    'import { loadMoveBuilderLite, verifyMoveBuilderLiteIntegrity } from "./src/compiler/moveBuilderLite.ts";',
+    'import { loadMoveBuilderLite, setMoveBuilderGitHubAccessTokenProvider, verifyMoveBuilderLiteIntegrity } from "./src/compiler/moveBuilderLite.ts";',
     'import { getPackageReferenceBundle } from "./src/data/packageReferences.ts";',
     'const snapshot = JSON.parse(readFileSync("./public/deploy-grade-resolution-snapshots/v0.0.23.json", "utf8"));',
     'const target = getPackageReferenceBundle("testnet:stillness");',
@@ -60,6 +61,8 @@ async function runRealDeployGradeFixtureCompile(): Promise<RealBuilderFixtureRes
     '    { path: "deps/world/Move.toml", content: `[package]\\nname = "world"\\n` },',
     '  ],',
     '};',
+    `const githubToken = ${JSON.stringify(githubToken)};`,
+    'if (githubToken) { setMoveBuilderGitHubAccessTokenProvider(() => githubToken); }',
     'const { initMovePackageBuilder, resolveMovePackageDependencies, dumpMovePackage, getPinnedSuiMoveVersion } = await loadMoveBuilderLite();',
     'const result = await compileForDeployment({',
     '  artifact,',
@@ -97,13 +100,20 @@ async function runRealDeployGradeFixtureCompile(): Promise<RealBuilderFixtureRes
   return JSON.parse(resultLine) as RealBuilderFixtureResult;
 }
 
+const hasGitHubToken = (process.env.GITHUB_TOKEN != null && process.env.GITHUB_TOKEN !== "")
+  || (process.env.GH_TOKEN != null && process.env.GH_TOKEN !== "");
+
 describe("deployGradeCompiler integration", () => {
   beforeEach(() => {
     resetDeployGradeCompilerStateForTests();
     resetMoveBuilderLiteForTests();
+    if (hasGitHubToken) {
+      const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? "";
+      setMoveBuilderGitHubAccessTokenProvider(() => token);
+    }
   });
 
-  it("compiles the real Stillness v0.0.23 bundled snapshot with the live builder", async () => {
+  (hasGitHubToken ? it : it.skip)("compiles the real Stillness v0.0.23 bundled snapshot with the live builder", async () => {
     const result = await runRealDeployGradeFixtureCompile();
 
     expect(result.moduleCount).toBeGreaterThan(0);
