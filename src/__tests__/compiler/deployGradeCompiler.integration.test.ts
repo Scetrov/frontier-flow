@@ -33,9 +33,9 @@ async function runRealDeployGradeFixtureCompile(): Promise<RealBuilderFixtureRes
   const processModule = await import("node:process") as ProcessModuleForTests;
   const pathModule = await import("node:path") as PathModuleForTests;
   const repositoryRoot = processModule.cwd();
-  const bunExecutable = processModule.env.BUN_INSTALL
+  const bunExecutable = (processModule.env.BUN_INSTALL != null && processModule.env.BUN_INSTALL !== "")
     ? pathModule.resolve(processModule.env.BUN_INSTALL, "bin/bun")
-    : processModule.env.HOME
+    : (processModule.env.HOME != null && processModule.env.HOME !== "")
       ? pathModule.resolve(processModule.env.HOME, ".bun/bin/bun")
       : "bun";
   const script = [

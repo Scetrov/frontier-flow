@@ -1189,7 +1189,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
   } = useGitHubAuth();
   const gitHubIncident = useMemo(() => getGitHubIncident(diagnostics), [diagnostics]);
   const visibleGitHubIncident = getVisibleGitHubIncident(gitHubIncident, dismissedGitHubIncidentSignature);
-  const graphTransferWalletBridge = useGraphTransferWalletBridge(currentAccount, isConnected, signAndExecuteTransaction as GraphTransferWalletMutation);
+  const graphTransferWalletBridge = useGraphTransferWalletBridge(currentAccount, isConnected, signAndExecuteTransaction);
   const { tutorial, setSidebarOpenRef, setContractPanelOpenRef, insertDemoNodeRef, removeDemoNodeRef } = useTutorialBridge(resolvedActiveView);
   const layoutBindings = useStandardAppLayoutBindings({ beginGitHubSignIn, clearGitHubFailure, gitHubIncident, insertDemoNodeRef, removeDemoNodeRef, setContractPanelOpenRef, setDismissedGitHubIncidentSignature, setIsPrivacyNoticeVisible, setSidebarOpenRef, signOutFromGitHub, tutorial });
 

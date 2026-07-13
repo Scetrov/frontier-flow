@@ -12,7 +12,7 @@ Frontier Flow is a visual low-code programming interface for EVE Frontier game a
 - **Graph Engine**: @xyflow/react (React Flow), dagre (auto-layout)
 - **Blockchain**: @mysten/sui, @mysten/dapp-kit, @zktx.io/sui-move-builder (WASM)
 - **Testing**: Vitest, @testing-library/react, Playwright, msw
-- **Linting**: ESLint 10 (flat config)
+- **Linting**: Oxlint with type-aware engine (`.oxlintrc.json`)
 
 ## Key Conventions
 

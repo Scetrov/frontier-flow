@@ -366,7 +366,7 @@ export function useTutorial({ activeView, isCanvasReady, onInsertDemoNode, onRem
   }, []);
 
   const dismiss = useCallback(() => {
-    if (currentStep?.requiresDemoNode) {
+    if (currentStep?.requiresDemoNode === true) {
       onRemoveDemoNode();
     }
 

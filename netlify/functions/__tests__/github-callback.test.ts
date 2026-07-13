@@ -37,7 +37,7 @@ function createEvent(input: Partial<GitHubCallbackEvent> = {}): GitHubCallbackEv
     multiValueHeaders: {},
     multiValueQueryStringParameters: {},
     ...input,
-  } as GitHubCallbackEvent;
+  };
 }
 
 describe("github-callback", () => {
@@ -264,7 +264,8 @@ describe("github-callback", () => {
     const tokenExchangeCall = fetchMock.mock.calls[0];
 
     expect(response.statusCode).toBe(200);
-    expect(tokenExchangeCall[1]?.body).toBeInstanceOf(URLSearchParams);
-    expect((tokenExchangeCall[1]?.body as URLSearchParams).get("client_id")).toBe("vite-client-id");
+    const body = tokenExchangeCall[1]?.body;
+    expect(body).toBeInstanceOf(URLSearchParams);
+    expect((body as URLSearchParams).get("client_id")).toBe("vite-client-id");
   });
 });

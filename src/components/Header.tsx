@@ -154,7 +154,7 @@ function NavigationButton({ active, disabled = false, icon, label, onClick, tool
     </button>
   );
 
-  return tooltip ? <span title={tooltip}>{button}</span> : button;
+  return (tooltip != null && tooltip !== "") ? <span title={tooltip}>{button}</span> : button;
 }
 
 function WorkflowSeparator() {

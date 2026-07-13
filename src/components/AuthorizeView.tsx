@@ -465,7 +465,7 @@ function AuthorizeViewHeader(input: {
           {copy.summary}
         </p>
       </div>
-      {simulationControl ? (
+      {simulationControl != null ? (
         <div className="pt-4 xl:min-w-0 xl:pt-0">
           {simulationControl}
         </div>
@@ -583,7 +583,7 @@ function AuthorizeSelectField(input: {
           </option>
         ))}
       </select>
-      {input.helperText ? (
+      {input.helperText != null ? (
         <div className="grid gap-1 break-words text-xs text-[var(--text-secondary)]">
           {input.helperText}
         </div>
@@ -691,7 +691,7 @@ function AuthorizeDeploymentPanel(input: {
           <AuthorizeDeploymentField label="Module" value={deploymentState.moduleName} />
           <AuthorizeDeploymentField label="Target" value={deploymentState.targetId} />
           <AuthorizeDeploymentField
-            action={walletAddress ? (
+            action={(walletAddress != null && walletAddress !== "") ? (
               <CopyFieldButton copiedField={copiedField} field="wallet" onCopy={() => { void handleCopy("wallet", walletAddress); }} />
             ) : undefined}
             href={walletHref}

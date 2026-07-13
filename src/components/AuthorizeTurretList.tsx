@@ -15,7 +15,7 @@ interface AuthorizeTurretListProps {
 function AuthorizeTurretList({ onSelectionChange, onSimulate, turrets }: AuthorizeTurretListProps) {
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const selectableTurretIds = useMemo(
-    () => turrets.filter((turret) => !turret.currentExtension?.isCurrentDeployment).map((turret) => turret.objectId),
+    () => turrets.filter((turret) => turret.currentExtension?.isCurrentDeployment !== true).map((turret) => turret.objectId),
     [turrets],
   );
   const selectAllDisabled = selectableTurretIds.length === 0;

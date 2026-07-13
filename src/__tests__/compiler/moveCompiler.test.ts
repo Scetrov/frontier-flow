@@ -490,7 +490,7 @@ describe("compileMove", () => {
 
     const firstBuildInput = getBuildMovePackageInput(mockBuildMovePackage, 0);
     expect(firstBuildInput.fetcher).toBeDefined();
-    const localFetcher = getLocalFetcher(firstBuildInput.fetcher as unknown);
+    const localFetcher = getLocalFetcher(firstBuildInput.fetcher);
     await expect(localFetcher.fetchLocal("deps/world")).resolves.toEqual({
       "Move.toml": "[package]\nname = \"world\"\n\n[addresses]\nworld = \"0x0\"\n",
       "sources/character.move": "module world::character;",

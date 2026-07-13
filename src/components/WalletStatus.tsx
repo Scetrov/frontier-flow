@@ -30,7 +30,7 @@ interface WalletActionButtonProps {
  * Formats a MIST-denominated balance string for display in the header.
  */
 function formatBalance(balanceMist: string | null | undefined): string {
-  if (!balanceMist) {
+  if (balanceMist == null || balanceMist === "") {
     return "-- SUI";
   }
 

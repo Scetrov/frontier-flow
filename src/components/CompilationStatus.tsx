@@ -85,7 +85,7 @@ function getReviewEntryLines(entry: DeploymentReviewEntry): string[] {
     `${entry.headline} - ${entry.targetId}${entry.stage === undefined ? "" : ` - ${entry.stage}`}`,
     entry.details,
     toLabeledValue("Transaction Digest", entry.confirmationReference),
-    entry.historicalOnly ? "Historical only" : null,
+    entry.historicalOnly === true ? "Historical only" : null,
     entry.historicalReason,
   ].filter((value): value is string => value !== null && value !== undefined);
 }

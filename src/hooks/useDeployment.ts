@@ -455,7 +455,7 @@ function updateReviewHistory(
       && input.localChainIdRef.current !== null
       && input.localChainIdRef.current !== currentLocalChainId;
     const nextBaseHistory = localResetDetected
-      ? current.map((entry) => entry.targetId === "local" && !entry.historicalOnly
+      ? current.map((entry) => entry.targetId === "local" && entry.historicalOnly !== true
         ? {
             ...entry,
             historicalOnly: true,
@@ -1178,7 +1178,7 @@ function createRemotePublishHandler(input: {
   });
 }
 
-// eslint-disable-next-line max-lines-per-function, complexity
+// oxlint-disable-next-line max-lines-per-function, complexity
 async function startRealDeployment(input: {
   readonly account: ReturnType<typeof useCurrentAccount>;
   readonly currentWallet: ReturnType<typeof useCurrentWallet>;

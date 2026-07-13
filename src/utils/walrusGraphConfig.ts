@@ -20,7 +20,7 @@ export function getWalrusGraphConfig(): WalrusGraphConfig {
     network: "testnet",
     suiRpcUrl: "https://fullnode.testnet.sui.io:443",
     wasmUrl: walrusWasmUrl,
-    uploadRelayHost: import.meta.env.VITE_WALRUS_UPLOAD_RELAY_URL?.trim() || DEFAULT_TESTNET_UPLOAD_RELAY_HOST,
+    uploadRelayHost: (import.meta.env.VITE_WALRUS_UPLOAD_RELAY_URL?.trim() ?? "") || DEFAULT_TESTNET_UPLOAD_RELAY_HOST,
     uploadRelayTipMaxMist: Number.isFinite(configuredTipMax) && configuredTipMax > 0
       ? configuredTipMax
       : DEFAULT_UPLOAD_RELAY_TIP_MAX_MIST,

@@ -21,7 +21,7 @@
     "debug:local-publish-mcve": "bun run ./scripts/debug-local-publish-mcve.ts",
     "fetch:sui-upstream-sources": "bun run ./scripts/fetch-sui-upstream-sources.ts",
     "fetch:world-contracts": "bun run ./scripts/fetch-world-contracts.ts",
-    "lint": "eslint .",
+    "lint": "oxlint .",
     "prepare": "husky",
     "preview": "vite preview",
     "test": "vitest",
@@ -55,10 +55,9 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@commitlint/cli": "^21.0.0",
     "@commitlint/config-conventional": "^21.0.0",
-    "@axe-core/playwright": "^4.11.1",
-    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
@@ -69,18 +68,14 @@
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.0",
     "autoprefixer": "^10.4.24",
-    "eslint": "^10.0.0",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
     "husky": "^9.1.7",
     "jsdom": "^29.0.0",
+    "oxlint": "^1.73.0",
+    "oxlint-tsgolint": "^0.24.0",
     "postcss": "^8.5.6",
     "rolldown-vite": "7.3.1",
     "tailwindcss": "^4.1.18",
     "typescript": "~7.0.2",
-    "typescript-eslint": "^8.57.0",
     "vitest": "^4.1.0"
   }
 }

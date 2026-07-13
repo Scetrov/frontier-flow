@@ -1,13 +1,14 @@
 <!--
   Sync Impact Report
   ===================
-  Version change: 1.1.0 → 1.2.0
-  Bump rationale: MINOR — added markdown formatting governance
-    requirements for repository documentation.
+  Version change: 1.2.0 → 1.3.0
+  Bump rationale: MINOR — replaced ESLint/typescript-eslint lint
+    policy with Oxlint type-aware linting.
   Modified principles:
-    - Formatting Standards → added markdown document rules for
-      numbered headings, backticked paths/filenames, and prettier
-      formatting.
+    - I. Type Safety Above All → lint toolchain references.
+    - VII. Accessibility & Inclusion → JSX a11y lint reference.
+    - Architecture & Design Standards → Runtime and Linting
+      subsections updated to Oxlint (ADR-010).
   Added sections: none
   Removed sections: none
   Templates requiring updates:
@@ -36,11 +37,11 @@
 - Complex state machines MUST use discriminated unions.
 - Favour immutable data and pure functions.
 - Prefer readable, explicit solutions over clever shortcuts.
-- Linting MUST use the `strictTypeChecked` preset from
-  `typescript-eslint`, enforcing `no-floating-promises`,
+- Linting MUST use Oxlint with type-aware analysis
+  (`oxlint-tsgolint`), enforcing `no-floating-promises`,
   `no-misused-promises`, and `strict-boolean-expressions`.
   Rationale: unhandled promise rejections and implicit boolean
-  coercions cause silent runtime failures (ADR-006).
+  coercions cause silent runtime failures (ADR-010).
 
 ### II. Visual Feedback is Paramount
 
@@ -124,8 +125,9 @@
   regions) to describe graph states to assistive technologies.
 - Focusable elements MUST have a distinct, high-contrast
   `:focus-visible` state with a logical tab order.
-- JSX MUST be linted with `eslint-plugin-jsx-a11y` to catch
-  accessibility regressions at author time (ADR-006).
+- JSX MUST be linted with Oxlint's native JSX accessibility
+  rules to catch accessibility regressions at author time
+  (ADR-010).
 - Playwright E2E tests MUST include `axe-core` accessibility
   audits to enforce a11y compliance in CI (ADR-007).
 
@@ -162,7 +164,7 @@
 
 ## Architecture & Design Standards
 
-- **Runtime**: React 19, TypeScript 5.9 (strict), ES Modules.
+- **Runtime**: React 19, TypeScript 7 (strict), ES Modules.
 - **Build**: Vite (Rolldown fork), Bun (`bun dev`, `bun run
 build`, `bun run lint`, `bun run test`).
 - **Graph Engine**: `@xyflow/react` (React Flow v12).
@@ -188,9 +190,10 @@ build`, `bun run lint`, `bun run test`).
   justified via ADR (ADR-002).
 - **Blockchain**: `@mysten/sui`, `@mysten/dapp-kit`,
   `@zktx.io/sui-move-builder` (WASM).
-- **Linting**: ESLint 10 flat config with
-  `strictTypeChecked`, `eslint-plugin-jsx-a11y`,
-  `ecmaVersion: "latest"` (ADR-006).
+- **Linting**: Oxlint with type-aware engine
+  (`oxlint-tsgolint`), React, and JSX accessibility plugins
+  (ADR-010). Full TypeScript compiler diagnostics are a
+  separate `tsc -b` gate.
 
 ## Development Workflow & Guardrails
 
@@ -249,4 +252,4 @@ build`, `bun run lint`, `bun run test`).
   table columns where prettier supports them and a trailing newline
   at end of file.
 
-**Version**: 1.2.0 | **Ratified**: 2026-02-22 | **Last Amended**: 2026-03-28
+**Version**: 1.3.0 | **Ratified**: 2026-02-22 | **Last Amended**: 2026-07-13

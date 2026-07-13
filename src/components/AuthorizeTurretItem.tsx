@@ -20,7 +20,7 @@ function getItemClassName(checked: boolean, disabled: boolean): string {
 function getBadgeClassName(turret: TurretInfo): string {
   return [
     "ff-authorize-turret-item__badge",
-    turret.currentExtension?.isCurrentDeployment ? "ff-authorize-turret-item__badge--current" : "",
+    turret.currentExtension?.isCurrentDeployment === true ? "ff-authorize-turret-item__badge--current" : "",
   ].filter(Boolean).join(" ");
 }
 

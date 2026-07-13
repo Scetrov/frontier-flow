@@ -330,7 +330,7 @@ async function withRawGithubFetchCache<T>(operation: () => Promise<T>): Promise<
       }
 
       return fetchWithRawGithubCache(originalMoveBuilderFetch, input, init);
-    }) as typeof fetch;
+    });
   }
 
   moveBuilderFetchPatchDepth += 1;
@@ -355,7 +355,7 @@ async function withMoveBuilderLogFilter<T>(operation: () => Promise<T>): Promise
   }
 
   if (moveBuilderConsoleLogPatchDepth === 0) {
-    originalMoveBuilderConsoleLog = console.log as unknown as (...args: unknown[]) => void;
+    originalMoveBuilderConsoleLog = console.log;
     console.log = (...args: unknown[]) => {
       if (isMoveBuilderVerboseLog(args)) {
         return;
@@ -402,7 +402,7 @@ export async function loadMoveBuilderLite(): Promise<typeof MoveBuilderLiteModul
 
 async function loadMoveBuilderLiteRawWasm(): Promise<MoveBuilderLiteRawWasmModule> {
   if (moveBuilderLiteRawWasmPromise === null) {
-    moveBuilderLiteRawWasmPromise = import("../../node_modules/@zktx.io/sui-move-builder/dist/lite/sui_move_wasm.js") as Promise<MoveBuilderLiteRawWasmModule>;
+    moveBuilderLiteRawWasmPromise = import("../../node_modules/@zktx.io/sui-move-builder/dist/lite/sui_move_wasm.js");
   }
 
   return moveBuilderLiteRawWasmPromise;

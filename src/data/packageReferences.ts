@@ -271,7 +271,7 @@ function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): read
       } satisfies PackageReferenceBundle;
     }
 
-    const overrideMetadata = storedOverrides?.targets[bundle.targetId as RemoteDeploymentTargetId];
+    const overrideMetadata = storedOverrides?.targets[bundle.targetId];
     if (overrideMetadata === undefined) {
       return bundle;
     }
@@ -328,7 +328,7 @@ export function parsePublishedWorldPackageManifest(manifest: string): Partial<Re
       results[targetId] = {
         worldPackageId: resolvedPackageId,
         originalWorldPackageId: originalId !== null && isPublishedPackageId(originalId) ? originalId : undefined,
-        toolchainVersion: toolchainVersion?.length ? toolchainVersion : undefined,
+        toolchainVersion: toolchainVersion != null && toolchainVersion.length > 0 ? toolchainVersion : undefined,
       };
     }
   }

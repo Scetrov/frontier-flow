@@ -590,7 +590,7 @@ function createScopedProgressSetter(
       }
 
       return typeof value === "function"
-        ? (value as (currentState: AuthorizationProgressState | null) => AuthorizationProgressState | null)(currentProgress)
+        ? value(currentProgress)
         : value;
     });
   };
