@@ -100,7 +100,8 @@ async function runRealDeployGradeFixtureCompile(): Promise<RealBuilderFixtureRes
   return JSON.parse(resultLine) as RealBuilderFixtureResult;
 }
 
-const hasGitHubToken = Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN);
+const hasGitHubToken = (process.env.GITHUB_TOKEN != null && process.env.GITHUB_TOKEN !== "")
+  || (process.env.GH_TOKEN != null && process.env.GH_TOKEN !== "");
 
 describe("deployGradeCompiler integration", () => {
   beforeEach(() => {
