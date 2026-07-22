@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.5](https://github.com/Scetrov/frontier-flow/compare/v0.11.4...v0.11.5) (2026-07-22)
+
+
+### Bug Fixes
+
+* **deps:** retain Dependabot Bun updates ([#57](https://github.com/Scetrov/frontier-flow/issues/57)) ([942df14](https://github.com/Scetrov/frontier-flow/commit/942df141a04d58e834ce243b2b451e451d9c3dc7))
+
 ## [0.11.4](https://github.com/Scetrov/frontier-flow/compare/v0.11.3...v0.11.4) (2026-07-22)
 
 

@@ -26,4 +26,4 @@ Frontier Flow has nine open repository-security findings. Most urgently, `main` 
 
 - Affects `.github/workflows/`, `Dockerfile.dev`, `SECURITY.md`, repository documentation, `README.md`, and a new `.bestpractices.json` evidence file.
 - Requires GitHub repository-administration changes for `main` protection and required checks, plus a Best Practices dashboard attestation performed by a maintainer.
-- May replace the current Dependabot/Bun lockfile write-back mechanism; package update automation must continue to produce reviewed, committed `bun.lock` updates.
+- Replaces the unsafe Dependabot/Bun CI lockfile write-back mechanism with Dependabot's native Bun updates, which must produce reviewed, committed `bun.lock` updates.

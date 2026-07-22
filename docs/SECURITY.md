@@ -43,7 +43,7 @@ Every feature merged into the `main` branch **must** satisfy the controls docume
 
 Dependabot **must** be enabled on the repository with the following configuration:
 
-Renovate is configured in [`renovate.json`](../renovate.json) to update Bun dependencies, the committed lockfile, GitHub Actions, and pinned container inputs. Dependency pull requests must include both `package.json` and `bun.lock` before frozen-lockfile CI begins. See [Repository Governance](./REPOSITORY-GOVERNANCE.md#dependency-updates) for provisioning and the maintainer fallback.
+Dependabot is configured in [`.github/dependabot.yml`](../.github/dependabot.yml) with its native `bun` ecosystem to update Bun dependencies and the committed text-based lockfile, and it also updates GitHub Actions. Dependency pull requests must include both `package.json` and `bun.lock` before frozen-lockfile CI begins. See [Repository Governance](./REPOSITORY-GOVERNANCE.md#dependency-updates) for provisioning and the maintainer fallback.
 
 ### 2.2 Dependency Pinning
 
@@ -405,7 +405,7 @@ A quick-reference checklist for PR reviewers and release managers:
 
 | #   | Control                                                              | Status |
 | --- | -------------------------------------------------------------------- | ------ |
-| 1   | Renovate configured; GitHub App provisioning verified                | ☐      |
+| 1   | Dependabot configured with native Bun support                         | ☑      |
 | 2   | `bun.lock` committed and used in frozen-lockfile CI                  | ☑      |
 | 3   | Critical dependencies pinned to exact versions                       | ☐      |
 | 4   | Dependency audit runs in CI (fail on high/critical)                  | ☐      |

@@ -1,6 +1,6 @@
 ## 1. Dependency-update and CI safety
 
-- [x] 1.1 Decide and provision the trusted dependency-update path that can commit a matching `bun.lock` before CI (prefer Renovate with Bun lockfile support); document the approved fallback if provisioning is unavailable.
+- [x] 1.1 Configure Dependabot's native Bun support to commit a matching `bun.lock` before CI; document the approved maintainer fallback if automation is unavailable.
 - [x] 1.2 Remove the Dependabot CI lockfile write-back job and all CI write permissions used exclusively by that job.
 - [x] 1.3 Configure dependency-update workflow(s) so update pull requests contain both `package.json` and `bun.lock`, and retain frozen-lockfile installs for required CI jobs.
 - [x] 1.4 Update CI job dependencies and conditions so a skipped optional dependency-preparation job does not skip build or E2E, while failed required validation prevents both.

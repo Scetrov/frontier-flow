@@ -4,9 +4,9 @@ This document records the operational controls that cannot be enforced by source
 
 ## Dependency updates
 
-Renovate is the trusted dependency-update path. The root [`renovate.json`](../renovate.json) enables Renovate's Bun manager and weekly lockfile maintenance. Every dependency pull request that changes `package.json` must also contain the matching `bun.lock`; required CI jobs always install with `bun install --frozen-lockfile` and never modify or push a pull-request branch.
+Dependabot is the trusted dependency-update path. [`.github/dependabot.yml`](../.github/dependabot.yml) uses Dependabot's native `bun` ecosystem support for the text-based `bun.lock` format and also updates GitHub Actions. Every dependency pull request that changes `package.json` must contain the matching `bun.lock`; required CI jobs always install with `bun install --frozen-lockfile` and never modify or push a pull-request branch.
 
-A repository administrator must install the Mend Renovate GitHub App for `Scetrov/frontier-flow` and merge or close its onboarding pull request after confirming that the committed configuration is detected. The Dependency Dashboard and a trial dependency pull request are the provisioning checks.
+A repository administrator must enable Dependabot version updates for `Scetrov/frontier-flow` and confirm that Dependabot detects the committed configuration. The Dependabot dashboard and a trial dependency pull request are the provisioning checks.
 
 If the GitHub App is unavailable, a maintainer must update the dependency branch locally:
 
