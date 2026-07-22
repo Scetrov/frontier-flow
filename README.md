@@ -7,6 +7,7 @@
 [![Stargazers](https://img.shields.io/github/stars/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/stargazers)
 [![Issues](https://img.shields.io/github/issues/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/issues)
 [![MIT License](https://img.shields.io/github/license/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/blob/main/LICENSE.md)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13753/badge)](https://www.bestpractices.dev/projects/13753)
 
 Frontier Flow is a low-code visual editor for EVE Frontier players who want to design game automation logic without hand-writing smart contract code. Build automation flows on a node canvas, generate deterministic Sui Move output in the browser, validate logic before deployment, and move from concept to contract fast.
 
