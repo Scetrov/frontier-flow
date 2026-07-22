@@ -452,10 +452,10 @@
     "maintained"
   ],
   "dashboardReview": {
-    "status": "pending maintainer attestation",
-    "refreshDate": null,
-    "score": 19,
+    "status": "attested supported proposals; Passing remains blocked",
+    "refreshDate": "2026-07-22T22:09:07Z",
+    "score": 40,
     "result": "in_progress",
-    "notes": "A maintainer must refresh the default branch, review every proposal, and record the dashboard result."
+    "notes": "After PR #62 merged, a maintainer refreshed project 13753 and attested the 14 supported proposals. The live export records 27 Met, 2 Unmet, 166 ?, and one 0 status. See dashboard-result.md for the remaining Passing blockers."
   }
 }
