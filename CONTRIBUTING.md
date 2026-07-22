@@ -178,13 +178,15 @@ Every PR should include:
 
 ### 4.2 Requirements for Merge
 
-| Requirement         | Detail                                          |
-| ------------------- | ----------------------------------------------- |
-| CI passing          | All lint, typecheck, test, and audit jobs green |
-| Signed commits      | All commits GPG-signed                          |
-| Code review         | At least 1 approval required                    |
-| No force-push       | Branch protection enforced on `main`            |
-| Coverage maintained | Coverage must not drop below minimum thresholds |
+| Requirement            | Detail                                                                    |
+| ---------------------- | ------------------------------------------------------------------------- |
+| Required checks        | Commitlint, lint, typecheck, coverage, audit, build, E2E, CodeQL all pass |
+| Current branch         | The pull request includes the latest protected `main`                     |
+| Signed commits         | All commits GPG-signed                                                    |
+| Code review            | At least 1 approval from someone other than the last pusher               |
+| Conversations resolved | All review conversations are resolved                                     |
+| Protected history      | No force-push; linear history enforced on `main`                           |
+| Coverage maintained    | Coverage must not drop below minimum thresholds                           |
 
 ---
 

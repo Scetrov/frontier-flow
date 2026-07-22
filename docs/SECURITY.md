@@ -43,45 +43,13 @@ Every feature merged into the `main` branch **must** satisfy the controls docume
 
 Dependabot **must** be enabled on the repository with the following configuration:
 
-```yaml
-# .github/dependabot.yml
-version: 2
-updates:
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "Scetrov"
-    labels:
-      - "dependencies"
-      - "security"
-    # Group minor/patch updates to reduce PR noise
-    groups:
-      production:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    # Security updates are always auto-raised regardless of schedule
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-```
+Renovate is configured in [`renovate.json`](../renovate.json) to update Bun dependencies, the committed lockfile, GitHub Actions, and pinned container inputs. Dependency pull requests must include both `package.json` and `bun.lock` before frozen-lockfile CI begins. See [Repository Governance](./REPOSITORY-GOVERNANCE.md#dependency-updates) for provisioning and the maintainer fallback.
 
 ### 2.2 Dependency Pinning
 
 | Requirement                              | Detail                                                                                                                                                                                             |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Lock files**                           | `bun.lockb` **must** be committed and used for deterministic installs (`bun install --frozen-lockfile`)                                                                                            |
+| **Lock files**                           | `bun.lock` **must** be committed and used for deterministic installs (`bun install --frozen-lockfile`)                                                                                            |
 | **Exact versions for critical packages** | Pin `@zktx.io/sui-move-builder`, `@mysten/sui`, and `@mysten/dapp-kit` to exact versions — no caret (`^`) or tilde (`~`). These packages directly affect on-chain bytecode and wallet transactions |
 | **Integrity hashes**                     | Use `bun pm trust` and registry signature verification where available                                                                                                                             |
 
@@ -182,14 +150,14 @@ jobs:
 | **Minimum permissions**    | Workflows use `permissions: contents: read`. Write permissions are granted only to specific jobs that need them |
 | **Pinned action versions** | All `uses:` references pin to full commit SHAs, not tags (e.g., `actions/checkout@<sha>`)                       |
 | **No secrets in logs**     | Use `::add-mask::` for any dynamic secret. CI must never print tokens, keys, or OAuth secrets                   |
-| **Branch protection**      | `main` branch requires: passing CI, at least 1 approval, signed commits, no force-push                          |
+| **Branch protection**      | `main` requires a current branch, required CI/CodeQL checks, 1 approval, resolved conversations, administrator enforcement, linear history, and no force-push |
 | **Signed commits**         | All commits **must** be GPG-signed per [CONSTITUTION §8](./CONSTITUTION.md)                                     |
 
 ### 3.3 Netlify Deployment Security
 
 | Control                   | Detail                                                                                                                                                              |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Build command**         | `bun run build` (Netlify build runs `bun run build`; deterministic installs rely on the committed `bun.lockb` and CI/Netlify using `bun install --frozen-lockfile`) |
+| **Build command**         | `bun run build` (Netlify build runs `bun run build`; deterministic installs rely on the committed `bun.lock` and CI/Netlify using `bun install --frozen-lockfile`) |
 | **Environment variables** | `GITHUB_CLIENT_SECRET` stored in Netlify environment, **never** in repository                                                                                       |
 | **Deploy previews**       | Limited to trusted contributors. Preview URLs must not expose production secrets                                                                                    |
 | **Function security**     | Netlify serverless function for OAuth token exchange must validate `Origin` / `Referer`, enforce strict CORS, and never return raw error stack traces               |
@@ -437,13 +405,13 @@ A quick-reference checklist for PR reviewers and release managers:
 
 | #   | Control                                                              | Status |
 | --- | -------------------------------------------------------------------- | ------ |
-| 1   | Dependabot enabled and configured                                    | ☐      |
-| 2   | `bun.lockb` committed and used in CI                                 | ☐      |
+| 1   | Renovate configured; GitHub App provisioning verified                | ☐      |
+| 2   | `bun.lock` committed and used in frozen-lockfile CI                  | ☑      |
 | 3   | Critical dependencies pinned to exact versions                       | ☐      |
 | 4   | Dependency audit runs in CI (fail on high/critical)                  | ☐      |
 | 5   | WASM binary checksum verified                                        | ☑      |
-| 6   | CI runs lint, typecheck, test, audit on every PR                     | ☑      |
-| 7   | Branch protection enforced on `main`                                 | ☐      |
+| 6   | CI runs commitlint, lint, typecheck, coverage, audit, build, and E2E | ☑      |
+| 7   | Branch protection enforced on `main`                                 | ☑      |
 | 8   | All commits GPG-signed                                               | ☐      |
 | 9   | Test coverage meets minimum thresholds                               | ☑      |
 | 10  | Security-specific test cases present                                 | ☐      |

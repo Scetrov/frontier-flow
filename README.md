@@ -271,6 +271,8 @@ git push origin feat/your-improvement
 Before contributing, please review:
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [SECURITY.md](./SECURITY.md), including private vulnerability reporting
+- [Repository governance](./docs/REPOSITORY-GOVERNANCE.md), including protected-branch and dependency-update procedures
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 
 ## License

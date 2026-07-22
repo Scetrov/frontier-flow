@@ -6,7 +6,7 @@ If you discover a security vulnerability in Frontier Flow, please report it resp
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, use GitHub Private Reporting from the repository Security tab and include:
+Instead, [submit a private vulnerability report through GitHub Security Advisories](https://github.com/Scetrov/frontier-flow/security/advisories/new) and include:
 
 - A description of the vulnerability
 - Steps to reproduce
