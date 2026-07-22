@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.3](https://github.com/Scetrov/frontier-flow/compare/v0.11.2...v0.11.3) (2026-07-22)
+
+
+### Bug Fixes
+
+* **ci:** scope scorecard permissions ([#53](https://github.com/Scetrov/frontier-flow/issues/53)) ([c58e4d8](https://github.com/Scetrov/frontier-flow/commit/c58e4d887125a51d348ccc9469cb91adc8348741))
+
 ## [0.11.2](https://github.com/Scetrov/frontier-flow/compare/v0.11.1...v0.11.2) (2026-05-09)
 
 
