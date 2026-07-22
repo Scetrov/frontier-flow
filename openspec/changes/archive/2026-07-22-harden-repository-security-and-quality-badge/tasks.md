@@ -4,7 +4,7 @@
 - [x] 1.2 Remove the Dependabot CI lockfile write-back job and all CI write permissions used exclusively by that job.
 - [x] 1.3 Configure dependency-update workflow(s) so update pull requests contain both `package.json` and `bun.lock`, and retain frozen-lockfile installs for required CI jobs.
 - [x] 1.4 Update CI job dependencies and conditions so a skipped optional dependency-preparation job does not skip build or E2E, while failed required validation prevents both.
-- [ ] 1.5 Verify a normal pull request, a `main` push, and a dependency-update pull request execute the expected commit-message, lint, typecheck, coverage, audit, build, and E2E jobs.
+- [x] 1.5 Verify a normal pull request, a `main` push, and a dependency-update pull request execute the expected commit-message, lint, typecheck, coverage, audit, build, and E2E jobs.
 
 ## 2. Repository workflow and input hardening
 
@@ -18,14 +18,14 @@
 - [x] 3.1 Capture required check names from successful pull-request workflows, including CI and CodeQL.
 - [x] 3.2 Configure `main` branch protection or a ruleset to require pull requests, the chosen approval/Code Owner policy, up-to-date required checks, conversation resolution, and administrator enforcement.
 - [x] 3.3 Document the branch-protection configuration, Release Please compatibility decision, verification procedure, and administrator rollback/recovery procedure.
-- [ ] 3.4 Validate that an ordinary direct push is rejected and that a compliant pull request can merge only after all required checks and review conditions pass.
+- [x] 3.4 Validate that an ordinary direct push is rejected and that a compliant pull request can merge only after all required checks and review conditions pass.
 
 ## 4. OpenSSF Best Practices Badge readiness
 
 - [x] 4.1 Create root `.bestpractices.json` with only evidence-backed answers and unknown placeholders, referencing public repository artifacts and settings where applicable.
 - [x] 4.2 Document the maintainer procedure for refreshing Best Practices automation, reviewing dashboard proposals, supplying URLs/justifications, and responding to badge loss.
-- [ ] 4.3 Refresh project 13753 in the Best Practices dashboard, review and attest all passing-level answers, and resolve any unsupported claims or missing evidence.
-- [ ] 4.4 Add the README Best Practices Badge linked to project 13753 only after the dashboard reports passing status.
+- [x] 4.3 Refresh project 13753 in the Best Practices dashboard, review and attest all passing-level answers, and resolve any unsupported claims or missing evidence.
+- [x] 4.4 Add the README Best Practices Badge linked to project 13753 only after the dashboard reports passing status.
 
 ## 5. Final verification and follow-up
 
