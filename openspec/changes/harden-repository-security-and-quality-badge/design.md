@@ -1,6 +1,6 @@
 ## Context
 
-The repository has workflow-level read-only defaults and commit-SHA-pinned Actions, but it has nine open Scorecard findings. The highest-impact gaps are operational: `main` is unprotected, and CI marks runs successful while `build` and `e2e` skip because they depend on an intentionally skipped Dependabot lockfile job. The same job checks out a Dependabot branch, installs dependencies, and pushes with `contents: write` because Dependabot does not update `bun.lock`.
+The repository has workflow-level read-only defaults and commit-SHA-pinned Actions, but it has nine open Scorecard findings. The highest-impact gaps are operational: `main` is unprotected, and CI marks runs successful while `build` and `e2e` skip because they depend on an intentionally skipped Dependabot lockfile job. The same job checks out a Dependabot branch, installs dependencies, and pushes with `contents: write`; that write-back path is unnecessary because Dependabot natively supports the text-based `bun.lock` format.
 
 GitHub private vulnerability reporting is enabled and the repository already has a security policy, but automated discovery has not linked the policy to the reporting channel. The Best Practices Badge project is registered but has not yet received evidence or dashboard attestations.
 
@@ -24,7 +24,7 @@ GitHub private vulnerability reporting is enabled and the repository already has
 ### Preserve scoped required workflow permissions; remove the unsafe CI write-back path
 The repository default remains `contents: read`. CodeQL retains only its required `security-events: write`; Pages and Release Please retain their narrowly scoped deployment/release permissions. The CI workflow SHALL not use a write-capable `GITHUB_TOKEN` while checking out and installing code from a pull request.
 
-The current Dependabot lockfile write-back job is removed or replaced by dependency-update automation that commits a matching `bun.lock` before CI executes (prefer Renovate with Bun lockfile support). `pull_request_target` is explicitly rejected because it would expose a privileged token to untrusted pull-request content. If replacement automation cannot be provisioned immediately, updates must be completed by a maintainer rather than restoring the write-back job.
+The current Dependabot lockfile write-back job is removed. Dependabot uses its native `bun` ecosystem support to commit a matching text-based `bun.lock` before CI executes. `pull_request_target` is explicitly rejected because it would expose a privileged token to untrusted pull-request content. If Dependabot is unavailable, updates must be completed by a maintainer rather than restoring the write-back job.
 
 ### Treat optional prerequisite skips as successful prerequisites for the CI graph
 The build job uses explicit `always()` and checks the result of each required validation job, treating the optional dependency-update preparation job's `skipped` result as acceptable. It runs only when all validation jobs succeeded. E2E continues to require a successful build. This makes conditional execution visible and prevents skipped work from producing a misleading success state.
@@ -59,6 +59,5 @@ Branch protection cannot be guaranteed by a committed YAML file. The implementat
 
 ## Open Questions
 
-- Is Renovate already approved/installed for the GitHub organization, or should the first implementation retain Dependabot and require a maintainer lockfile amendment?
 - Which exact review requirement is workable for a single-maintainer repository while still preventing unreviewed direct pushes?
 - Does the project intend to publish Docker images, or is `Dockerfile.dev` strictly a local-development artifact? This determines whether digest freshness needs a dedicated automation policy.
