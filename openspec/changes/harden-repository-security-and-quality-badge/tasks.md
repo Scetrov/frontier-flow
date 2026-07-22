@@ -29,6 +29,6 @@
 
 ## 5. Final verification and follow-up
 
-- [ ] 5.1 Run the repository verification suite and inspect the relevant GitHub Actions runs after workflow changes.
+- [x] 5.1 Run the repository verification suite and inspect the relevant GitHub Actions runs after workflow changes.
 - [x] 5.2 Re-run or await OpenSSF Scorecard analysis, record the disposition of all nine initial findings, and document rolling historical CI/SAST metrics that require future compliant PRs to improve.
 - [x] 5.3 Review security and contributor documentation for consistency with the implemented controls.
