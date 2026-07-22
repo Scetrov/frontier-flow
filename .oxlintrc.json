@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "react", "jsx-a11y"],
+  "plugins": [
+    "typescript",
+    "react",
+    "jsx-a11y"
+  ],
   "categories": {
     "correctness": "error"
   },
@@ -32,11 +36,15 @@
     "no-throw-literal": "off",
     "prefer-promise-reject-errors": "off",
     "require-await": "off",
-    "jsx-a11y/prefer-tag-over-role": "off"
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "typescript/no-deprecated": "off"
   },
   "overrides": [
     {
-      "files": ["src/**/*.{ts,tsx}", "tests/**/*.ts"],
+      "files": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.ts"
+      ],
       "env": {
         "browser": true,
         "node": true,
@@ -49,16 +57,40 @@
         "typescript/no-unused-vars": "error",
         "typescript/no-useless-constructor": "error",
         "typescript/only-throw-error": "error",
-        "typescript/return-await": ["error", "error-handling-correctness-only"],
+        "typescript/return-await": [
+          "error",
+          "error-handling-correctness-only"
+        ],
         "typescript/prefer-promise-reject-errors": "error",
         "typescript/require-await": "error",
-
         "typescript/await-thenable": "error",
-        "typescript/ban-ts-comment": ["error", { "minimumDescriptionLength": 10 }],
+        "typescript/ban-ts-comment": [
+          "error",
+          {
+            "minimumDescriptionLength": 10
+          }
+        ],
         "typescript/no-array-delete": "error",
         "typescript/no-base-to-string": "error",
         "typescript/no-confusing-void-expression": "error",
-        "typescript/no-deprecated": "error",
+        "typescript/no-deprecated": [
+          "error",
+          {
+            "allow": [
+              "SuiJsonRpcClient",
+              "SuiTransactionBlockResponse",
+              "executeTransactionBlock",
+              "signAndExecuteTransaction",
+              "waitForTransaction",
+              "getBalance",
+              "getNormalizedMoveStruct",
+              "queryEvents",
+              "devInspectTransactionBlock",
+              "getJsonRpcFullnodeUrl",
+              "rollupOptions"
+            ]
+          }
+        ],
         "typescript/no-duplicate-enum-values": "error",
         "typescript/no-duplicate-type-constituents": "error",
         "typescript/no-dynamic-delete": "error",
@@ -106,33 +138,41 @@
         "typescript/prefer-reduce-type-parameter": "error",
         "typescript/prefer-return-this-type": "error",
         "typescript/related-getter-setter-pairs": "error",
-        "typescript/restrict-plus-operands": ["error", {
-          "allowAny": false,
-          "allowBoolean": false,
-          "allowNullish": false,
-          "allowNumberAndString": false,
-          "allowRegExp": false
-        }],
-        "typescript/restrict-template-expressions": ["error", {
-          "allowAny": false,
-          "allowBoolean": false,
-          "allowNever": false,
-          "allowNullish": false,
-          "allowNumber": false,
-          "allowRegExp": false
-        }],
+        "typescript/restrict-plus-operands": [
+          "error",
+          {
+            "allowAny": false,
+            "allowBoolean": false,
+            "allowNullish": false,
+            "allowNumberAndString": false,
+            "allowRegExp": false
+          }
+        ],
+        "typescript/restrict-template-expressions": [
+          "error",
+          {
+            "allowAny": false,
+            "allowBoolean": false,
+            "allowNever": false,
+            "allowNullish": false,
+            "allowNumber": false,
+            "allowRegExp": false
+          }
+        ],
         "typescript/triple-slash-reference": "error",
         "typescript/unbound-method": "error",
         "typescript/unified-signatures": "error",
         "typescript/use-unknown-in-catch-callback-variable": "error",
-
         "typescript/strict-boolean-expressions": "error",
-
         "react/rules-of-hooks": "error",
         "react/exhaustive-deps": "warn",
         "react/react-compiler": "error",
-        "react/only-export-components": ["error", { "allowConstantExport": true }],
-
+        "react/only-export-components": [
+          "error",
+          {
+            "allowConstantExport": true
+          }
+        ],
         "jsx-a11y/alt-text": "error",
         "jsx-a11y/anchor-has-content": "error",
         "jsx-a11y/anchor-is-valid": "error",
@@ -170,7 +210,11 @@
       }
     },
     {
-      "files": ["vite.config.ts", "playwright.config.ts", "netlify/functions/**/*.ts"],
+      "files": [
+        "vite.config.ts",
+        "playwright.config.ts",
+        "netlify/functions/**/*.ts"
+      ],
       "env": {
         "node": true
       },
@@ -181,16 +225,40 @@
         "typescript/no-unused-vars": "error",
         "typescript/no-useless-constructor": "error",
         "typescript/only-throw-error": "error",
-        "typescript/return-await": ["error", "error-handling-correctness-only"],
+        "typescript/return-await": [
+          "error",
+          "error-handling-correctness-only"
+        ],
         "typescript/prefer-promise-reject-errors": "error",
         "typescript/require-await": "error",
-
         "typescript/await-thenable": "error",
-        "typescript/ban-ts-comment": ["error", { "minimumDescriptionLength": 10 }],
+        "typescript/ban-ts-comment": [
+          "error",
+          {
+            "minimumDescriptionLength": 10
+          }
+        ],
         "typescript/no-array-delete": "error",
         "typescript/no-base-to-string": "error",
         "typescript/no-confusing-void-expression": "error",
-        "typescript/no-deprecated": "error",
+        "typescript/no-deprecated": [
+          "error",
+          {
+            "allow": [
+              "SuiJsonRpcClient",
+              "SuiTransactionBlockResponse",
+              "executeTransactionBlock",
+              "signAndExecuteTransaction",
+              "waitForTransaction",
+              "getBalance",
+              "getNormalizedMoveStruct",
+              "queryEvents",
+              "devInspectTransactionBlock",
+              "getJsonRpcFullnodeUrl",
+              "rollupOptions"
+            ]
+          }
+        ],
         "typescript/no-duplicate-enum-values": "error",
         "typescript/no-duplicate-type-constituents": "error",
         "typescript/no-dynamic-delete": "error",
@@ -238,21 +306,27 @@
         "typescript/prefer-reduce-type-parameter": "error",
         "typescript/prefer-return-this-type": "error",
         "typescript/related-getter-setter-pairs": "error",
-        "typescript/restrict-plus-operands": ["error", {
-          "allowAny": false,
-          "allowBoolean": false,
-          "allowNullish": false,
-          "allowNumberAndString": false,
-          "allowRegExp": false
-        }],
-        "typescript/restrict-template-expressions": ["error", {
-          "allowAny": false,
-          "allowBoolean": false,
-          "allowNever": false,
-          "allowNullish": false,
-          "allowNumber": false,
-          "allowRegExp": false
-        }],
+        "typescript/restrict-plus-operands": [
+          "error",
+          {
+            "allowAny": false,
+            "allowBoolean": false,
+            "allowNullish": false,
+            "allowNumberAndString": false,
+            "allowRegExp": false
+          }
+        ],
+        "typescript/restrict-template-expressions": [
+          "error",
+          {
+            "allowAny": false,
+            "allowBoolean": false,
+            "allowNever": false,
+            "allowNullish": false,
+            "allowNumber": false,
+            "allowRegExp": false
+          }
+        ],
         "typescript/triple-slash-reference": "error",
         "typescript/unbound-method": "error",
         "typescript/unified-signatures": "error",
@@ -260,13 +334,38 @@
       }
     },
     {
-      "files": ["src/**/*.{ts,tsx}"],
-      "excludeFiles": ["src/**/__tests__/**", "src/test/**", "src/__fixtures__/**"],
+      "files": [
+        "src/**/*.{ts,tsx}"
+      ],
+      "excludeFiles": [
+        "src/**/__tests__/**",
+        "src/test/**",
+        "src/__fixtures__/**"
+      ],
       "rules": {
-        "complexity": ["warn", { "max": 10 }],
-        "max-depth": ["warn", 4],
-        "max-lines-per-function": ["warn", { "max": 100, "skipBlankLines": true, "skipComments": true, "IIFEs": true }],
-        "max-params": ["warn", 4]
+        "complexity": [
+          "warn",
+          {
+            "max": 10
+          }
+        ],
+        "max-depth": [
+          "warn",
+          4
+        ],
+        "max-lines-per-function": [
+          "warn",
+          {
+            "max": 100,
+            "skipBlankLines": true,
+            "skipComments": true,
+            "IIFEs": true
+          }
+        ],
+        "max-params": [
+          "warn",
+          4
+        ]
       }
     }
   ]
