@@ -1,0 +1,461 @@
+{
+  "schemaVersion": 1,
+  "projectUrl": "https://www.bestpractices.dev/en/projects/13753",
+  "exportRetrievedAt": "2026-07-22T21:57:09Z",
+  "inventory": "docs/best-practices/assessment-inventory.md",
+  "criteriaUrl": "https://www.bestpractices.dev/en/criteria/0",
+  "entries": [
+    {
+      "field": "build",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/package.json",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "contribution",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/CONTRIBUTING.md#4-pull-request-process",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "contribution_requirements",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/CONTRIBUTING.md#22-local-quality-checks",
+      "rationale": "This optional criterion is asserted only because a committed public artifact directly supports it.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "crypto_floss",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "crypto_keylength",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "crypto_password_storage",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "crypto_published",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "crypto_random",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "crypto_working",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "delivery_mitm",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "delivery_unsigned",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "description_good",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/README.md#frontier-flow",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "discussion",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/issues",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "documentation_basics",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/README.md",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "documentation_interface",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "dynamic_analysis_fixed",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "floss_license",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/LICENSE.md",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "floss_license_osi",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported optional criterion",
+      "evidenceUrl": "https://opensource.org/license/mit",
+      "rationale": "This optional criterion is asserted only because a committed public artifact directly supports it.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "interact",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/README.md#contributing",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "know_common_errors",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "know_secure_design",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "license_location",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/LICENSE.md",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "maintained",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "no_leaked_credentials",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "release_notes",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/CHANGELOG.md",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "release_notes_vulns",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "repo_distributed",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported optional criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/README.md#getting-started",
+      "rationale": "This optional criterion is asserted only because a committed public artifact directly supports it.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "repo_interim",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/pulls?q=is%3Apr+is%3Aclosed",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "repo_public",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "repo_track",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/commits/main/",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "report_archive",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/issues?q=is%3Aissue+is%3Aclosed",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "report_process",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/issues",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "report_responses",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "report_tracker",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/issues",
+      "rationale": "This optional criterion is asserted only because a committed public artifact directly supports it.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "sites_https",
+      "currentStatus": "Met",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "static_analysis",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "static_analysis_fixed",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "test",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/README.md#run-tests",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "test_policy",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/CONTRIBUTING.md#22-local-quality-checks",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "tests_are_added",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "version_unique",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/releases",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "vulnerabilities_fixed_60_days",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "vulnerability_report_private",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/SECURITY.md#reporting-a-vulnerability",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "vulnerability_report_process",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/SECURITY.md#reporting-a-vulnerability",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "vulnerability_report_response",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    },
+    {
+      "field": "warnings",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/ci.yml",
+      "rationale": "Committed repository documentation or workflow directly supports this criterion.",
+      "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "warnings_fixed",
+      "currentStatus": "?",
+      "proposedStatus": "?",
+      "disposition": "needs implementation or verification",
+      "evidenceUrl": null,
+      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
+      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+    }
+  ],
+  "unresolvedPassingBlockers": [
+    "documentation_interface",
+    "release_notes_vulns",
+    "report_responses",
+    "vulnerability_report_response",
+    "tests_are_added",
+    "warnings_fixed",
+    "know_secure_design",
+    "know_common_errors",
+    "crypto_published",
+    "crypto_floss",
+    "crypto_keylength",
+    "crypto_working",
+    "crypto_password_storage",
+    "crypto_random",
+    "delivery_unsigned",
+    "vulnerabilities_fixed_60_days",
+    "static_analysis_fixed",
+    "dynamic_analysis_fixed",
+    "no_leaked_credentials",
+    "maintained"
+  ],
+  "dashboardReview": {
+    "status": "pending maintainer attestation",
+    "refreshDate": null,
+    "score": 19,
+    "result": "in_progress",
+    "notes": "A maintainer must refresh the default branch, review every proposal, and record the dashboard result."
+  }
+}
