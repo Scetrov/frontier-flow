@@ -22,7 +22,7 @@ Frontier Flow is a visual low-code programming interface for EVE Frontier game a
 - Code generation must be deterministic and readable
 - Minimum 70 % test coverage; critical paths ≥ 90 %
 - Feature branches only, min 1 PR approval, all CI green before merge
-- Dependabot enabled; lock files committed (`bun.lockb`, frozen installs)
+- Renovate configured; `bun.lock` committed and all CI installs use `--frozen-lockfile`
 
 ## Agent Hygiene
 
