@@ -110,6 +110,28 @@ If project 13753 stops reporting passing:
 4. rerun **Save (and continue) 🤖** and review all affected proposals; and
 5. restore the README badge only after the dashboard again reports passing.
 
+## Best Practices assessment inventory and recovery
+
+The committed [assessment inventory](./best-practices/assessment-inventory.md) is the export-derived baseline for project 13753. The companion [evidence matrix](./best-practices/evidence-matrix.json) maps every current Passing-required field to its current status, proposed disposition, public evidence, and unresolved control. These files are review artifacts, not dashboard attestations.
+
+### Export and triage procedure
+
+1. Fetch `https://www.bestpractices.dev/projects/13753.json` from the default branch review session and replace `docs/best-practices/project-13753-export.json`.
+2. Record the UTC retrieval time, status counts, dashboard percentage, and every `*_status` field in the inventory. Compare its field set with the previous snapshot.
+3. Classify the current classic Passing criteria from <https://www.bestpractices.dev/en/criteria/0>: `MUST` criteria are Passing-required; `SHOULD` and higher-tier criteria are optional. Mark legacy or OSPS fields that the public criteria do not resolve as requiring dashboard clarification.
+4. Update the evidence matrix before editing `.bestpractices.json`. Each candidate `Met` must have an exact reachable public URL, rationale, and an inventory record. Each unsupported Passing-required field must retain `?` or `Unmet` and name the missing control or verification.
+5. After merging, refresh project 13753 with **Save (and continue) 🤖**, review every proposal against the matrix, correct unsupported proposals, and manually save only supported answers.
+6. Record the dashboard URL, refresh date, score/status, and unresolved Passing blockers in `dashboardReview`. A dashboard maintainer must perform this step; a repository commit cannot attest answers.
+
+### Regression recovery
+
+If a public link breaks, a control regresses, the export changes, or the dashboard loses Passing:
+
+1. change the affected `.bestpractices.json` claim to `?` or `Unmet` (or remove it) before making another claim;
+2. update the inventory and evidence matrix with the changed status, cause, and remediation;
+3. rerun the local Best Practices validation, repair or replace the evidence, merge it, then refresh and review the dashboard; and
+4. remove the README badge unless the dashboard result recorded in `dashboardReview` is `Passing`; restore it only after a later attestation confirms Passing.
+
 ## OpenSSF Scorecard follow-up
 
 Branch-protection changes triggered successful Scorecard run [29954210123](https://github.com/Scetrov/frontier-flow/actions/runs/29954210123). The 2026-07-22 analysis scored 6.4/10. The nine initial code-scanning alerts have these dispositions:

@@ -33,6 +33,7 @@
     "typecheck": "tsc -b",
     "audit": "bunx npm-audit --audit-level=high",
     "verify": "bun run lint && bun run typecheck && bun run test:run",
+    "validate:best-practices": "node scripts/validate-best-practices.mjs",
     "verify:full": "bun run verify && bun run build"
   },
   "engines": {
