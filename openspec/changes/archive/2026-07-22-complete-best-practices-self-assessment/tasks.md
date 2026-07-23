@@ -13,9 +13,9 @@
 
 ## 3. Dashboard review and attestation
 
-- [ ] 3.1 Refresh project 13753 from the default branch, review every dashboard proposal against the assessment inventory, and correct any unsupported proposal.
-- [ ] 3.2 Attest supported answers in the Best Practices dashboard and record the project URL, refresh date, score/status, and unresolved Passing blockers.
-- [ ] 3.3 Repeat evidence updates and dashboard refreshes until the dashboard reports Passing, or document the specific external or implementation blockers that prevent it.
+- [x] 3.1 Refresh project 13753 from the default branch, review every dashboard proposal against the assessment inventory, and correct any unsupported proposal.
+- [x] 3.2 Attest supported answers in the Best Practices dashboard and record the project URL, refresh date, score/status, and unresolved Passing blockers.
+- [x] 3.3 Repeat evidence updates and dashboard refreshes until the dashboard reports Passing, or document the specific external or implementation blockers that prevent it.
 
 ## 4. Maintainer procedure and verification
 
