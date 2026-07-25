@@ -451,6 +451,33 @@
     "no_leaked_credentials",
     "maintained"
   ],
+  "assessmentFindings": {
+    "retrievedAt": "2026-07-25T20:23:30Z",
+    "badge": {
+      "projectId": 13753,
+      "result": "in_progress",
+      "passingPercentage": 40,
+      "silverPercentage": 4,
+      "goldPercentage": 4
+    },
+    "vulnerabilityTriage": {
+      "dependabotOpenAlerts": 0,
+      "codeScanningOpenAlerts": [
+        "CIIBestPracticesID (low): dashboard badge remains in progress",
+        "SASTID (medium): Scorecard reported static analysis absent from some recent commits",
+        "CITestsID (low): Scorecard reported CI testing absent from some recent merged pull requests"
+      ],
+      "note": "Scorecard's 19 advisories were reconciled against the remote Bun lockfile: patched overrides now pin esbuild 0.28.1, fast-uri 3.1.4, js-yaml 4.3.0, picomatch 4.0.4, and vite 8.0.16. Dependabot still reports zero alerts; lodash remains unresolved because the advisory names an unreleased 4.18.0 fix."
+    },
+    "ruleset": {
+      "name": "mainline",
+      "evidence": "GitHub Rulesets API read-only response",
+      "missingControls": [
+        "test-pull-request evidence that the configured controls operate as intended",
+        "maintainer review of the pull-request bypass actor"
+      ]
+    }
+  },
   "dashboardReview": {
     "status": "attested supported proposals; Passing remains blocked",
     "refreshDate": "2026-07-22T22:09:07Z",

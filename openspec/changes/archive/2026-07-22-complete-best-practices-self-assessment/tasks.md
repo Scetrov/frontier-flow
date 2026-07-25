@@ -21,4 +21,3 @@
 
 - [x] 4.1 Update repository governance documentation with the export-fetch, field-triage, evidence-matrix, dashboard-review, and regression-recovery procedure.
 - [x] 4.2 Add validation that `.bestpractices.json` entries used for `Met` claims have matching, reachable evidence URLs and inventory records.
-- [ ] 4.3 Verify the committed inventory, evidence file, public links, and dashboard result are mutually consistent; remove the README badge if the dashboard does not report Passing.

@@ -65,6 +65,12 @@ Dependabot is configured in [`.github/dependabot.yml`](../.github/dependabot.yml
 
 ---
 
+### 2.4 Verified repository settings and vulnerability triage
+
+As of 2026-07-25, a repository maintainer attests that GitHub secret scanning and push protection are enabled. These settings reduce accidental credential exposure but do not prove that no credential has ever been committed; the `no_leaked_credentials` Best Practices criterion remains unasserted without independently verifiable scan evidence.
+
+The dependency audit command is `bun run audit`. GitHub Dependabot currently reports no open alerts, but OpenSSF Scorecard identified advisories in the resolved Bun dependency graph. The lockfile therefore pins patched transitive versions of `esbuild`, `fast-uri`, `js-yaml`, `picomatch`, and `vite`. The unresolved `lodash` advisories name a future `4.18.0` fix; monitor upstream rather than claiming remediation before a released fix exists.
+
 ## 3. CI/CD Pipeline Security
 
 ### 3.1 GitHub Actions Workflow

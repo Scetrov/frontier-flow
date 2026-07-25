@@ -54,37 +54,35 @@ The required-check contexts were captured from successful pull request [#50](htt
 
 Before changing branch protection, confirm these exact contexts on a successful pull request using `gh pr checks <number>`. If a job is renamed, first land and observe the renamed check, then update protection so the branch is never left requiring a context that no workflow emits.
 
-## `main` branch protection
+## `main` branch ruleset
 
-The `main` branch protection rule is configured with:
+The authoritative control is the active repository ruleset **`mainline`**, which targets the default branch. A read-only API inspection on 2026-07-25 found the following enforced controls:
 
-- pull requests required, with one approval from someone other than the last pusher;
+- pull requests required, with one approval;
 - stale approvals dismissed when new commits arrive;
-- Code Owner review not required because the sole Code Owner cannot approve their own pull request;
-- strict required checks from the list above, requiring the branch to be current before merge;
-- all review conversations resolved;
-- administrator enforcement and linear history enabled; and
-- force pushes and branch deletion disabled.
+- review threads resolved;
+- signed commits, linear history, non-fast-forward updates, branch deletion, and branch creation restricted; and
+- CodeQL code scanning configured to block `high_or_higher` security alerts and code-quality `errors`.
 
-Release Please receives no bypass. Its release pull requests must run the same checks, receive an independent approval, and merge normally. Release pull request [#54](https://github.com/Scetrov/frontier-flow/pull/54) confirms that the GitHub App's pull requests can trigger CI, CodeQL, and Dependency Review; recheck this behavior after changing the release token or action.
+The legacy `branches/main/protection` endpoint returned HTTP 404. This is unavailable compatibility evidence, not proof that the branch is unprotected; use the Rulesets API as the source of truth.
+
+### Current enforcement and remaining verification
+
+A fresh Rulesets API response on 2026-07-25 verifies strict required checks, last-push approval, and these required contexts: `commit-messages`, `lint`, `typecheck`, `unit-tests`, `audit`, `build`, `e2e`, `Analyze (actions)`, `Analyze (javascript-typescript)`, and `dependency-review`.
+
+The configured user bypass mode is `pull_request`; its authority and use require maintainer review. A disposable test pull request must still demonstrate the settings before they are treated as operational-history evidence.
 
 ### Verification
 
-1. Run `gh api repos/Scetrov/frontier-flow/branches/main/protection` and compare the response with this section.
-2. Open a test pull request, wait for every required context, request one approval, and resolve all conversations.
-3. Push another commit and confirm the stale approval is dismissed and the branch must be brought up to date.
-4. From a disposable local branch, attempt `git push origin HEAD:main` and confirm GitHub rejects it.
-5. Merge only after the required checks and approval are satisfied.
+1. Run `gh api repos/Scetrov/frontier-flow/rulesets` and then fetch the returned `mainline` ruleset ID.
+2. Confirm the required contexts, strict-check policy, last-push approval, review count, bypass actors, and enforcement state match the approved configuration.
+3. Open a disposable test pull request, verify every required context, request independent approval, resolve all conversations, and push a follow-up commit to prove stale approval and last-push handling.
+4. Confirm direct and force pushes to `main` are rejected.
+5. Record the tested ruleset response and test-PR URL in the implementing pull request.
 
 ### Administrator recovery
 
-Protection changes are exceptional and must be restored immediately:
-
-1. Record the failing or stale context and save the current protection response: `gh api repos/Scetrov/frontier-flow/branches/main/protection > /tmp/frontier-flow-main-protection.json`.
-2. Prefer fixing or rerunning the workflow. If a required context no longer exists, use **Settings → Branches → main → Edit** to remove only that stale context; do not disable pull requests, administrator enforcement, or unrelated checks.
-3. Merge the corrective pull request after all remaining controls pass.
-4. Add the corrected context back, then rerun the verification steps above.
-5. Record the incident and temporary exception in the corrective pull request. Never leave protection relaxed between maintenance sessions.
+Ruleset changes are exceptional and must be restored immediately. Record the current Rulesets API response before a change, remove only a stale or failing required context when necessary, merge the corrective pull request under the remaining safeguards, restore the intended context, and document the temporary exception in that pull request.
 
 ## OpenSSF Best Practices Badge
 

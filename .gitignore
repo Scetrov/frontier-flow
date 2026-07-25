@@ -26,3 +26,6 @@ tmp.*
 
 # Local Netlify folder
 .netlify
+
+# agents
+.pi-subagents
