@@ -6,8 +6,8 @@
 - **Export:** [`project-13753-export.json`](./project-13753-export.json)
 - **Retrieved:** 2026-07-22T21:57:09Z
 - **Source:** <https://www.bestpractices.dev/projects/13753.json>
-- **Dashboard state at retrieval:** `badge_level: in_progress`, `tiered_percentage: 19`, `achieved_passing_at: null`.
-- **Status counts:** 13 `Met`, 2 `Unmet`, 180 `?`, and 1 `0` (`maintained_status`).
+- **Dashboard state at retrieval:** `badge_level: in_progress`, `tiered_percentage: 76`, `achieved_passing_at: null`.
+- **Status counts:** 1 `0`, 142 `?`, 42 `Met`, 9 `N/A`, 2 `Unmet`.
 
 ## Passing threshold and classification
 
@@ -21,72 +21,72 @@ Classification totals: 2 obsolete, 24 optional, 43 required for Passing, 127 req
 | --- | --- | --- | --- |
 | `homepage_url` | `?` | obsolete | Legacy URL field; no matching current criterion ID. |
 | `sites_https` | `Met` | required for Passing | Current classic criteria page. |
-| `description_good` | `?` | required for Passing | Current classic criteria page. |
-| `interact` | `?` | required for Passing | Current classic criteria page. |
+| `description_good` | `Met` | required for Passing | Current classic criteria page. |
+| `interact` | `Met` | required for Passing | Current classic criteria page. |
 | `contribution` | `Met` | required for Passing | Current classic criteria page. |
-| `contribution_requirements` | `?` | optional | Current classic criteria page. |
+| `contribution_requirements` | `Met` | optional | Current classic criteria page. |
 | `license_location` | `Met` | required for Passing | Current classic criteria page. |
 | `floss_license` | `Met` | required for Passing | Current classic criteria page. |
 | `floss_license_osi` | `Met` | optional | Current classic criteria page. |
 | `documentation_basics` | `Met` | required for Passing | Current classic criteria page. |
-| `documentation_interface` | `?` | required for Passing | Current classic criteria page. |
+| `documentation_interface` | `Met` | required for Passing | Current classic criteria page. |
 | `repo_public` | `Met` | required for Passing | Current classic criteria page. |
 | `repo_track` | `Met` | required for Passing | Current classic criteria page. |
-| `repo_interim` | `?` | required for Passing | Current classic criteria page. |
+| `repo_interim` | `Met` | required for Passing | Current classic criteria page. |
 | `repo_distributed` | `Met` | optional | Current classic criteria page. |
-| `version_unique` | `?` | required for Passing | Current classic criteria page. |
-| `version_semver` | `?` | optional | Current classic criteria page. |
-| `version_tags` | `?` | optional | Current classic criteria page. |
+| `version_unique` | `Met` | required for Passing | Current classic criteria page. |
+| `version_semver` | `Met` | optional | Current classic criteria page. |
+| `version_tags` | `Met` | optional | Current classic criteria page. |
 | `release_notes` | `Met` | required for Passing | Current classic criteria page. |
-| `release_notes_vulns` | `?` | required for Passing | Current classic criteria page. |
+| `release_notes_vulns` | `N/A` | required for Passing | Current classic criteria page. |
 | `report_url` | `?` | obsolete | Legacy URL field; no matching current criterion ID. |
-| `report_tracker` | `?` | optional | Current classic criteria page. |
+| `report_tracker` | `Met` | optional | Current classic criteria page. |
 | `report_process` | `Met` | required for Passing | Current classic criteria page. |
-| `report_responses` | `?` | required for Passing | Current classic criteria page. |
+| `report_responses` | `Met` | required for Passing | Current classic criteria page. |
 | `enhancement_responses` | `?` | optional | Current classic criteria page. |
-| `report_archive` | `?` | required for Passing | Current classic criteria page. |
-| `vulnerability_report_process` | `?` | required for Passing | Current classic criteria page. |
-| `vulnerability_report_private` | `?` | required for Passing | Current classic criteria page. |
-| `vulnerability_report_response` | `?` | required for Passing | Current classic criteria page. |
-| `build` | `?` | required for Passing | Current classic criteria page. |
+| `report_archive` | `Met` | required for Passing | Current classic criteria page. |
+| `vulnerability_report_process` | `Met` | required for Passing | Current classic criteria page. |
+| `vulnerability_report_private` | `Met` | required for Passing | Current classic criteria page. |
+| `vulnerability_report_response` | `N/A` | required for Passing | Current classic criteria page. |
+| `build` | `Met` | required for Passing | Current classic criteria page. |
 | `build_common_tools` | `?` | optional | Current classic criteria page. |
 | `build_floss_tools` | `?` | optional | Current classic criteria page. |
-| `test` | `?` | required for Passing | Current classic criteria page. |
+| `test` | `Met` | required for Passing | Current classic criteria page. |
 | `test_invocation` | `?` | optional | Current classic criteria page. |
 | `test_most` | `?` | optional | Current classic criteria page. |
-| `test_policy` | `?` | required for Passing | Current classic criteria page. |
-| `tests_are_added` | `?` | required for Passing | Current classic criteria page. |
+| `test_policy` | `Met` | required for Passing | Current classic criteria page. |
+| `tests_are_added` | `Met` | required for Passing | Current classic criteria page. |
 | `tests_documented_added` | `?` | optional | Current classic criteria page. |
-| `warnings` | `?` | required for Passing | Current classic criteria page. |
-| `warnings_fixed` | `?` | required for Passing | Current classic criteria page. |
+| `warnings` | `Met` | required for Passing | Current classic criteria page. |
+| `warnings_fixed` | `Met` | required for Passing | Current classic criteria page. |
 | `warnings_strict` | `?` | optional | Current classic criteria page. |
-| `know_secure_design` | `?` | required for Passing | Current classic criteria page. |
-| `know_common_errors` | `?` | required for Passing | Current classic criteria page. |
-| `crypto_published` | `?` | required for Passing | Current classic criteria page. |
+| `know_secure_design` | `Met` | required for Passing | Current classic criteria page. |
+| `know_common_errors` | `Met` | required for Passing | Current classic criteria page. |
+| `crypto_published` | `N/A` | required for Passing | Current classic criteria page. |
 | `crypto_call` | `?` | optional | Current classic criteria page. |
-| `crypto_floss` | `?` | required for Passing | Current classic criteria page. |
-| `crypto_keylength` | `?` | required for Passing | Current classic criteria page. |
-| `crypto_working` | `?` | required for Passing | Current classic criteria page. |
+| `crypto_floss` | `N/A` | required for Passing | Current classic criteria page. |
+| `crypto_keylength` | `N/A` | required for Passing | Current classic criteria page. |
+| `crypto_working` | `N/A` | required for Passing | Current classic criteria page. |
 | `crypto_pfs` | `?` | optional | Current classic criteria page. |
-| `crypto_password_storage` | `?` | required for Passing | Current classic criteria page. |
-| `crypto_random` | `?` | required for Passing | Current classic criteria page. |
+| `crypto_password_storage` | `N/A` | required for Passing | Current classic criteria page. |
+| `crypto_random` | `N/A` | required for Passing | Current classic criteria page. |
 | `delivery_mitm` | `Met` | required for Passing | Current classic criteria page. |
-| `delivery_unsigned` | `?` | required for Passing | Current classic criteria page. |
-| `vulnerabilities_fixed_60_days` | `?` | required for Passing | Current classic criteria page. |
+| `delivery_unsigned` | `Met` | required for Passing | Current classic criteria page. |
+| `vulnerabilities_fixed_60_days` | `Met` | required for Passing | Current classic criteria page. |
 | `vulnerabilities_critical_fixed` | `?` | optional | Current classic criteria page. |
-| `static_analysis` | `?` | required for Passing | Current classic criteria page. |
+| `static_analysis` | `Met` | required for Passing | Current classic criteria page. |
 | `static_analysis_common_vulnerabilities` | `?` | optional | Current classic criteria page. |
-| `static_analysis_fixed` | `?` | required for Passing | Current classic criteria page. |
-| `static_analysis_often` | `?` | optional | Current classic criteria page. |
+| `static_analysis_fixed` | `Met` | required for Passing | Current classic criteria page. |
+| `static_analysis_often` | `Met` | optional | Current classic criteria page. |
 | `dynamic_analysis` | `?` | optional | Current classic criteria page. |
 | `dynamic_analysis_unsafe` | `?` | optional | Current classic criteria page. |
 | `dynamic_analysis_enable_assertions` | `?` | optional | Current classic criteria page. |
-| `dynamic_analysis_fixed` | `?` | required for Passing | Current classic criteria page. |
+| `dynamic_analysis_fixed` | `N/A` | required for Passing | Current classic criteria page. |
 | `crypto_weaknesses` | `?` | optional | Current classic criteria page. |
 | `test_continuous_integration` | `?` | optional | Current classic criteria page. |
 | `discussion` | `Met` | required for Passing | Current classic criteria page. |
-| `no_leaked_credentials` | `?` | required for Passing | Current classic criteria page. |
-| `english` | `?` | optional | Current classic criteria page. |
+| `no_leaked_credentials` | `Met` | required for Passing | Current classic criteria page. |
+| `english` | `Met` | optional | Current classic criteria page. |
 | `hardening` | `?` | requires dashboard clarification | Legacy export field without a matching current criteria-page ID. |
 | `crypto_used_network` | `?` | requires dashboard clarification | Legacy export field without a matching current criteria-page ID. |
 | `crypto_tls12` | `?` | requires dashboard clarification | Legacy export field without a matching current criteria-page ID. |
@@ -149,7 +149,7 @@ Classification totals: 2 obsolete, 24 optional, 43 required for Passing, 127 req
 | `assurance_case` | `?` | requires dashboard clarification | Legacy export field without a matching current criteria-page ID. |
 | `achieve_passing` | `Unmet` | requires dashboard clarification | Legacy export field without a matching current criteria-page ID. |
 | `achieve_silver` | `Unmet` | requires dashboard clarification | Legacy export field without a matching current criteria-page ID. |
-| `maintained` | `?` | required for Passing | Current classic criteria page. |
+| `maintained` | `Met` | required for Passing | Current classic criteria page. |
 | `OSPS-AC-01.01` | `?` | requires dashboard clarification | OSPS fields are present in the project export but not in the current classic Passing criteria page. |
 | `OSPS-AC-02.01` | `?` | requires dashboard clarification | OSPS fields are present in the project export but not in the current classic Passing criteria page. |
 | `OSPS-AC-03.01` | `?` | requires dashboard clarification | OSPS fields are present in the project export but not in the current classic Passing criteria page. |
