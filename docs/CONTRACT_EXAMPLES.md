@@ -271,56 +271,27 @@ Kill-secure strategy that converts low combined HP, shield, and armor ratios int
 
 Selection behavior:
 
-- same hostile eligibility rules as the baseline seeds
-- damage bonus is `max(0, 300 - (hp + shield + armor)) * 100`
+- includes every candidate supplied to the extension because the example has no predicate connected to **Add To Queue**
+- does not exclude the owner, same-tribe characters, or stopped attackers
+- cannot make the game supply a candidate that the runtime filtered out before invoking the extension
+- adds `max(0, 300 - (hp + shield + armor)) * 100` to the candidate's existing priority weight
 
-Current hard-coded values:
+Current hard-coded value:
 
-- `STARTED_ATTACK_BONUS = 8_000`
-- `AGGRESSOR_BONUS = 4_000`
-- `ENTERED_BONUS = 1_500`
-- `EHP_DAMAGE_MULTIPLIER = 100`
+- damage multiplier: `100`
 
 Annotated Move excerpt:
 
 ```move
-const STARTED_ATTACK_BONUS: u64 = 8_000;
-const AGGRESSOR_BONUS: u64 = 4_000;
-const ENTERED_BONUS: u64 = 1_500;
-const EHP_DAMAGE_MULTIPLIER: u64 = 100;
+let remaining_total = candidate.hp_ratio + candidate.shield_ratio + candidate.armor_ratio;
+// Lower combined ratios mean the target is closer to dying.
+let damage_total = if (remaining_total <= 300) { 300 - remaining_total } else { 0 };
+let weight = candidate.priority_weight + (damage_total * 100);
 
-fun score_candidate(
-  owner_character_id: u32,
-  owner_tribe: u32,
-  candidate: &TargetCandidateArg,
-): (u64, bool) {
-  // Same base exclusions as the hostile-only seeds.
-  if (candidate.character_id == owner_character_id
-    || candidate.behaviour_change == BEHAVIOUR_STOPPED_ATTACK) {
-    return (0, false)
-  };
-  if (candidate.character_tribe == owner_tribe && !candidate.is_aggressor) {
-    return (0, false)
-  };
-
-  let mut weight = candidate.priority_weight;
-  let remaining_total = candidate.hp_ratio + candidate.shield_ratio + candidate.armor_ratio;
-  // Lower combined ratios mean the target is closer to dying.
-  let damage_total = if (remaining_total <= 300) { 300 - remaining_total } else { 0 };
-
-  if (candidate.behaviour_change == BEHAVIOUR_STARTED_ATTACK) {
-    weight = weight + STARTED_ATTACK_BONUS;
-  } else if (candidate.behaviour_change == BEHAVIOUR_ENTERED) {
-    weight = weight + ENTERED_BONUS;
-  };
-  if (candidate.is_aggressor) {
-    weight = weight + AGGRESSOR_BONUS;
-  };
-
-  // This is the finisher bias: damage converts directly into more weight.
-  weight = weight + (damage_total * EHP_DAMAGE_MULTIPLIER);
-  (weight, true)
-}
+// Add To Queue has no predicate input, so generated graph logic includes
+// every candidate that the game supplied to the extension.
+let include = true;
+(weight, include)
 ```
 
 Best FrontierFlow customizations:

@@ -42,6 +42,9 @@ export function expectSupportedReferenceArtifact(
       expect(resolvedArtifact.moveSource).toContain("let damagebonus_low_hp_damage_bonus_weight_out_remaining_total: u64 = hpratio_low_hp_hp_ratio_hp_ratio + shieldratio_low_hp_shield_ratio_shield_ratio + armorratio_low_hp_armor_ratio_armor_ratio;");
       expect(resolvedArtifact.moveSource).toContain("let damagebonus_low_hp_damage_bonus_weight_out_damage_total: u64 = if (damagebonus_low_hp_damage_bonus_weight_out_remaining_total <= 300) { 300 - damagebonus_low_hp_damage_bonus_weight_out_remaining_total } else { 0 };");
       expect(resolvedArtifact.moveSource).toContain("let damagebonus_low_hp_damage_bonus_weight_out: u64 = getpriorityweight_low_hp_get_priority_weight_weight + (damagebonus_low_hp_damage_bonus_weight_out_damage_total * 100);");
+      expect(resolvedArtifact.moveSource).toContain("let addtoqueue_low_hp_add_to_queue_include_result: bool = true;");
+      expect(resolvedArtifact.moveSource).not.toContain(".character_id == owner_character_id");
+      expect(resolvedArtifact.moveSource).not.toContain(".character_id != owner_character_id");
       break;
     case "turret_player_screen":
       expect(resolvedArtifact.moveSource).toContain("PLAYER_TARGET_BONUS");
