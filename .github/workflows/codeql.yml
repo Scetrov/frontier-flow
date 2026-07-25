@@ -4,14 +4,6 @@ name: CodeQL
   push:
     branches:
       - main
-      - "feat/**"
-      - "fix/**"
-      - "docs/**"
-      - "refactor/**"
-      - "test/**"
-      - "chore/**"
-      - "ci/**"
-      - "perf/**"
   pull_request:
     branches:
       - main

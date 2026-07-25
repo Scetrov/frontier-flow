@@ -7,14 +7,6 @@ on:
   push:
     branches:
       - main
-      - "feat/**"
-      - "fix/**"
-      - "docs/**"
-      - "refactor/**"
-      - "test/**"
-      - "chore/**"
-      - "ci/**"
-      - "perf/**"
 
 permissions:
   contents: read
