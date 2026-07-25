@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.6](https://github.com/Scetrov/frontier-flow/compare/v0.11.5...v0.11.6) (2026-07-25)
+
+
+### Bug Fixes
+
+* **security:** harden dependency controls ([#64](https://github.com/Scetrov/frontier-flow/issues/64)) ([105b7d5](https://github.com/Scetrov/frontier-flow/commit/105b7d5313f6abbae4f5e20d5da3bb3e6bf7fcb4))
+
 ## [0.11.5](https://github.com/Scetrov/frontier-flow/compare/v0.11.4...v0.11.5) (2026-07-22)
 
 
