@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.7](https://github.com/Scetrov/frontier-flow/compare/v0.11.6...v0.11.7) (2026-07-25)
+
+
+### Bug Fixes
+
+* **openssf:** complete Passing badge proposal ([#67](https://github.com/Scetrov/frontier-flow/issues/67)) ([154b8b9](https://github.com/Scetrov/frontier-flow/commit/154b8b9bc5daaf4bd8042c0334ff39dfc4f8bf93))
+
 ## [0.11.6](https://github.com/Scetrov/frontier-flow/compare/v0.11.5...v0.11.6) (2026-07-25)
 
 
