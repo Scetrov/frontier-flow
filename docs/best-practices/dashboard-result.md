@@ -8,9 +8,9 @@
 
 ## Automation result
 
-The live export matches every proposed status in `.bestpractices.json` except the computed `achieve_passing` and `achieve_silver` indicators, which remain `Unmet`. All 43 fields classified as required for Passing in the assessment inventory are now `Met` or `N/A` in the live export.
+The live export confirms that the proposals merged in PR #66 were ingested. It also reveals that 16 Passing-level SHOULD or SUGGESTED criteria were still `?`; those unanswered criteria prevent Passing even though every MUST criterion is `Met` or `N/A`.
 
-The project nevertheless remains `in_progress`; this document does not claim that it has achieved Passing. That remaining discrepancy is a dashboard criteria/classification issue, not a failure to ingest the committed automation file.
+PR #67 adds evidence-backed answers for all 16 remaining Passing-level criteria to `.bestpractices.json`. After merge, use **Save (and continue) 🤖** on the Passing section to rerun repository automation. The project remains `in_progress` until that refresh succeeds.
 
 ## Live status counts
 

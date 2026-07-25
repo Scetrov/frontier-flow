@@ -15,6 +15,24 @@
       "missingControl": "None; revalidate the URL and dashboard proposal after merge."
     },
     {
+      "field": "build_common_tools",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/package.json",
+      "rationale": "The project builds with widely used Bun, TypeScript, and Vite tooling declared in https://github.com/Scetrov/frontier-flow/blob/main/package.json.",
+      "missingControl": null
+    },
+    {
+      "field": "build_floss_tools",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/package.json",
+      "rationale": "The build scripts and build-time dependencies use FLOSS Bun, TypeScript, and Vite tooling declared in https://github.com/Scetrov/frontier-flow/blob/main/package.json.",
+      "missingControl": null
+    },
+    {
       "field": "contribution",
       "currentStatus": "Met",
       "proposedStatus": "Met",
@@ -31,6 +49,15 @@
       "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/CONTRIBUTING.md#22-local-quality-checks",
       "rationale": "This optional criterion is asserted only because a committed public artifact directly supports it.",
       "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "crypto_call",
+      "currentStatus": "?",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed N/A proposal",
+      "evidenceUrl": null,
+      "rationale": "The project does not implement cryptography; wallet cryptographic operations are provided by external wallet and Sui libraries.",
+      "missingControl": null
     },
     {
       "field": "crypto_floss",
@@ -60,6 +87,15 @@
       "missingControl": null
     },
     {
+      "field": "crypto_pfs",
+      "currentStatus": "?",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed N/A proposal",
+      "evidenceUrl": null,
+      "rationale": "The project does not implement key-agreement protocols; transport security and wallet cryptography are external to the application.",
+      "missingControl": null
+    },
+    {
       "field": "crypto_published",
       "currentStatus": "?",
       "proposedStatus": "N/A",
@@ -75,6 +111,15 @@
       "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
       "rationale": "The project does not implement cryptography, store passwords, or generate security-sensitive randomness; wallet cryptography is external to the application.",
+      "missingControl": null
+    },
+    {
+      "field": "crypto_weaknesses",
+      "currentStatus": "?",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed N/A proposal",
+      "evidenceUrl": null,
+      "rationale": "The project does not implement or select cryptographic algorithms or modes; wallet cryptography is external to the application.",
       "missingControl": null
     },
     {
@@ -141,12 +186,57 @@
       "missingControl": null
     },
     {
+      "field": "dynamic_analysis",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/ci.yml",
+      "rationale": "CI applies Vitest component/integration tests and Playwright browser tests before changes merge: https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/ci.yml.",
+      "missingControl": null
+    },
+    {
+      "field": "dynamic_analysis_enable_assertions",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/ci.yml",
+      "rationale": "The CI dynamic-analysis suites use Vitest and Playwright assertion-based tests: https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/ci.yml.",
+      "missingControl": null
+    },
+    {
       "field": "dynamic_analysis_fixed",
       "currentStatus": "?",
       "proposedStatus": "N/A",
       "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
       "rationale": "Dynamic analysis is not applicable to this browser SPA.",
+      "missingControl": null
+    },
+    {
+      "field": "dynamic_analysis_unsafe",
+      "currentStatus": "?",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed N/A proposal",
+      "evidenceUrl": null,
+      "rationale": "The project is implemented in TypeScript and does not produce software in a memory-unsafe language.",
+      "missingControl": null
+    },
+    {
+      "field": "english",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/README.md",
+      "rationale": "User and contributor documentation, issue templates, and the public issue tracker are in English: https://github.com/Scetrov/frontier-flow/blob/main/README.md and https://github.com/Scetrov/frontier-flow/issues.",
+      "missingControl": null
+    },
+    {
+      "field": "enhancement_responses",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/issues?q=is%3Aissue%20created%3A%3E%3D2025-07-25%20-label%3Abug",
+      "rationale": "No enhancement requests were submitted in the last 12 months; the public issue search shows the complete period: https://github.com/Scetrov/frontier-flow/issues?q=is%3Aissue%20created%3A%3E%3D2025-07-25%20-label%3Abug.",
       "missingControl": null
     },
     {
@@ -330,12 +420,30 @@
       "missingControl": "None; revalidate the URL and dashboard proposal after merge."
     },
     {
+      "field": "static_analysis_common_vulnerabilities",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml",
+      "rationale": "CodeQL analyzes the TypeScript/JavaScript codebase for common vulnerability patterns: https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml.",
+      "missingControl": null
+    },
+    {
       "field": "static_analysis_fixed",
       "currentStatus": "?",
       "proposedStatus": "Met",
       "disposition": "evidence-backed proposal",
       "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml",
       "rationale": "Maintainer attestation: confirmed medium-or-higher exploitable static-analysis findings are fixed promptly; CodeQL is configured in https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml.",
+      "missingControl": null
+    },
+    {
+      "field": "static_analysis_often",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml",
+      "rationale": "CodeQL runs on pushes, pull requests, and a schedule: https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml.",
       "missingControl": null
     },
     {
@@ -346,6 +454,33 @@
       "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/README.md#run-tests",
       "rationale": "Committed repository documentation or workflow directly supports this criterion.",
       "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "test_continuous_integration",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/ci.yml",
+      "rationale": "CI runs unit tests with coverage and Playwright end-to-end tests on pushes and pull requests: https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/ci.yml.",
+      "missingControl": null
+    },
+    {
+      "field": "test_invocation",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/package.json",
+      "rationale": "The standard package scripts expose Vitest through `bun run test` and `bun run test:run`: https://github.com/Scetrov/frontier-flow/blob/main/package.json.",
+      "missingControl": null
+    },
+    {
+      "field": "test_most",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/vite.config.ts",
+      "rationale": "The unit suite enforces 70% line, branch, function, and statement coverage and CI also runs end-to-end tests: https://github.com/Scetrov/frontier-flow/blob/main/vite.config.ts.",
+      "missingControl": null
     },
     {
       "field": "test_policy",
@@ -366,6 +501,33 @@
       "missingControl": null
     },
     {
+      "field": "tests_documented_added",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/CONTRIBUTING.md#6-adding-a-new-node-type",
+      "rationale": "The contribution guide requires tests for new functionality and documents the expected test types: https://github.com/Scetrov/frontier-flow/blob/main/CONTRIBUTING.md#6-adding-a-new-node-type.",
+      "missingControl": null
+    },
+    {
+      "field": "version_semver",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md",
+      "rationale": "The release runbook defines Semantic Versioning major, minor, and patch rules: https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md#11-release-model.",
+      "missingControl": null
+    },
+    {
+      "field": "version_tags",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md",
+      "rationale": "Each release creates a v* Git tag and GitHub Release: https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md#11-release-model.",
+      "missingControl": null
+    },
+    {
       "field": "version_unique",
       "currentStatus": "?",
       "proposedStatus": "Met",
@@ -373,6 +535,15 @@
       "evidenceUrl": "https://github.com/Scetrov/frontier-flow/releases",
       "rationale": "Committed repository documentation or workflow directly supports this criterion.",
       "missingControl": "None; revalidate the URL and dashboard proposal after merge."
+    },
+    {
+      "field": "vulnerabilities_critical_fixed",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/SECURITY.md",
+      "rationale": "Maintainer attestation: there are no known critical vulnerabilities in project code, and CI audits dependencies at high severity: https://github.com/Scetrov/frontier-flow/blob/main/SECURITY.md.",
+      "missingControl": null
     },
     {
       "field": "vulnerabilities_fixed_60_days",
@@ -429,39 +600,12 @@
       "missingControl": null
     },
     {
-      "field": "english",
+      "field": "warnings_strict",
       "currentStatus": "?",
       "proposedStatus": "Met",
-      "disposition": "evidence-backed proposal",
-      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/README.md",
-      "rationale": "User and contributor documentation, issue templates, and the public issue tracker are in English: https://github.com/Scetrov/frontier-flow/blob/main/README.md and https://github.com/Scetrov/frontier-flow/issues.",
-      "missingControl": null
-    },
-    {
-      "field": "static_analysis_often",
-      "currentStatus": "?",
-      "proposedStatus": "Met",
-      "disposition": "evidence-backed proposal",
-      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml",
-      "rationale": "CodeQL runs on pushes, pull requests, and a schedule: https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml.",
-      "missingControl": null
-    },
-    {
-      "field": "version_semver",
-      "currentStatus": "?",
-      "proposedStatus": "Met",
-      "disposition": "evidence-backed proposal",
-      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md",
-      "rationale": "The release runbook defines Semantic Versioning major, minor, and patch rules: https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md#11-release-model.",
-      "missingControl": null
-    },
-    {
-      "field": "version_tags",
-      "currentStatus": "?",
-      "proposedStatus": "Met",
-      "disposition": "evidence-backed proposal",
-      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md",
-      "rationale": "Each release creates a v* Git tag and GitHub Release: https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md#11-release-model.",
+      "disposition": "supported optional Passing criterion",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.oxlintrc.json",
+      "rationale": "Oxlint uses type-aware analysis and treats its correctness, TypeScript, React, and accessibility rules as errors: https://github.com/Scetrov/frontier-flow/blob/main/.oxlintrc.json.",
       "missingControl": null
     }
   ],
@@ -494,10 +638,10 @@
     }
   },
   "dashboardReview": {
-    "status": "attested supported proposals; Passing remains blocked",
-    "refreshDate": "2026-07-22T22:09:07Z",
-    "score": 40,
+    "status": "current automation ingested; remaining Passing proposals pending refresh",
+    "refreshDate": "2026-07-25T21:48:35Z",
+    "score": 76,
     "result": "in_progress",
-    "notes": "After PR #62 merged, a maintainer refreshed project 13753 and attested the 14 supported proposals. The live export records 27 Met, 2 Unmet, 166 ?, and one 0 status. See dashboard-result.md for the remaining Passing blockers."
+    "notes": "The live export ingested PR #66. PR #67 adds answers for all remaining unknown Passing-level SHOULD and SUGGESTED criteria; rerun Save (and continue) automation after merge."
   }
 }
