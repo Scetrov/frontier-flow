@@ -35,56 +35,56 @@
     {
       "field": "crypto_floss",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "rationale": "The project does not implement cryptography, store passwords, or generate security-sensitive randomness; wallet cryptography is external to the application.",
+      "missingControl": null
     },
     {
       "field": "crypto_keylength",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "rationale": "The project does not implement cryptography, store passwords, or generate security-sensitive randomness; wallet cryptography is external to the application.",
+      "missingControl": null
     },
     {
       "field": "crypto_password_storage",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "rationale": "The project does not implement cryptography, store passwords, or generate security-sensitive randomness; wallet cryptography is external to the application.",
+      "missingControl": null
     },
     {
       "field": "crypto_published",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "rationale": "The project does not implement cryptography, store passwords, or generate security-sensitive randomness; wallet cryptography is external to the application.",
+      "missingControl": null
     },
     {
       "field": "crypto_random",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "rationale": "The project does not implement cryptography, store passwords, or generate security-sensitive randomness; wallet cryptography is external to the application.",
+      "missingControl": null
     },
     {
       "field": "crypto_working",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "rationale": "The project does not implement cryptography, store passwords, or generate security-sensitive randomness; wallet cryptography is external to the application.",
+      "missingControl": null
     },
     {
       "field": "delivery_mitm",
@@ -98,11 +98,11 @@
     {
       "field": "delivery_unsigned",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow",
+      "rationale": "The only downloadable project artifacts are source releases served through GitHub HTTPS: https://github.com/Scetrov/frontier-flow.",
+      "missingControl": null
     },
     {
       "field": "description_good",
@@ -134,20 +134,20 @@
     {
       "field": "documentation_interface",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/docs/API-CONTRACTS.md",
+      "rationale": "The external input and output contracts for the visual graph, generated Move source, persistence formats, and external APIs are documented in https://github.com/Scetrov/frontier-flow/blob/main/docs/API-CONTRACTS.md.",
+      "missingControl": null
     },
     {
       "field": "dynamic_analysis_fixed",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "rationale": "Dynamic analysis is not applicable to this browser SPA.",
+      "missingControl": null
     },
     {
       "field": "floss_license",
@@ -179,20 +179,20 @@
     {
       "field": "know_common_errors",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/SECURITY.md",
+      "rationale": "Maintainer attestation: the primary developer receives annual OWASP Top 10 training and applies relevant vulnerability mitigations.",
+      "missingControl": null
     },
     {
       "field": "know_secure_design",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/SECURITY.md",
+      "rationale": "Maintainer attestation: the primary developer has regulated-industry secure-design experience, major-cloud certifications, and annual OWASP Top 10 training.",
+      "missingControl": null
     },
     {
       "field": "license_location",
@@ -206,20 +206,20 @@
     {
       "field": "maintained",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/commits/main",
+      "rationale": "The project has current commits and releases, including https://github.com/Scetrov/frontier-flow/releases/tag/v0.11.6 and https://github.com/Scetrov/frontier-flow/commits/main.",
+      "missingControl": null
     },
     {
       "field": "no_leaked_credentials",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/SECURITY.md",
+      "rationale": "Maintainer attestation: secret scanning and a repository-history scan found no leaked credentials or secrets.",
+      "missingControl": null
     },
     {
       "field": "release_notes",
@@ -233,11 +233,11 @@
     {
       "field": "release_notes_vulns",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "rationale": "Maintainer attestation: no publicly known run-time vulnerability with a CVE or similar identifier has been fixed in a Frontier Flow release; the human-readable release notes are published at https://github.com/Scetrov/frontier-flow/blob/main/CHANGELOG.md.",
+      "missingControl": null
     },
     {
       "field": "repo_distributed",
@@ -296,11 +296,11 @@
     {
       "field": "report_responses",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/issues/19#issuecomment-4157908278",
+      "rationale": "The sole bug report in the last 12 months was acknowledged: https://github.com/Scetrov/frontier-flow/issues/19#issuecomment-4157908278.",
+      "missingControl": null
     },
     {
       "field": "report_tracker",
@@ -332,11 +332,11 @@
     {
       "field": "static_analysis_fixed",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml",
+      "rationale": "Maintainer attestation: confirmed medium-or-higher exploitable static-analysis findings are fixed promptly; CodeQL is configured in https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml.",
+      "missingControl": null
     },
     {
       "field": "test",
@@ -359,11 +359,11 @@
     {
       "field": "tests_are_added",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/pull/37/files",
+      "rationale": "Recent major functionality includes automated tests: https://github.com/Scetrov/frontier-flow/pull/37/files.",
+      "missingControl": null
     },
     {
       "field": "version_unique",
@@ -377,11 +377,11 @@
     {
       "field": "vulnerabilities_fixed_60_days",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/SECURITY.md",
+      "rationale": "Maintainer attestation: no publicly known vulnerabilities exist in the project results.",
+      "missingControl": null
     },
     {
       "field": "vulnerability_report_private",
@@ -404,11 +404,11 @@
     {
       "field": "vulnerability_report_response",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
+      "proposedStatus": "N/A",
+      "disposition": "evidence-backed proposal",
       "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "rationale": "Maintainer attestation: no vulnerability reports were received in the last six months.",
+      "missingControl": null
     },
     {
       "field": "warnings",
@@ -422,35 +422,50 @@
     {
       "field": "warnings_fixed",
       "currentStatus": "?",
-      "proposedStatus": "?",
-      "disposition": "needs implementation or verification",
-      "evidenceUrl": null,
-      "rationale": "No sufficiently specific, durable public evidence was identified in this assessment pass.",
-      "missingControl": "Keep the current value until a control, evidence URL, or dashboard clarification is available."
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/SECURITY.md",
+      "rationale": "Maintainer attestation: confirmed medium-or-higher compiler and linter warnings are fixed promptly.",
+      "missingControl": null
+    },
+    {
+      "field": "english",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/README.md",
+      "rationale": "User and contributor documentation, issue templates, and the public issue tracker are in English: https://github.com/Scetrov/frontier-flow/blob/main/README.md and https://github.com/Scetrov/frontier-flow/issues.",
+      "missingControl": null
+    },
+    {
+      "field": "static_analysis_often",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml",
+      "rationale": "CodeQL runs on pushes, pull requests, and a schedule: https://github.com/Scetrov/frontier-flow/blob/main/.github/workflows/codeql.yml.",
+      "missingControl": null
+    },
+    {
+      "field": "version_semver",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md",
+      "rationale": "The release runbook defines Semantic Versioning major, minor, and patch rules: https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md#11-release-model.",
+      "missingControl": null
+    },
+    {
+      "field": "version_tags",
+      "currentStatus": "?",
+      "proposedStatus": "Met",
+      "disposition": "evidence-backed proposal",
+      "evidenceUrl": "https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md",
+      "rationale": "Each release creates a v* Git tag and GitHub Release: https://github.com/Scetrov/frontier-flow/blob/main/docs/RELEASE-RUNBOOK.md#11-release-model.",
+      "missingControl": null
     }
   ],
-  "unresolvedPassingBlockers": [
-    "documentation_interface",
-    "release_notes_vulns",
-    "report_responses",
-    "vulnerability_report_response",
-    "tests_are_added",
-    "warnings_fixed",
-    "know_secure_design",
-    "know_common_errors",
-    "crypto_published",
-    "crypto_floss",
-    "crypto_keylength",
-    "crypto_working",
-    "crypto_password_storage",
-    "crypto_random",
-    "delivery_unsigned",
-    "vulnerabilities_fixed_60_days",
-    "static_analysis_fixed",
-    "dynamic_analysis_fixed",
-    "no_leaked_credentials",
-    "maintained"
-  ],
+  "unresolvedPassingBlockers": [],
   "assessmentFindings": {
     "retrievedAt": "2026-07-25T20:23:30Z",
     "badge": {
