@@ -175,16 +175,29 @@ The package reference bundle currently stores:
 - `source`
 - `lastVerifiedOn`
 
-It can also refresh `worldPackageId` values from upstream `contracts/world/Published.toml`.
+It can also fetch upstream `contracts/world/Published.toml` as an **observation** for drift detection. The checked-in bundles are the sole authoritative active configuration for remote targets. Observational data is never merged into the active bundle — it is used only to detect and report stale references.
 
 That is useful for:
 
-- validation
-- UI readiness checks
+- runtime drift detection (stale-reference status blocks deployment)
+- operator validation and the weekly integrity workflow
 - choosing the correct target package ids
 - forming user-facing deployment context
 
 It is not enough to reconstruct the compile-time dependency graph required by the builder.
+
+Each maintained remote target's bundle is an **atomic reference unit**:
+
+| Field | Description |
+|-------|-------------|
+| `worldPackageId` | Package identity (`published-at` from `Published.toml`) |
+| `originalWorldPackageId` | Lineage root (`original-id` from `Published.toml`) |
+| `objectRegistryId` | Object Registry object ID (discovered from on-chain publication) |
+| `serverAddressRegistryId` | Server Address Registry object ID (discovered from on-chain publication) |
+| `sourceVersionTag` | Pinned source revision tag |
+| `toolchainVersion` | Sui toolchain version for compilation |
+
+All fields must be verified together. Partial field updates create mixed-lineage bundles that cannot safely compile or sign extensions. See [WORLD-PACKAGE-REFERENCE-RUNBOOK.md](./WORLD-PACKAGE-REFERENCE-RUNBOOK.md) for the full maintenance procedure.
 
 ### 5.1 Metadata Frontier Flow Already Knows
 

@@ -44,7 +44,7 @@ async function runRealDeployGradeFixtureCompile(): Promise<RealBuilderFixtureRes
     'import { compileForDeployment } from "./src/compiler/deployGradeCompiler.ts";',
     'import { loadMoveBuilderLite, setMoveBuilderGitHubAccessTokenProvider, verifyMoveBuilderLiteIntegrity } from "./src/compiler/moveBuilderLite.ts";',
     'import { getPackageReferenceBundle } from "./src/data/packageReferences.ts";',
-    'const snapshot = JSON.parse(readFileSync("./public/deploy-grade-resolution-snapshots/v0.0.23.json", "utf8"));',
+    'const snapshot = JSON.parse(readFileSync("./public/deploy-grade-resolution-snapshots/v0.0.24.json", "utf8"));',
     'const target = getPackageReferenceBundle("testnet:stillness");',
     'const artifact = {',
     '  artifactId: "fixture-1",',
@@ -66,7 +66,7 @@ async function runRealDeployGradeFixtureCompile(): Promise<RealBuilderFixtureRes
     'const { initMovePackageBuilder, resolveMovePackageDependencies, dumpMovePackage, getPinnedSuiMoveVersion } = await loadMoveBuilderLite();',
     'const result = await compileForDeployment({',
     '  artifact,',
-    '  worldSource: { files: { "Move.toml": `[package]\\nname = "world"\\n` }, sourceVersionTag: "v0.0.23", fetchedAt: 1 },',
+    '  worldSource: { files: { "Move.toml": `[package]\\nname = "world"\\n` }, sourceVersionTag: "v0.0.24", fetchedAt: 1 },',
     '  target,',
     '  cachedResolution: {',
     '    targetId: target.targetId,',
@@ -113,7 +113,7 @@ describe("deployGradeCompiler integration", () => {
     }
   });
 
-  (hasGitHubToken ? it : it.skip)("compiles the real Stillness v0.0.23 bundled snapshot with the live builder", async () => {
+  (hasGitHubToken ? it : it.skip)("compiles the real Stillness v0.0.24 bundled snapshot with the live builder", async () => {
     const result = await runRealDeployGradeFixtureCompile();
 
     expect(result.moduleCount).toBeGreaterThan(0);

@@ -1,6 +1,9 @@
 import type { DeploymentStage, DeploymentTargetId, PackageReferenceBundle } from "../compiler/types";
 import { getDeploymentTarget } from "../data/deploymentTargets";
-import { getPackageReferenceBundle } from "../data/packageReferences";
+import {
+  getManifestFreshnessOutcome,
+  getPackageReferenceBundle,
+} from "../data/packageReferences";
 
 export type DeploymentBlockerCode =
   | "stale-artifact"
@@ -8,6 +11,7 @@ export type DeploymentBlockerCode =
   | "artifact-graph-mismatch"
   | "wallet-required"
   | "invalid-package-references"
+  | "stale-package-references"
   | "local-target-unavailable";
 
 export interface DeploymentBlocker {
@@ -211,7 +215,26 @@ function createPackageReferenceBlockers(input: {
   const bundle = resolvePackageReferenceBundle(input.targetId);
   const packageReferenceBlocker = validatePackageReferenceBundle(input.targetId, bundle, input.search);
 
-  return packageReferenceBlocker === null ? [] : [packageReferenceBlocker];
+  const blockers: DeploymentBlocker[] = [];
+  if (packageReferenceBlocker !== null) {
+    blockers.push(packageReferenceBlocker);
+  }
+
+  // Check runtime freshness observation for remote targets
+  if (input.targetId !== "local") {
+    const freshness = getManifestFreshnessOutcome(input.targetId);
+    if (freshness.status === "stale") {
+      const fieldList = freshness.driftedFields.map((d) => d.field).join(", ");
+      blockers.push({
+        code: "stale-package-references",
+        stage: "validating",
+        message: `Remote package references for ${input.targetId} have drifted from checked-in bundle (drifted fields: ${fieldList}).`,
+        remediation: "Update the checked-in package reference bundle and deploy-grade cache before deploying to this target.",
+      });
+    }
+  }
+
+  return blockers;
 }
 
 function createLocalTargetBlockers(input: {
@@ -248,6 +271,10 @@ function getRequiredInputs(targetId: DeploymentTargetId, targetLabel: string, ta
   return requiredInputs;
 }
 
+function hasNoBlockers(blockerCodes: ReadonlySet<DeploymentBlockerCode>, codes: readonly DeploymentBlockerCode[]): boolean {
+  return codes.every((code) => !blockerCodes.has(code));
+}
+
 function getResolvedInputs(input: {
   readonly artifactReady: boolean;
   readonly artifactGraphMatchesCurrentRevision: boolean;
@@ -264,21 +291,20 @@ function getResolvedInputs(input: {
       input: getCurrentArtifactInputLabel(),
       resolved: input.artifactReady
         && input.artifactGraphMatchesCurrentRevision
-        && !blockerCodes.has("stale-artifact")
-        && !blockerCodes.has("missing-bytecode")
-        && !blockerCodes.has("artifact-graph-mismatch"),
+        && hasNoBlockers(blockerCodes, ["stale-artifact", "missing-bytecode", "artifact-graph-mismatch"]),
     },
     {
       input: getConnectedWalletInputLabel(input.targetLabel),
-      resolved: input.targetSupportsWalletSigning && input.hasConnectedWallet && !blockerCodes.has("wallet-required"),
+      resolved: input.targetSupportsWalletSigning && input.hasConnectedWallet && hasNoBlockers(blockerCodes, ["wallet-required"]),
     },
     {
       input: getPublishedReferencesInputLabel(input.targetLabel),
-      resolved: input.targetRequiresPublishedPackageRefs && !blockerCodes.has("invalid-package-references"),
+      resolved: input.targetRequiresPublishedPackageRefs
+        && hasNoBlockers(blockerCodes, ["invalid-package-references", "stale-package-references"]),
     },
     {
       input: getLocalValidatorInputLabel(),
-      resolved: input.targetId === "local" && input.localTargetReady && !blockerCodes.has("local-target-unavailable"),
+      resolved: input.targetId === "local" && input.localTargetReady && hasNoBlockers(blockerCodes, ["local-target-unavailable"]),
     },
   ];
 

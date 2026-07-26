@@ -311,3 +311,11 @@ git push origin main
 ### 8.2 HTTPS
 
 Netlify provides automatic Let's Encrypt SSL certificates for custom domains. HSTS is enforced via the security headers in `netlify.toml`.
+
+---
+
+## 9. Remote Deployment Package References
+
+Remote deployment targets (Stillness and Utopia) use atomic World package reference bundles that are maintained as checked-in configuration. The checked-in bundles are authoritative — upstream `Published.toml` metadata is observational only and cannot partially override the active bundle.
+
+For the complete procedure on updating or rolling back remote package references, see the [World Package Reference Runbook](./WORLD-PACKAGE-REFERENCE-RUNBOOK.md).

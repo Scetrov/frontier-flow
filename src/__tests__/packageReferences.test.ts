@@ -5,6 +5,7 @@ import { getLocalDeploymentEnvironmentLabel, saveLocalEnvironmentConfig } from "
 import {
   PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
   WORLD_PACKAGE_OVERRIDE_STORAGE_KEY,
+  computeManifestFreshness,
   getPackageReferenceBundle,
   getPackageReferenceBundleMap,
   parsePublishedWorldPackageManifest,
@@ -49,12 +50,8 @@ toolchain-version = "1.68.0"
     });
   });
 
-  it("stores fetched world package ids and applies them to the resolved bundle", async () => {
-    const fetchFn: typeof fetch = (input) => {
-      const requestedUrl = input instanceof URL ? input.href : typeof input === "string" ? input : input.url;
-
-      expect(requestedUrl).toBe(PUBLISHED_WORLD_PACKAGE_MANIFEST_URL);
-
+  it("returns strict observed metadata without applying overrides to the resolved bundle", async () => {
+    const fetchFn: typeof fetch = (_input) => {
       return Promise.resolve(new Response(`
 [published.testnet_stillness]
 published-at = "0xaaa"
@@ -68,30 +65,38 @@ original-id = "0xddd"
 `, { status: 200, headers: { "content-type": "text/plain" } }));
     };
 
-    await refreshPublishedWorldPackageManifest({ fetchFn, storage: window.localStorage });
+    const observed = await refreshPublishedWorldPackageManifest({ fetchFn, storage: window.localStorage });
 
-    expect(JSON.parse(window.localStorage.getItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY) ?? "{}")).toMatchObject({
-      source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
-      version: 3,
-      targets: {
-        "testnet:stillness": {
-          worldPackageId: "0xaaa",
-          originalWorldPackageId: "0xbbb",
-          toolchainVersion: "1.70.0",
-        },
-        "testnet:utopia": {
-          worldPackageId: "0xccc",
-          originalWorldPackageId: "0xddd",
-          toolchainVersion: "1.68.1",
-        },
-      },
-    });
-    expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe("0xaaa");
-    expect(getPackageReferenceBundle("testnet:stillness").originalWorldPackageId).toBe("0xbbb");
-    expect(getPackageReferenceBundle("testnet:stillness").toolchainVersion).toBe("1.70.0");
-    expect(getPackageReferenceBundle("testnet:utopia").worldPackageId).toBe("0xccc");
-    expect(getPackageReferenceBundle("testnet:stillness").sourceVersionTag).toBe("v0.0.23");
-    expect(getPackageReferenceBundle("testnet:utopia").toolchainVersion).toBe("1.68.1");
+    // Observation is returned for drift detection.
+    expect(observed["testnet:stillness"]?.worldPackageId).toBe("0xaaa");
+    expect(observed["testnet:utopia"]?.worldPackageId).toBe("0xccc");
+
+    // The active bundle is NOT modified by the observation.
+    expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe(
+      "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+    );
+    expect(getPackageReferenceBundle("testnet:stillness").toolchainVersion).toBe("1.74.0");
+    expect(getPackageReferenceBundle("testnet:utopia").toolchainVersion).toBe("1.68.0");
+
+    // No stored overrides are written.
+    expect(window.localStorage.getItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY)).toBeNull();
+  });
+
+  it("rejects malformed manifest observations", async () => {
+    await expect(refreshPublishedWorldPackageManifest({
+      fetchFn: () => Promise.resolve(new Response(`
+[published.testnet_stillness]
+published-at = "0xaaa"
+published-at = "0xbbb"
+original-id = "0xccc"
+toolchain-version = "1.70.0"
+
+[published.testnet_utopia]
+published-at = "0xddd"
+original-id = "0xeee"
+toolchain-version = "1.68.0"
+`, { status: 200 })),
+    })).rejects.toThrow("Duplicate key");
   });
 
   it("uses the signed-in GitHub token when refreshing the published manifest from raw GitHub", async () => {
@@ -107,16 +112,19 @@ original-id = "0xddd"
       return Promise.resolve(new Response(`
 [published.testnet_stillness]
 published-at = "0xaaa"
+original-id = "0xbbb"
+toolchain-version = "1.70.0"
 
 [published.testnet_utopia]
 published-at = "0xccc"
+original-id = "0xddd"
+toolchain-version = "1.68.0"
 `, { status: 200, headers: { "content-type": "text/plain" } }));
     };
 
-    await refreshPublishedWorldPackageManifest({ fetchFn, storage: window.localStorage });
-
-    expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe("0xaaa");
-    expect(getPackageReferenceBundle("testnet:utopia").worldPackageId).toBe("0xccc");
+    const observed = await refreshPublishedWorldPackageManifest({ fetchFn, storage: window.localStorage });
+    expect(observed["testnet:stillness"]?.worldPackageId).toBe("0xaaa");
+    expect(observed["testnet:utopia"]?.worldPackageId).toBe("0xccc");
   });
 
   it("exposes deploy-grade source metadata for each supported target", () => {
@@ -127,10 +135,12 @@ published-at = "0xccc"
       toolchainVersion: "1.67.1",
     });
     expect(getPackageReferenceBundle("testnet:stillness")).toMatchObject({
-      originalWorldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
-      worldPackageId: "0xd2fd1224f881e7a705dbc211888af11655c315f2ee0f03fe680fc3176e6e4780",
-      sourceVersionTag: "v0.0.23",
-      toolchainVersion: "1.69.1",
+      originalWorldPackageId: "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+      worldPackageId: "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+      objectRegistryId: "0xf6aed9361acc0d7021672b653ebe9dae45d88e11fecef01cc5434c8f60ae764f",
+      serverAddressRegistryId: "0xdb5f40fd5659e4f21d6b07ed3cedcd532a21a6054815a7b3fe3817631ed6dbd2",
+      sourceVersionTag: "v0.0.24",
+      toolchainVersion: "1.74.0",
     });
     expect(getPackageReferenceBundle("testnet:utopia")).toMatchObject({
       originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
@@ -165,11 +175,32 @@ published-at = "0xccc"
     });
   });
 
-  it("reuses the cached bundle map until stored overrides change", async () => {
-    const initialMap = getPackageReferenceBundleMap();
+  it("does not apply legacy stored overrides to remote bundles", () => {
+    // Write a legacy version-3 override that differs from the checked-in bundle.
+    window.localStorage.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify({
+      version: 3,
+      lastVerifiedOn: new Date().toISOString().slice(0, 10),
+      source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
+      targets: {
+        "testnet:stillness": {
+          worldPackageId: "0xaaa",
+          originalWorldPackageId: "0xbbb",
+          toolchainVersion: "1.70.0",
+        },
+      },
+    }));
 
+    // The active bundle must remain the checked-in value, not the stored override.
+    expect(getPackageReferenceBundle("testnet:stillness").worldPackageId).toBe(
+      "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+    );
+  });
+
+  it("returns the cached bundle map across calls (remote bundles are stable)", async () => {
+    const initialMap = getPackageReferenceBundleMap();
     expect(getPackageReferenceBundleMap()).toBe(initialMap);
 
+    // Refreshing the manifest does NOT change the cached bundle map.
     await refreshPublishedWorldPackageManifest({
       fetchFn: () => Promise.resolve(new Response(`
 [published.testnet_stillness]
@@ -185,38 +216,20 @@ toolchain-version = "1.68.1"
       storage: window.localStorage,
     });
 
-    const refreshedMap = getPackageReferenceBundleMap();
-    expect(refreshedMap).not.toBe(initialMap);
-    expect(refreshedMap.get("testnet:stillness")?.worldPackageId).toBe("0xaaa");
+    expect(getPackageReferenceBundleMap()).toBe(initialMap);
   });
 
-  it("skips manifest refresh when overrides were already verified today", () => {
+  it("always recommends a manifest refresh (no stored-state short-circuit)", () => {
+    // Without stored overrides
+    expect(shouldRefreshPublishedWorldPackageManifest(window.localStorage)).toBe(true);
+
+    // With stored overrides from today
     window.localStorage.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify({
       version: 3,
       lastVerifiedOn: new Date().toISOString().slice(0, 10),
       source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
-      targets: {
-        "testnet:stillness": {
-          worldPackageId: "0xaaa",
-          originalWorldPackageId: "0xbbb",
-          toolchainVersion: "1.70.0",
-        },
-      },
+      targets: {},
     }));
-
-    expect(shouldRefreshPublishedWorldPackageManifest(window.localStorage)).toBe(false);
-  });
-
-  it("forces a manifest refresh when version-2 overrides are present", () => {
-    window.localStorage.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify({
-      version: 2,
-      lastVerifiedOn: new Date().toISOString().slice(0, 10),
-      source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
-      worldPackageIds: {
-        "testnet:stillness": "0xbbb",
-      },
-    }));
-
     expect(shouldRefreshPublishedWorldPackageManifest(window.localStorage)).toBe(true);
   });
 
@@ -231,5 +244,49 @@ toolchain-version = "1.68.1"
 
     await expect(verifyPublishedWorldPackageExists("testnet:stillness", client)).resolves.toBe(false);
     expect(client.getObject).toHaveBeenCalledTimes(1);
+  });
+
+  describe("manifest freshness outcomes", () => {
+    it("returns matched when observation matches checked-in bundle", () => {
+      const observation = {
+        worldPackageId: "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+        originalWorldPackageId: "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+        toolchainVersion: "1.74.0",
+      };
+
+      const outcome = computeManifestFreshness("testnet:stillness", observation);
+      expect(outcome.status).toBe("matched");
+    });
+
+    it("returns stale when published-at differs from checked-in bundle", () => {
+      const observation = {
+        worldPackageId: "0xdeadbeef",
+        originalWorldPackageId: "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+        toolchainVersion: "1.74.0",
+      };
+
+      const outcome = computeManifestFreshness("testnet:stillness", observation);
+      expect(outcome.status).toBe("stale");
+      if (outcome.status === "stale") {
+        expect(outcome.driftedFields.length).toBeGreaterThan(0);
+        expect(outcome.driftedFields[0].field).toBe("published-at");
+      }
+    });
+
+    it("returns stale when toolchain-version differs", () => {
+      const observation = {
+        worldPackageId: "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+        originalWorldPackageId: "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+        toolchainVersion: "1.80.0",
+      };
+
+      const outcome = computeManifestFreshness("testnet:stillness", observation);
+      expect(outcome.status).toBe("stale");
+    });
+
+    it("returns unavailable when observation is missing", () => {
+      const outcome = computeManifestFreshness("testnet:stillness", undefined);
+      expect(outcome.status).toBe("unavailable");
+    });
   });
 });

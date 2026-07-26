@@ -9,7 +9,14 @@ import {
 
 import type { DeploymentTargetId } from "../compiler/types";
 import { getLocalEnvironmentConfigSnapshot, subscribeToLocalEnvironmentChanges } from "../data/localEnvironment";
-import { refreshPublishedWorldPackageManifest, shouldRefreshPublishedWorldPackageManifest } from "../data/packageReferences";
+import { MAINTAINED_REMOTE_TARGET_IDS } from "../data/maintainedWorldPackageReferences";
+import {
+  computeManifestFreshness,
+  PublishedWorldPackageManifestError,
+  refreshPublishedWorldPackageManifest,
+  setManifestFreshnessOutcome,
+  shouldRefreshPublishedWorldPackageManifest,
+} from "../data/packageReferences";
 import { useTargetBalance } from "../hooks/useTargetBalance";
 import { formatAddress } from "../utils/formatAddress";
 import { fetchCharacterIdentityForWalletAcrossTargets } from "../utils/characterProfile";
@@ -181,7 +188,19 @@ function useResolvedCharacterName(
     const targetId = selectedDeploymentTarget;
 
     if (shouldRefreshPublishedWorldPackageManifest()) {
-      void refreshPublishedWorldPackageManifest().catch(() => undefined);
+      void refreshPublishedWorldPackageManifest()
+        .then((observation) => {
+          for (const targetId of MAINTAINED_REMOTE_TARGET_IDS) {
+            setManifestFreshnessOutcome(targetId, computeManifestFreshness(targetId, observation[targetId]));
+          }
+        })
+        .catch((error: unknown) => {
+          const status = error instanceof PublishedWorldPackageManifestError ? "malformed" : "unavailable";
+          const reason = error instanceof Error ? error.message : "Unable to refresh published World package manifest";
+          for (const targetId of MAINTAINED_REMOTE_TARGET_IDS) {
+            setManifestFreshnessOutcome(targetId, { status, targetId, reason });
+          }
+        });
     }
 
     void fetchCharacterIdentityForWalletAcrossTargets({

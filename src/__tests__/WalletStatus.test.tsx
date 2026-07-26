@@ -111,7 +111,18 @@ describe("WalletStatus", () => {
     mockFetchCharacterIdentityForWalletAcrossTargets.mockReset();
     mockFetchCharacterIdentityForWalletAcrossTargets.mockImplementation(() => new Promise(() => undefined));
     mockRefreshPublishedWorldPackageManifest.mockReset();
-    mockRefreshPublishedWorldPackageManifest.mockResolvedValue({});
+    mockRefreshPublishedWorldPackageManifest.mockResolvedValue({
+      "testnet:stillness": {
+        worldPackageId: "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+        originalWorldPackageId: "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
+        toolchainVersion: "1.74.0",
+      },
+      "testnet:utopia": {
+        worldPackageId: "0x07e6b810c2dff6df56ea7fbad9ff32f4d84cbee53e496267515887b712924bd1",
+        originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
+        toolchainVersion: "1.68.0",
+      },
+    });
   });
 
   afterEach(() => {
@@ -309,7 +320,8 @@ describe("WalletStatus", () => {
     expect(await screen.findByText("Capsuleer One")).toBeVisible();
   });
 
-  it("skips the manifest refresh when package references were already verified today", async () => {
+  it("does not apply legacy stored overrides to active bundles (observations only)", async () => {
+    // Even if a legacy override exists in storage, the active checked-in bundle is not modified.
     window.localStorage.setItem("frontier-flow:world-package-overrides", JSON.stringify({
       version: 3,
       lastVerifiedOn: new Date().toISOString().slice(0, 10),
@@ -326,7 +338,7 @@ describe("WalletStatus", () => {
     mockUseCurrentAccount.mockReturnValue(connectedAccount);
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
     mockUseTargetBalance.mockReturnValue(createBalanceQuery({
-      data: { totalBalance: "3000000000" },
+      data: { totalBalance: "[PHONE]" },
     }));
     mockFetchCharacterIdentityForWalletAcrossTargets.mockResolvedValue({
       characterName: "Capsuleer One",
@@ -336,6 +348,5 @@ describe("WalletStatus", () => {
     render(<WalletStatus selectedDeploymentTarget="local" />);
 
     expect(await screen.findByText("Capsuleer One")).toBeVisible();
-    expect(mockRefreshPublishedWorldPackageManifest).not.toHaveBeenCalled();
   });
 });

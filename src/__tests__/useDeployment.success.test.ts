@@ -114,7 +114,7 @@ beforeEach(() => {
       "Move.toml": "[package]\nname = \"world\"\n",
       "sources/world.move": "module world::world {}",
     },
-    sourceVersionTag: "v0.0.23",
+    sourceVersionTag: "v0.0.24",
     fetchedAt: new Date("2026-03-22T12:00:00.000Z").getTime(),
   });
   mockCompileForDeployment.mockResolvedValue({
@@ -123,7 +123,7 @@ beforeEach(() => {
     dependencies: [
       "0x0000000000000000000000000000000000000000000000000000000000000001",
       "0x0000000000000000000000000000000000000000000000000000000000000002",
-      "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+      "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
     ],
     digest: [1, 2, 3],
     resolvedDependencies: {
@@ -131,8 +131,8 @@ beforeEach(() => {
       dependencies: "{}",
       lockfileDependencies: "{}",
     },
-    sourceVersionTag: "v0.0.23",
-    builderToolchainVersion: "1.69.1",
+    sourceVersionTag: "v0.0.24",
+    builderToolchainVersion: "1.74.0",
     compiledAt: new Date("2026-03-22T12:00:00.500Z").getTime(),
   });
   mockCompileMove.mockImplementation((artifact: { bytecodeModules: readonly Uint8Array[]; dependencies: readonly string[] }) => Promise.resolve({
@@ -145,7 +145,7 @@ beforeEach(() => {
       : [
           "0x0000000000000000000000000000000000000000000000000000000000000001",
           "0x0000000000000000000000000000000000000000000000000000000000000002",
-          "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+          "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
         ],
     errors: null,
     warnings: [],
@@ -159,7 +159,7 @@ beforeEach(() => {
         : [
             "0x0000000000000000000000000000000000000000000000000000000000000001",
             "0x0000000000000000000000000000000000000000000000000000000000000002",
-            "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+            "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1",
           ],
     },
   }));
@@ -218,8 +218,8 @@ describe("useDeployment success path", () => {
       transactionDigest: result.current.latestAttempt?.confirmationReference,
       deployedAt: new Date(result.current.latestAttempt?.endedAt ?? 0).toISOString(),
       contractName: artifact.moduleName,
-      sourceVersionTag: "v0.0.23",
-      builderToolchainVersion: "1.69.1",
+      sourceVersionTag: "v0.0.24",
+      builderToolchainVersion: "1.74.0",
     });
   });
 
