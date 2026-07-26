@@ -7,6 +7,10 @@
 [![Stargazers](https://img.shields.io/github/stars/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/stargazers)
 [![Issues](https://img.shields.io/github/issues/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/issues)
 [![MIT License](https://img.shields.io/github/license/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/blob/main/LICENSE.md)
+[![CI](https://img.shields.io/github/actions/workflow/status/Scetrov/frontier-flow/ci.yml?branch=main&style=for-the-badge&label=ci)](https://github.com/Scetrov/frontier-flow/actions/workflows/WORKFLOW.yml)
+![Netlify](https://img.shields.io/netlify/ad37c92d-3683-4252-a37e-d32896805139?style=for-the-badge&label=Deploy)
+[![Release](https://img.shields.io/github/v/release/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/releases)
+[![Last Commit](https://img.shields.io/github/last-commit/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/commits/main)
 [![OpenSSF Best Practices](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fwww.bestpractices.dev%2Fprojects%2F13753.json&query=%24.badge_level&label=Best%20Practices&style=for-the-badge&color=4c1)](https://www.bestpractices.dev/projects/13753)
 [![Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FScetrov%2Ffrontier-flow&query=%24.score&suffix=%2F10&label=Scorecard&style=for-the-badge)](https://scorecard.dev/viewer/?uri=github.com/Scetrov/frontier-flow)
 
@@ -75,14 +79,14 @@ Major project foundations include:
 
 ## Getting Started
 
-> 👋 Contributor quick start: if you want to work on the codebase, the shortest path is `bun install`, `bun run dev`, then `bun run verify` before you open a pull request.
+👋 Contributor quick start: if you want to work on the codebase, the shortest path is `bun install`, `bun run dev`, then `bun run verify` before you open a pull request. More information about security and quality standards available in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### Prerequisites
 
 Make sure the following tools are available locally:
 
 - Bun `>= 1.0.0`
-- TypeScript `5.9+`
+- TypeScript `7+`
 - Git
 
 You can verify your environment with:
@@ -105,6 +109,9 @@ cd frontier-flow
 bun install
 bun run dev
 ```
+
+> [!NOTE]
+> If you are using a forked repository, make sure to set the upstream remote to the main repository for future updates and sync changes before opening a pull request.
 
 For a local quality gate before opening a PR:
 
@@ -274,7 +281,7 @@ Before contributing, please review:
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md), including private vulnerability reporting
-- [Repository governance](./docs/REPOSITORY-GOVERNANCE.md), including protected-branch and dependency-update procedures
+- [REPOSITORY-GOVERNANCE.md](./docs/REPOSITORY-GOVERNANCE.md), including protected-branch and dependency-update procedures
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 
 ## License
@@ -290,12 +297,27 @@ Distributed under the MIT License. See [LICENSE.md](./LICENSE.md) for the full t
 - GitHub: [github.com/Scetrov](https://github.com/Scetrov)
 - Project: [github.com/Scetrov/frontier-flow](https://github.com/Scetrov/frontier-flow)
 
+> [!IMPORTANT]
+> If you need to send me a secure message, please use the [GPG key](https://github.com/Scetrov.gpg) for GPG, or [SSH key](https://github.com/Scetrov.keys) for [Age](https://words.filippo.io/age-authentication/).
+
 ## Acknowledgments
 
-- CCP Games and the EVE Frontier universe for the domain inspiration
-- The React and TypeScript ecosystems for a solid frontend foundation
-- The `@xyflow/react` maintainers for the node-based editing engine
-- The Sui and Move tooling ecosystem for contract compilation workflows
-- Bun, Vite, Playwright, and Vitest for keeping local iteration fast
+- [Fenris Creations](https://fenris.com/) and the [EVE Frontier](https://evefrontier.com/en) universe for the domain inspiration
+- The [React](https://react.dev/) and [TypeScript](https://typescriptlang.org/) ecosystems for a solid frontend foundation
+- The [`@xyflow/xyflow`](https://github.com/xyflow/xyflow) maintainers for the node-based editing engine
+- The [Sui and Move](https://sui.io/) tooling ecosystem for contract compilation workflows
+- [zktx.io](https://zktx.io/) for the awesome [`@zktx.io/sui-move-builder`](https://github.com/zktx-io/sui-move-builder) without which this wouldn't be possible
+- The [Bun](https://bun.sh/), [Vite](https://vitejs.dev/), [Playwright](https://playwright.dev/), and [Vitest](https://vitest.dev/) projects for keeping local iteration fast
+- [Netlify](https://netlify.com/) and [GitHub Pages](https://pages.github.com/) for hosting the live deployment and providing a free tier for open-source projects
 
 If Frontier Flow helps your workflow, star the repository and share your feedback.
+
+## My other projects
+
+While I am deeply proud of Frontier Flow, I also maintain a few other open-source projects that may be of interest:
+
+- [`efctl`](https://github.com/Scetrov/efctl) - is a CLI tool for EVE Frontier builders that helps you manage your local development environment, build and deploy contracts, and interact with the game world from the command line. Think of it as the Docker Composer for EVE Frontier.
+- [EVE Frontier Rust](https://github.com/Scetrov/evefrontier-rs) - a series of Rust crates and deployment patterns for deploying your own pathfinding logic inside your application.
+- [EVE Frontier Datasets](https://github.com/Scetrov/evefrontier_datasets) - datasets extracted from the EVE Frontier client a consoldated SQLite database for use in your own applications.
+
+More examples of my work are available on [scetrov.live](https://scetrov.live) and [GitHub](https://github.com/Scetrov).
