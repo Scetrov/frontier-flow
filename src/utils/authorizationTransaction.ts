@@ -2,7 +2,6 @@ import { Transaction } from "@mysten/sui/transactions";
 
 import {
   getPackageReferenceBundle,
-  refreshPublishedWorldPackageManifest,
 } from "../data/packageReferences";
 import type { StoredDeploymentState } from "../types/authorization";
 
@@ -101,26 +100,7 @@ export async function fetchAuthorizationCharacterIds(
     worldPackageId: initialBundle.originalWorldPackageId,
   });
 
-  if (initialCharacterIds.length > 0) {
-    return initialCharacterIds;
-  }
-
-  const refreshedBundle = await refreshBundleAfterEmptyCharacterLookup({
-    fetchFn,
-    targetId: input.targetId,
-    worldPackageId: initialBundle.worldPackageId,
-  });
-
-  if (refreshedBundle === null) {
-    return [];
-  }
-
-  return loadAuthorizationCharacterIds({
-    fetchFn,
-    signal: input.signal,
-    walletAddress: input.walletAddress,
-    worldPackageId: refreshedBundle.originalWorldPackageId,
-  });
+  return initialCharacterIds;
 }
 
 /**
@@ -198,24 +178,6 @@ async function loadAuthorizationCharacterIds(input: {
       .map((node) => findFirstStringAtKeys(node.contents?.json, ["character_id", "characterId"]))
       .filter(isSuiAddress),
   );
-}
-
-async function refreshBundleAfterEmptyCharacterLookup(input: {
-  readonly fetchFn: typeof fetch;
-  readonly targetId: Exclude<StoredDeploymentState["targetId"], "local">;
-  readonly worldPackageId: string;
-}): Promise<ReturnType<typeof getPackageReferenceBundle> | null> {
-  try {
-    await refreshPublishedWorldPackageManifest({ fetchFn: input.fetchFn });
-  } catch {
-    return null;
-  }
-
-  const refreshedBundle = getPackageReferenceBundle(input.targetId);
-
-  return refreshedBundle.worldPackageId.toLowerCase() === input.worldPackageId.toLowerCase()
-    ? null
-    : refreshedBundle;
 }
 
 /**

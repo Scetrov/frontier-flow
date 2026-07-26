@@ -2,6 +2,12 @@ import type { PackageReferenceBundle } from "../compiler/types";
 import { getMoveBuilderGitHubAccessToken } from "../compiler/moveBuilderLite";
 import { GITHUB_API_VERSION } from "../utils/githubApi";
 import {
+  MAINTAINED_REMOTE_TARGET_IDS,
+  MAINTAINED_WORLD_PACKAGE_REFERENCES,
+  type MaintainedRemoteTargetId,
+} from "./maintainedWorldPackageReferences";
+import { parsePublishedManifestStrict } from "./publishedManifestParser";
+import {
   DEFAULT_LOCAL_GRAPHQL_URL,
   DEFAULT_LOCAL_WORLD_PACKAGE_ID,
   DEFAULT_LOCAL_WORLD_PACKAGE_VERSION,
@@ -11,31 +17,14 @@ import {
   toWorldPackageVersionTag,
 } from "./localEnvironment";
 
-const RESOURCE_SOURCE = "https://docs.evefrontier.com/tools/resources";
-const LAST_VERIFIED_ON = "2026-04-02";
 const RAW_GITHUB_HOSTNAME = "raw.githubusercontent.com";
 export const PUBLISHED_WORLD_PACKAGE_MANIFEST_URL = "https://raw.githubusercontent.com/evefrontier/world-contracts/main/contracts/world/Published.toml";
 export const WORLD_PACKAGE_OVERRIDE_STORAGE_KEY = "frontier-flow:world-package-overrides";
 
 let cachedBundleMap: ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> | null = null;
-let cachedOverrideSnapshot: string | null | undefined;
 let cachedLocalEnvironmentSnapshot: string | null | undefined;
 
-type RemoteDeploymentTargetId = Exclude<PackageReferenceBundle["targetId"], "local">;
-const REMOTE_DEPLOYMENT_TARGET_IDS = ["testnet:stillness", "testnet:utopia"] as const;
-
-interface StoredWorldPackageTargetOverride {
-  readonly worldPackageId: string;
-  readonly originalWorldPackageId?: string;
-  readonly toolchainVersion?: string;
-}
-
-interface StoredWorldPackageOverrides {
-  readonly version: 2 | 3;
-  readonly lastVerifiedOn: string;
-  readonly source: string;
-  readonly targets: Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>>;
-}
+type RemoteDeploymentTargetId = MaintainedRemoteTargetId;
 
 interface PublishedWorldPackageMetadata {
   readonly worldPackageId: string;
@@ -57,156 +46,13 @@ export const PACKAGE_REFERENCE_BUNDLES: readonly PackageReferenceBundle[] = [
     sourceVersionTag: toWorldPackageVersionTag(DEFAULT_LOCAL_WORLD_PACKAGE_VERSION),
     toolchainVersion: "1.67.1",
     source: DEFAULT_LOCAL_GRAPHQL_URL,
-    lastVerifiedOn: LAST_VERIFIED_ON,
+    lastVerifiedOn: "2026-07-26",
   },
-  {
-    targetId: "testnet:stillness",
-    environmentLabel: "Stillness",
-    worldPackageId: "0xd2fd1224f881e7a705dbc211888af11655c315f2ee0f03fe680fc3176e6e4780",
-    originalWorldPackageId: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
-    objectRegistryId: "0x454a9aa3d37e1d08d3c9181239c1b683781e4087fbbbd48c935d54b6736fd05c",
-    serverAddressRegistryId: "0xeb97b81668699672b1147c28dacb3d595534c48f4e177d3d80337dbde464f05f",
-    sourceVersionTag: "v0.0.23",
-    toolchainVersion: "1.69.1",
-    source: RESOURCE_SOURCE,
-    lastVerifiedOn: LAST_VERIFIED_ON,
-  },
-  {
-    targetId: "testnet:utopia",
-    environmentLabel: "Utopia",
-    worldPackageId: "0x07e6b810c2dff6df56ea7fbad9ff32f4d84cbee53e496267515887b712924bd1",
-    originalWorldPackageId: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
-    objectRegistryId: "0xc2b969a72046c47e24991d69472afb2216af9e91caf802684514f39706d7dc57",
-    serverAddressRegistryId: "0x9a9f2f7d1b8cf100feb532223aa6c38451edb05406323af5054f9d974555708b",
-    sourceVersionTag: "v0.0.21",
-    toolchainVersion: "1.68.0",
-    source: RESOURCE_SOURCE,
-    lastVerifiedOn: LAST_VERIFIED_ON,
-  },
+  ...MAINTAINED_WORLD_PACKAGE_REFERENCES,
 ];
 
 function getBrowserStorage(): Storage | undefined {
   return typeof window === "undefined" ? undefined : window.localStorage;
-}
-
-function getCurrentIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function isPublishedPackageId(value: string): boolean {
-  return /^0x[a-f0-9]+$/i.test(value);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function parseStoredWorldPackageTargetOverride(value: unknown): StoredWorldPackageTargetOverride | null {
-  if (!isRecord(value) || typeof value.worldPackageId !== "string" || !isPublishedPackageId(value.worldPackageId)) {
-    return null;
-  }
-
-  return {
-    worldPackageId: value.worldPackageId,
-    originalWorldPackageId: typeof value.originalWorldPackageId === "string" && isPublishedPackageId(value.originalWorldPackageId)
-      ? value.originalWorldPackageId
-      : undefined,
-    toolchainVersion: typeof value.toolchainVersion === "string" && value.toolchainVersion.length > 0
-      ? value.toolchainVersion
-      : undefined,
-  };
-}
-
-function parseVersion2StoredTargets(value: Record<string, unknown>): Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>> | null {
-  if (!isRecord(value.worldPackageIds)) {
-    return null;
-  }
-
-  const targets: Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>> = {};
-  for (const targetId of REMOTE_DEPLOYMENT_TARGET_IDS) {
-    const packageId = value.worldPackageIds[targetId];
-    if (typeof packageId === "string" && isPublishedPackageId(packageId)) {
-      targets[targetId] = {
-        worldPackageId: packageId,
-      };
-    }
-  }
-
-  return targets;
-}
-
-function parseVersion3StoredTargets(value: Record<string, unknown>): Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>> | null {
-  if (!isRecord(value.targets)) {
-    return null;
-  }
-
-  const targets: Partial<Record<RemoteDeploymentTargetId, StoredWorldPackageTargetOverride>> = {};
-  for (const targetId of REMOTE_DEPLOYMENT_TARGET_IDS) {
-    const parsedTargetOverride = parseStoredWorldPackageTargetOverride(value.targets[targetId]);
-    if (parsedTargetOverride !== null) {
-      targets[targetId] = parsedTargetOverride;
-    }
-  }
-
-  return targets;
-}
-
-function parseStoredWorldPackageOverrides(value: unknown): StoredWorldPackageOverrides | null {
-  if (
-    !isRecord(value)
-    || (value.version !== 2 && value.version !== 3)
-    || typeof value.lastVerifiedOn !== "string"
-    || typeof value.source !== "string"
-  ) {
-    return null;
-  }
-
-  const targets = value.version === 2 ? parseVersion2StoredTargets(value) : parseVersion3StoredTargets(value);
-  if (targets === null) {
-    return null;
-  }
-
-  return {
-    version: value.version,
-    lastVerifiedOn: value.lastVerifiedOn,
-    source: value.source,
-    targets,
-  };
-}
-
-function getStoredWorldPackageOverrides(storage: Storage | undefined): StoredWorldPackageOverrides | null {
-  const rawValue = storage?.getItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY);
-  if (rawValue === null || rawValue === undefined) {
-    return null;
-  }
-
-  try {
-    const parsedValue: unknown = JSON.parse(rawValue);
-    return parseStoredWorldPackageOverrides(parsedValue);
-  } catch {
-    return null;
-  }
-}
-
-function getStoredWorldPackageOverridesSnapshot(storage: Storage | undefined): string | null {
-  return storage?.getItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY) ?? null;
-}
-
-function saveStoredWorldPackageOverrides(storage: Storage | undefined, overrides: StoredWorldPackageOverrides): void {
-  storage?.setItem(WORLD_PACKAGE_OVERRIDE_STORAGE_KEY, JSON.stringify(overrides));
-}
-
-function extractPublishedSectionValue(manifest: string, sectionName: string, fieldName: string): string | null {
-  const sectionPattern = new RegExp(`\\[published\\.${sectionName}\\]([\\s\\S]*?)(?:\\n\\[|$)`);
-  const sectionMatch = manifest.match(sectionPattern);
-  if (sectionMatch === null) {
-    return null;
-  }
-
-  const fieldPattern = new RegExp(`${fieldName}\\s*=\\s*"([^"]+)"`);
-  const fieldMatch = sectionMatch[1].match(fieldPattern);
-
-  return fieldMatch?.[1] ?? null;
 }
 
 function getGitHubContentsApiUrl(rawUrl: string): string | null {
@@ -254,8 +100,16 @@ async function fetchGitHubManifest(
   });
 }
 
+/**
+ * Resolve all package reference bundles.
+ *
+ * Remote bundles are authoritative from checked-in data — stored version-2/version-3
+ * browser overrides are NOT applied. This prevents partial upstream metadata from
+ * creating a mixed-lineage active bundle.
+ *
+ * The local bundle may be overridden by user-configured local environment settings.
+ */
 function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): readonly PackageReferenceBundle[] {
-  const storedOverrides = getStoredWorldPackageOverrides(storage);
   const localEnvironment = loadLocalEnvironmentConfig(storage);
 
   return PACKAGE_REFERENCE_BUNDLES.map((bundle) => {
@@ -271,78 +125,193 @@ function getResolvedPackageReferenceBundles(storage = getBrowserStorage()): read
       } satisfies PackageReferenceBundle;
     }
 
-    const overrideMetadata = storedOverrides?.targets[bundle.targetId];
-    if (overrideMetadata === undefined) {
-      return bundle;
-    }
-
-    return {
-      ...bundle,
-      worldPackageId: overrideMetadata.worldPackageId,
-      originalWorldPackageId: overrideMetadata.originalWorldPackageId ?? bundle.originalWorldPackageId,
-      toolchainVersion: overrideMetadata.toolchainVersion ?? bundle.toolchainVersion,
-      source: storedOverrides?.source ?? bundle.source,
-      lastVerifiedOn: storedOverrides?.lastVerifiedOn ?? bundle.lastVerifiedOn,
-    } satisfies PackageReferenceBundle;
+    // Remote bundles are always checked-in. Legacy stored overrides are ignored.
+    return bundle;
   });
 }
 
 function createPackageReferenceBundleMap(storage = getBrowserStorage()): ReadonlyMap<PackageReferenceBundle["targetId"], PackageReferenceBundle> {
-  const overrideSnapshot = getStoredWorldPackageOverridesSnapshot(storage);
   const localEnvironmentSnapshot = getLocalEnvironmentConfigSnapshot(storage);
 
   if (
     cachedBundleMap !== null
-    && cachedOverrideSnapshot === overrideSnapshot
     && cachedLocalEnvironmentSnapshot === localEnvironmentSnapshot
   ) {
     return cachedBundleMap;
   }
 
-  cachedOverrideSnapshot = overrideSnapshot;
   cachedLocalEnvironmentSnapshot = localEnvironmentSnapshot;
   cachedBundleMap = new Map(getResolvedPackageReferenceBundles(storage).map((bundle) => [bundle.targetId, bundle]));
 
   return cachedBundleMap;
 }
 
-export function shouldRefreshPublishedWorldPackageManifest(storage = getBrowserStorage()): boolean {
-  const storedOverrides = getStoredWorldPackageOverrides(storage);
+/**
+ * Whether a daily manifest refresh is recommended.
+ *
+ * Since stored version-2/version-3 overrides are no longer applied to active
+ * bundles, this always returns true to allow observation-based drift detection.
+ * The actual refresh is bounded by caller-level rate limiting.
+ */
+export function shouldRefreshPublishedWorldPackageManifest(_storage = getBrowserStorage()): boolean {
+  return true;
+}
 
-  return storedOverrides?.version !== 3 || storedOverrides.lastVerifiedOn !== getCurrentIsoDate();
+// ---- Freshness outcomes for runtime manifest observation ----
+
+/**
+ * Outcome of comparing a runtime manifest observation against a checked-in bundle.
+ */
+export type ManifestFreshnessOutcome =
+  | ManifestFreshnessMatch
+  | ManifestFreshnessStale
+  | ManifestFreshnessUnavailable
+  | ManifestFreshnessMalformed;
+
+export interface ManifestFreshnessMatch {
+  readonly status: "matched";
+  readonly targetId: RemoteDeploymentTargetId;
+}
+
+export interface ManifestFreshnessStale {
+  readonly status: "stale";
+  readonly targetId: RemoteDeploymentTargetId;
+  readonly driftedFields: readonly ManifestFreshnessFieldDrift[];
+}
+
+export interface ManifestFreshnessFieldDrift {
+  readonly field: string;
+  readonly expected: string;
+  readonly actual: string;
+}
+
+export interface ManifestFreshnessUnavailable {
+  readonly status: "unavailable";
+  readonly targetId: RemoteDeploymentTargetId;
+  readonly reason: string;
+}
+
+export interface ManifestFreshnessMalformed {
+  readonly status: "malformed";
+  readonly targetId: RemoteDeploymentTargetId;
+  readonly reason: string;
+}
+
+/**
+ * Compare a runtime manifest observation against a checked-in bundle and
+ * produce a freshness outcome without modifying the active bundle.
+ */
+export function computeManifestFreshness(
+  targetId: RemoteDeploymentTargetId,
+  observation: PublishedWorldPackageMetadata | undefined,
+): ManifestFreshnessOutcome {
+  const bundle = createPackageReferenceBundleMap().get(targetId);
+  if (bundle === undefined) {
+    return { status: "unavailable", targetId, reason: `Unknown target: ${targetId}` };
+  }
+
+  if (observation === undefined) {
+    return { status: "unavailable", targetId, reason: "Target not found in manifest observation" };
+  }
+
+  const driftedFields: ManifestFreshnessFieldDrift[] = [];
+
+  if (observation.worldPackageId !== bundle.worldPackageId) {
+    driftedFields.push({ field: "published-at", expected: bundle.worldPackageId, actual: observation.worldPackageId });
+  }
+
+  const observedOriginalId = observation.originalWorldPackageId ?? observation.worldPackageId;
+  if (observedOriginalId !== bundle.originalWorldPackageId) {
+    driftedFields.push({ field: "original-id", expected: bundle.originalWorldPackageId, actual: observedOriginalId });
+  }
+
+  if (observation.toolchainVersion !== undefined && observation.toolchainVersion !== bundle.toolchainVersion) {
+    driftedFields.push({ field: "toolchain-version", expected: bundle.toolchainVersion, actual: observation.toolchainVersion });
+  }
+
+  if (driftedFields.length > 0) {
+    return { status: "stale", targetId, driftedFields };
+  }
+
+  return { status: "matched", targetId };
+}
+
+// ---- Module-level freshness observation store ----
+
+let latestFreshnessObservations: ReadonlyMap<RemoteDeploymentTargetId, ManifestFreshnessOutcome> = new Map();
+
+/**
+ * Store a freshness observation for a maintained remote target.
+ * Called by the runtime observation layer (e.g. WalletStatus) after each
+ * manifest refresh.
+ */
+export function setManifestFreshnessOutcome(
+  targetId: RemoteDeploymentTargetId,
+  outcome: ManifestFreshnessOutcome,
+): void {
+  latestFreshnessObservations = new Map(latestFreshnessObservations).set(targetId, outcome);
+}
+
+/**
+ * Read the latest stored freshness outcome for a remote target.
+ * Returns "unavailable" when no observation has been recorded yet.
+ */
+export function getManifestFreshnessOutcome(
+  targetId: RemoteDeploymentTargetId,
+): ManifestFreshnessOutcome {
+  const cached = latestFreshnessObservations.get(targetId);
+  return cached ?? { status: "unavailable", targetId, reason: "No observation recorded" };
 }
 
 /**
  * Parse Published.toml world package metadata for the supported EVE Frontier targets.
  */
-export function parsePublishedWorldPackageManifest(manifest: string): Partial<Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata>> {
-  const results: Partial<Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata>> = {};
+export class PublishedWorldPackageManifestError extends Error {
+  public constructor(
+    readonly kind: "malformed",
+    message: string,
+  ) {
+    super(message);
+    this.name = "PublishedWorldPackageManifestError";
+  }
+}
 
-  for (const [sectionName, targetId] of [["testnet_stillness", "testnet:stillness"], ["testnet_utopia", "testnet:utopia"]] as const) {
-    const originalId = extractPublishedSectionValue(manifest, sectionName, "original-id");
-    const publishedAt = extractPublishedSectionValue(manifest, sectionName, "published-at");
-    const toolchainVersion = extractPublishedSectionValue(manifest, sectionName, "toolchain-version");
-    const resolvedPackageId = publishedAt ?? originalId;
-
-    if (resolvedPackageId !== null && isPublishedPackageId(resolvedPackageId)) {
-      results[targetId] = {
-        worldPackageId: resolvedPackageId,
-        originalWorldPackageId: originalId !== null && isPublishedPackageId(originalId) ? originalId : undefined,
-        toolchainVersion: toolchainVersion != null && toolchainVersion.length > 0 ? toolchainVersion : undefined,
-      };
-    }
+export function parsePublishedWorldPackageManifest(manifest: string): Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata> {
+  const parsed = parsePublishedManifestStrict(manifest);
+  if (!parsed.ok) {
+    throw new PublishedWorldPackageManifestError(
+      "malformed",
+      parsed.errors.map((error) => `${error.target}${error.field === undefined ? "" : `.${error.field}`}: ${error.message}`).join("; "),
+    );
   }
 
-  return results;
+  return Object.fromEntries(
+    MAINTAINED_REMOTE_TARGET_IDS.map((targetId) => {
+      const target = parsed.targets.get(targetId);
+      if (target === undefined) {
+        throw new PublishedWorldPackageManifestError("malformed", `Missing maintained target ${targetId}`);
+      }
+      return [targetId, {
+        worldPackageId: target.worldPackageId,
+        originalWorldPackageId: target.originalWorldPackageId,
+        toolchainVersion: target.toolchainVersion,
+      }];
+    }),
+  ) as Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata>;
 }
 
 /**
- * Refresh the cached world package ids from the maintained Published.toml manifest.
+ * Fetch and parse the maintained Published.toml manifest as an observation.
+ *
+ * The returned metadata is observational only and is NOT applied to any active
+ * package-reference bundle. Callers use this to detect upstream drift.
+ *
+ * Legacy version-2/version-3 stored overrides are no longer written.
  */
 export async function refreshPublishedWorldPackageManifest(input: {
   readonly fetchFn?: typeof fetch;
   readonly storage?: Storage;
-} = {}): Promise<Partial<Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata>>> {
+} = {}): Promise<Record<RemoteDeploymentTargetId, PublishedWorldPackageMetadata>> {
   const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
   const response = await fetchGitHubManifest(fetchFn, PUBLISHED_WORLD_PACKAGE_MANIFEST_URL);
 
@@ -351,15 +320,7 @@ export async function refreshPublishedWorldPackageManifest(input: {
   }
 
   const manifest = await response.text();
-  const targets = parsePublishedWorldPackageManifest(manifest);
-  saveStoredWorldPackageOverrides(input.storage ?? getBrowserStorage(), {
-    version: 3,
-    lastVerifiedOn: getCurrentIsoDate(),
-    source: PUBLISHED_WORLD_PACKAGE_MANIFEST_URL,
-    targets,
-  });
-
-  return targets;
+  return parsePublishedWorldPackageManifest(manifest);
 }
 
 /**

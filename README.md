@@ -282,6 +282,7 @@ Before contributing, please review:
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md), including private vulnerability reporting
 - [REPOSITORY-GOVERNANCE.md](./docs/REPOSITORY-GOVERNANCE.md), including protected-branch and dependency-update procedures
+- [WORLD-PACKAGE-REFERENCE-RUNBOOK.md](./docs/WORLD-PACKAGE-REFERENCE-RUNBOOK.md), for maintaining remote deployment World package references
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 
 ## License

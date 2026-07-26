@@ -30,6 +30,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:real-wasm": "bun run ./scripts/real-wasm-integration.ts",
+    "check:world-package-references": "bun run ./scripts/check-world-package-references.ts",
     "typecheck": "tsc -b",
     "audit": "bunx npm-audit --audit-level=high",
     "verify": "bun run lint && bun run typecheck && bun run test:run",

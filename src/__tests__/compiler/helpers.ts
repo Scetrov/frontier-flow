@@ -178,12 +178,12 @@ export function createPackageReferenceBundle(
   const defaultSourceVersionTag = targetId === "testnet:utopia"
     ? "v0.0.21"
     : targetId === "testnet:stillness"
-      ? "v0.0.23"
+      ? "v0.0.24"
       : "v0.0.18";
   const defaultToolchainVersion = targetId === "testnet:utopia"
     ? "1.68.0"
     : targetId === "testnet:stillness"
-      ? "1.69.1"
+      ? "1.74.0"
       : "1.67.1";
   const bundle: PackageReferenceBundle = {
     targetId,

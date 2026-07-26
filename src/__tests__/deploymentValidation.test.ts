@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { saveLocalEnvironmentConfig } from "../data/localEnvironment";
-import { getPackageReferenceBundle } from "../data/packageReferences";
+import {
+  getPackageReferenceBundle,
+  setManifestFreshnessOutcome,
+  type ManifestFreshnessOutcome,
+} from "../data/packageReferences";
 import { createDeploymentValidationResult, validatePackageReferenceBundle } from "../utils/deploymentValidation";
 
 describe("deploymentValidation", () => {
@@ -145,5 +149,58 @@ describe("deploymentValidation", () => {
     );
 
     expect(blocker).toBeNull();
+  });
+
+  it("blocks deployment when a remote target has stale package references", () => {
+    // Record a stale observation for Stillness.
+    const staleOutcome: ManifestFreshnessOutcome = {
+      status: "stale",
+      targetId: "testnet:stillness",
+      driftedFields: [
+        { field: "published-at", expected: "0x8b8a...1aa1", actual: "0xdead...beef" },
+      ],
+    };
+    setManifestFreshnessOutcome("testnet:stillness", staleOutcome);
+
+    const validation = createDeploymentValidationResult({
+      artifactReady: true,
+      artifactHasBytecode: true,
+      hasAvailableWallets: true,
+      hasConnectedWallet: true,
+      targetId: "testnet:stillness",
+    });
+
+    const staleBlocker = validation.blockers.find((b) => b.code === "stale-package-references");
+    expect(staleBlocker).toBeDefined();
+    expect(staleBlocker?.message).toContain("drifted");
+    expect(staleBlocker?.remediation).toContain("Update the checked-in package reference bundle");
+
+    // Published package references input is NOT resolved when stale.
+    expect(validation.resolvedInputs).not.toContain("published package references for testnet:stillness");
+
+    // Clear the observation for subsequent tests.
+    setManifestFreshnessOutcome("testnet:stillness", {
+      status: "matched",
+      targetId: "testnet:stillness",
+    });
+  });
+
+  it("does not block when freshness observation is matched", () => {
+    setManifestFreshnessOutcome("testnet:utopia", {
+      status: "matched",
+      targetId: "testnet:utopia",
+    });
+
+    const validation = createDeploymentValidationResult({
+      artifactReady: true,
+      artifactHasBytecode: true,
+      hasAvailableWallets: true,
+      hasConnectedWallet: true,
+      targetId: "testnet:utopia",
+    });
+
+    const staleBlocker = validation.blockers.find((b) => b.code === "stale-package-references");
+    expect(staleBlocker).toBeUndefined();
+    expect(validation.resolvedInputs).toContain("published package references for testnet:utopia");
   });
 });
