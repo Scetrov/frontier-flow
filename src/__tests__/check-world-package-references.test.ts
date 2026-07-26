@@ -12,6 +12,13 @@ function createManifestResponse(content: string): Response {
   });
 }
 
+function isSuiTestnetGraphQlEndpoint(value: string): boolean {
+  const url = new URL(value);
+  return url.protocol === "https:"
+    && url.hostname === "graphql.testnet.sui.io"
+    && url.pathname === "/graphql";
+}
+
 const COHERENT_MANIFEST = `
 [published.testnet_stillness]
 published-at = "0x8b8a46ed766fa1358ce7c5c51f6a164b13d627a63e45343f69ed0ba0446c1aa1"
@@ -174,7 +181,7 @@ describe("check-world-package-references", () => {
           if (url.includes("/v0.0.24/contracts/world/Published.toml") || url.includes("/v0.0.21/contracts/world/Published.toml")) {
             return Promise.resolve(createManifestResponse(COHERENT_MANIFEST));
           }
-          if (url.includes("graphql.testnet.sui.io")) {
+          if (isSuiTestnetGraphQlEndpoint(url)) {
             const body = typeof init?.body === "string" ? init.body : "";
             return Promise.resolve(graphqlHandler(body));
           }
@@ -218,7 +225,7 @@ describe("check-world-package-references", () => {
             return Promise.resolve(createManifestResponse(COHERENT_MANIFEST));
           }
 
-          if (url.includes("graphql.testnet.sui.io")) {
+          if (isSuiTestnetGraphQlEndpoint(url)) {
             const body = typeof init?.body === "string" ? init.body : "";
             return Promise.resolve(graphqlHandler(body));
           }
@@ -262,7 +269,7 @@ describe("check-world-package-references", () => {
             return Promise.resolve(createManifestResponse(COHERENT_MANIFEST));
           }
 
-          if (url.includes("graphql.testnet.sui.io")) {
+          if (isSuiTestnetGraphQlEndpoint(url)) {
             const body = typeof init?.body === "string" ? JSON.parse(init.body) as { variables?: { id?: string } } : {};
             const objectId = body.variables?.id ?? "0x0";
             return Promise.resolve(new Response(JSON.stringify({
@@ -306,7 +313,7 @@ describe("check-world-package-references", () => {
           if (url.includes("/main/contracts/world/Published.toml") || url.includes("/v0.0.24/") || url.includes("/v0.0.21/")) {
             return Promise.resolve(createManifestResponse(COHERENT_MANIFEST));
           }
-          if (url.includes("graphql.testnet.sui.io")) {
+          if (isSuiTestnetGraphQlEndpoint(url)) {
             return Promise.resolve(new Response(JSON.stringify({ data: null }), { status: 200 }));
           }
 
