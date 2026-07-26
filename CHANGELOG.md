@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.8](https://github.com/Scetrov/frontier-flow/compare/v0.11.7...v0.11.8) (2026-07-26)
+
+
+### Bug Fixes
+
+* harden world package references ([#71](https://github.com/Scetrov/frontier-flow/issues/71)) ([eb098e8](https://github.com/Scetrov/frontier-flow/commit/eb098e87b016abbd40f0874fd26e9f684a7c7fe1))
+
 ## [0.11.7](https://github.com/Scetrov/frontier-flow/compare/v0.11.6...v0.11.7) (2026-07-25)
 
 
