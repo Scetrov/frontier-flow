@@ -3,11 +3,12 @@
 ## From idea to deployment in under 10 minutes for EVE Frontier automation builders
 
 [![Contributors](https://img.shields.io/github/contributors/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/graphs/contributors)
-[![Forks](https://img.shields.io/github/forks/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/network/members)
+[![Forks](https://img.shields.io/github/forks/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/forks)
 [![Stargazers](https://img.shields.io/github/stars/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/stargazers)
 [![Issues](https://img.shields.io/github/issues/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/issues)
 [![MIT License](https://img.shields.io/github/license/Scetrov/frontier-flow?style=for-the-badge)](https://github.com/Scetrov/frontier-flow/blob/main/LICENSE.md)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13753/badge)](https://www.bestpractices.dev/projects/13753)
+[![OpenSSF Best Practices](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fwww.bestpractices.dev%2Fprojects%2F13753.json&query=%24.badge_level&label=Best%20Practices&style=for-the-badge&color=4c1)](https://www.bestpractices.dev/projects/13753)
+[![Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FScetrov%2Ffrontier-flow&query=%24.score&suffix=%2F10&label=Scorecard&style=for-the-badge)](https://scorecard.dev/viewer/?uri=github.com/Scetrov/frontier-flow)
 
 Frontier Flow is a low-code visual editor for EVE Frontier players who want to design game automation logic without hand-writing smart contract code. Build automation flows on a node canvas, generate deterministic Sui Move output in the browser, validate logic before deployment, and move from concept to contract fast.
 
