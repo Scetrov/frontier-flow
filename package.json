@@ -41,7 +41,7 @@
     "bun": ">=1.0.0"
   },
   "dependencies": {
-    "@netlify/functions": "^5.3.0",
+    "@netlify/functions": "^6.0.0",
     "@mysten/dapp-kit": "1.1.13",
     "@mysten/sui": "2.24.0",
     "@mysten/walrus": "^1.2.14",
