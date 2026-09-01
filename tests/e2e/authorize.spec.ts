@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { SEEN_TUTORIAL_STORAGE_STATE, TUTORIAL_STORAGE_KEY } from "./fixtures/storage";
 import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
+import { MAINTAINED_WORLD_PACKAGE_REFERENCES } from "../../src/data/maintainedWorldPackageReferences";
 import { createDevInspectSuccessResponse } from "../../src/test/turretSimulationMocks";
 import { encodeSimulationPriorityEntries } from "../../src/utils/turretSimulationCodec";
 
@@ -19,6 +20,15 @@ const SIMULATED_TYPE_ID = "900002";
 const SIMULATED_GROUP_ID = "25";
 const SIMULATED_CHARACTER_ID = "42";
 const SIMULATED_CHARACTER_TRIBE = "7";
+
+function createPublishedWorldManifest(): string {
+  return MAINTAINED_WORLD_PACKAGE_REFERENCES.map((reference) => [
+    `[published.${reference.targetId.replace(":", "_")}]`,
+    `published-at = "${reference.worldPackageId}"`,
+    `original-id = "${reference.originalWorldPackageId}"`,
+    `toolchain-version = "${reference.toolchainVersion}"`,
+  ].join("\n")).join("\n\n");
+}
 
 function createGraphQlResponse() {
   return {
@@ -106,6 +116,14 @@ test("runs the full turret authorization workflow and refreshes the list after c
       walletName: WALLET_NAME,
     },
   );
+
+  await page.route("https://raw.githubusercontent.com/evefrontier/world-contracts/main/contracts/world/Published.toml", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/plain",
+      body: createPublishedWorldManifest(),
+    });
+  });
 
   await page.route("https://graphql.testnet.sui.io/graphql", async (route) => {
     const body = route.request().postDataJSON() as { query?: string };
@@ -389,12 +407,13 @@ test("runs the full turret authorization workflow and refreshes the list after c
   await selectDeploymentTarget(page, "testnet:stillness");
   await page.getByRole("button", { name: "Deploy testnet:stillness" }).click();
 
-  const deploymentModal = page.getByRole("dialog", { name: "Deployed" });
-  await expect(deploymentModal).toBeVisible();
-  await deploymentModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
-
   const deploymentStatus = page.locator('.ff-compilation-status__button[aria-controls="deployment-status-details"]');
   await expect(deploymentStatus).toContainText("Deployed");
+
+  const deploymentModal = page.getByRole("dialog", { name: "Deployed" });
+  if (await deploymentModal.isVisible()) {
+    await deploymentModal.getByRole("button", { name: "Dismiss" }).click({ force: true });
+  }
 
   await page.getByRole("button", { name: "Authorize" }).click();
   await expect(page.getByRole("heading", { name: "Authorize Turrets" })).toBeVisible();
