@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.13](https://github.com/Scetrov/frontier-flow/compare/v0.11.12...v0.11.13) (2026-09-01)
+
+
+### Bug Fixes
+
+* **deps:** update nanoid ([#97](https://github.com/Scetrov/frontier-flow/issues/97)) ([5d29222](https://github.com/Scetrov/frontier-flow/commit/5d292229f8edcbb97fa24b8acbc41a2b1ac90859))
+
 ## [0.11.12](https://github.com/Scetrov/frontier-flow/compare/v0.11.11...v0.11.12) (2026-09-01)
 
 
