@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.15](https://github.com/Scetrov/frontier-flow/compare/v0.11.14...v0.11.15) (2026-09-09)
+
+
+### Bug Fixes
+
+* **deps:** update js-yaml for GHSA-2883 ([#109](https://github.com/Scetrov/frontier-flow/issues/109)) ([441f2ea](https://github.com/Scetrov/frontier-flow/commit/441f2eadc433019f036aece23e4be8c2ff017e50))
+
 ## [0.11.14](https://github.com/Scetrov/frontier-flow/compare/v0.11.13...v0.11.14) (2026-09-07)
 
 
