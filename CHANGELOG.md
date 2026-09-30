@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.11.16](https://github.com/Scetrov/frontier-flow/compare/v0.11.15...v0.11.16) (2026-09-30)
+
+
+### Bug Fixes
+
+* **deps:** remediate fast-uri OSV advisories ([#116](https://github.com/Scetrov/frontier-flow/issues/116)) ([a1a838b](https://github.com/Scetrov/frontier-flow/commit/a1a838b7a1d148ae55df9570bb926354c61d3ca2))
+
 ## [0.11.15](https://github.com/Scetrov/frontier-flow/compare/v0.11.14...v0.11.15) (2026-09-09)
 
 
