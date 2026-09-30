@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Remediation of reported vulnerable package versions
 The project SHALL resolve package versions outside the affected ranges for vulnerabilities reported by its dependency scanner.
@@ -11,12 +11,7 @@ The project SHALL resolve package versions outside the affected ranges for vulne
 - **WHEN** the Bun dependency graph is generated for the project
 - **THEN** Ajv resolves `fast-uri` at version 3.1.8 or later within the 3.x line, outside the affected ranges for GHSA-58mr-gqgx-xq4g, GHSA-hrr3-gc8f-f4qj, and GHSA-qw65-cvwx-89v3
 
-### Requirement: Lockfile-integrity dependency resolution
-The project SHALL record the resolved remediation package versions and their registry-provided SHA-512 integrity values in `bun.lock`.
-
-#### Scenario: Dependency installation is reproducible
-- **WHEN** dependencies are installed from the committed manifest and lockfile
-- **THEN** Bun uses the fixed package versions and validates them against their recorded integrity values
+## ADDED Requirements
 
 ### Requirement: URI dependency security regression coverage
 The project SHALL provide executable regression tests for the URI dependency used by Ajv.
