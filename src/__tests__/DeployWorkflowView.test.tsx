@@ -13,11 +13,21 @@ const mockGetObject = vi.fn<() => Promise<unknown>>();
 const mockSuiClient = { getObject: mockGetObject };
 const STILLNESS_WORLD_PACKAGE_ID = getPackageReferenceBundle("testnet:stillness").worldPackageId;
 
-vi.mock("@mysten/dapp-kit", () => ({
-  useCurrentAccount: () => ({ address: "0xabc" }),
-  useCurrentWallet: () => ({ isConnected: true }),
-  useSuiClient: () => mockSuiClient,
-  useWallets: () => ([{ name: "Vault" }]),
+vi.mock("../wallet/hooks", () => ({
+  useFrontierWalletSession: () => ({
+    account: { address: "0xabc" },
+    wallets: [{ name: "Vault" }],
+    isConnected: true,
+    isConnecting: false,
+    disconnectPending: false,
+    disconnect: vi.fn(),
+    connect: vi.fn(),
+    kit: {},
+  }),
+}));
+
+vi.mock("../utils/suiTargetClient", () => ({
+  getSuiTargetClient: () => mockSuiClient,
 }));
 
 vi.mock("../hooks/useTargetBalance", () => ({
@@ -75,7 +85,7 @@ function renderDeployWorkflowView(deployment: DeploymentState) {
 describe("DeployWorkflowView", () => {
   beforeEach(() => {
     mockGetObject.mockReset();
-    mockGetObject.mockResolvedValue({});
+    mockGetObject.mockResolvedValue({ object: { objectId: STILLNESS_WORLD_PACKAGE_ID, type: "package", version: "1", digest: "11111111111111111111111111111111" } });
     mockUseTargetBalance.mockReturnValue(createBalanceQuery({
       data: { totalBalance: "2500000000" },
     }));

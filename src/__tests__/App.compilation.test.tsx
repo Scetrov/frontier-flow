@@ -1,13 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type {
-  useCurrentAccount as useCurrentAccountHook,
-  useCurrentWallet as useCurrentWalletHook,
-  useSignAndExecuteTransaction as useSignAndExecuteTransactionHook,
-  useSuiClient as useSuiClientHook,
-  useWallets as useWalletsHook,
-} from "@mysten/dapp-kit";
-
 import App from "../App";
 import { mergeDeploymentStatus } from "../utils/mergeDeploymentStatus";
 import { mergeUiState } from "../utils/uiStateStorage";
@@ -18,11 +10,11 @@ import { createDeploymentStatus, createGeneratedArtifactStub } from "./compiler/
 const mockBeginGitHubOAuthPopup = vi.fn<typeof import("../utils/githubAuthClient").beginGitHubOAuthPopup>();
 const mockValidateGitHubToken = vi.fn<typeof import("../utils/githubAuthClient").validateGitHubToken>();
 
-type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
-type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
-type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionHook>;
-type SuiClient = ReturnType<typeof useSuiClientHook>;
-type Wallets = ReturnType<typeof useWalletsHook>;
+type CurrentAccount = { readonly address: string } | null;
+type CurrentWallet = { readonly isConnected?: boolean };
+type SignAndExecuteTransaction = { readonly mutateAsync: (input: unknown) => Promise<{ readonly digest: string }> };
+type SuiClient = object;
+type Wallets = readonly { readonly name: string }[];
 
 interface CanvasWorkspaceProps {
   readonly onCompilationStateChange?: (
@@ -51,12 +43,17 @@ const mockUseSignAndExecuteTransaction = vi.fn<() => SignAndExecuteTransaction>(
 const mockUseSuiClient = vi.fn<() => SuiClient>();
 const mockUseWallets = vi.fn<() => Wallets>();
 
-vi.mock("@mysten/dapp-kit", () => ({
-  useCurrentAccount: () => mockUseCurrentAccount(),
-  useCurrentWallet: () => mockUseCurrentWallet(),
-  useSignAndExecuteTransaction: () => mockUseSignAndExecuteTransaction(),
-  useSuiClient: () => mockUseSuiClient(),
-  useWallets: () => mockUseWallets(),
+vi.mock("../wallet/hooks", () => ({
+  useFrontierWalletSession: () => ({
+    account: mockUseCurrentAccount(),
+    wallets: mockUseWallets(),
+    isConnected: mockUseCurrentWallet().isConnected === true,
+    isConnecting: false,
+    disconnectPending: false,
+    disconnect: vi.fn(),
+    connect: vi.fn(),
+    kit: { signAndExecuteTransaction: (input: unknown) => mockUseSignAndExecuteTransaction().mutateAsync(input) },
+  }),
 }));
 
 vi.mock("../utils/githubAuthClient", async () => {
@@ -159,9 +156,9 @@ describe("App compilation handoff", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_GITHUB_CLIENT_ID", "client-id");
     mockUseCurrentAccount.mockReturnValue(null);
-    mockUseCurrentWallet.mockReturnValue({ isConnected: false } as CurrentWallet);
-    mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
-    mockUseSuiClient.mockReturnValue({} as SuiClient);
+    mockUseCurrentWallet.mockReturnValue({ isConnected: false });
+    mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() });
+    mockUseSuiClient.mockReturnValue({});
     mockUseWallets.mockReturnValue([]);
   });
 

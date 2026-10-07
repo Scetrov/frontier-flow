@@ -29,7 +29,7 @@ This document defines the **mandatory security controls** for the Frontier Flow 
 
 - **Client-side web application** (React, Vite, Tailwind)
 - **In-browser WASM compilation** (`@zktx.io/sui-move-builder`)
-- **Blockchain transactions** (Sui deployment via `@mysten/dapp-kit`)
+- **Blockchain transactions** (Sui deployment via `@mysten/dapp-kit-react` and `@mysten/sui` gRPC)
 - **Third-party OAuth** (GitHub integration via Netlify Functions)
 - **Supply chain** (package dependencies, WASM binaries)
 
@@ -50,7 +50,7 @@ Dependabot is configured in [`.github/dependabot.yml`](../.github/dependabot.yml
 | Requirement                              | Detail                                                                                                                                                                                             |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Lock files**                           | `bun.lock` **must** be committed and used for deterministic installs (`bun install --frozen-lockfile`)                                                                                            |
-| **Exact versions for critical packages** | Pin `@zktx.io/sui-move-builder`, `@mysten/sui`, and `@mysten/dapp-kit` to exact versions — no caret (`^`) or tilde (`~`). These packages directly affect on-chain bytecode and wallet transactions |
+| **Exact versions for critical packages** | Pin `@zktx.io/sui-move-builder`, `@mysten/sui`, `@mysten/dapp-kit-react`, `@mysten/dapp-kit-core`, and `@mysten/wallet-standard` to exact versions — no caret (`^`) or tilde (`~`). These packages directly affect on-chain bytecode and wallet transactions |
 | **Integrity hashes**                     | Use `bun pm trust` and registry signature verification where available                                                                                                                             |
 
 ### 2.3 Supply Chain Hardening
@@ -129,6 +129,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bunx playwright install --with-deps chromium
+      - run: bun run build
       - run: bun run test:e2e
 
   audit:

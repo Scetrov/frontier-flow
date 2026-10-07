@@ -16,7 +16,7 @@ describe("ColophonPage", () => {
     expect(screen.getByRole("link", { name: "Return to Frontier Flow" })).toHaveAttribute("href", "/");
     expect(screen.getByText("Runtime Packages")).toBeVisible();
     expect(screen.getByText("Development Packages")).toBeVisible();
-    expect(screen.getByText("@mysten/dapp-kit")).toBeVisible();
+    expect(screen.getByText("@mysten/dapp-kit-react")).toBeVisible();
     expect(screen.getByText("react")).toBeVisible();
     expect(screen.getByText("vitest")).toBeVisible();
   });

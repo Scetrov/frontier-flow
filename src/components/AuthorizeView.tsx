@@ -1,4 +1,8 @@
-import { useCurrentAccount, useCurrentWallet, useSuiClient } from "@mysten/dapp-kit";
+import type { Transaction } from "@mysten/sui/transactions";
+
+import type { DeploymentTargetId } from "../compiler/types";
+import { signTargetTransaction, type FrontierDAppKit } from "../utils/suiWalletKit";
+import { useFrontierWalletSession } from "../wallet/hooks";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { StoredDeploymentState } from "../types/authorization";
@@ -12,6 +16,16 @@ import AuthorizationProgressModal from "./AuthorizationProgressModal";
 import AuthorizeTurretList from "./AuthorizeTurretList";
 import type { PrimaryView } from "./Header";
 import TurretSimulationModal from "./TurretSimulationModal";
+
+async function signAuthorizationTransaction(input: {
+  readonly kit: FrontierDAppKit;
+  readonly targetId: DeploymentTargetId;
+  readonly transaction: Transaction;
+  readonly isCurrent: () => boolean;
+  readonly signal?: AbortSignal;
+}): Promise<{ readonly bytes: string; readonly signature: string }> {
+  return signTargetTransaction(input);
+}
 
 type AuthorizeWorkflowView = Extract<PrimaryView, "authorize" | "simulate">;
 
@@ -62,7 +76,7 @@ interface AuthorizeViewSelectionState {
 }
 
 interface AuthorizeViewModel {
-  readonly account: ReturnType<typeof useCurrentAccount>;
+  readonly account: { readonly address: string } | null;
   readonly authorization: ReturnType<typeof useAuthorization>;
   readonly contractSelector: AuthorizeContractSelectorProps;
   readonly deploymentKey: string | null;
@@ -324,12 +338,10 @@ function useAuthorizeViewModel(input: {
   readonly onViewChange?: (view: PrimaryView) => void;
 }): AuthorizeViewModel {
   const { deploymentState, onViewChange } = input;
-  const account = useCurrentAccount();
-  const currentWallet = useCurrentWallet();
-  const suiClient = useSuiClient();
+  const session = useFrontierWalletSession();
+  const account = session.account;
   const authorizationContracts = useAuthorizationContracts({
     fallbackDeploymentState: deploymentState,
-    suiClient,
     targetId: deploymentState === null ? null : deploymentState.targetId,
     walletAddress: account?.address ?? null,
   });
@@ -352,14 +364,19 @@ function useAuthorizeViewModel(input: {
   const authorization = useAuthorization({
     deploymentState: selectedDeploymentState,
     walletAccount: account,
-    currentWallet,
-    suiClient,
+    currentWallet: { isConnected: session.isConnected, currentWallet: session.isConnected ? session.account : null },
+    signBuiltTransaction: (transaction, signal) => signAuthorizationTransaction({
+      kit: session.kit,
+      targetId: selectedDeploymentState?.targetId ?? "testnet:stillness",
+      transaction,
+      isCurrent: () => session.account?.address === account?.address,
+      signal,
+    }),
   });
   const deploymentKey = getAuthorizeDeploymentKey(selectedDeploymentState);
   const turretSimulation = useTurretSimulation({
     deploymentKey,
     deploymentState: selectedDeploymentState,
-    suiClient,
     turrets: turretList.turrets,
     walletAddress: account?.address ?? null,
   });

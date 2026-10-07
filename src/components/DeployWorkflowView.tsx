@@ -1,9 +1,6 @@
-import {
-  useCurrentAccount,
-  useCurrentWallet,
-  useSuiClient,
-} from "@mysten/dapp-kit";
 import { useEffect, useState } from "react";
+
+import { useFrontierWalletSession } from "../wallet/hooks";
 
 import type { DeploymentState } from "../compiler/types";
 import { getDeploymentTarget } from "../data/deploymentTargets";
@@ -128,13 +125,12 @@ function toChecklistState(tone: "neutral" | "positive" | "warning"): "blocked" |
 
 // oxlint-disable-next-line complexity
 function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
-  const account = useCurrentAccount();
-  const currentWallet = useCurrentWallet();
-  const suiClient = useSuiClient();
+  const session = useFrontierWalletSession();
+  const account = session.account;
   const target = getDeploymentTarget(deployment.selectedTarget);
   const balanceQuery = useTargetBalance(account?.address ?? null, deployment.selectedTarget);
   const balanceState = getBalanceState({
-    isConnected: account !== null && currentWallet.isConnected,
+    isConnected: account !== null && session.isConnected,
     isError: balanceQuery.isError,
     isPending: balanceQuery.isPending,
     requiresWallet: target.supportsWalletSigning,
@@ -161,7 +157,7 @@ function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
       try {
         setWorldCheckState("pending");
         setWorldDetail(null);
-        const exists = await verifyPublishedWorldPackageExists(deployment.selectedTarget, suiClient, controller.signal);
+        const exists = await verifyPublishedWorldPackageExists(deployment.selectedTarget, undefined, controller.signal);
         if (cancelled) return;
         const bundle = getPackageReferenceBundle(deployment.selectedTarget);
         setWorldDetail(bundle.worldPackageId);
@@ -185,7 +181,7 @@ function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
       cancelled = true;
       controller.abort();
     };
-  }, [deployment.selectedTarget, suiClient]);
+  }, [deployment.selectedTarget]);
 
   return (
     <section className="space-y-4 border border-[var(--ui-border-dark)] bg-[rgba(20,10,10,0.78)] p-5">

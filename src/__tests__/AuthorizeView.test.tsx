@@ -1,12 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type {
-  useCurrentAccount as useCurrentAccountHook,
-  useCurrentWallet as useCurrentWalletHook,
-  useSuiClient as useSuiClientHook,
-} from "@mysten/dapp-kit";
-
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthorizationProgressState, StoredDeploymentState, TurretInfo } from "../types/authorization";
 import type { SimulationReferenceDataPayload } from "../types/turretSimulation";
 import AuthorizeView from "../components/AuthorizeView";
@@ -14,14 +8,14 @@ import type { PrimaryView } from "../components/Header";
 import type { UseAuthorizationResult } from "../hooks/useAuthorization";
 import type { UseTurretListResult } from "../hooks/useTurretList";
 import type { FetchOwnerCapInput } from "../utils/authorizationTransaction";
-import { createDevInspectErrorResponse, createDevInspectSuccessResponse } from "../test/turretSimulationMocks";
+import { createGrpcSimulationResponse } from "../test/turretSimulationMocks";
+import { emptyOwnedObjectsResponseBody } from "../test/suiGrpcMocks";
 import { encodeSimulationPriorityEntries } from "../utils/turretSimulationCodec";
 import { formatAddress } from "../utils/formatAddress";
 
-type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
-type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
-type SuiClient = ReturnType<typeof useSuiClientHook>;
-type DevInspectTransactionBlock = SuiClient["devInspectTransactionBlock"];
+type CurrentAccount = { readonly address: string; readonly chains?: readonly string[]; readonly features?: readonly string[]; readonly icon?: string; readonly label?: string; readonly publicKey?: Uint8Array };
+type CurrentWallet = { readonly isConnected?: boolean; readonly currentWallet?: object | null };
+type SuiClient = object;
 type AuthorizeWorkflowView = Extract<PrimaryView, "authorize" | "simulate">;
 
 const mockUseCurrentAccount = vi.fn<() => CurrentAccount>();
@@ -34,10 +28,17 @@ const { mockFetchSimulationOwnerCharacterId, mockLoadSimulationReferenceData } =
   mockLoadSimulationReferenceData: vi.fn<(input: unknown) => Promise<SimulationReferenceDataPayload>>(),
 }));
 
-vi.mock("@mysten/dapp-kit", () => ({
-  useCurrentAccount: () => mockUseCurrentAccount(),
-  useCurrentWallet: () => mockUseCurrentWallet(),
-  useSuiClient: () => mockUseSuiClient(),
+vi.mock("../wallet/hooks", () => ({
+  useFrontierWalletSession: () => ({
+    account: mockUseCurrentAccount(),
+    wallets: [],
+    isConnected: mockUseCurrentWallet().isConnected === true,
+    isConnecting: false,
+    disconnectPending: false,
+    disconnect: vi.fn(),
+    connect: vi.fn(),
+    kit: {},
+  }),
 }));
 
 vi.mock("../hooks/useTurretList", () => ({
@@ -164,10 +165,7 @@ function createAuthorizationResult(overrides: Partial<UseAuthorizationResult> = 
 }
 
 function createSuiClient(overrides: Partial<SuiClient> = {}): SuiClient {
-  return {
-    devInspectTransactionBlock: vi.fn<DevInspectTransactionBlock>(() => Promise.resolve(createDevInspectSuccessResponse([]))),
-    ...overrides,
-  } as SuiClient;
+  return { ...overrides };
 }
 
 function AuthorizeViewHarness(input: {
@@ -190,13 +188,25 @@ function AuthorizeViewHarness(input: {
   );
 }
 
+function simulationFetch(returnedBytes: readonly number[], error?: string) {
+  return vi.fn((url: RequestInfo | URL) => {
+    if (new Request(url).url.endsWith("/sui.rpc.v2.StateService/ListOwnedObjects")) {
+      return Promise.resolve(new Response(emptyOwnedObjectsResponseBody(), { headers: { "content-type": "application/grpc-web-text" } }));
+    }
+    return Promise.resolve(createGrpcSimulationResponse(returnedBytes, error));
+  });
+}
+
+afterEach(() => { vi.unstubAllGlobals(); });
+
 beforeEach(() => {
+  vi.stubGlobal("fetch", simulationFetch([]));
   mockUseCurrentAccount.mockReturnValue(connectedAccount);
   mockUseCurrentWallet.mockReturnValue(connectedWallet);
   mockUseSuiClient.mockReturnValue(createSuiClient());
   mockUseAuthorization.mockReturnValue(createAuthorizationResult());
   mockFetchSimulationOwnerCharacterId.mockReset();
-  mockFetchSimulationOwnerCharacterId.mockResolvedValue("0xownercharacter");
+  mockFetchSimulationOwnerCharacterId.mockResolvedValue("0x333");
   mockLoadSimulationReferenceData.mockReset();
   mockLoadSimulationReferenceData.mockResolvedValue({
     characterOptions: [{
@@ -406,7 +416,7 @@ describe("AuthorizeView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Simulate turret Perimeter Lancer" }));
 
     await waitFor(() => {
-      expect(screen.getByText("0xownercharacter")).toBeVisible();
+      expect(screen.getByText("0x333")).toBeVisible();
     });
 
     expect(mockFetchSimulationOwnerCharacterId).toHaveBeenCalledWith(expect.objectContaining({
@@ -430,8 +440,8 @@ describe("AuthorizeView", () => {
       targetItemId: "900001",
       priorityWeight: "120",
     }]);
-    const devInspectTransactionBlock = vi.fn<DevInspectTransactionBlock>(() => Promise.resolve(createDevInspectSuccessResponse(Array.from(returnedBytes))));
-    mockUseSuiClient.mockReturnValue(createSuiClient({ devInspectTransactionBlock }));
+    const fetch = simulationFetch(Array.from(returnedBytes));
+    vi.stubGlobal("fetch", fetch);
     mockUseTurretList.mockReturnValue({
       status: "success",
       turrets: turretFixtures,
@@ -455,13 +465,11 @@ describe("AuthorizeView", () => {
     });
 
     expect(screen.getByRole("cell", { name: "120" })).toBeVisible();
-    expect(devInspectTransactionBlock).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls.filter(([url]) => new Request(url).url.endsWith("/sui.rpc.v2.TransactionExecutionService/SimulateTransaction"))).toHaveLength(1);
   });
 
   it("preserves the draft and renders execution failures when the simulation fails", async () => {
-    mockUseSuiClient.mockReturnValue(createSuiClient({
-      devInspectTransactionBlock: vi.fn<DevInspectTransactionBlock>(() => Promise.resolve(createDevInspectErrorResponse("MoveAbort"))),
-    }));
+    vi.stubGlobal("fetch", simulationFetch([], "MoveAbort"));
     mockUseTurretList.mockReturnValue({
       status: "success",
       turrets: turretFixtures,
@@ -551,11 +559,16 @@ describe("AuthorizeView", () => {
       deploymentState,
       walletAddress: "0x1234",
     }));
-    expect(mockUseAuthorization).toHaveBeenCalledWith(expect.objectContaining({
-      deploymentState,
-      walletAccount: connectedAccount,
-      currentWallet: connectedWallet,
-    }));
+    const authorizationInput = mockUseAuthorization.mock.calls[0]?.[0] as {
+      deploymentState: StoredDeploymentState;
+      walletAccount: CurrentAccount;
+      currentWallet: { isConnected: boolean; currentWallet: CurrentAccount };
+      signBuiltTransaction: unknown;
+    };
+    expect(authorizationInput.deploymentState).toBe(deploymentState);
+    expect(authorizationInput.walletAccount).toBe(connectedAccount);
+    expect(authorizationInput.currentWallet.isConnected).toBe(true);
+    expect(authorizationInput.signBuiltTransaction).toEqual(expect.any(Function));
   });
 
   it("renders linked code blocks for deployment ids and copies package and wallet values", async () => {

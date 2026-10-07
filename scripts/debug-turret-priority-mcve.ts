@@ -1,5 +1,5 @@
 import { bcs } from "@mysten/sui/bcs";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { createDiagnosticGrpcClient, simulateDiagnosticTransaction } from "./lib/suiGrpcDiagnostic";
 import { Transaction } from "@mysten/sui/transactions";
 
 import { getDeploymentTarget } from "../src/data/deploymentTargets";
@@ -456,7 +456,7 @@ function formatReturnList(entries: readonly ReturnTargetPriorityList[]): string 
 }
 
 async function inspectScenario(input: {
-  readonly client: SuiJsonRpcClient;
+  readonly client: ReturnType<typeof createDiagnosticGrpcClient>;
   readonly sender: string;
   readonly worldPackageId: string;
   readonly extensionPackageId: string;
@@ -482,34 +482,19 @@ async function inspectScenario(input: {
     ],
   });
 
-  const result = await input.client.devInspectTransactionBlock({
-    sender: input.sender,
-    transactionBlock: tx,
-  });
-
+  const result = await simulateDiagnosticTransaction(input.client, tx, input.sender);
   console.log(`\n=== ${input.scenario.label} ===`);
   console.log(`candidate: ${formatCandidate(input.scenario.candidate)}`);
-
-  if (result.error !== null && result.error !== undefined) {
-    console.log(`error: ${result.error}`);
+  if (result.$kind !== "Transaction") {
+    console.log("error: gRPC simulation did not return successful effects");
     return;
   }
-
-  const execution = result.results?.at(-1);
-  const rawBytes = execution?.returnValues?.[0]?.[0];
-  const rawType = execution?.returnValues?.[0]?.[1];
-
+  const rawBytes = result.commandResults.at(-1)?.returnValues[0]?.bcs;
   if (rawBytes === undefined) {
-    console.log("error: no return value produced by dev inspect");
+    console.log("error: no return value produced by gRPC simulation");
     return;
   }
-
-  if (rawType !== "vector<u8>") {
-    console.log(`error: unexpected return type ${rawType ?? "unknown"}`);
-    return;
-  }
-
-  const returnedBytes = decodeReturnedMoveBytes(Uint8Array.from(rawBytes));
+  const returnedBytes = decodeReturnedMoveBytes(rawBytes);
   const decoded = decodeReturnList(returnedBytes);
   console.log(`return list: ${formatReturnList(decoded)}`);
 }
@@ -521,7 +506,7 @@ async function main(): Promise<void> {
   const worldPackageId = options.worldPackageIdOverride ?? referenceBundle.worldPackageId;
   const rpcUrl = options.rpcUrlOverride ?? target.rpcUrl;
   const scenarios = resolveScenarios(options);
-  const client = new SuiJsonRpcClient({ url: rpcUrl });
+  const client = createDiagnosticGrpcClient(rpcUrl, target.networkFamily === "local" ? "localnet" : "testnet");
 
   console.log("=== Turret Priority MCVE ===");
   console.log(`target: ${options.targetId}`);

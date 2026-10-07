@@ -1,5 +1,5 @@
 import { getFaucetHost, requestSuiFromFaucetV2 } from "@mysten/sui/faucet";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { createDiagnosticGrpcClient, executeDiagnosticTransaction } from "./lib/suiGrpcDiagnostic";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 
@@ -155,7 +155,7 @@ async function createPublishTransaction(input: {
   readonly dependencies: readonly string[];
   readonly ownerAddress: string;
   readonly modules: readonly Uint8Array[];
-  readonly client: SuiJsonRpcClient;
+  readonly client: ReturnType<typeof createDiagnosticGrpcClient>;
 }): Promise<{ readonly transaction: Transaction; readonly builtBytes: Uint8Array; readonly json: string }> {
   const transaction = new Transaction();
   const [upgradeCap] = transaction.publish({
@@ -232,7 +232,7 @@ async function main(): Promise<void> {
     : artifact.bytecodeModules;
   const signer = new Ed25519Keypair();
   const signerAddress = signer.getPublicKey().toSuiAddress();
-  const client = new SuiJsonRpcClient({ url: target.rpcUrl, network: "localnet" });
+  const client = createDiagnosticGrpcClient(target.rpcUrl, "localnet");
 
   logArtifactSummary({
     moveToml: artifact.moveToml,
@@ -280,20 +280,10 @@ async function main(): Promise<void> {
   });
 
   console.log("executing local publish transaction");
-  const result = await client.signAndExecuteTransaction({
-    transaction: builtTransaction.transaction,
-    signer,
-    options: {
-      showEffects: true,
-      showObjectChanges: true,
-      showRawEffects: true,
-    },
-  });
-
-  const packageId = result.objectChanges?.find((change) => change.type === "published")?.packageId;
+  const result = await executeDiagnosticTransaction(client, builtTransaction.transaction, signer);
   console.log(`publish digest: ${result.digest}`);
-  console.log(`package id: ${packageId ?? "<missing>"}`);
-  console.log(`effects status: ${result.effects?.status.status ?? "<missing>"}`);
+  console.log(`package id: ${result.packageId ?? "<missing>"}`);
+  console.log(`effects status: ${result.success ? "success" : "failure"}`);
 }
 
 await main();

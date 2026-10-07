@@ -1,9 +1,13 @@
 import { expect, test } from "@playwright/test";
+import { GrpcTypes } from "@mysten/sui/grpc";
+import { fromBase64 } from "@mysten/sui/utils";
+import { emptyOwnedObjectsResponseBody, packageObjectResponseBody } from "../../src/test/suiGrpcMocks";
+import { createSuiGrpcBalanceResponseBody } from "../fixtures/sui-grpc-responder.mjs";
 
 import { SEEN_TUTORIAL_STORAGE_STATE, TUTORIAL_STORAGE_KEY } from "./fixtures/storage";
 import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/workflow";
 import { MAINTAINED_WORLD_PACKAGE_REFERENCES } from "../../src/data/maintainedWorldPackageReferences";
-import { createDevInspectSuccessResponse } from "../../src/test/turretSimulationMocks";
+import { createGrpcSimulationResponseBody } from "../../src/test/turretSimulationMocks";
 import { encodeSimulationPriorityEntries } from "../../src/utils/turretSimulationCodec";
 
 const CONNECTED_ADDRESS = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
@@ -13,7 +17,7 @@ const TURRET_ID = "0x22222222222222222222222222222222222222222222222222222222222
 const LEGACY_PACKAGE_ID = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 const LEGACY_MODULE_NAME = "legacy_extension";
 const WALLET_NAME = "Mock Sui Wallet";
-const WALLET_STORAGE_KEY = "frontier-flow:sui-wallet";
+const WALLET_STORAGE_KEY = "frontier-flow:sui-wallet:v2";
 const SIMULATED_TARGET_ITEM_ID = "900001";
 const SIMULATED_PRIORITY_WEIGHT = "120";
 const SIMULATED_TYPE_ID = "900002";
@@ -100,13 +104,7 @@ test("runs the full turret authorization workflow and refreshes the list after c
         registrationEvent.detail.register(wallet);
       });
 
-      window.localStorage.setItem(storageKey, JSON.stringify({
-        state: {
-          lastConnectedWalletName: walletName,
-          lastConnectedAccountAddress: address,
-        },
-        version: 0,
-      }));
+      window.localStorage.setItem(storageKey, `${walletName}:${address}`);
     },
     {
       address: CONNECTED_ADDRESS,
@@ -279,26 +277,58 @@ test("runs the full turret authorization workflow and refreshes the list after c
     });
   });
 
+  let grpcBalanceRequests = 0;
   await page.route(/https:\/\/fullnode\.testnet\.sui\.io.*/, async (route) => {
-    const body = route.request().postDataJSON() as { id: number | string; method?: string; params?: unknown[] };
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === "/sui.rpc.v2.StateService/GetBalance") {
+      expect(request.method()).toBe("POST");
+      expect(request.headers()["content-type"]).toContain("application/grpc-web");
+      expect(request.postData()).not.toContain('"jsonrpc"');
+      grpcBalanceRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/grpc-web-text",
+        body: createSuiGrpcBalanceResponseBody(),
+      });
+      return;
+    }
+    if (path === "/sui.rpc.v2.TransactionExecutionService/SimulateTransaction") {
+      expect(request.method()).toBe("POST");
+      expect(request.headers()["content-type"]).toContain("application/grpc-web");
+      expect(request.postData()).not.toContain('"jsonrpc"');
+      const returnedBytes = encodeSimulationPriorityEntries([{
+        targetItemId: SIMULATED_TARGET_ITEM_ID,
+        priorityWeight: SIMULATED_PRIORITY_WEIGHT,
+      }]);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/grpc-web-text",
+        body: createGrpcSimulationResponseBody(Array.from(returnedBytes)),
+      });
+      return;
+    }
+    if (path === "/sui.rpc.v2.StateService/ListOwnedObjects") {
+      await route.fulfill({ status: 200, contentType: "application/grpc-web-text", body: emptyOwnedObjectsResponseBody() });
+      return;
+    }
+    if (path === "/sui.rpc.v2.LedgerService/BatchGetObjects") {
+      const frames = fromBase64(request.postData() ?? "");
+      const length = new DataView(frames.buffer, frames.byteOffset, frames.byteLength).getUint32(1);
+      const decoded = GrpcTypes.BatchGetObjectsRequest.fromBinary(frames.slice(5, 5 + length));
+      const objectId = decoded.requests[0]?.objectId;
+      if (objectId === undefined || objectId.length === 0) throw new Error("Expected World package identity");
+      await route.fulfill({ status: 200, contentType: "application/grpc-web-text", body: packageObjectResponseBody(objectId) });
+      return;
+    }
+    // Other operations are still JSON-RPC until their migration tasks are done.
+    expect(path).not.toMatch(/^\/sui\.rpc\./);
+    const body = request.postDataJSON() as { id: number | string; method?: string; params?: unknown[] };
     const response = { jsonrpc: "2.0", id: body.id };
 
     switch (body.method) {
       case "suix_getBalance":
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            ...response,
-            result: {
-              coinType: "0x2::sui::SUI",
-              coinObjectCount: 1,
-              totalBalance: "1000000000",
-              lockedBalance: {},
-            },
-          }),
-        });
-        return;
+        throw new Error("Wallet balance must use gRPC, not legacy JSON-RPC.");
       case "sui_multiGetObjects":
         await route.fulfill({
           status: 200,
@@ -372,22 +402,8 @@ test("runs the full turret authorization workflow and refreshes the list after c
         });
         return;
       }
-      case "sui_devInspectTransactionBlock": {
-        const returnedBytes = encodeSimulationPriorityEntries([{
-          targetItemId: SIMULATED_TARGET_ITEM_ID,
-          priorityWeight: SIMULATED_PRIORITY_WEIGHT,
-        }]);
-
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            ...response,
-            result: createDevInspectSuccessResponse(Array.from(returnedBytes)),
-          }),
-        });
-        return;
-      }
+      case "sui_devInspectTransactionBlock":
+        throw new Error("Legacy JSON-RPC simulation is not supported by this fixture.");
       default:
         await route.fulfill({
           status: 200,
@@ -402,6 +418,9 @@ test("runs the full turret authorization workflow and refreshes the list after c
 
   await page.goto("/?ff_mock_compiler=1&ff_mock_compile_delay_ms=0&ff_idle_ms=120&ff_mock_wallet=connected&ff_mock_deploy_stage_delay_ms=0&ff_mock_authorize_delay_ms=10");
 
+  // The header hides balance text at the project's default desktop width.
+  await expect(page.locator(".ff-wallet-status__balance")).toHaveText("12.5 SUI");
+  expect(grpcBalanceRequests).toBeGreaterThan(0);
   await expect(getCompilationStatusButton(page)).toContainText("Compiled");
 
   await selectDeploymentTarget(page, "testnet:stillness");

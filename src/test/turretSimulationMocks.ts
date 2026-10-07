@@ -1,11 +1,8 @@
 import { bcs } from "@mysten/sui/bcs";
+import { GrpcTypes } from "@mysten/sui/grpc";
+import { toBase64 } from "@mysten/sui/utils";
 
-const MOCK_ADDRESS = "0x1111111111111111111111111111111111111111111111111111111111111111";
-const MOCK_DIGEST = "11111111111111111111111111111111";
-
-/**
- * Build a JSON response suitable for GraphQL and fetch-based test doubles.
- */
+/** Build a JSON response for preserved GraphQL and fetch-based test doubles. */
 export function createJsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -14,69 +11,28 @@ export function createJsonResponse(body: unknown, init: ResponseInit = {}): Resp
   });
 }
 
-/**
- * Build a dev-inspect success payload with a single `vector<u8>` return value.
- */
-export function createDevInspectSuccessResponse(returnedBytes: readonly number[]) {
-  const wrappedReturnedBytes = Array.from(bcs.vector(bcs.U8).serialize(Array.from(returnedBytes)).toBytes());
-  const returnValues: [number[], string][] = [[wrappedReturnedBytes, "vector<u8>"]];
-
-  return {
-    effects: {
-      executedEpoch: "1",
-      gasObject: {
-        owner: { AddressOwner: MOCK_ADDRESS },
-        reference: {
-          digest: MOCK_DIGEST,
-          objectId: MOCK_ADDRESS,
-          version: "1",
-        },
-      },
-      gasUsed: {
-        computationCost: "0",
-        nonRefundableStorageFee: "0",
-        storageCost: "0",
-        storageRebate: "0",
-      },
-      messageVersion: "v1" as const,
-      status: { status: "success" as const },
-      transactionDigest: MOCK_DIGEST,
-    },
-    error: null,
-    events: [],
-    results: [{
-      returnValues,
-    }],
-  };
+/** Actual protobuf/gRPC-web text response for the two-command turret simulation. */
+export function createGrpcSimulationResponseBody(returnedBytes: readonly number[], error?: string): string {
+  const wrappedBytes = bcs.vector(bcs.U8).serialize(Array.from(returnedBytes)).toBytes();
+  const response = GrpcTypes.SimulateTransactionResponse.create({
+    transaction: { effects: { status: { success: error === undefined, ...(error !== undefined ? { error: { description: error } } : {}) }, epoch: 1n } },
+    commandOutputs: [{}, { returnValues: [{ value: { name: "vector<u8>", value: wrappedBytes } }] }],
+  });
+  const protobuf = GrpcTypes.SimulateTransactionResponse.toBinary(response);
+  const trailers = new TextEncoder().encode("grpc-status: 0\r\n");
+  const frames = new Uint8Array(10 + protobuf.length + trailers.length);
+  const view = new DataView(frames.buffer);
+  view.setUint32(1, protobuf.length);
+  frames.set(protobuf, 5);
+  const offset = 5 + protobuf.length;
+  frames[offset] = 128;
+  view.setUint32(offset + 1, trailers.length);
+  frames.set(trailers, offset + 5);
+  return toBase64(frames);
 }
 
-/**
- * Build a dev-inspect failure payload for execution-path tests.
- */
-export function createDevInspectErrorResponse(message: string) {
-  return {
-    effects: {
-      executedEpoch: "1",
-      gasObject: {
-        owner: { AddressOwner: MOCK_ADDRESS },
-        reference: {
-          digest: MOCK_DIGEST,
-          objectId: MOCK_ADDRESS,
-          version: "1",
-        },
-      },
-      gasUsed: {
-        computationCost: "0",
-        nonRefundableStorageFee: "0",
-        storageCost: "0",
-        storageRebate: "0",
-      },
-      messageVersion: "v1" as const,
-      status: { status: "failure" as const, error: message },
-      transactionDigest: MOCK_DIGEST,
-    },
-    error: message,
-    events: [],
-    results: [],
-  };
+export function createGrpcSimulationResponse(returnedBytes: readonly number[], error?: string): Response {
+  return new Response(createGrpcSimulationResponseBody(returnedBytes, error), {
+    headers: { "content-type": "application/grpc-web-text" },
+  });
 }

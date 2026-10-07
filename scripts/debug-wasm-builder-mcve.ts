@@ -179,13 +179,13 @@ async function main(): Promise<void> {
 
   // Step 6: Publish to localnet
   console.log("\n--- Step 6: Publish to localnet ---");
-  const { SuiJsonRpcClient } = await import("@mysten/sui/jsonRpc");
+  const { createDiagnosticGrpcClient, executeDiagnosticTransaction } = await import("./lib/suiGrpcDiagnostic");
   const { Transaction } = await import("@mysten/sui/transactions");
   const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
   const { getFaucetHost, requestSuiFromFaucetV2 } = await import("@mysten/sui/faucet");
 
   const RPC_URL = "http://localhost:9000";
-  const client = new SuiJsonRpcClient({ url: RPC_URL, network: "localnet" });
+  const client = createDiagnosticGrpcClient(RPC_URL, "localnet");
 
   function decodeBase64(value: string): Uint8Array {
     const binary = globalThis.atob(value);
@@ -216,18 +216,11 @@ async function main(): Promise<void> {
   transaction.setSenderIfNotSet(signerAddress);
 
   console.log("signing and executing publish transaction...");
-  const result = await client.signAndExecuteTransaction({
-    transaction,
-    signer,
-    options: { showEffects: true, showObjectChanges: true },
-  });
-
-  const publishedChange = result.objectChanges?.find((c) => c.type === "published");
-  const packageId = publishedChange && "packageId" in publishedChange ? publishedChange.packageId : undefined;
+  const result = await executeDiagnosticTransaction(client, transaction, signer);
   console.log(`\n=== PUBLISH RESULT ===`);
   console.log(`digest: ${result.digest}`);
-  console.log(`status: ${result.effects?.status.status ?? "unknown"}`);
-  console.log(`package id: ${packageId ?? "NOT FOUND"}`);
+  console.log(`status: ${result.success ? "success" : "failure"}`);
+  console.log(`package id: ${result.packageId ?? "NOT FOUND"}`);
 }
 
 await main();

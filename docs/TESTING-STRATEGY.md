@@ -367,6 +367,7 @@ e2e:
     - uses: oven-sh/setup-bun@v2
     - run: bun install --frozen-lockfile
     - run: bunx playwright install --with-deps chromium
+    - run: bun run build
     - run: bun run test:e2e
 ```
 

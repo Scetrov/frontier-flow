@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import { useCurrentAccount, useCurrentWallet, useSuiClient, useWallets } from "@mysten/dapp-kit";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { signTransaction } from "@mysten/wallet-standard";
+import { getSuiTargetClient } from "../utils/suiTargetClient";
+import { executeSignedGrpcTransaction } from "../utils/suiTransactionExecution";
+import { signTargetTransaction, type FrontierDAppKit } from "../utils/suiWalletKit";
+import { useFrontierWalletSession } from "../wallet/hooks";
 
 import type {
   CompilationStatus,
@@ -74,9 +75,7 @@ function useWalletReadiness(): {
   readonly hasAvailableWallets: boolean;
   readonly hasConnectedWallet: boolean;
 } {
-  const account = useCurrentAccount();
-  const currentWallet = useCurrentWallet();
-  const wallets = useWallets();
+  const session = useFrontierWalletSession();
   const flags = getDeploymentEnvironmentFlags();
 
   if (flags.mockWallet === "none") {
@@ -92,8 +91,8 @@ function useWalletReadiness(): {
   }
 
   return {
-    hasAvailableWallets: wallets.length > 0,
-    hasConnectedWallet: account !== null && currentWallet.isConnected,
+    hasAvailableWallets: session.wallets.length > 0,
+    hasConnectedWallet: session.account !== null && session.isConnected,
   };
 }
 
@@ -1131,9 +1130,9 @@ function startDeploymentAttempt(input: {
 }
 
 function createRemotePublishHandler(input: {
-  readonly account: ReturnType<typeof useCurrentAccount>;
-  readonly currentWallet: ReturnType<typeof useCurrentWallet>;
-  readonly suiClient: ReturnType<typeof useSuiClient>;
+  readonly accountAddress: string | null;
+  readonly kit: FrontierDAppKit;
+  readonly targetId: DeploymentTargetId;
 }) {
   return ({ artifact, compileResult, ownerAddress, onSubmitting, target, references, signal }: Parameters<typeof publishToRemoteTarget>[0]) => publishToRemoteTarget({
     artifact,
@@ -1144,51 +1143,34 @@ function createRemotePublishHandler(input: {
     references,
     signal,
     execute: async (transaction, executeRequest) => {
-      if (input.currentWallet.currentWallet == null || input.account == null) {
+      if (input.accountAddress === null) {
         throw new Error(`A connected wallet address is required before deploying to ${target.label}.`);
       }
-
-      transaction.setSenderIfNotSet(input.account.address);
-
-      const { bytes, signature } = await signTransaction(input.currentWallet.currentWallet, {
-        transaction: {
-          async toJSON() {
-            return transaction.toJSON({
-              client: input.suiClient,
-              supportedIntents: [...input.currentWallet.supportedIntents],
-            });
-          },
-        },
-        account: input.account,
-        chain: target.networkFamily === "local" ? "sui:localnet" : "sui:testnet",
+      const signed = await signTargetTransaction({
+        kit: input.kit,
+        targetId: input.targetId,
+        transaction,
+        isCurrent: () => getDeploymentTarget(input.targetId).rpcUrl === target.rpcUrl,
+        signal: executeRequest?.signal ?? signal,
       });
-
       executeRequest?.onSubmitting?.();
-
-      const result = await input.suiClient.executeTransactionBlock({
-        transactionBlock: bytes,
-        signature,
-        options: {
-          showRawEffects: true,
-        },
-      });
-
-      return { digest: result.digest };
+      const client = getSuiTargetClient(input.targetId, { timeout: 20_000, abort: executeRequest?.signal ?? signal });
+      const result = await executeSignedGrpcTransaction(client, signed.bytes, signed.signature, executeRequest?.signal ?? signal);
+      return { digest: result.digest, packageId: result.packageId };
     },
   });
 }
 
 // oxlint-disable-next-line max-lines-per-function, complexity
 async function startRealDeployment(input: {
-  readonly account: ReturnType<typeof useCurrentAccount>;
-  readonly currentWallet: ReturnType<typeof useCurrentWallet>;
+  readonly accountAddress: string | null;
   readonly derivedValidation: DeploymentValidationResult;
+  readonly kit: FrontierDAppKit;
   readonly localChainIdRef: LocalChainIdRef;
   readonly selectedTarget: DeploymentTargetId;
   readonly setIsDeploying: Dispatch<SetStateAction<boolean>>;
   readonly stateSetters: DeploymentStateSetters;
   readonly status: CompilationStatus;
-  readonly suiClient: ReturnType<typeof useSuiClient>;
 }): Promise<void> {
   const artifact = getArtifactFromStatus(input.status);
   const attemptId = createAttemptId();
@@ -1209,7 +1191,7 @@ async function startRealDeployment(input: {
   // Verify the published world package exists on the selected target when applicable.
   if (target.networkFamily !== "local" && target.requiresPublishedPackageRefs) {
     try {
-      const exists = await verifyPublishedWorldPackageExists(input.selectedTarget, input.suiClient);
+      const exists = await verifyPublishedWorldPackageExists(input.selectedTarget);
       if (!exists) {
         applyBlockedDeploymentOutcome({
           artifactId: artifact.artifactId,
@@ -1221,8 +1203,8 @@ async function startRealDeployment(input: {
             blockers: [{
               code: "invalid-package-references",
               stage: "validating",
-              message: `The target ${target.label} does not contain the required world package.`,
-              remediation: `Refresh the maintained package reference data for ${target.label} before retrying deployment.`,
+              message: `The required World package could not be verified on ${target.label}.`,
+              remediation: `Check gRPC connectivity and the maintained package references for ${target.label} before retrying deployment.`,
             }],
             requiredInputs: [],
             resolvedInputs: [],
@@ -1232,7 +1214,22 @@ async function startRealDeployment(input: {
         return;
       }
     } catch {
-      // On verification error (network issues), continue optimistically.
+      applyBlockedDeploymentOutcome({
+        artifactId: artifact.artifactId,
+        attemptId,
+        moduleName: artifact.moduleName,
+        selectedTarget: input.selectedTarget,
+        stateSetters: { ...input.stateSetters, localChainIdRef: input.localChainIdRef },
+        validation: {
+          blockers: [{
+            code: "invalid-package-references", stage: "validating",
+            message: `Could not verify the required World package on ${target.label}.`,
+            remediation: "Check gRPC connectivity and package references before retrying deployment.",
+          }],
+          requiredInputs: [], resolvedInputs: [],
+        },
+      });
+      return;
     }
   }
   const attemptStartedAt = Date.now();
@@ -1240,22 +1237,17 @@ async function startRealDeployment(input: {
   input.setIsDeploying(true);
 
   const executor = createDeploymentExecutor({
-    confirm: (request) => confirmPublishedPackageWithClient(
-      request,
-      request.target.id === "local"
-        ? new SuiJsonRpcClient({ url: request.target.rpcUrl, network: "localnet" })
-        : input.suiClient,
-    ),
+    confirm: (request) => confirmPublishedPackageWithClient(request),
     publishRemote: createRemotePublishHandler({
-      account: input.account,
-      currentWallet: input.currentWallet,
-      suiClient: input.suiClient,
+      accountAddress: input.accountAddress,
+      kit: input.kit,
+      targetId: input.selectedTarget,
     }),
   });
 
   void executor({
     artifact,
-    ownerAddress: input.account?.address,
+    ownerAddress: input.accountAddress ?? undefined,
     references: resolvePackageReferenceBundle(input.selectedTarget),
     target,
   }, (progressUpdate) => {
@@ -1373,17 +1365,16 @@ function getPersistedDeploymentSnapshot(
 }
 
 function beginDeploymentAttempt(input: {
-  readonly account: ReturnType<typeof useCurrentAccount>;
+  readonly accountAddress: string | null;
   readonly clearStageTimers: () => void;
-  readonly currentWallet: ReturnType<typeof useCurrentWallet>;
   readonly derivedValidation: ReturnType<typeof useDeploymentDerivedState>["validation"];
   readonly isDeploying: boolean;
+  readonly kit: FrontierDAppKit;
   readonly localChainIdRef: ReturnType<typeof useDeploymentStore>["localChainIdRef"];
   readonly selectedTarget: DeploymentTargetId;
   readonly setIsDeploying: ReturnType<typeof useDeploymentStore>["setIsDeploying"];
   readonly stateSetters: ReturnType<typeof useDeploymentStore>["stateSetters"];
   readonly status: UseDeploymentOptions["status"];
-  readonly suiClient: ReturnType<typeof useSuiClient>;
   readonly timerIdsRef: ReturnType<typeof useDeploymentStore>["timerIdsRef"];
 }): Promise<void> {
   if (input.isDeploying) {
@@ -1398,15 +1389,14 @@ function beginDeploymentAttempt(input: {
   }
 
   void startRealDeployment({
-    account: input.account,
-    currentWallet: input.currentWallet,
+    accountAddress: input.accountAddress,
     derivedValidation: input.derivedValidation,
+    kit: input.kit,
     localChainIdRef: input.localChainIdRef,
     selectedTarget: input.selectedTarget,
     setIsDeploying: input.setIsDeploying,
     stateSetters: input.stateSetters,
     status: input.status,
-    suiClient: input.suiClient,
   });
 
   return Promise.resolve();
@@ -1443,9 +1433,7 @@ function startMockDeployment(input: {
  * Manage deployment target selection and session-scoped deployment state.
  */
 export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, status }: UseDeploymentOptions): DeploymentState {
-  const account = useCurrentAccount();
-  const currentWallet = useCurrentWallet();
-  const suiClient = useSuiClient();
+  const session = useFrontierWalletSession();
   const walletReadiness = useWalletReadiness();
   const {
     deploymentStatus,
@@ -1490,20 +1478,19 @@ export function useDeployment({ initialTarget = DEFAULT_DEPLOYMENT_TARGET, statu
 
   const startDeployment = useCallback((): Promise<void> => {
     return beginDeploymentAttempt({
-      account,
+      accountAddress: session.account?.address ?? null,
       clearStageTimers,
-      currentWallet,
       derivedValidation: derivedState.validation,
       isDeploying,
+      kit: session.kit,
       localChainIdRef,
       selectedTarget,
       setIsDeploying,
       stateSetters,
       status,
-      suiClient,
       timerIdsRef,
     });
-  }, [account, clearStageTimers, currentWallet, derivedState.validation, isDeploying, localChainIdRef, selectedTarget, setIsDeploying, stateSetters, status, suiClient, timerIdsRef]);
+  }, [clearStageTimers, derivedState.validation, isDeploying, localChainIdRef, selectedTarget, session.account?.address, session.kit, setIsDeploying, stateSetters, status, timerIdsRef]);
 
   const dismissProgress = useCallback(() => {
     setProgress((currentProgress) => currentProgress === null

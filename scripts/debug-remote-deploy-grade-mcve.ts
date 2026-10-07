@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { createDiagnosticGrpcClient, executeDiagnosticTransaction } from "./lib/suiGrpcDiagnostic";
 import type { Transaction } from "@mysten/sui/transactions";
 
 import { compileableSmartTurretExtensions, type GraphFixture } from "../src/__fixtures__/graphs/smartTurretExtensionFixtures";
@@ -161,7 +161,7 @@ function formatBytecodePreview(moduleBytes: Uint8Array): string {
 }
 
 async function executeWithLocalKeypair(
-  client: SuiJsonRpcClient,
+  client: ReturnType<typeof createDiagnosticGrpcClient>,
   transaction: Transaction,
 ): Promise<{ digest: string }> {
   const { getFaucetHost, requestSuiFromFaucetV2 } = await import("@mysten/sui/faucet");
@@ -172,17 +172,10 @@ async function executeWithLocalKeypair(
   console.log("requesting SUI from local faucet...");
   await requestSuiFromFaucetV2({ host: getFaucetHost("localnet"), recipient: signerAddress });
   transaction.setSenderIfNotSet(signerAddress);
-  const result = await client.signAndExecuteTransaction({
-    transaction,
-    signer,
-    options: { showEffects: true, showObjectChanges: true },
-  });
-  const publishedChange = result.objectChanges?.find((change) => change.type === "published");
-  const packageId = publishedChange && "packageId" in publishedChange ? publishedChange.packageId : undefined;
-  if (packageId !== undefined) {
-    console.log(`published package id: ${packageId}`);
-  }
+  const result = await executeDiagnosticTransaction(client, transaction, signer);
+  if (result.packageId !== undefined) console.log(`published package id: ${result.packageId}`);
   console.log(`transaction digest: ${result.digest}`);
+  console.log(`effects success: ${String(result.success)}`);
   return { digest: result.digest };
 }
 
@@ -346,7 +339,7 @@ async function main(): Promise<void> {
 
   const isLocal = options.targetId === "local:evefrontier";
   const network = isLocal ? "localnet" : "testnet";
-  const client = new SuiJsonRpcClient({ url: effectiveRpcUrl, network });
+  const client = createDiagnosticGrpcClient(effectiveRpcUrl, network);
 
   await publishToRemoteTarget({
     compileResult: deployGradeResult,

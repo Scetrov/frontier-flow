@@ -5,7 +5,7 @@ const {
   mockSignAndExecuteTransaction,
 } = vi.hoisted(() => ({
   mockRequestSuiFromFaucetV2: vi.fn(() => Promise.resolve()),
-  mockSignAndExecuteTransaction: vi.fn(() => Promise.resolve({ digest: "0xdigest", objectChanges: [] })),
+  mockSignAndExecuteTransaction: vi.fn<() => Promise<unknown>>(() => Promise.resolve({ digest: "0xdigest" })),
 }));
 
 vi.mock("@mysten/sui/faucet", () => ({
@@ -13,10 +13,8 @@ vi.mock("@mysten/sui/faucet", () => ({
   requestSuiFromFaucetV2: mockRequestSuiFromFaucetV2,
 }));
 
-vi.mock("@mysten/sui/jsonRpc", () => ({
-  SuiJsonRpcClient: class {
-    signAndExecuteTransaction = mockSignAndExecuteTransaction;
-  },
+vi.mock("../utils/suiTargetClient", () => ({
+  createSuiTargetClient: () => ({ signAndExecuteTransaction: mockSignAndExecuteTransaction }),
 }));
 
 vi.mock("@mysten/sui/keypairs/ed25519", () => ({
@@ -107,9 +105,13 @@ describe("resolveLocalPublishModules", () => {
 
   it("continues local publish when the final module list is non-empty", async () => {
     mockSignAndExecuteTransaction.mockClear();
+    const packageId = "0x0000000000000000000000000000000000000000000000000000000000000abc";
     mockSignAndExecuteTransaction.mockResolvedValueOnce({
-      digest: "0xvalid-digest",
-      objectChanges: [{ type: "published", packageId: "0xpublished" }] as unknown as never,
+      $kind: "Transaction",
+      Transaction: { digest: "0xvalid-digest", status: { success: true }, effects: {
+        changedObjects: [{ objectId: packageId, outputState: "PackageWrite", idOperation: "Created" }],
+      } },
+      protoJson: { digest: "0xvalid-digest", effects: { status: { success: true } } },
     });
 
     await expect(publishToLocalValidator({
@@ -117,7 +119,7 @@ describe("resolveLocalPublishModules", () => {
       target: getDeploymentTarget("local"),
       references: null,
     })).resolves.toEqual({
-      packageId: "0xpublished",
+      packageId,
       transactionDigest: "0xvalid-digest",
     });
 
