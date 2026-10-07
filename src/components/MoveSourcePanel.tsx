@@ -110,7 +110,8 @@ function highlightSource(content: string, language: VirtualArtifactFile["languag
 }
 
 function escapeHtml(content: string): string {
-  return content
+  // Text-node HTML encoding, not markup sanitization: encode & first to preserve literal entities.
+  return content // nosemgrep: detect-replaceall-sanitization
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")

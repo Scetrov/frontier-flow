@@ -95,6 +95,8 @@ describe("CompilationStatus", () => {
     expect(screen.getByText(label)).toBeVisible();
     expect(screen.queryByText(summary)).not.toBeInTheDocument();
 
+    // The label comes only from the fixed it.each table above, never production or user input.
+    // nosemgrep: detect-non-literal-regexp
     fireEvent.click(screen.getByRole("button", { name: new RegExp(label, "i") }));
 
     expect(screen.getByText(summary)).toBeVisible();

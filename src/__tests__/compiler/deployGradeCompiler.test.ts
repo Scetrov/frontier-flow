@@ -498,6 +498,42 @@ describe("deployGradeCompiler", () => {
     expect(buildMovePackage).toHaveBeenCalledTimes(2);
   });
 
+  it.each(["World", "world.", "world[", "wo(r)ld"])("looks up the %s manifest by case-insensitive literal path", async (directory) => {
+    const resolvedDependencies = createResolvedDependenciesFixture([
+      createResolvedDependencyPackageSnapshot({
+        name: "World",
+        files: {
+          // Select the original directory before encountering any decoy manifest.
+          [`dependencies/${directory}/sources/world.move`]: "module world::world {}",
+          "dependencies/worldX/Move.toml": '[package]\nname = "decoy"\n[environments]\ndecoy = "bad"\n',
+          ...(directory === "wo(r)ld" ? {
+            "dependencies/world/Move.toml": '[package]\nname = "decoy"\n[environments]\ndecoy = "bad"\n',
+          } : {}),
+          // Non-canonical casing exercises lookup rather than direct materialization.
+          [`dependencies/${directory.toUpperCase()}/MOVE.TOML`]: '[package]\nname = "world"\n[environments]\nlookup_marker = "literal"\n',
+        },
+      }),
+      createResolvedDependencyPackageSnapshot({ name: "Sui" }),
+      createResolvedDependencyPackageSnapshot({ name: "MoveStdlib" }),
+    ]);
+    const buildMovePackage = vi.fn<BuildMovePackageFn>().mockResolvedValue(createDumpSuccess({
+      modules: [toBase64([1, 2, 3])], dependencies: ["0x1", "0x2"],
+    }));
+
+    await compileForDeployment(createRequest(), {
+      initMovePackageBuilder: vi.fn(() => Promise.resolve()),
+      resolveMovePackageDependencies: vi.fn(() => Promise.resolve(resolvedDependencies)),
+      dumpMovePackage: buildMovePackage,
+      getPinnedSuiMoveVersion: vi.fn(() => Promise.resolve("1.67.1")),
+      verifyMoveCompilerIntegrity: vi.fn(() => Promise.resolve()),
+      now: () => 42,
+    });
+
+    const worldManifest = getBuildMovePackageInput(buildMovePackage, 0).files["deps/world/Move.toml"];
+    expect(worldManifest).toContain('lookup_marker = "literal"');
+    expect(worldManifest).not.toContain("decoy");
+  });
+
   it("builds the materialized local-world tree without reusing resolvedDependencies", async () => {
     const resolvedDependencies: ResolvedDependencies = createResolvedDependenciesFixture([
       createResolvedDependencyPackageSnapshot({

@@ -37,18 +37,20 @@ jobs:
 
       - name: Write job summary
         if: always()
+        env:
+          SUMMARY_EVENT: ${{ github.event_name }}
+          SUMMARY_REF: ${{ github.ref }}
+          SUMMARY_RUN_ID: ${{ github.run_id }}
+          CHECK_OUTCOME: ${{ steps.check.outcome }}
         run: |
-          echo "## World Package Reference Integrity Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Ref:** ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Run:** ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.check.outcome }}" = "success" ]; then
-            echo "**Status:** ✓ All targets verified" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "**Status:** ✗ Drift or verification failure detected" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Review the full log for target-level diagnostics." >> $GITHUB_STEP_SUMMARY
-            echo "Follow the runbook at docs/WORLD-PACKAGE-REFERENCE-RUNBOOK.md for remediation." >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            printf '%s\n' '## World Package Reference Integrity Check' ''
+            printf '**Trigger:** %s\n**Ref:** %s\n**Run:** %s\n\n' "$SUMMARY_EVENT" "$SUMMARY_REF" "$SUMMARY_RUN_ID"
+            if [ "$CHECK_OUTCOME" = "success" ]; then
+              printf '%s\n' '**Status:** ✓ All targets verified'
+            else
+              printf '%s\n' '**Status:** ✗ Drift or verification failure detected' '' \
+                'Review the full log for target-level diagnostics.' \
+                'Follow the runbook at docs/WORLD-PACKAGE-REFERENCE-RUNBOOK.md for remediation.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
