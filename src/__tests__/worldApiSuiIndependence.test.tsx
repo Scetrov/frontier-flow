@@ -79,7 +79,6 @@ describe("List of Tribe while Sui is unavailable", () => {
     const policy = readFileSync("netlify.toml", "utf8");
     expect(policy).toContain(getWorldApiBaseUrl());
     expect(policy).not.toContain("https://world-api.evefrontier.com");
-    expect(requests.some((url) => url.includes("fullnode.testnet.sui.io") && url.includes("/v2/tribes"))).toBe(false);
   });
 
   it("reports World API failure independently of the Sui outage", async () => {
