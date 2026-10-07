@@ -9,11 +9,12 @@ import type {
   PackageReferenceBundle,
 } from "../compiler/types";
 import { DependencyResolutionError, PublishPayloadEmptyError } from "../compiler/types";
+import { AmbiguousSubmissionError } from "../utils/suiTransactionExecution";
 import { compileForDeployment } from "../compiler/deployGradeCompiler";
 import { usesDeployGradeCompilation, usesWalletSignedPublish } from "../data/deploymentTargets";
 import { createWorldSourceFromCachedResolution, getProjectCachedDependencyResolution } from "./dependencySnapshotLoader";
 import { fetchWorldSource } from "./worldSourceFetcher";
-import { confirmPublishedPackage, type DeploymentConfirmationRequest, type DeploymentConfirmationResult } from "./confirmation";
+import { confirmPublishedPackageWithClient, type DeploymentConfirmationRequest, type DeploymentConfirmationResult } from "./confirmation";
 import { publishToLocalValidator, type LocalPublishResult } from "./publishLocal";
 import { validatePublishPayloadReadiness } from "./publishPayload";
 import { publishToRemoteTarget, type RemotePublishExecutionRequest, type RemotePublishResult } from "./publishRemote";
@@ -115,7 +116,7 @@ const DEFAULT_EXECUTOR_DEPENDENCIES: DeploymentExecutorDependencies = {
       }
     },
   }),
-  confirm: (request) => confirmPublishedPackage(request, () => Promise.resolve(null)),
+  confirm: (request) => confirmPublishedPackageWithClient(request),
   fetchWorldSource: ({ references, signal }) => fetchWorldSource({
     repositoryUrl: "https://github.com/evefrontier/world-contracts",
     versionTag: references.sourceVersionTag,
@@ -176,6 +177,16 @@ function classifyExecutionError(error: unknown, fallbackStage: DeploymentStage):
   const rawMessage = error instanceof Error ? error.message : "Deployment failed unexpectedly.";
   const message = sanitizeExecutionMessage(rawMessage);
   const normalizedMessage = rawMessage.toLowerCase();
+
+  if (error instanceof AmbiguousSubmissionError) {
+    return {
+      outcome: "unresolved",
+      stage: "submitting",
+      message,
+      confirmationReference: error.digest,
+      errorCode: "ambiguous-submission",
+    };
+  }
 
   if (error instanceof DependencyResolutionError) {
     return {

@@ -1,6 +1,4 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useCurrentAccount, useCurrentWallet, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
-
 import { setMoveBuilderGitHubAccessTokenProvider } from "./compiler/moveBuilderLite";
 import type { CompilationStatus, CompilerDiagnostic, DeploymentStatus, DeploymentTargetId } from "./compiler/types";
 import AlphaBanner from "./components/AlphaBanner";
@@ -16,6 +14,7 @@ import useGitHubAuth from "./hooks/useGitHubAuth";
 import { useDeployment } from "./hooks/useDeployment";
 import { useTutorial } from "./hooks/useTutorial";
 import type { GraphTransferWalletBridge } from "./hooks/useGraphTransfer";
+import { useGraphTransferWalletBridge } from "./hooks/useGraphTransferWalletBridge";
 import type { GitHubAccessState, GitHubFailureClassification, PendingGitHubRetryContext } from "./types/githubAuth";
 import type { RemediationNotice } from "./types/nodes";
 import type { StoredDeploymentState } from "./types/authorization";
@@ -954,27 +953,6 @@ function useLocalEnvironmentSubscription(setLocalEnvironmentRevision: React.Disp
   }), [setLocalEnvironmentRevision]);
 }
 
-interface GraphTransferWalletMutation {
-  readonly mutateAsync: (input: {
-    readonly transaction: Parameters<GraphTransferWalletBridge["signAndExecuteTransaction"]>[0];
-  }) => Promise<{ readonly digest: string }>;
-}
-
-function useGraphTransferWalletBridge(
-  currentAccount: ReturnType<typeof useCurrentAccount>,
-  isConnected: boolean,
-  signAndExecuteTransaction: GraphTransferWalletMutation,
-): GraphTransferWalletBridge {
-  return useMemo<GraphTransferWalletBridge>(() => ({
-    accountAddress: currentAccount?.address ?? null,
-    walletConnected: isConnected,
-    signAndExecuteTransaction: async (transaction) => {
-      const result = await signAndExecuteTransaction.mutateAsync({ transaction });
-      return { digest: result.digest };
-    },
-  }), [currentAccount?.address, isConnected, signAndExecuteTransaction]);
-}
-
 function createTutorialOverlay(tutorial: ReturnType<typeof useTutorialBridge>["tutorial"]) {
   return tutorial.isActive || tutorial.currentStep !== null ? (
     <Suspense fallback={null}>
@@ -1151,9 +1129,6 @@ function useGitHubIncidentRecovery(input: {
 
 function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: boolean }) {
   const [, setLocalEnvironmentRevision] = useState(0);
-  const currentAccount = useCurrentAccount();
-  const { isConnected } = useCurrentWallet();
-  const signAndExecuteTransaction = useSignAndExecuteTransaction();
   const [isPrivacyNoticeVisible, setIsPrivacyNoticeVisible] = useState(() => shouldShowPrivacyNotice(getBrowserStorage()));
   const [dismissedGitHubIncidentSignature, setDismissedGitHubIncidentSignature] = useState<string | null>(null);
   const initialAppState = useInitialAppState();
@@ -1189,7 +1164,7 @@ function StandardApp({ isKitchenSinkRoute }: { readonly isKitchenSinkRoute: bool
   } = useGitHubAuth();
   const gitHubIncident = useMemo(() => getGitHubIncident(diagnostics), [diagnostics]);
   const visibleGitHubIncident = getVisibleGitHubIncident(gitHubIncident, dismissedGitHubIncidentSignature);
-  const graphTransferWalletBridge = useGraphTransferWalletBridge(currentAccount, isConnected, signAndExecuteTransaction);
+  const graphTransferWalletBridge = useGraphTransferWalletBridge();
   const { tutorial, setSidebarOpenRef, setContractPanelOpenRef, insertDemoNodeRef, removeDemoNodeRef } = useTutorialBridge(resolvedActiveView);
   const layoutBindings = useStandardAppLayoutBindings({ beginGitHubSignIn, clearGitHubFailure, gitHubIncident, insertDemoNodeRef, removeDemoNodeRef, setContractPanelOpenRef, setDismissedGitHubIncidentSignature, setIsPrivacyNoticeVisible, setSidebarOpenRef, signOutFromGitHub, tutorial });
 

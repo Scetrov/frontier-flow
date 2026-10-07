@@ -582,7 +582,7 @@ sequenceDiagram
 | `sui_executeTransactionBlock` | Publish/upgrade package transaction |
 
 [!NOTE]
-All Sui interactions are mediated by `@mysten/sui` SDK and `@mysten/dapp-kit` hooks. Direct JSON-RPC calls are abstracted away.
+Maintained Sui JSON-RPC operations use `@mysten/sui` gRPC clients and `@mysten/dapp-kit-react`. Existing GraphQL queries remain GraphQL. Application code must not send legacy JSON-RPC envelopes.
 
 ---
 

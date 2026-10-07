@@ -1,11 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import {
-  ConnectModal,
-  useCurrentAccount,
-  useCurrentWallet,
-  useDisconnectWallet,
-  useWallets,
-} from "@mysten/dapp-kit";
+import { useFrontierWalletSession } from "../wallet/hooks";
 
 import type { DeploymentTargetId } from "../compiler/types";
 import { getLocalEnvironmentConfigSnapshot, subscribeToLocalEnvironmentChanges } from "../data/localEnvironment";
@@ -73,6 +67,7 @@ function ConnectedWalletStatus({
   buttonClassName,
   disconnectPending,
   onDisconnect,
+  onRetryBalance,
   showingCharacterName,
 }: {
   readonly identityLabel: string;
@@ -80,6 +75,7 @@ function ConnectedWalletStatus({
   readonly buttonClassName: string;
   readonly disconnectPending: boolean;
   readonly onDisconnect: () => void;
+  readonly onRetryBalance?: () => void;
   readonly showingCharacterName: boolean;
 }) {
   return (
@@ -111,6 +107,9 @@ function ConnectedWalletStatus({
           >
             {balanceLabel}
           </span>
+          {onRetryBalance ? (
+            <button aria-label="Retry Sui balance" onClick={onRetryBalance} type="button">Retry</button>
+          ) : null}
         </div>
 
         <WalletActionButton
@@ -161,7 +160,7 @@ function WalletHelpStatus({
 }
 
 function useResolvedCharacterName(
-  account: ReturnType<typeof useCurrentAccount>,
+  account: { readonly address?: string } | null,
   selectedDeploymentTarget: DeploymentTargetId,
   onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void,
 ): string | null {
@@ -253,7 +252,7 @@ function getConnectedWalletPresentation(balanceQuery: unknown, accountAddress: s
   const balanceLabel = balanceQuerySnapshot.isPending
     ? "Loading..."
     : balanceQuerySnapshot.isError
-      ? "-- SUI"
+      ? "SUI unavailable"
       : formatBalance(balanceQuerySnapshot.totalBalance);
 
   return {
@@ -286,7 +285,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function getWalletAddress(account: ReturnType<typeof useCurrentAccount>): string | null {
+function getWalletAddress(account: { readonly address?: string } | null): string | null {
   return isRecord(account) && typeof account.address === "string"
     ? account.address
     : null;
@@ -299,10 +298,9 @@ function WalletStatus({
   readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
   readonly selectedDeploymentTarget?: DeploymentTargetId;
 }) {
-  const account = useCurrentAccount();
-  const wallets = useWallets();
-  const currentWallet = useCurrentWallet();
-  const disconnectWallet = useDisconnectWallet();
+  const session = useFrontierWalletSession();
+  const account = session.account;
+  const wallets = session.wallets;
   const [showWalletHelp, setShowWalletHelp] = useState(false);
   const characterName = useResolvedCharacterName(account, selectedDeploymentTarget, onDetectedDeploymentTarget);
   const balanceQuery = useTargetBalance(account?.address ?? null, selectedDeploymentTarget);
@@ -322,16 +320,17 @@ function WalletStatus({
         identityLabel={identityLabel}
         balanceLabel={balanceLabel}
         buttonClassName={disconnectButtonClassName}
-        disconnectPending={disconnectWallet.isPending}
+        disconnectPending={session.disconnectPending}
         onDisconnect={() => {
-          disconnectWallet.mutate();
+          session.disconnect();
         }}
+        onRetryBalance={balanceQuery.isError ? () => { void balanceQuery.refetch(); } : undefined}
         showingCharacterName={characterName !== null}
       />
     );
   }
 
-  if (currentWallet.isConnecting) {
+  if (session.isConnecting) {
     return (
       <WalletActionButton
         className={disabledButtonClassName}
@@ -359,17 +358,35 @@ function WalletStatus({
     );
   }
 
+  if (wallets.length === 1) {
+    const onlyWallet = wallets[0];
+    return (
+      <WalletActionButton
+        className={primaryButtonClassName}
+        icon={<ConservativeConnectIcon />}
+        label="Connect"
+        onClick={() => {
+          void session.connect(onlyWallet);
+        }}
+        tutorialTarget="wallet-connect"
+      />
+    );
+  }
+
   return (
-    <ConnectModal
-      trigger={
+    <div className="ff-wallet-status ff-wallet-status--connect">
+      {wallets.map((wallet) => (
         <WalletActionButton
           className={primaryButtonClassName}
           icon={<ConservativeConnectIcon />}
-          label="Connect"
-          tutorialTarget="wallet-connect"
+          key={wallet.name}
+          label={`Connect ${wallet.name}`}
+          onClick={() => {
+            void session.connect(wallet);
+          }}
         />
-      }
-    />
+      ))}
+    </div>
   );
 }
 

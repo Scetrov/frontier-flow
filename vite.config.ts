@@ -44,7 +44,7 @@ export default defineConfig({
             return "flow-vendor";
           }
 
-          if (id.includes("@mysten/dapp-kit") || id.includes("@mysten/sui") || id.includes("@tanstack/react-query")) {
+          if (id.includes("@mysten/dapp-kit") || id.includes("@mysten/sui") || id.includes("@mysten/wallet-standard") || id.includes("@tanstack/react-query")) {
             return "wallet-vendor";
           }
 

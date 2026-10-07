@@ -1,6 +1,5 @@
-import type { useSuiClient as useSuiClientHook } from "@mysten/dapp-kit";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 
 import type { StoredDeploymentState, TurretInfo } from "../types/authorization";
@@ -23,12 +22,10 @@ import {
   type UseTurretSimulationResult,
 } from "../types/turretSimulation";
 import { fetchSimulationOwnerCharacterId } from "../utils/authorizationTransaction";
-import { runTurretSimulation } from "../utils/turretSimulationExecution";
+import { runTurretSimulation, type TurretSimulationClient } from "../utils/turretSimulationExecution";
 import { fetchSimulationSuggestions } from "../utils/turretSimulationQueries";
 import { loadSimulationReferenceData } from "../utils/turretSimulationReferenceData";
 import { isSimulationDraftComplete, validateSimulationDraft } from "../utils/turretSimulationValidation";
-
-type SuiClient = ReturnType<typeof useSuiClientHook>;
 
 interface UseTurretSimulationOptions {
   readonly deploymentKey: string | null;
@@ -39,7 +36,7 @@ interface UseTurretSimulationOptions {
   readonly fetchSimulationSuggestionsFn?: typeof fetchSimulationSuggestions;
   readonly loadSimulationReferenceDataFn?: typeof loadSimulationReferenceData;
   readonly runTurretSimulationFn?: typeof runTurretSimulation;
-  readonly suiClient: Pick<SuiClient, "devInspectTransactionBlock">;
+  readonly suiClient?: TurretSimulationClient;
 }
 
 type SessionStateSetter = Dispatch<SetStateAction<TurretSimulationSession>>;
@@ -500,10 +497,21 @@ function useSimulationRunner(input: {
   readonly resolvedSession: TurretSimulationSession;
   readonly runTurretSimulationFn: typeof runTurretSimulation;
   readonly setSession: SessionStateSetter;
-  readonly suiClient: Pick<SuiClient, "devInspectTransactionBlock">;
+  readonly suiClient?: TurretSimulationClient;
   readonly walletAddress: string | null;
 }) {
   const { resolvedSession, runTurretSimulationFn, setSession, suiClient, walletAddress } = input;
+  const activeRequest = useRef<AbortController | null>(null);
+  const { deploymentKey, openedAt, status, turretObjectId } = resolvedSession;
+  const isInactive = status === "closed" || status === "stale";
+  useEffect(() => {
+    if (activeRequest.current?.signal.aborted === true) {
+      activeRequest.current = null;
+      setSession((currentSession) => currentSession.status === "running"
+        ? { ...currentSession, status: "editing" } : currentSession);
+    }
+    return () => { activeRequest.current?.abort(); };
+  }, [deploymentKey, isInactive, openedAt, setSession, turretObjectId, walletAddress]);
 
   return useCallback(async () => {
     if (resolvedSession.status === "closed" || resolvedSession.deploymentState === null || resolvedSession.turretObjectId === null) {
@@ -519,6 +527,9 @@ function useSimulationRunner(input: {
       return;
     }
 
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setSession((currentSession) => currentSession.status === "closed"
       ? currentSession
       : { ...currentSession, status: "running", latestError: null });
@@ -529,10 +540,13 @@ function useSimulationRunner(input: {
       ownerCharacterId: resolvedSession.ownerCharacterId as string,
       sender: walletAddress as string,
       suiClient,
+      signal: controller.signal,
       turretObjectId: resolvedSession.turretObjectId,
     });
 
-    setSession((currentSession) => currentSession.status === "closed"
+    if (controller.signal.aborted || activeRequest.current !== controller) return;
+    activeRequest.current = null;
+    setSession((currentSession) => currentSession.status === "closed" || currentSession.openedAt !== resolvedSession.openedAt
       ? currentSession
       : applySimulationResult(currentSession, result));
   }, [resolvedSession, runTurretSimulationFn, setSession, suiClient, walletAddress]);

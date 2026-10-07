@@ -1,44 +1,56 @@
 import { useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { normalizeStructTag, SUI_TYPE_ARG } from "@mysten/sui/utils";
 
 import type { DeploymentTargetId } from "../compiler/types";
 import { getLocalEnvironmentConfigSnapshot, subscribeToLocalEnvironmentChanges } from "../data/localEnvironment";
-import { getDeploymentTarget } from "../data/deploymentTargets";
+import { createSuiTargetClient, targetBalanceQueryKey } from "../utils/suiTargetClient";
 
 interface TargetBalanceResult {
-  readonly totalBalance: string | null;
+  readonly totalBalance: string;
 }
 
-/**
- * Query the connected wallet balance against the currently selected deployment target RPC.
- */
+export const TARGET_BALANCE_TIMEOUT_MS = 8_000;
+
+/** Read the selected target through gRPC; unavailable responses are never zero. */
 export function useTargetBalance(ownerAddress: string | null, targetId: DeploymentTargetId) {
-  const localEnvironmentSnapshot = useSyncExternalStore(
+  useSyncExternalStore(
     subscribeToLocalEnvironmentChanges,
     () => getLocalEnvironmentConfigSnapshot() ?? "",
     () => "",
   );
-  const target = getDeploymentTarget(targetId);
 
+  const queryKey = targetBalanceQueryKey(targetId, ownerAddress);
   return useQuery<TargetBalanceResult>({
     enabled: ownerAddress !== null,
-    queryKey: ["target-balance", target.id, target.rpcUrl, ownerAddress, localEnvironmentSnapshot],
-    queryFn: async () => {
+    queryKey,
+    queryFn: async ({ signal }) => {
       if (ownerAddress === null) {
-        return { totalBalance: null };
+        throw new Error("A connected account is required to query Sui balance.");
       }
-
-      const client = new SuiJsonRpcClient({
-        url: target.rpcUrl,
-        network: target.networkFamily === "local" ? "localnet" : "testnet",
+      const client = createSuiTargetClient({
+        networkFamily: targetId === "local" ? "local" : "testnet",
+        rpcUrl: queryKey[2],
       });
-      const balance = await client.getBalance({ owner: ownerAddress });
-
-      return {
-        totalBalance: balance.totalBalance,
-      };
+      // The high-level SDK defaults omitted balance fields to zero. Read the
+      // supported native API to reject malformed/missing authoritative data.
+      const { balance } = await client.stateService.getBalance({
+        owner: ownerAddress,
+        coinType: SUI_TYPE_ARG,
+      }, {
+        abort: AbortSignal.any([signal, AbortSignal.timeout(TARGET_BALANCE_TIMEOUT_MS)]),
+        timeout: TARGET_BALANCE_TIMEOUT_MS,
+      }).response;
+      if (typeof balance?.balance !== "bigint" || balance.balance < 0n
+        || balance.coinType === undefined
+        || normalizeStructTag(balance.coinType) !== normalizeStructTag(SUI_TYPE_ARG)) {
+        throw new Error(`Sui balance unavailable for ${targetId}: response omitted required balance data.`);
+      }
+      return { totalBalance: balance.balance.toString() };
     },
+    retry: 1,
+    retryDelay: 200,
+    refetchOnWindowFocus: false,
     staleTime: 15_000,
   });
 }

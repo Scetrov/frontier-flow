@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { useCurrentAccount as useCurrentAccountHook, useCurrentWallet as useCurrentWalletHook, useSuiClient as useSuiClientHook } from "@mysten/dapp-kit";
 import type { signTransaction as signTransactionFunction } from "@mysten/wallet-standard";
 import { signTransaction } from "@mysten/wallet-standard";
+
+import { getDeploymentTarget } from "../data/deploymentTargets";
+import { AmbiguousSubmissionError } from "../utils/suiTransactionExecution";
+import {
+  createAuthorizationChainClient,
+  type AuthorizationChainClient,
+} from "../utils/authorizationChainClient";
 
 import {
   AUTHORIZATION_CONFIRMATION_TIMEOUT_MS,
@@ -23,9 +29,20 @@ import {
 } from "../utils/authorizationTransaction";
 import { getAuthorizationMockEnvironment, recordMockAuthorizedTurrets } from "../utils/authorizationMocking";
 
-type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
-type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
-type SuiClient = ReturnType<typeof useSuiClientHook>;
+export interface AuthorizationWalletAccount {
+  readonly address: string;
+  readonly chains?: readonly string[];
+}
+
+export interface AuthorizationWalletConnection {
+  readonly isConnected: boolean;
+  readonly currentWallet: object | null;
+  readonly supportedIntents?: readonly string[];
+}
+
+type CurrentAccount = AuthorizationWalletAccount;
+type CurrentWallet = AuthorizationWalletConnection;
+type SuiClient = AuthorizationChainClient;
 
 interface QueryAuthorizationEventInput {
   readonly deploymentState: StoredDeploymentState;
@@ -45,7 +62,7 @@ interface UseAuthorizationOptions {
   readonly deploymentState: StoredDeploymentState | null;
   readonly walletAccount: CurrentAccount | null;
   readonly currentWallet: CurrentWallet;
-  readonly suiClient: SuiClient;
+  readonly suiClient?: SuiClient;
   readonly buildTransactionFn?: (input: BuildAuthorizeTurretTransactionInput) => ReturnType<typeof buildAuthorizeTurretTransaction>;
   readonly confirmationTimeoutMs?: number;
   readonly ensureWitnessTypeAvailableFn?: (input: EnsureAuthorizationWitnessAvailableInput) => Promise<void>;
@@ -55,6 +72,7 @@ interface UseAuthorizationOptions {
   readonly resolveAuthorizationTargetFn?: (input: FetchOwnerCapInput) => Promise<AuthorizationTargetLookup>;
   readonly queryAuthorizationEventFn?: (input: QueryAuthorizationEventInput) => Promise<boolean>;
   readonly signTransactionFn?: typeof signTransactionFunction;
+  readonly signBuiltTransaction?: (transaction: ReturnType<typeof buildAuthorizeTurretTransaction>, signal?: AbortSignal) => Promise<{ readonly bytes: string; readonly signature: string }>;
 }
 
 export interface UseAuthorizationResult {
@@ -92,6 +110,7 @@ interface AuthorizationDependencies {
   readonly setIsAuthorizing: Dispatch<SetStateAction<boolean>>;
   readonly setProgress: Dispatch<SetStateAction<AuthorizationProgressState | null>>;
   readonly signTransactionFn: typeof signTransactionFunction;
+  readonly signBuiltTransaction?: UseAuthorizationOptions["signBuiltTransaction"];
   readonly walletReady: boolean;
 }
 
@@ -99,6 +118,14 @@ interface AuthorizationOperation {
   readonly operationId: number;
   readonly progressSetter: Dispatch<SetStateAction<AuthorizationProgressState | null>>;
   readonly turretObjectIds: readonly string[];
+}
+
+function resolveAuthorizationClient(client: SuiClient | undefined, targetId: StoredDeploymentState["targetId"] | undefined): SuiClient {
+  return client ?? createAuthorizationChainClient(targetId ?? "testnet:stillness");
+}
+
+function authorizationDeploymentKey(deploymentState: StoredDeploymentState | null): string | null {
+  return deploymentState === null ? null : `${deploymentState.targetId}:${deploymentState.packageId}:${deploymentState.moduleName}`;
 }
 
 function buildEffectiveResolveAuthorizationTargetFn(
@@ -142,7 +169,12 @@ export function useAuthorization({
   resolveAuthorizationTargetFn,
   queryAuthorizationEventFn = queryAuthorizationEvent,
   signTransactionFn = signTransaction,
+  signBuiltTransaction,
 }: UseAuthorizationOptions): UseAuthorizationResult {
+  const resolvedClient = useMemo(
+    () => resolveAuthorizationClient(suiClient, deploymentState?.targetId),
+    [deploymentState?.targetId, suiClient],
+  );
   const [progress, setProgress] = useState<AuthorizationProgressState | null>(null);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const waitForReconnectRef = useRef<(() => void) | null>(null);
@@ -150,12 +182,10 @@ export function useAuthorization({
   const deploymentKeyRef = useRef<string | null>(null);
   const accountRef = useRef<CurrentAccount | null>(walletAccount);
   const walletRef = useRef<CurrentWallet>(currentWallet);
-  const clientRef = useRef<SuiClient>(suiClient);
+  const clientRef = useRef<SuiClient>(resolvedClient);
 
   const walletReady = useMemo(() => isWalletReady(walletAccount, currentWallet), [currentWallet, walletAccount]);
-  const deploymentKey = deploymentState === null
-    ? null
-    : `${deploymentState.targetId}:${deploymentState.packageId}:${deploymentState.moduleName}`;
+  const deploymentKey = authorizationDeploymentKey(deploymentState);
   const effectiveResolveAuthorizationTargetFn = useMemo(
     () => buildEffectiveResolveAuthorizationTargetFn(resolveAuthorizationTargetFn, fetchCharacterIdFn, fetchOwnerCapFn),
     [fetchCharacterIdFn, fetchOwnerCapFn, resolveAuthorizationTargetFn],
@@ -171,8 +201,8 @@ export function useAuthorization({
   useEffect(() => {
     accountRef.current = walletAccount;
     walletRef.current = currentWallet;
-    clientRef.current = suiClient;
-  }, [currentWallet, suiClient, walletAccount]);
+    clientRef.current = resolvedClient;
+  }, [currentWallet, resolvedClient, walletAccount]);
 
   useReconnectProgressEffect({ setProgress, waitForReconnectRef, walletReady });
   useDeploymentChangeCancellationEffect({ cancelAuthorization, deploymentKey, deploymentKeyRef });
@@ -196,6 +226,7 @@ export function useAuthorization({
     setIsAuthorizing,
     setProgress,
     signTransactionFn,
+    signBuiltTransaction,
     walletReady,
   };
   const refs: AuthorizationRefs = {
@@ -467,6 +498,7 @@ async function executeAuthorizationBatch(
       queryAuthorizationEventFn: dependencies.queryAuthorizationEventFn,
       resolveAuthorizationTargetFn: dependencies.resolveAuthorizationTargetFn,
       signTransactionFn: dependencies.signTransactionFn,
+      signBuiltTransaction: dependencies.signBuiltTransaction,
       suiClient: refs.clientRef.current,
       turretObjectId,
       waitForWalletConnection,
@@ -709,6 +741,7 @@ async function processTurret(input: {
   readonly queryAuthorizationEventFn: (input: QueryAuthorizationEventInput) => Promise<boolean>;
   readonly resolveAuthorizationTargetFn: (input: FetchOwnerCapInput) => Promise<AuthorizationTargetLookup>;
   readonly signTransactionFn: typeof signTransactionFunction;
+  readonly signBuiltTransaction?: UseAuthorizationOptions["signBuiltTransaction"];
   readonly suiClient: SuiClient;
   readonly turretObjectId: string;
   readonly waitForWalletConnection: () => Promise<void>;
@@ -751,10 +784,14 @@ async function processTurret(input: {
         continue;
       }
 
+      const ambiguous = error instanceof AmbiguousSubmissionError;
       updateTurretProgress(input.progressSetter, input.turretObjectId, {
         confirmationPhase: null,
-        errorMessage: classifyAuthorizationError(error),
-        status: "failed",
+        errorMessage: ambiguous
+          ? "Submission outcome is unresolved. Nothing will be signed or submitted again automatically."
+          : classifyAuthorizationError(error),
+        status: ambiguous ? "warning" : "failed",
+        transactionDigest: ambiguous ? error.digest ?? null : undefined,
       });
       return;
     }
@@ -783,6 +820,7 @@ async function submitAuthorizationTransaction(input: {
   readonly progressSetter: Dispatch<SetStateAction<AuthorizationProgressState | null>>;
   readonly resolveAuthorizationTargetFn: (input: FetchOwnerCapInput) => Promise<AuthorizationTargetLookup>;
   readonly signTransactionFn: typeof signTransactionFunction;
+  readonly signBuiltTransaction?: UseAuthorizationOptions["signBuiltTransaction"];
   readonly suiClient: SuiClient;
   readonly turretObjectId: string;
   readonly walletAccountRef: { readonly current: CurrentAccount | null };
@@ -816,27 +854,18 @@ async function submitAuthorizationTransaction(input: {
   });
 
   transaction.setSenderIfNotSet(connectedWalletContext.account.address);
+  assertWalletChain(connectedWalletContext.account, input.deploymentState.targetId);
 
-  const { bytes, signature } = await input.signTransactionFn(connectedWalletContext.wallet, {
-    transaction: {
-      async toJSON() {
-        return transaction.toJSON({
-          client: input.suiClient,
-          supportedIntents: [...connectedWalletContext.supportedIntents],
-        });
-      },
-    },
-    account: connectedWalletContext.account,
-    chain: "sui:testnet",
-  });
+  const signed = input.signBuiltTransaction
+    ? await input.signBuiltTransaction(transaction)
+    : await input.signTransactionFn(connectedWalletContext.wallet as never, {
+      transaction: { async toJSON() { return transaction.toJSON(); } },
+      account: connectedWalletContext.account as never,
+      chain: requiredChain(input.deploymentState.targetId),
+    });
+  const { bytes, signature } = signed;
 
-  const executionResult = await input.suiClient.executeTransactionBlock({
-    transactionBlock: bytes,
-    signature,
-    options: {
-      showEffects: true,
-    },
-  });
+  const executionResult = await input.suiClient.executeSigned(bytes, signature);
 
   updateTurretProgress(input.progressSetter, input.turretObjectId, {
     confirmationPhase: "transaction",
@@ -857,11 +886,8 @@ async function ensureAuthorizationWitnessAvailable(input: EnsureAuthorizationWit
 
   while (Date.now() <= deadline) {
     try {
-      await input.suiClient.getNormalizedMoveStruct({
-        package: input.deploymentState.packageId,
-        module: input.deploymentState.moduleName,
-        struct: "TurretAuth",
-      });
+      const ready = await input.suiClient.isTurretAuthReady(input.deploymentState.packageId, input.deploymentState.moduleName);
+      if (!ready) throw new Error("TurretAuth is not queryable yet.");
       return;
     } catch (error: unknown) {
       lastError = error;
@@ -883,7 +909,7 @@ function createAuthorizationWitnessUnavailableError(
   lastError: unknown,
 ): Error {
   const detail = lastError instanceof Error && lastError.message.trim().length > 0
-    ? ` Last RPC error: ${lastError.message}`
+    ? ` Last read error: ${lastError.message}`
     : "";
 
   return new Error(
@@ -905,7 +931,7 @@ function getConnectedWalletContext(
 
   return {
     account: account as NonNullable<CurrentAccount>,
-    supportedIntents: [...wallet.supportedIntents],
+    supportedIntents: [...(wallet.supportedIntents ?? [])],
     wallet: wallet.currentWallet as NonNullable<CurrentWallet["currentWallet"]>,
   };
 }
@@ -914,7 +940,7 @@ function handleConfirmationResult(
   progressSetter: Dispatch<SetStateAction<AuthorizationProgressState | null>>,
   turretObjectId: string,
   digest: string,
-  confirmationResult: Awaited<ReturnType<SuiClient["waitForTransaction"]>> | "timeout",
+  confirmationResult: { readonly success: boolean } | "timeout",
 ): boolean {
   if (confirmationResult === "timeout") {
     updateTurretProgress(progressSetter, turretObjectId, {
@@ -926,7 +952,7 @@ function handleConfirmationResult(
     return true;
   }
 
-  if (confirmationResult.effects?.status.status !== "success") {
+  if (!confirmationResult.success) {
     updateTurretProgress(progressSetter, turretObjectId, {
       confirmationPhase: "transaction",
       errorMessage: "Authorization failed on-chain before confirmation completed.",
@@ -943,7 +969,7 @@ async function waitForConfirmation(input: {
   readonly digest: string;
   readonly suiClient: SuiClient;
   readonly timeoutMs: number;
-}): Promise<Awaited<ReturnType<SuiClient["waitForTransaction"]>> | "timeout"> {
+}): Promise<{ readonly success: boolean } | "timeout"> {
   const timeoutPromise = new Promise<"timeout">((resolve) => {
     window.setTimeout(() => {
       resolve("timeout");
@@ -951,13 +977,7 @@ async function waitForConfirmation(input: {
   });
 
   return Promise.race([
-    input.suiClient.waitForTransaction({
-      digest: input.digest,
-      options: {
-        showEffects: true,
-      },
-      timeout: input.timeoutMs,
-    }),
+    input.suiClient.waitForEffects(input.digest, input.timeoutMs),
     timeoutPromise,
   ]);
 }
@@ -1017,30 +1037,34 @@ async function waitForAuthorizationEvent(input: {
 }
 
 async function queryAuthorizationEvent(input: QueryAuthorizationEventInput): Promise<boolean> {
-  const result = await input.suiClient.queryEvents({
-    query: {
-      Transaction: input.digest,
-    },
-    limit: 50,
-    order: "descending",
-  });
-
-  return result.data.some((event) => isAuthorizationEvent(event, input));
+  const events = await input.suiClient.readEvents(input.digest);
+  return events.some((event) => isAuthorizationEvent(event, input));
 }
 
 function isAuthorizationEvent(
-  event: Awaited<ReturnType<SuiClient["queryEvents"]>>["data"][number],
+  event: { readonly packageId?: string; readonly module?: string; readonly type?: string; readonly parsedJson?: unknown },
   input: Pick<QueryAuthorizationEventInput, "deploymentState" | "turretObjectId">,
 ): boolean {
-  if (event.packageId === input.deploymentState.packageId || event.transactionModule === input.deploymentState.moduleName) {
+  if (event.packageId === input.deploymentState.packageId || event.module === input.deploymentState.moduleName) {
     return true;
   }
 
-  if (event.type.includes(`::${input.deploymentState.moduleName}::`)) {
+  if (event.type?.includes(`::${input.deploymentState.moduleName}::`) === true) {
     return true;
   }
 
   return hasStringValue(event.parsedJson, input.turretObjectId);
+}
+
+function requiredChain(targetId: StoredDeploymentState["targetId"]): `sui:${string}` {
+  return `sui:${getDeploymentTarget(targetId).networkFamily === "local" ? "localnet" : "testnet"}`;
+}
+
+function assertWalletChain(account: CurrentAccount, targetId: StoredDeploymentState["targetId"]): void {
+  const chain = requiredChain(targetId);
+  if (account.chains !== undefined && account.chains.length > 0 && !account.chains.includes(chain)) {
+    throw new Error(`The connected wallet account does not support ${chain}.`);
+  }
 }
 
 function updateTurretProgress(

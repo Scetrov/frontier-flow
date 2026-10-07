@@ -16,7 +16,7 @@ export interface RemotePublishRequest {
   readonly onSubmitting?: () => void;
   readonly target: DeploymentTarget;
   readonly references: PackageReferenceBundle;
-  readonly execute: (transaction: Transaction, request?: RemotePublishExecutionRequest) => Promise<{ digest: string }>;
+  readonly execute: (transaction: Transaction, request?: RemotePublishExecutionRequest) => Promise<{ digest: string; packageId?: string }>;
   readonly signal?: AbortSignal;
 }
 
@@ -234,7 +234,7 @@ export async function publishToRemoteTarget(request: RemotePublishRequest): Prom
   });
   const transaction = createPublishTransaction(modules, dependencies, request.ownerAddress);
 
-  let result: { digest: string };
+  let result: { digest: string; packageId?: string };
   try {
     result = await request.execute(transaction, {
       onSubmitting: request.onSubmitting,
@@ -251,6 +251,7 @@ export async function publishToRemoteTarget(request: RemotePublishRequest): Prom
   return {
     builderToolchainVersion: compileResult?.builderToolchainVersion,
     sourceVersionTag: compileResult?.sourceVersionTag,
+    packageId: result.packageId,
     transactionDigest: result.digest,
   };
 }

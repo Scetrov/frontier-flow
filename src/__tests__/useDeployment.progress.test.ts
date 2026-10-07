@@ -1,22 +1,15 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type {
-  useCurrentAccount as useCurrentAccountHook,
-  useCurrentWallet as useCurrentWalletHook,
-  useSignAndExecuteTransaction as useSignAndExecuteTransactionHook,
-  useSuiClient as useSuiClientHook,
-  useWallets as useWalletsHook,
-} from "@mysten/dapp-kit";
 import type { signTransaction as signTransactionFunction } from "@mysten/wallet-standard";
 
 import { useDeployment } from "../hooks/useDeployment";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
 
-type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
-type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
-type SignAndExecuteTransaction = ReturnType<typeof useSignAndExecuteTransactionHook>;
-type SuiClient = ReturnType<typeof useSuiClientHook>;
-type Wallets = ReturnType<typeof useWalletsHook>;
+type CurrentAccount = { readonly address: string; readonly chains?: readonly string[]; readonly features?: readonly string[]; readonly icon?: undefined; readonly label?: undefined; readonly publicKey?: Uint8Array };
+type CurrentWallet = { readonly isConnected?: boolean; readonly connectionStatus?: string; readonly currentWallet?: object | null; readonly isConnecting?: boolean; readonly isDisconnected?: boolean; readonly supportedIntents?: readonly string[] };
+type SignAndExecuteTransaction = { readonly mutateAsync: (input: unknown) => Promise<unknown> };
+type SuiClient = object;
+type Wallets = readonly { readonly name: string }[];
 
 const {
   mockSignTransaction,
@@ -33,7 +26,7 @@ const {
   mockUseSuiClient: vi.fn<() => SuiClient>(),
   mockUseWallets: vi.fn<() => Wallets>(),
 }));
-const availableWallet = { name: "Sui Wallet" } as unknown as Wallets[number];
+const availableWallet = { name: "Sui Wallet" };
 
 function createConnectedWalletState(): CurrentWallet {
   return {
@@ -43,15 +36,20 @@ function createConnectedWalletState(): CurrentWallet {
     isConnecting: false,
     isDisconnected: false,
     supportedIntents: [],
-  } as unknown as CurrentWallet;
+  };
 }
 
-vi.mock("@mysten/dapp-kit", () => ({
-  useCurrentAccount: mockUseCurrentAccount,
-  useCurrentWallet: mockUseCurrentWallet,
-  useSignAndExecuteTransaction: mockUseSignAndExecuteTransaction,
-  useSuiClient: mockUseSuiClient,
-  useWallets: mockUseWallets,
+vi.mock("../wallet/hooks", () => ({
+  useFrontierWalletSession: () => ({
+    account: mockUseCurrentAccount(),
+    wallets: mockUseWallets(),
+    isConnected: mockUseCurrentWallet().isConnected === true,
+    isConnecting: false,
+    disconnectPending: false,
+    disconnect: vi.fn(),
+    connect: vi.fn(),
+    kit: {},
+  }),
 }));
 
 vi.mock("@mysten/wallet-standard", () => ({
@@ -70,8 +68,8 @@ describe("useDeployment progress flow", () => {
       publicKey: new Uint8Array(),
     });
     mockUseCurrentWallet.mockReturnValue(createConnectedWalletState());
-    mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() } as unknown as SignAndExecuteTransaction);
-    mockUseSuiClient.mockReturnValue({} as SuiClient);
+    mockUseSignAndExecuteTransaction.mockReturnValue({ mutateAsync: vi.fn() });
+    mockUseSuiClient.mockReturnValue({});
     mockUseWallets.mockReturnValue([availableWallet]);
     mockSignTransaction.mockResolvedValue({ bytes: "dGVzdA==", signature: "0xsig" });
     window.history.replaceState({}, "", "/?ff_mock_deploy_stage_delay_ms=25");

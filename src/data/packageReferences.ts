@@ -1,6 +1,8 @@
 import type { PackageReferenceBundle } from "../compiler/types";
 import { getMoveBuilderGitHubAccessToken } from "../compiler/moveBuilderLite";
 import { GITHUB_API_VERSION } from "../utils/githubApi";
+import { normalizeSuiAddress } from "@mysten/sui/utils";
+import { getSuiTargetClient } from "../utils/suiTargetClient";
 import {
   MAINTAINED_REMOTE_TARGET_IDS,
   MAINTAINED_WORLD_PACKAGE_REFERENCES,
@@ -343,30 +345,44 @@ export function getPackageReferenceBundle(targetId: PackageReferenceBundle["targ
   return bundle;
 }
 
-function hasRpcLookupError(value: unknown): boolean {
-  return typeof value === "object"
-    && value !== null
-    && "error" in value
-    && (value as { readonly error?: unknown }).error != null;
+export interface PublishedPackageReadClient {
+  readonly getObject?: (args: { readonly objectId: string; readonly signal: AbortSignal }) => Promise<unknown>;
 }
 
+/** Minimal authoritative existence check; registry/provenance verification remains GraphQL. */
 export async function verifyPublishedWorldPackageExists(
   targetId: PackageReferenceBundle["targetId"],
-  client: { getObject?: (args: { id: string; signal?: AbortSignal }) => Promise<unknown> },
-  signal?: AbortSignal,
+  client?: PublishedPackageReadClient,
+  abort?: AbortSignal,
 ): Promise<boolean> {
+  const deadline = AbortSignal.timeout(8_000);
+  const signal = abort ? AbortSignal.any([abort, deadline]) : deadline;
   try {
+    signal.throwIfAborted();
     const bundle = getPackageReferenceBundle(targetId);
-    if (typeof client.getObject !== "function") {
-      // If the provided client does not implement getObject, assume existence.
-      return true;
-    }
-
-    const result = await client.getObject({ id: bundle.worldPackageId, signal });
-    return !hasRpcLookupError(result);
+    const resolvedClient = client ?? getSuiTargetClient(targetId, { timeout: 8_000, abort: signal });
+    if (typeof resolvedClient.getObject !== "function") return false;
+    const result = await resolvedClient.getObject({ objectId: bundle.worldPackageId, signal });
+    signal.throwIfAborted();
+    return matchesPublishedPackage(result, bundle.worldPackageId);
   } catch {
     return false;
   }
+}
+
+function matchesPublishedPackage(result: unknown, packageId: string): boolean {
+  if (typeof result !== "object" || result === null || !("object" in result)) return false;
+  const object = result.object;
+  if (typeof object !== "object" || object === null) return false;
+  const fields = object as Record<string, unknown>;
+  return fields.type === "package" && typeof fields.objectId === "string"
+    && normalizeSuiAddress(fields.objectId) === normalizeSuiAddress(packageId)
+    && hasRequiredPackageMetadata(fields);
+}
+
+function hasRequiredPackageMetadata(fields: Record<string, unknown>): boolean {
+  return typeof fields.version === "string" && /^[1-9][0-9]*$/.test(fields.version)
+    && typeof fields.digest === "string" && fields.digest.length > 0;
 }
 
 /**

@@ -1,19 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
-import type {
-  useCurrentAccount as useCurrentAccountHook,
-  useCurrentWallet as useCurrentWalletHook,
-  useDisconnectWallet as useDisconnectWalletHook,
-  useWallets as useWalletsHook,
-} from "@mysten/dapp-kit";
-
 import WalletStatus from "../components/WalletStatus";
 
-type CurrentAccount = ReturnType<typeof useCurrentAccountHook>;
-type CurrentWallet = ReturnType<typeof useCurrentWalletHook>;
-type DisconnectWallet = ReturnType<typeof useDisconnectWalletHook>;
-type Wallets = ReturnType<typeof useWalletsHook>;
+type CurrentAccount = { readonly address: string } | null;
+type CurrentWallet = { readonly isConnected?: boolean; readonly isConnecting?: boolean; readonly connectionStatus?: string; readonly currentWallet?: object | null; readonly isDisconnected?: boolean; readonly supportedIntents?: readonly string[] };
+type DisconnectWallet = { readonly isPending: boolean; readonly mutate: () => void };
+type Wallets = readonly { readonly name: string }[];
 type ResolvedWalletCharacterIdentity = import("../utils/characterProfile").ResolvedWalletCharacterIdentity;
 type TargetBalanceQuery = ReturnType<typeof import("../hooks/useTargetBalance").useTargetBalance>;
 
@@ -35,7 +27,7 @@ function createDisconnectedWalletState(): CurrentWallet {
     isConnecting: false,
     isDisconnected: true,
     supportedIntents: [],
-  } as unknown as CurrentWallet;
+  };
 }
 
 function createConnectedWalletState(): CurrentWallet {
@@ -46,14 +38,14 @@ function createConnectedWalletState(): CurrentWallet {
     isConnecting: false,
     isDisconnected: false,
     supportedIntents: [],
-  } as unknown as CurrentWallet;
+  };
 }
 
 function createDisconnectMutation(mutate = vi.fn()): DisconnectWallet {
   return {
     isPending: false,
     mutate,
-  } as unknown as DisconnectWallet;
+  };
 }
 
 function createBalanceQuery(overrides: Partial<TargetBalanceQuery> = {}): TargetBalanceQuery {
@@ -65,12 +57,22 @@ function createBalanceQuery(overrides: Partial<TargetBalanceQuery> = {}): Target
   } as unknown as TargetBalanceQuery;
 }
 
-vi.mock("@mysten/dapp-kit", () => ({
-  ConnectModal: ({ trigger }: { trigger: ReactNode }) => <>{trigger}</>,
-  useCurrentAccount: () => mockUseCurrentAccount(),
-  useCurrentWallet: () => mockUseCurrentWallet(),
-  useDisconnectWallet: () => mockUseDisconnectWallet(),
-  useWallets: () => mockUseWallets(),
+vi.mock("../wallet/hooks", () => ({
+  useFrontierWalletSession: () => {
+    const account = mockUseCurrentAccount();
+    const wallet = mockUseCurrentWallet();
+    const disconnect = mockUseDisconnectWallet();
+    return {
+      account,
+      wallets: mockUseWallets(),
+      isConnected: account !== null && wallet.isConnected === true,
+      isConnecting: wallet.isConnecting === true,
+      disconnectPending: disconnect.isPending,
+      disconnect: () => { disconnect.mutate(); },
+      connect: vi.fn(),
+      kit: {},
+    };
+  },
 }));
 
 vi.mock("../hooks/useTargetBalance", () => ({
@@ -202,7 +204,8 @@ describe("WalletStatus", () => {
 
     render(<WalletStatus />);
 
-    expect(screen.getByText("-- SUI")).toBeVisible();
+    expect(screen.getByText("SUI unavailable")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Retry Sui balance" })).toBeVisible();
   });
 
   it("disconnects and clears wallet information from the header state", () => {

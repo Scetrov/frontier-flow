@@ -1,14 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { mockWriteBlobFlow, mockGetBlob, mockWalrus, mockExtend } = vi.hoisted(() => ({
+import { loadLocalEnvironmentConfig, saveLocalEnvironmentConfig } from "../data/localEnvironment";
+import { getWalrusGraphConfig } from "../utils/walrusGraphConfig";
+
+const { mockWriteBlobFlow, mockGetBlob, mockWalrus, mockExtend, constructedClients } = vi.hoisted(() => ({
   mockWriteBlobFlow: vi.fn(),
   mockGetBlob: vi.fn(),
   mockWalrus: vi.fn(),
   mockExtend: vi.fn(),
+  constructedClients: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("@mysten/sui/grpc", () => ({
   SuiGrpcClient: class {
+    constructor(options: Record<string, unknown>) {
+      constructedClients.push(options);
+    }
+
     $extend = mockExtend;
   },
 }));
@@ -19,7 +27,29 @@ vi.mock("@mysten/walrus", () => ({
 
 import { createWalrusGraphClient, isWalrusUploadedStep } from "../utils/walrusGraphClient";
 
+afterEach(() => {
+  window.localStorage.clear();
+  constructedClients.length = 0;
+});
+
 describe("walrusGraphClient", () => {
+  it("keeps the Walrus gRPC client on testnet after a local endpoint edit", () => {
+    saveLocalEnvironmentConfig(window.localStorage, {
+      ...loadLocalEnvironmentConfig(),
+      rpcUrl: "http://127.0.0.1:19000",
+    });
+    mockExtend.mockReturnValue({ walrus: { getBlob: mockGetBlob, writeBlobFlow: mockWriteBlobFlow } });
+
+    createWalrusGraphClient();
+
+    expect(constructedClients).toEqual([{
+      network: "testnet",
+      baseUrl: getWalrusGraphConfig().suiRpcUrl,
+    }]);
+    expect(getWalrusGraphConfig().suiRpcUrl).toBe("https://fullnode.testnet.sui.io:443");
+    expect(JSON.stringify(constructedClients)).not.toContain("127.0.0.1");
+  });
+
   it("creates publish flows and reads YAML through the extended Walrus client", async () => {
     const publishFlow = { register: vi.fn(), upload: vi.fn(), certify: vi.fn(), encode: vi.fn() };
 

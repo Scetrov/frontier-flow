@@ -1,7 +1,10 @@
 import { requestSuiFromFaucetV2, getFaucetHost } from "@mysten/sui/faucet";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
+
+import { createSuiTargetClient } from "../utils/suiTargetClient";
+import { extractPublishedPackageId, readSuccessfulSuiTransaction } from "../utils/suiTransactionResult";
+import { AmbiguousSubmissionError } from "../utils/suiTransactionExecution";
 import {
   loadMoveBuilderLite,
   moveBuilderLiteWasmUrl,
@@ -111,7 +114,7 @@ export async function resolveLocalPublishModules(
  * Publish a compiled artifact to a project-controlled local validator.
  */
 export async function publishToLocalValidator(request: LocalPublishRequest, dependencies: LocalPublishDependencies = {}): Promise<LocalPublishResult> {
-  const client = new SuiJsonRpcClient({ url: request.target.rpcUrl, network: "localnet" });
+  const client = createSuiTargetClient(request.target, { timeout: 20_000, abort: request.signal });
   const signer = new Ed25519Keypair();
   const signerAddress = signer.getPublicKey().toSuiAddress();
   await requestSuiFromFaucetV2({
@@ -137,19 +140,22 @@ export async function publishToLocalValidator(request: LocalPublishRequest, depe
   });
   transaction.transferObjects([upgradeCap], signerAddress);
 
-  const result = await client.signAndExecuteTransaction({
-    transaction,
-    signer,
-    options: {
-      showEffects: true,
-      showObjectChanges: true,
-    },
-    signal: request.signal,
-  });
-  const packageId = result.objectChanges?.find((change) => change.type === "published")?.packageId;
-
+  let result: unknown;
+  try {
+    result = await client.signAndExecuteTransaction({
+      transaction,
+      signer,
+      include: { effects: true, protoJson: true },
+      signal: request.signal,
+    });
+  } catch (error: unknown) {
+    request.signal?.throwIfAborted();
+    const detail = error instanceof Error ? error.message : "transport failure";
+    throw new AmbiguousSubmissionError(`Local publication outcome is unresolved. Nothing will be signed or submitted again automatically. ${detail}`);
+  }
+  const evidence = readSuccessfulSuiTransaction(result);
   return {
-    packageId,
-    transactionDigest: result.digest,
+    packageId: extractPublishedPackageId(evidence.transaction),
+    transactionDigest: evidence.digest,
   };
 }
