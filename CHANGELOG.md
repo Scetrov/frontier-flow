@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.12.0](https://github.com/Scetrov/frontier-flow/compare/v0.11.16...v0.12.0) (2026-10-07)
+
+
+### Features
+
+* **sui:** migrate maintained JSON-RPC operations to gRPC ([#120](https://github.com/Scetrov/frontier-flow/issues/120)) ([20df70a](https://github.com/Scetrov/frontier-flow/commit/20df70a1054f0085bcd39be62e2f3a502327f1db))
+
+
+### Bug Fixes
+
+* restore World API connectivity and recoverable lookups ([#124](https://github.com/Scetrov/frontier-flow/issues/124)) ([6f1bacd](https://github.com/Scetrov/frontier-flow/commit/6f1bacd10789f99d976fc1adda75677b8efe9b58))
+* **security:** remediate reviewed main Semgrep findings ([#123](https://github.com/Scetrov/frontier-flow/issues/123)) ([e8536f9](https://github.com/Scetrov/frontier-flow/commit/e8536f945fdb3619ff7e3cc2ffdd693fa169eaf6))
+* **security:** remediate source-map-js advisory ([#122](https://github.com/Scetrov/frontier-flow/issues/122)) ([30c9435](https://github.com/Scetrov/frontier-flow/commit/30c9435007ae47a9ecaa9ee819678037f557e211))
+
 ## [0.11.16](https://github.com/Scetrov/frontier-flow/compare/v0.11.15...v0.11.16) (2026-09-30)
 
 
