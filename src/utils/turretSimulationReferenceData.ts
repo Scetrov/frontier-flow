@@ -8,6 +8,7 @@ import type {
 import type { StoredDeploymentState } from "../types/authorization";
 import { extractCharacterNameFromCharacterContent } from "./characterProfile";
 import { getTurretGraphQlEndpoint } from "./turretQueries";
+import { fetchWorldApiShips, fetchWorldApiTribes } from "./worldApiClient";
 
 interface GraphQlError {
   readonly message?: string;
@@ -16,10 +17,6 @@ interface GraphQlError {
 interface GraphQlResponse<TData> {
   readonly data?: TData | null;
   readonly errors?: readonly GraphQlError[];
-}
-
-interface WorldApiCollectionResponse<TValue> {
-  readonly data?: readonly TValue[];
 }
 
 interface WorldApiShipRecord {
@@ -87,8 +84,6 @@ const CHARACTER_QUERY = `query Character($id: SuiAddress!) {
     }
   }
 }`;
-const WORLD_API_SHIPS_URL = "https://world-api-stillness.live.tech.evefrontier.com/v2/ships";
-const WORLD_API_TRIBES_URL = "https://world-api-stillness.live.tech.evefrontier.com/v2/tribes";
 
 let cachedShipOptions: readonly SimulationShipOption[] | null = null;
 let cachedTribeOptions: readonly SimulationTribeOption[] | null = null;
@@ -141,11 +136,7 @@ async function loadSimulationShipOptions(input: {
     return cachedShipOptions;
   }
 
-  const payload = await getWorldApiCollection<WorldApiShipRecord>({
-    fetchFn: input.fetchFn,
-    signal: input.signal,
-    url: WORLD_API_SHIPS_URL,
-  });
+  const payload = await fetchWorldApiShips(input);
   const options = payload
     .map((record) => buildShipOption(record))
     .filter((option): option is SimulationShipOption => option !== null)
@@ -166,11 +157,7 @@ async function loadSimulationTribeOptions(input: {
     return cachedTribeOptions;
   }
 
-  const payload = await getWorldApiCollection<WorldApiTribeRecord>({
-    fetchFn: input.fetchFn,
-    signal: input.signal,
-    url: WORLD_API_TRIBES_URL,
-  });
+  const payload = await fetchWorldApiTribes(input);
   const options = payload
     .map((record) => buildTribeOption(record))
     .filter((option): option is SimulationTribeOption => option !== null)
@@ -307,29 +294,6 @@ async function fetchCharacterContent(input: {
   });
 
   return characterResponse.object?.asMoveObject?.contents?.json;
-}
-
-async function getWorldApiCollection<TValue>(input: {
-  readonly fetchFn: typeof fetch;
-  readonly signal?: AbortSignal;
-  readonly url: string;
-}): Promise<readonly TValue[]> {
-  const response = await input.fetchFn(input.url, { signal: input.signal });
-
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${String(response.status)}`);
-  }
-
-  const rawPayload: unknown = await response.json();
-
-  if (!isRecord(rawPayload)) {
-    return [];
-  }
-
-  const payload = rawPayload as WorldApiCollectionResponse<TValue>;
-  const data = payload.data;
-
-  return Array.isArray(data) ? data as readonly TValue[] : [];
 }
 
 function buildShipOption(record: WorldApiShipRecord): SimulationShipOption | null {

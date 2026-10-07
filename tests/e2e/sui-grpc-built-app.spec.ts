@@ -21,7 +21,7 @@ test("built app loads balance from a cross-origin gRPC responder under productio
     const document = await page.goto(`${app.origin}/`);
     expect(document?.headers()["content-security-policy"]).toBe(app.contentSecurityPolicy);
     expect(app.contentSecurityPolicy).toContain("https://127.0.0.1:*");
-    expect(app.contentSecurityPolicy).toContain("https://world-api-stillness.live.tech.evefrontier.com");
+    expect(app.contentSecurityPolicy).toContain("https://world-api-stillness.live.pub.evefrontier.com");
     await page.getByRole("button", { name: "Connect" }).click();
     await expect(page.getByText("12.5 SUI")).toHaveCount(1, { timeout: 20_000 });
     expect(responder.requests.some((request) => request.method === "OPTIONS" && request.path === "/sui.rpc.v2.StateService/GetBalance")).toBe(true);

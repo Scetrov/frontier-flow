@@ -23,10 +23,9 @@ export function readProductionContentSecurityPolicy() {
 }
 
 /** Serves the production build with the deployed CSP. This is not the Vite dev server. */
-export async function startProductionCspApp({ cert, key, distDir = "dist" }) {
+export async function startProductionCspApp({ cert, key, distDir = "dist", contentSecurityPolicy = readProductionContentSecurityPolicy() }) {
   const root = resolve(distDir);
   if (!existsSync(join(root, "index.html"))) throw new Error("Production build is missing. Run bun run build first.");
-  const contentSecurityPolicy = readProductionContentSecurityPolicy();
   const server = createServer({ cert, key }, (request, response) => {
     const pathname = new URL(request.url ?? "/", "https://127.0.0.1").pathname;
     const candidate = resolve(root, `.${pathname}`);

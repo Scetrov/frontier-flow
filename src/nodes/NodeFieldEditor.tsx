@@ -10,6 +10,7 @@ import {
   type NumericOption,
 } from "../data/nodeFieldCatalog";
 import type { NodeFieldMap } from "../types/nodes";
+import { buildWorldApiUrl } from "../utils/worldApiClient";
 import { buildShipOption, buildTribeOption, loadWorldApiOptions, type SelectableOption } from "./nodeFieldEditorOptions";
 
 interface NodeFieldEditorProps {
@@ -35,6 +36,7 @@ function useRemoteNodeFieldOptions(nodeType: string) {
   const [remoteOptions, setRemoteOptions] = useState<readonly SelectableOption[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let isCancelled = false;
@@ -48,16 +50,17 @@ function useRemoteNodeFieldOptions(nodeType: string) {
       }
 
       setIsLoadingOptions(true);
+      setRemoteOptions([]);
       setLoadError(null);
 
       try {
         const options = nodeType === "listTribe"
           ? await loadWorldApiOptions(
-              "https://world-api-stillness.live.tech.evefrontier.com/v2/tribes",
+              buildWorldApiUrl("/v2/tribes"),
               buildTribeOption,
             )
           : await loadWorldApiOptions(
-              "https://world-api-stillness.live.tech.evefrontier.com/v2/ships",
+              buildWorldApiUrl("/v2/ships"),
               buildShipOption,
             );
 
@@ -66,7 +69,7 @@ function useRemoteNodeFieldOptions(nodeType: string) {
         }
       } catch (error) {
         if (!isCancelled) {
-          setLoadError(error instanceof Error ? error.message : "Unable to load options.");
+          setLoadError(error instanceof Error ? error.message : "World API lookup failed. Unable to load options.");
         }
       } finally {
         if (!isCancelled) {
@@ -80,9 +83,9 @@ function useRemoteNodeFieldOptions(nodeType: string) {
     return () => {
       isCancelled = true;
     };
-  }, [nodeType]);
+  }, [nodeType, attempt]);
 
-  return { remoteOptions, isLoadingOptions, loadError };
+  return { remoteOptions, isLoadingOptions, loadError, retry: () => { setAttempt((value) => value + 1); } };
 }
 
 function NumericOptionEditor({
@@ -91,6 +94,7 @@ function NumericOptionEditor({
   selectedValues,
   loading,
   error,
+  onRetry,
   onToggle,
 }: {
   readonly heading: string;
@@ -98,6 +102,7 @@ function NumericOptionEditor({
   readonly selectedValues: ReadonlySet<number>;
   readonly loading: boolean;
   readonly error: string | null;
+  readonly onRetry?: () => void;
   readonly onToggle: (value: number) => void;
 }) {
   return (
@@ -108,7 +113,13 @@ function NumericOptionEditor({
       </div>
 
       {loading ? <p className="ff-node-field-editor__empty">Loading options…</p> : null}
-      {error !== null ? <p className="ff-node-field-editor__error">{error}</p> : null}
+      {error !== null ? (
+        <div role="alert">
+          <p className="ff-node-field-editor__error">{error}</p>
+          {onRetry !== undefined ? <button className="ff-node-field-editor__button" onClick={onRetry} type="button">Retry World API lookup</button> : null}
+        </div>
+      ) : null}
+      {!loading && error === null && options.length === 0 ? <p className="ff-node-field-editor__empty">No options available.</p> : null}
 
       {!loading && error === null ? (
         <div className="ff-node-field-editor__list">
@@ -213,6 +224,7 @@ function NodeFieldEditorBody({
   onAddCharacter,
   onAddressChange,
   onRemoveCharacter,
+  onRetry,
   onSetDraftFields,
   remoteOptions,
   selectedBehaviourCodes,
@@ -228,6 +240,7 @@ function NodeFieldEditorBody({
   readonly onAddCharacter: () => void;
   readonly onAddressChange: (value: string) => void;
   readonly onRemoveCharacter: (value: string) => void;
+  readonly onRetry: () => void;
   readonly onSetDraftFields: React.Dispatch<React.SetStateAction<NodeFieldMap>>;
   readonly remoteOptions: readonly SelectableOption[];
   readonly selectedBehaviourCodes: ReadonlySet<number>;
@@ -242,6 +255,7 @@ function NodeFieldEditorBody({
           error={loadError}
           heading="Select one or more tribes from the live world API."
           loading={isLoadingOptions}
+          onRetry={onRetry}
           onToggle={(value) => {
             onSetDraftFields((currentFields) => toggleNumericField(currentFields, "selectedTribeIds", value, nodeType));
           }}
@@ -255,6 +269,7 @@ function NodeFieldEditorBody({
           error={loadError}
           heading="Select one or more ships from the live world API."
           loading={isLoadingOptions}
+          onRetry={onRetry}
           onToggle={(value) => {
             onSetDraftFields((currentFields) => toggleNumericField(currentFields, "selectedShipIds", value, nodeType));
           }}
@@ -359,7 +374,7 @@ function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeF
   const dialogDescriptionId = useId();
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const { remoteOptions, isLoadingOptions, loadError } = useRemoteNodeFieldOptions(nodeType);
+  const { remoteOptions, isLoadingOptions, loadError, retry } = useRemoteNodeFieldOptions(nodeType);
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -407,6 +422,7 @@ function NodeFieldEditor({ nodeLabel, nodeType, fields, onClose, onSave }: NodeF
         characterAddresses={characterAddresses}
         isLoadingOptions={isLoadingOptions}
         loadError={loadError}
+        onRetry={retry}
         nextCharacterAddress={nextCharacterAddress}
         nodeType={nodeType}
         onAddCharacter={() => {

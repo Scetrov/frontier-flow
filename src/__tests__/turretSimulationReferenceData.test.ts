@@ -125,6 +125,8 @@ describe("turretSimulationReferenceData", () => {
       fetchFn,
       walletAddress: "0x1234",
     })).resolves.toEqual(expected);
+    expect(fetchFn).toHaveBeenNthCalledWith(1, "https://world-api-stillness.live.pub.evefrontier.com/v2/ships", { signal: undefined });
+    expect(fetchFn).toHaveBeenNthCalledWith(2, "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes", { signal: undefined });
   });
 
   it("returns partial data and an error message when one remote source fails", async () => {
@@ -158,10 +160,10 @@ describe("turretSimulationReferenceData", () => {
 
     expect(result.shipOptions).toHaveLength(1);
     expect(result.tribeOptions).toEqual([]);
-    expect(result.errorMessages).toEqual(["Could not load tribes from World API. Request failed with status 503"]);
+    expect(result.errorMessages).toEqual(["Could not load tribes from World API. World API lookup failed. Request failed with status 503"]);
   });
 
-  it("treats non-object World API JSON payloads as empty collections", async () => {
+  it("rejects malformed World API envelopes without discarding partial data", async () => {
     resetSimulationReferenceDataCacheForTests();
 
     const fetchFn = vi.fn<typeof fetch>()
@@ -185,6 +187,9 @@ describe("turretSimulationReferenceData", () => {
 
     expect(result.shipOptions).toEqual([]);
     expect(result.tribeOptions).toEqual([]);
-    expect(result.errorMessages).toEqual([]);
+    expect(result.errorMessages).toEqual([
+      "Could not load ship types from World API. World API lookup failed. Invalid collection response: expected a data array.",
+      "Could not load tribes from World API. World API lookup failed. Invalid collection response: expected a data array.",
+    ]);
   });
 });
