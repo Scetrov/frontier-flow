@@ -9,6 +9,7 @@ import { getCompilationStatusButton, selectDeploymentTarget } from "./fixtures/w
 import { MAINTAINED_WORLD_PACKAGE_REFERENCES } from "../../src/data/maintainedWorldPackageReferences";
 import { createGrpcSimulationResponseBody } from "../../src/test/turretSimulationMocks";
 import { encodeSimulationPriorityEntries } from "../../src/utils/turretSimulationCodec";
+import { buildWorldApiUrl } from "../../src/utils/worldApiClient";
 
 const CONNECTED_ADDRESS = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 const CHARACTER_ID = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -248,7 +249,18 @@ test("runs the full turret authorization workflow and refreshes the list after c
     });
   });
 
-  await page.route("https://world-api-stillness.live.tech.evefrontier.com/v2/ships", async (route) => {
+  const worldApiRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("world-api")) worldApiRequests.push(request.url());
+  });
+  // Playwright tries routes in reverse registration order. Exact fixtures below
+  // take precedence; reject all other World API URLs instead of reaching live data.
+  await page.route("https://world-api*/**", async (route) => {
+    await route.abort("blockedbyclient");
+    throw new Error(`Unexpected World API request: ${route.request().url()}`);
+  });
+
+  await page.route(buildWorldApiUrl("/v2/ships"), async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -263,7 +275,7 @@ test("runs the full turret authorization workflow and refreshes the list after c
     });
   });
 
-  await page.route("https://world-api-stillness.live.tech.evefrontier.com/v2/tribes", async (route) => {
+  await page.route(buildWorldApiUrl("/v2/tribes"), async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -447,6 +459,10 @@ test("runs the full turret authorization workflow and refreshes the list after c
   await expect(page.getByLabel("Group Id")).toHaveValue(SIMULATED_GROUP_ID);
   await expect(page.getByLabel("Character Id")).toHaveValue(SIMULATED_CHARACTER_ID);
   await expect(page.getByLabel("Character Tribe")).toHaveValue(SIMULATED_CHARACTER_TRIBE);
+  expect(new Set(worldApiRequests)).toEqual(new Set([
+    buildWorldApiUrl("/v2/ships"),
+    buildWorldApiUrl("/v2/tribes"),
+  ]));
   await page.getByLabel("Item Id").fill("900001");
   await page.getByRole("button", { name: "Run Simulation" }).click();
 

@@ -51,6 +51,22 @@ Command: `bun scripts/world-api-readonly-smoke.ts --live --origin=https://fronti
 - Task 4.1 records a completed check, not a successful live smoke. The maintainer requested a PR to generate a preview. Archival uses the passing local verification; failed production-browser verification remains an explicit rollout gate, to be rerun against the PR preview before merge/rollout approval.
 - `openspec validate restore-world-api-connectivity --strict`: passed before archival. With maintainer approval to sync, `openspec archive restore-world-api-connectivity --yes` created the main `world-api-connectivity` spec (four requirements) and archived the change on 2026-10-07. The archive command warned about its own not-yet-completed finalization task; no implementation tasks were incomplete.
 
+## PR #124 preview verification
+
+Netlify's preview for signed commit `afd2157c2dfaf9317a37df52ee3a2bb667519f28` became available at `https://deploy-preview-124--frontier-flow.netlify.app/`. The opt-in live smoke exited 0: actual preview CSP permits the public Stillness origin, both browser collection GETs returned HTTP 200 with valid data arrays, and neither emitted CSP violations. Tribes returned 100 records (total 101), ships 11. Evidence was posted in PR comment `https://github.com/Scetrov/frontier-flow/pull/124#issuecomment-6046812102`. Production must still be checked after deployment.
+
+## CI e2e follow-up
+
+Reported job: `https://github.com/Scetrov/frontier-flow/actions/runs/37686581997/job/113016572254?pr=124`.
+
+- CI's authorization workflow expected fixture ship ID `900002` but received live ID `81611`. Its ships/tribes route interceptors still used the retired `live.tech` hostname, allowing restored public-origin requests to reach real data.
+- Reproduced before the fix with `CI=true bunx playwright test tests/e2e/authorize.spec.ts --project=chromium --workers=2`, and again in rootless Podman. Both reproduced the same expected/received mismatch.
+- Fixture URLs now use production's exported `buildWorldApiUrl` helper. Exact collection interceptors take precedence over a fail-closed catch-all World API interceptor. Observed collection URLs are asserted; unexpected requests cannot silently retrieve live data. The client's independent canonical-origin regression is retained.
+- The unchanged targeted Podman reproduction passed after the fixture correction (1 passed).
+- Container used cached image content ID `sha256:6e92c4fd8dfdf7276d56743a65002a91c9eb35dbe7af327e6c85bd204b646156`, `--userns=keep-id`, `--network=host`, `CI=true`, two workers, a read/write repository mount, and read-only installed Bun, Playwright Chromium, host userland/library mounts. This reuses the installed toolchain rather than claiming a hermetic CI image.
+- Initial full container run lacked the host OpenSSL configuration and failed certificate creation; mounting `/etc/ssl` read-only corrected the harness without changing application code. The subsequent full run exposed a separate mobile tutorial accessibility/color-contrast failure. No tutorial code, assertion, or retry setting was changed. A full confirmation run passed all 68 applicable e2e tests with 22 expected skips (90 discovered).
+- Full commands: `bun run build && bun run test:e2e --workers=2` under the above container environment, followed by a confirmation `bun run test:e2e --workers=2`.
+
 ## Provenance gate
 
 The maintainer confirmed the candidate origin and intended dataset in this implementation conversation (selected “Confirm as maintainer”). Production is `https://frontier-flow.scetrov.live/`; previews follow `https://deploy-preview-{PR#}--frontier-flow.netlify.app/`. This resolves task 1.1's provenance gate. No rollout or successful live-browser verification is claimed by these HTTP probes.
