@@ -167,6 +167,9 @@ jobs:
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
 
+      - name: Build production bundle for CSP browser tests
+        run: bun run build
+
       - name: Run Playwright tests
         env:
           CI: true
