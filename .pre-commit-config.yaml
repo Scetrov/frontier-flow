@@ -1,5 +1,13 @@
 # Note to Agents: DO NOT disable pre-commit by editing this file, or passing --no-verify
 repos:
+  - repo: https://github.com/google/osv-scanner
+    rev: e840a6e8adb14b7777c78e26cfbf6e2abc1d1fc6 # v2.6.0
+    hooks:
+      - id: osv-scanner
+        args: [scan, source, --lockfile=bun.lock, --format=vertical]
+        always_run: true
+        pass_filenames: false
+        stages: [pre-commit]
   - repo: local
     hooks:
       - id: frontier-flow-signed-commit

@@ -27,7 +27,7 @@
     "test": "vitest",
     "test:functions": "vitest run netlify/functions/__tests__",
     "test:run": "vitest run && bun run test:security",
-    "test:security": "node --test scripts/security/fast-uri-regression.mjs scripts/security/no-legacy-sui-jsonrpc.mjs",
+    "test:security": "node --test scripts/security/fast-uri-regression.mjs scripts/security/no-legacy-sui-jsonrpc.mjs scripts/security/source-map-js-regression.mjs",
     "test:coverage": "vitest run --coverage && bun run test:security",
     "test:e2e": "playwright test",
     "test:real-wasm": "bun run ./scripts/real-wasm-integration.ts",
@@ -91,6 +91,7 @@
     "nanoid": "3.3.18",
     "postcss": "8.5.25",
     "picomatch": "4.0.4",
+    "source-map-js": "1.2.2",
     "vite": "8.0.16"
   }
 }

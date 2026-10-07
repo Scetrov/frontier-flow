@@ -71,6 +71,38 @@ As of 2026-07-25, a repository maintainer attests that GitHub secret scanning an
 
 The dependency audit command is `bun run audit`. GitHub Dependabot currently reports no open alerts, but OpenSSF Scorecard identified advisories in the resolved Bun dependency graph. The lockfile therefore pins patched transitive versions of `esbuild`, `fast-uri`, `js-yaml`, `picomatch`, and `vite`. The unresolved `lodash` advisories name a future `4.18.0` fix; monitor upstream rather than claiming remediation before a released fix exists.
 
+### 2.5 source-map-js advisory and local OSV gate
+
+[GHSA-68fv-2mgg-jv7q](https://osv.dev/vulnerability/GHSA-68fv-2mgg-jv7q) / CVE-2026-93749 describes event-loop denial of service from indexed source-map section offsets in `source-map-js` 1.0.0–1.2.1. The Bun override selects **1.2.2**, verified against the live registry as the latest compatible 1.x release during remediation. `bun.lock` records registry integrity:
+
+```text
+sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==
+```
+
+`@tailwindcss/node`, `css-tree`, `magicast`, and `postcss` all resolve the same patched package. This is a build/development dependency advisory; remediation does not establish exploitability of the deployed application.
+
+The official Go-language OSV-Scanner hook is pinned to **v2.6.0**, full upstream commit **`e840a6e8adb14b7777c78e26cfbf6e2abc1d1fc6`**, in `.pre-commit-config.yaml`. It runs only on the **pre-commit** stage with `always_run: true` and `pass_filenames: false`. Its explicit scan input is `bun.lock`, not a recursive repository scan: installed dependencies, generated output, and `deno.lock` are outside its scope. **No OSV-Scanner CI job is added**; existing CI `npm-audit` behavior remains unchanged.
+
+OSV-Scanner v2.6.0 does not extract npm `package.json` manifests. The advisory regression checks the override and installed consumer resolutions; `bun install --frozen-lockfile` verifies manifest/lockfile consistency separately. Neither is described as a successful manifest vulnerability scan. A structural JSON check of `deno.lock` shows version **5**, with `version`, `remote`, and `workspace` keys and no npm graph. The scanner rejects that file with no suitable extractor, so **the Deno lockfile has not been vulnerability-scanned**.
+
+Contributor setup and verification:
+
+```sh
+# Install both hook stages if they are not already installed.
+pre-commit install --hook-type pre-commit --hook-type commit-msg
+bun install --frozen-lockfile
+pre-commit run osv-scanner --all-files
+bun run test:security
+```
+
+The first scanner hook run requires Go and network access to build the pinned release; scans require access to OSV advisory data and trusted system CA certificates. Vulnerabilities of any severity cause a non-zero exit. Scanner execution, extraction, or advisory-retrieval failures also block the hook; an empty results array after an error is not a clean scan. Do not add blanket advisory ignores or disable existing signed-commit, build, lint, typecheck, audit, or unit-test gates.
+
+Minimal container images may lack a system CA bundle even when Node HTTPS succeeds with bundled roots. For container verification, install trusted `ca-certificates` or mount a trusted host CA bundle read-only at `/etc/ssl/certs/ca-certificates.crt`. Never disable TLS verification to obtain a passing scan.
+
+`scripts/security/source-map-js-regression.mjs` runs via `test:security`, `test:run`, and the unit-test pre-commit gate. It checks the locked version and integrity, resolves through all four actual installed consumers, preserves a minimal valid mapping, and rejects small negative, fractional, and non-numeric line/column offsets. It deliberately does not reproduce large-offset exhaustion: a timeout cannot interrupt synchronous event-loop blocking. On a dependency upgrade, verify the latest compatible release and registry integrity again and update the regression's expected pin together with the override and lockfile.
+
+Rollback must revert the override, lockfile, hook, and regression/wiring together, then repeat dependency validation. Reintroducing the affected version restores the advisory; rollback is not a security fix and must not leave an apparently passing scanner that ignores it.
+
 ## 3. CI/CD Pipeline Security
 
 ### 3.1 GitHub Actions Workflow
