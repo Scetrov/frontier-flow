@@ -437,7 +437,8 @@ function getSourceWorldManifest(
     return undefined;
   }
 
-  const manifestPath = Object.keys(snapshot.files ?? {}).find((filePath) => new RegExp(`^dependencies/${snapshotDirectory}/Move\\.toml$`, "i").test(filePath));
+  const expectedManifestPath = `dependencies/${snapshotDirectory}/Move.toml`.toLowerCase();
+  const manifestPath = Object.keys(snapshot.files ?? {}).find((filePath) => filePath.toLowerCase() === expectedManifestPath);
   return manifestPath === undefined ? undefined : snapshot.files?.[manifestPath];
 }
 

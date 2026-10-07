@@ -1,5 +1,9 @@
-## ADDED Requirements
+# World Package Reference Integrity
 
+## Purpose
+
+Keep World package reference bundles coherent, verified, and read-only during runtime refresh and scheduled validation.
+## Requirements
 ### Requirement: Remote World package references are atomic
 The system MUST treat each maintained remote target's published package ID, original package ID, Object Registry ID, Server Address Registry ID, source version tag, toolchain version, provenance, verification date, deploy-cache mapping, and checked-in resolution snapshot as one atomic reference bundle. The system MUST NOT activate a bundle assembled from fields belonging to different original package lineages or source versions.
 
@@ -107,7 +111,7 @@ The system MUST parse the required Stillness and Utopia sections of the generate
 - **THEN** parsing fails with a diagnostic identifying the target and invalid field
 
 ### Requirement: Scheduled integrity validation is read-only
-The repository MUST run World package reference validation at least weekly and on manual dispatch. The workflow MUST use frozen dependencies, SHA-pinned third-party actions, bounded execution, concurrency control, and no repository write permission, and MUST NOT automatically modify package references in response to mutable upstream data.
+The repository MUST run World package reference validation at least weekly and on manual dispatch. The workflow MUST use frozen dependencies, SHA-pinned third-party actions, bounded execution, concurrency control, and no repository write permission, and MUST NOT automatically modify package references in response to mutable upstream data. GitHub context and step outcome values rendered by a shell summary MUST be supplied as shell data and MUST NOT be interpolated into shell script source.
 
 #### Scenario: Weekly references remain current
 - **WHEN** the scheduled workflow finds every target coherent
@@ -120,6 +124,10 @@ The repository MUST run World package reference validation at least weekly and o
 #### Scenario: Maintainer requests immediate validation
 - **WHEN** a maintainer invokes the workflow manually
 - **THEN** it performs the same validation and permission-constrained behavior as the scheduled run
+
+#### Scenario: Summary context is rendered as data
+- **WHEN** the workflow writes its verification summary from a valid Git ref containing shell metacharacters
+- **THEN** the event name, ref, run identifier, and check outcome reach the shell only through environment bindings and quoted expansions, and no `run` script directly interpolates GitHub or step context
 
 ### Requirement: Maintainers have a complete update runbook
 The project documentation MUST explain authority precedence, upgrade-versus-replacement classification, all atomic bundle fields, source-tag selection, on-chain registry discovery, deploy-cache regeneration, verification commands, real-WASM smoke testing, runtime drift behavior, rollback, and scheduled-workflow remediation. Contributor and deployment documentation MUST link to this runbook.
