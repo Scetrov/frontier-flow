@@ -29,7 +29,7 @@ vi.mock("../data/packageReferences", async () => ({
   shouldRefreshPublishedWorldPackageManifest: () => false,
 }));
 
-const TRIBE_URL = `${getWorldApiBaseUrl()}/v2/tribes`;
+const TRIBE_URL = "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes";
 
 function tribeResponse(status: number) {
   return new Response(JSON.stringify({
@@ -79,12 +79,14 @@ describe("List of Tribe while Sui is unavailable", () => {
     const policy = readFileSync("netlify.toml", "utf8");
     expect(policy).toContain(getWorldApiBaseUrl());
     expect(policy).not.toContain("https://world-api.evefrontier.com");
+    expect(policy).not.toContain("world-api-stillness.live.tech");
+    expect(requests.some((url) => url.includes("world-api-stillness.live.tech"))).toBe(false);
   });
 
   it("reports World API failure independently of the Sui outage", async () => {
     const { requests } = renderOutage(503);
     expect(await screen.findByText("SUI unavailable")).toBeVisible();
-    expect(await screen.findByText("Request failed with status 503")).toBeVisible();
+    expect(await screen.findByText("World API lookup failed. Request failed with status 503")).toBeVisible();
     expect(screen.queryByText("Pegasus Cartel")).not.toBeInTheDocument();
     expect(requests.filter((url) => url.includes("/v2/tribes"))).toEqual([TRIBE_URL]);
   });

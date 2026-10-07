@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import NodeFieldEditor from "../nodes/NodeFieldEditor";
@@ -136,6 +136,53 @@ describe("NodeFieldEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ selectedTribeIds: [1, 2, 3] }));
+  });
+
+  it.each([
+    ["listTribe", "selectedTribeIds", "tribes"],
+    ["listShip", "selectedShipIds", "ships"],
+  ])("preserves %s selections through failure, explicit retry and reopen", async (nodeType, key, collection) => {
+    const onSave = vi.fn();
+    const fetchSpy = vi.spyOn(window, "fetch").mockImplementationOnce((input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      expect(url).toBe(`https://world-api-stillness.live.pub.evefrontier.com/v2/${collection}`);
+      return Promise.reject(new TypeError("Failed to fetch"));
+    }).mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ id: 7, name: "Saved choice" }] })));
+    const props = { fields: { [key]: [7] }, nodeLabel: "Remote list", nodeType, onClose: () => undefined, onSave };
+    const view = render(<NodeFieldEditor {...props} />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("World API lookup failed");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ [key]: [7] }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry World API lookup" }));
+    expect(await screen.findByRole("checkbox")).toBeChecked();
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    view.unmount();
+    render(<NodeFieldEditor {...props} fields={onSave.mock.calls[1][0] as import("../types/nodes").NodeFieldMap} />);
+    expect(await screen.findByRole("checkbox")).toBeChecked();
+  });
+
+  it("ignores a stale response after switching collection", async () => {
+    let resolveTribes!: (response: Response) => void;
+    vi.spyOn(window, "fetch").mockImplementationOnce(() => new Promise((resolve) => { resolveTribes = resolve; }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ id: 8, name: "Ship" }] })));
+    const props = { fields: {}, nodeLabel: "Remote list", onClose: () => undefined, onSave: () => undefined };
+    const view = render(<NodeFieldEditor {...props} nodeType="listTribe" />);
+    view.rerender(<NodeFieldEditor {...props} nodeType="listShip" />);
+    expect(await screen.findByText("Ship")).toBeVisible();
+    await act(async () => {
+      resolveTribes(new Response(JSON.stringify({ data: [{ id: 7, name: "Stale tribe" }] })));
+      await Promise.resolve();
+    });
+    expect(screen.queryByText("Stale tribe")).not.toBeInTheDocument();
+    view.unmount();
+  });
+
+  it("shows a valid empty collection separately from failure", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue(new Response(JSON.stringify({ data: [] })));
+    render(<NodeFieldEditor fields={{}} nodeLabel="List" nodeType="listShip" onClose={() => undefined} onSave={() => undefined} />);
+    expect(await screen.findByText("No options available.")).toBeVisible();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("renders local behaviour options and saves them in deterministic sorted order", () => {

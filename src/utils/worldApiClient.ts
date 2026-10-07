@@ -26,7 +26,7 @@ export interface WorldApiTribeRecord {
   readonly tribeUrl?: unknown;
 }
 
-const WORLD_API_BASE_URL = "https://world-api-stillness.live.tech.evefrontier.com";
+const WORLD_API_BASE_URL = "https://world-api-stillness.live.pub.evefrontier.com";
 
 /**
  * Resolve the documented World API base URL used for reference lookups.
@@ -50,24 +50,32 @@ export async function fetchWorldApiTribes(input: WorldApiListOptions = {}): Prom
 }
 
 async function fetchWorldApiList<TItem>(path: string, input: WorldApiListOptions): Promise<readonly TItem[]> {
-  const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
-  const response = await fetchFn(buildWorldApiUrl(path, input), { signal: input.signal });
-
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${String(response.status)}`);
-  }
-
-  const rawPayload: unknown = await response.json();
-  if (typeof rawPayload !== "object" || rawPayload === null) {
-    return [];
-  }
-
-  const payload = rawPayload as WorldApiEnvelope<unknown>;
-  const data = Array.isArray(payload.data) ? payload.data as unknown[] : [];
-  return data as unknown as readonly TItem[];
+  return fetchWorldApiCollection<TItem>(buildWorldApiUrl(path, input), input);
 }
 
-function buildWorldApiUrl(path: string, input: Pick<WorldApiListOptions, "limit" | "offset">): string {
+/** Fetch a collection without treating failed or malformed responses as empty data. */
+export async function fetchWorldApiCollection<TItem>(
+  url: string,
+  input: Pick<WorldApiListOptions, "fetchFn" | "signal"> = {},
+): Promise<readonly TItem[]> {
+  const fetchFn = input.fetchFn ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
+  try {
+    const response = await fetchFn(url, { signal: input.signal });
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${String(response.status)}`);
+    }
+    const rawPayload: unknown = await response.json();
+    if (typeof rawPayload !== "object" || rawPayload === null || !Array.isArray((rawPayload as WorldApiEnvelope<unknown>).data)) {
+      throw new Error("Invalid collection response: expected a data array.");
+    }
+    return (rawPayload as { readonly data: readonly TItem[] }).data;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to retrieve collection.";
+    throw new Error(`World API lookup failed. ${message}`, { cause: error });
+  }
+}
+
+export function buildWorldApiUrl(path: string, input: Pick<WorldApiListOptions, "limit" | "offset"> = {}): string {
   const url = new URL(path, `${WORLD_API_BASE_URL}/`);
 
   if (typeof input.limit === "number") {

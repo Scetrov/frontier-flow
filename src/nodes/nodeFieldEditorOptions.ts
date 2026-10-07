@@ -1,6 +1,4 @@
-interface WorldApiCollectionResponse<T> {
-  readonly data?: readonly T[];
-}
+import { fetchWorldApiCollection } from "../utils/worldApiClient";
 
 export interface SelectableOption {
   readonly value: number;
@@ -76,22 +74,15 @@ export async function loadWorldApiOptions(
     return cached;
   }
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${String(response.status)}`);
-  }
-
-  const payload = (await response.json()) as WorldApiCollectionResponse<unknown>;
-  const options = Array.isArray(payload.data)
-    ? payload.data.reduce<SelectableOption[]>((result, value) => {
+  const data = await fetchWorldApiCollection<unknown>(url);
+  const options = data.reduce<SelectableOption[]>((result, value) => {
         const option = mapOption(value);
         if (option !== null) {
           result.push(option);
         }
 
         return result;
-      }, [])
-    : [];
+      }, []);
 
   optionCache.set(url, options);
   return options;

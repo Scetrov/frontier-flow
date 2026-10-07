@@ -6,6 +6,7 @@ import CanvasWorkspace from "../components/CanvasWorkspace";
 import { restoreSavedFlow } from "../components/restoreSavedFlow";
 import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
 import { createFlowNodeData } from "../data/node-definitions";
+import { resetNodeFieldEditorOptionCacheForTests } from "../nodes/nodeFieldEditorOptions";
 import { createTestFlowEdge, createTestFlowNode, renderPreviewCanvas } from "../test/graphInteractionTestUtils";
 import type { FlowNode } from "../types/nodes";
 import type { ContractLibrary } from "../utils/contractStorage";
@@ -62,6 +63,7 @@ describe("CanvasWorkspace", () => {
       },
     });
     window.localStorage.clear();
+    resetNodeFieldEditorOptionCacheForTests();
   });
 
   afterEach(() => {
@@ -317,15 +319,19 @@ describe("CanvasWorkspace", () => {
   });
 
   it("opens a node field editor and saves live tribe selections", async () => {
-    const fetchSpy = vi.spyOn(window, "fetch").mockResolvedValue(
-      new Response(
+    const fetchSpy = vi.spyOn(window, "fetch").mockImplementation((input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url !== "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes") {
+        return Promise.reject(new TypeError(`Unexpected or obsolete World API URL: ${url}`));
+      }
+      return Promise.resolve(new Response(
         JSON.stringify({
           data: [{ id: 98000418, name: "Pegasus Cartel", nameShort: "PGCL" }],
           metadata: { total: 1, limit: 100, offset: 0 },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
-    );
+      ));
+    });
 
     render(
       <CanvasWorkspace
@@ -367,7 +373,9 @@ describe("CanvasWorkspace", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    expect(fetchSpy).toHaveBeenCalledWith("https://world-api-stillness.live.tech.evefrontier.com/v2/tribes");
+    expect(fetchSpy).toHaveBeenCalledWith("https://world-api-stillness.live.pub.evefrontier.com/v2/tribes", { signal: undefined });
+    fireEvent.click(screen.getByLabelText("Edit List of Tribe"));
+    expect(await screen.findByRole("checkbox")).toBeChecked();
     fetchSpy.mockRestore();
   });
 
