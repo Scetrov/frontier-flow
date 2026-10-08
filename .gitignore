@@ -29,3 +29,6 @@ tmp.*
 
 # agents
 .pi-subagents
+
+# graphify
+graphify-out/
