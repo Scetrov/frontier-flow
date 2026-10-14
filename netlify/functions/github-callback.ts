@@ -122,17 +122,74 @@ function getSafeOrigin(rawUrl: string | null): string | null {
   }
 }
 
+function isLocalhostOrigin(origin: string): boolean {
+  if (!origin.startsWith("http://")) {
+    return false;
+  }
+
+  try {
+    const host = new URL(origin).hostname;
+    return host === "localhost" || host === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
+export function isAllowedCallbackOrigin(requestOrigin: string, configuredEntries: readonly string[]): boolean {
+  if (requestOrigin.length === 0) {
+    return false;
+  }
+
+  // Local development origins are exempt so `netlify dev` works without an allowlist.
+  if (isLocalhostOrigin(requestOrigin)) {
+    return true;
+  }
+
+  for (const entry of configuredEntries) {
+    if (entry === requestOrigin) {
+      return true;
+    }
+
+    // Wildcard entries (e.g. "*.netlify.app") cover Netlify preview deployments.
+    if (entry.startsWith("*.")) {
+      let parsedOrigin: URL;
+      try {
+        parsedOrigin = new URL(requestOrigin);
+      } catch {
+        continue;
+      }
+      const suffix = entry.slice(2);
+      if (parsedOrigin.hostname === suffix || parsedOrigin.hostname.endsWith(`.${suffix}`)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 function isAllowedRequestOrigin(event: GitHubCallbackEvent): boolean {
   const requestOrigin = getRequestOrigin(event);
   if (requestOrigin.length === 0) {
     return false;
   }
 
-  const configuredOrigins = (process.env.GITHUB_AUTH_ALLOWED_ORIGINS ?? "")
+  const configuredEntries = (process.env.GITHUB_AUTH_ALLOWED_ORIGINS ?? "")
     .split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
-  const allowedOrigins = new Set([requestOrigin, ...configuredOrigins, "https://github.com"]);
+
+  // The request origin itself must be on the allowlist; it is never
+  // self-allowing, otherwise a spoofed Host/forwarded-host header would
+  // bypass the check (Semgrep finding 914360966).
+  if (!isAllowedCallbackOrigin(requestOrigin, configuredEntries)) {
+    return false;
+  }
+
+  const allowedOrigins = new Set([...configuredEntries, "https://github.com"]);
+  if (isLocalhostOrigin(requestOrigin)) {
+    allowedOrigins.add(requestOrigin);
+  }
   const originHeader = getHeader(event, "origin");
   const refererHeader = getHeader(event, "referer");
   const refererOrigin = getSafeOrigin(refererHeader);

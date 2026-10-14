@@ -117,7 +117,7 @@ This function:
 | ----------------------------- | -------------------- | -------------------------------------------------- | --------- |
 | `GITHUB_CLIENT_SECRET`        | Netlify Environment  | OAuth token exchange in serverless function        | **Yes**   |
 | `GITHUB_CLIENT_ID`            | Source code (public) | OAuth initiation (client-side)                     | No        |
-| `GITHUB_AUTH_ALLOWED_ORIGINS` | Netlify Environment  | Optional comma-separated callback origin allowlist | No        |
+| `GITHUB_AUTH_ALLOWED_ORIGINS` | Netlify Environment  | Required comma-separated callback origin allowlist (the callback rejects requests from origins outside this list unless running on `localhost`); supports `*.domain` wildcards for preview deployments, e.g. `https://frontier-flow.netlify.app,*.netlify.app` | No |
 | `NODE_VERSION`                | `netlify.toml`       | Node.js runtime for build                          | No        |
 
 ### 3.2 Local Development

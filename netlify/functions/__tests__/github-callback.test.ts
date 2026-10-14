@@ -46,7 +46,7 @@ describe("github-callback", () => {
     process.env.GITHUB_CLIENT_ID = "client-id";
     process.env.VITE_GITHUB_CLIENT_ID = "client-id";
     process.env.GITHUB_CLIENT_SECRET = "client-secret";
-    delete process.env.GITHUB_AUTH_ALLOWED_ORIGINS;
+    process.env.GITHUB_AUTH_ALLOWED_ORIGINS = "https://frontier-flow.netlify.app";
   });
 
   it("exchanges the OAuth code, validates the token, and returns a popup success bridge", async () => {
@@ -90,6 +90,62 @@ describe("github-callback", () => {
     expect(response.statusCode).toBe(400);
     expect(extractPopupPayload(response.body).reason).toBe("invalid_state");
     expect(response.body).toContain("data-auth-payload=");
+  });
+
+  it("rejects the callback when the request origin is not on the allowlist", async () => {
+    const response: GitHubCallbackResponse = await handler(createEvent({
+      rawUrl: "https://attacker-controlled.netlify.app/api/github-callback?code=oauth-code&state=expected-state",
+      headers: {
+        cookie: "ff_github_auth_state=expected-state",
+        host: "attacker-controlled.netlify.app",
+        referer: "https://attacker-controlled.netlify.app/",
+        "x-forwarded-host": "attacker-controlled.netlify.app",
+        "x-forwarded-proto": "https",
+      },
+    }));
+
+    expect(response.statusCode).toBe(400);
+    expect(extractPopupPayload(response.body).reason).toBe("invalid_state");
+  });
+
+  it("rejects the callback when no origin allowlist is configured (fail closed)", async () => {
+    delete process.env.GITHUB_AUTH_ALLOWED_ORIGINS;
+
+    const response: GitHubCallbackResponse = await handler(createEvent());
+
+    expect(response.statusCode).toBe(400);
+    expect(extractPopupPayload(response.body).reason).toBe("invalid_state");
+  });
+
+  it("accepts preview deployment origins via wildcard allowlist entries", async () => {
+    process.env.GITHUB_AUTH_ALLOWED_ORIGINS = "https://frontier-flow.netlify.app,*.netlify.app";
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "test-token", scope: "" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 42, login: "scetrov" }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+          "x-oauth-scopes": "",
+        },
+      }));
+
+    const response: GitHubCallbackResponse = await handler(createEvent({
+      rawUrl: "https://abc123-frontier-flow.netlify.app/api/github-callback?code=oauth-code&state=expected-state",
+      headers: {
+        cookie: "ff_github_auth_state=expected-state",
+        host: "abc123-frontier-flow.netlify.app",
+        referer: "https://github.com/",
+        "x-forwarded-host": "abc123-frontier-flow.netlify.app",
+        "x-forwarded-proto": "https",
+      },
+    }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(response.statusCode).toBe(200);
+    expect(extractPopupPayload(response.body).type).toBe("ff:github-auth:success");
   });
 
   it("bridges user-denied OAuth responses as popup errors", async () => {
