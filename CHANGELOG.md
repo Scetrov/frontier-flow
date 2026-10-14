@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.12.1](https://github.com/Scetrov/frontier-flow/compare/v0.12.0...v0.12.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **deploy-cache:** repair synthetic root package resolution ([#127](https://github.com/Scetrov/frontier-flow/issues/127)) ([f866277](https://github.com/Scetrov/frontier-flow/commit/f8662770f9ead2a4a8275177d6e105df576f93e9))
+
 ## [0.12.0](https://github.com/Scetrov/frontier-flow/compare/v0.11.16...v0.12.0) (2026-10-07)
 
 
