@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.12.2](https://github.com/Scetrov/frontier-flow/compare/v0.12.1...v0.12.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* **github-auth:** enforce callback origin allowlist ([#131](https://github.com/Scetrov/frontier-flow/issues/131)) ([9664e0b](https://github.com/Scetrov/frontier-flow/commit/9664e0bfa6fcf47cf2d9ad2c5c2fe6a939e9d0e1))
+
 ## [0.12.1](https://github.com/Scetrov/frontier-flow/compare/v0.12.0...v0.12.1) (2026-10-14)
 
 
