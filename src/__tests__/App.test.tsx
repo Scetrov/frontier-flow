@@ -5,6 +5,7 @@ import { createDefaultContractFlow } from "../data/kitchenSinkFlow";
 import { createCompilationGraphKey } from "../utils/compilationGraphKey";
 import { saveCompilationState } from "../utils/compilationStateStorage";
 import { UI_STATE_STORAGE_KEY } from "../utils/uiStateStorage";
+import { SHARED_EXTENSION_STORAGE_KEY } from "../utils/sharedExtensionStorage";
 import { createGeneratedArtifactStub } from "./compiler/helpers";
 
 const mockBeginGitHubOAuthPopup = vi.fn<typeof import("../utils/githubAuthClient").beginGitHubOAuthPopup>();
@@ -272,25 +273,62 @@ describe("App", () => {
     expect(await screen.findByText("Move Source Slot")).toBeInTheDocument();
   });
 
-  it("falls back from authorize to visual when no valid deployment state exists", () => {
+  function persistView(activeView: "authorize" | "simulate"): void {
     window.localStorage.setItem(
       UI_STATE_STORAGE_KEY,
       JSON.stringify({
         version: 1,
-        activeView: "authorize",
+        activeView,
         selectedDeploymentTarget: "local",
         isSidebarOpen: true,
         isContractPanelOpen: true,
       }),
     );
+  }
+
+  function persistSharedExtension(): void {
+    window.localStorage.setItem(SHARED_EXTENSION_STORAGE_KEY, JSON.stringify([{
+      version: 1,
+      packageId: "0xfeedface",
+      moduleName: "starter_contract",
+      targetId: "testnet:stillness",
+      transactionDigest: "0xfeedface",
+      deployedAt: new Date(0).toISOString(),
+      contractName: "Starter Contract",
+    }]));
+  }
+
+  it("restores a persisted authorize view with no deployment of its own", () => {
+    persistView("authorize");
 
     render(<App />);
 
-    expect(headerSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        activeView: "visual",
-      }),
-    );
+    expect(headerSpy).toHaveBeenLastCalledWith(expect.objectContaining({ activeView: "authorize", hasAuthorizeAccess: true }));
+  });
+
+  it("keeps authorize reachable while simulate stays gated until something can be simulated", () => {
+    persistView("authorize");
+
+    render(<App />);
+
+    expect(headerSpy).toHaveBeenLastCalledWith(expect.objectContaining({ hasAuthorizeAccess: true, hasSimulateAccess: false }));
+  });
+
+  it("falls back from simulate to visual when there is nothing to simulate", () => {
+    persistView("simulate");
+
+    render(<App />);
+
+    expect(headerSpy).toHaveBeenLastCalledWith(expect.objectContaining({ activeView: "visual" }));
+  });
+
+  it("restores a persisted simulate view when a shared package is saved", () => {
+    persistSharedExtension();
+    persistView("simulate");
+
+    render(<App />);
+
+    expect(headerSpy).toHaveBeenLastCalledWith(expect.objectContaining({ activeView: "simulate", hasSimulateAccess: true }));
   });
 
   it("persists the primary view when the header switches tabs", () => {

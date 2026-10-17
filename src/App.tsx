@@ -18,6 +18,8 @@ import { useGraphTransferWalletBridge } from "./hooks/useGraphTransferWalletBrid
 import type { GitHubAccessState, GitHubFailureClassification, PendingGitHubRetryContext } from "./types/githubAuth";
 import type { RemediationNotice } from "./types/nodes";
 import type { StoredDeploymentState } from "./types/authorization";
+import { useHasSharedExtensions } from "./hooks/useSharedExtensions";
+import { loadSharedExtensions } from "./utils/sharedExtensionStorage";
 import { classifyGitHubErrorMessage } from "./utils/githubAuthClient";
 import { createNamedFlowContract, loadContractLibrary } from "./utils/contractStorage";
 import { createCompilationGraphKey } from "./utils/compilationGraphKey";
@@ -217,10 +219,24 @@ function getInitialAppState(): InitialAppState {
     : null;
 
   return {
-    activeView: (uiState.activeView === "authorize" || uiState.activeView === "simulate") && nextDeploymentState === null ? "visual" : uiState.activeView,
+    activeView: resolveInitialView(uiState.activeView, nextDeploymentState, loadSharedExtensions(storage).length > 0),
     compilationSnapshot: nextCompilationSnapshot,
     selectedDeploymentTarget: uiState.selectedDeploymentTarget,
   };
+}
+
+/**
+ * Restore a persisted view only if it is still reachable. Authorize always is:
+ * a turret owner may point at a package published by anyone. Simulate needs a
+ * contract to run against -- their own deployment, or a saved shared one.
+ */
+function resolveInitialView(
+  storedView: PrimaryView,
+  deploymentState: StoredDeploymentState | null,
+  hasSharedExtensions: boolean,
+): PrimaryView {
+  if (storedView === "simulate" && deploymentState === null && !hasSharedExtensions) return "visual";
+  return storedView;
 }
 
 function getValidatedDeploymentState(targetId: InitialAppState["selectedDeploymentTarget"]): StoredDeploymentState | null {
@@ -490,8 +506,9 @@ function resolveActiveView(input: {
   readonly activeView: PrimaryView;
   readonly authorizeDeploymentState: StoredDeploymentState | null;
   readonly canAccessCompiledWorkflow: boolean;
+  readonly hasSharedExtensions: boolean;
 }): PrimaryView {
-  if ((input.activeView === "authorize" || input.activeView === "simulate") && input.authorizeDeploymentState === null) {
+  if (input.activeView === "simulate" && input.authorizeDeploymentState === null && !input.hasSharedExtensions) {
     return input.canAccessCompiledWorkflow ? "deploy" : "visual";
   }
 
@@ -591,6 +608,22 @@ function StandardAppOverlays(props: Pick<
   );
 }
 
+/**
+ * Authorize is self-service: a turret owner may point at a package published by
+ * anyone, so it stays reachable without a deployment. Simulate still needs a
+ * contract to run against -- either their own or a saved shared one.
+ */
+function useWorkflowAccess(authorizeDeploymentState: StoredDeploymentState | null): {
+  readonly hasAuthorizeAccess: boolean;
+  readonly hasSimulateAccess: boolean;
+} {
+  const hasSharedExtensions = useHasSharedExtensions();
+  return {
+    hasAuthorizeAccess: true,
+    hasSimulateAccess: authorizeDeploymentState !== null || hasSharedExtensions,
+  };
+}
+
 function StandardAppLayout({
   activeView,
   authorizeDeploymentState,
@@ -626,7 +659,7 @@ function StandardAppLayout({
   tutorialOverlay,
   transientStatusMessage,
 }: StandardAppLayoutProps) {
-  const hasAuthorizeAccess = authorizeDeploymentState !== null;
+  const { hasAuthorizeAccess, hasSimulateAccess } = useWorkflowAccess(authorizeDeploymentState);
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -637,6 +670,7 @@ function StandardAppLayout({
         gitHubAccessState={gitHubAccessState}
         hasGitHubAuth={hasGitHubAuth}
         hasAuthorizeAccess={hasAuthorizeAccess}
+        hasSimulateAccess={hasSimulateAccess}
         isCompiling={isCompiling}
         onDetectedDeploymentTarget={(targetId) => {
           deployment.setSelectedTarget(targetId);
@@ -851,9 +885,10 @@ function useStandardAppController(initialAppState: InitialAppState): StandardApp
     [deployment.deploymentStatus, deployment.latestAttempt, persistedDeploymentState],
   );
   const isCompiledWorkflowReady = hasCompiledWorkflowAccess(effectiveCompilationState.status);
+  const hasSharedExtensions = useHasSharedExtensions();
   const resolvedActiveView = useMemo(
-    () => resolveActiveView({ activeView, authorizeDeploymentState, canAccessCompiledWorkflow: isCompiledWorkflowReady }),
-    [activeView, authorizeDeploymentState, isCompiledWorkflowReady],
+    () => resolveActiveView({ activeView, authorizeDeploymentState, canAccessCompiledWorkflow: isCompiledWorkflowReady, hasSharedExtensions }),
+    [activeView, authorizeDeploymentState, hasSharedExtensions, isCompiledWorkflowReady],
   );
 
   useEffect(() => {

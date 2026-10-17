@@ -1,0 +1,50 @@
+## ADDED Requirements
+
+### Requirement: A turret owner may authorize an extension published by another account
+The application MUST allow a turret owner to authorize their turrets against a turret extension package published by any account, without republishing it and without owning its `UpgradeCap`. Authorization MUST continue to apply its existing turret ownership, selection, and transaction validity rules; this requirement widens which contracts may be selected, not who may authorize a turret. The application MUST NOT present a shared extension as having been published by the connected wallet.
+
+#### Scenario: Coalition member authorizes shared logic
+- **WHEN** a turret owner supplies the package id of a turret extension published by another account, on a supported published network
+- **THEN** the package is offered as a selectable authorization contract, and authorizing a turret against it requires no republication of that package
+
+#### Scenario: Wallet holds no deployment of its own
+- **WHEN** a turret owner has never deployed a contract and has saved at least one shared extension
+- **THEN** the saved extension is offered for authorization, resolved against the network that entry names
+
+#### Scenario: Own deployment and shared extension both present
+- **WHEN** a turret owner has both a deployment of their own and a saved shared extension
+- **THEN** both are offered, and the owner's own deployment is presented first
+
+### Requirement: A shared package is verified before it is offered
+The application MUST resolve a supplied package id by reading the package from the selected network and confirming that the returned package identity matches the request. It MUST require a `TurretAuth` witness declared locally in the candidate module, and MUST NOT accept an imported witness reference from another module. A package id that is not a valid object identity MUST be refused before any network request. The application MUST NOT fabricate a module name, publication transaction, or publication time for a package it did not publish. The application MUST state, at the point a shared package is entered, that this verification establishes identity and the presence of a `TurretAuth` declaration rather than the safety of the package's behaviour.
+
+#### Scenario: Package carries no turret extension
+- **WHEN** resolution finds no locally declared `TurretAuth` witness in the package
+- **THEN** the application reports that the package has no turret extension module, and no entry is saved
+
+#### Scenario: Returned package identity does not match
+- **WHEN** the network returns a package whose identity differs from the requested id, or omits it
+- **THEN** resolution fails closed and no entry is saved
+
+#### Scenario: Malformed package id
+- **WHEN** the supplied value is not a `0x`-prefixed hex object identity of at most 64 digits
+- **THEN** the application reports the expected format and issues no network request
+
+#### Scenario: Player is told what verification does not cover
+- **WHEN** the shared logic field is presented
+- **THEN** it states that only trusted logic should be authorized, and that checking a package confirms its identity and `TurretAuth` declaration rather than that its behaviour is safe
+
+### Requirement: Opted-in shared extensions persist and survive corruption
+The application MUST persist the shared extensions a player opted into, per browser, and MUST re-validate every stored entry's package id, module name, and target on each read. Malformed entries MUST be discarded individually and MUST NOT prevent the remaining entries from loading. Unparseable or non-array stored data MUST read as an empty list rather than failing. A local validator target MUST NOT be stored as a shared extension target. Storage being unavailable MUST NOT raise.
+
+#### Scenario: Stored data is partially corrupt
+- **WHEN** the stored list contains both valid and malformed entries
+- **THEN** the valid entries load and the malformed ones are discarded
+
+#### Scenario: Same package added twice
+- **WHEN** a player adds a package id and network that is already saved
+- **THEN** the existing entry is replaced rather than duplicated, while the same package on a different network remains a distinct entry
+
+#### Scenario: Saved list changes
+- **WHEN** the saved list is written
+- **THEN** the application announces the change so that state outside the authorize view observes it, including in another open tab

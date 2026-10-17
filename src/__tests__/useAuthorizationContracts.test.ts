@@ -4,7 +4,7 @@ import { GrpcTypes } from "@mysten/sui/grpc";
 import { normalizeSuiAddress, toBase64 } from "@mysten/sui/utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { loadAuthorizationContractsFromUpgradeCaps, useAuthorizationContracts, type AuthorizationContractDiscoveryClient } from "../hooks/useAuthorizationContracts";
+import { loadAuthorizationContractsFromUpgradeCaps, resolveSharedAuthorizationContract, useAuthorizationContracts, type AuthorizationContractDiscoveryClient } from "../hooks/useAuthorizationContracts";
 import { grpcResponse } from "../test/suiGrpcMocks";
 import { simulationDeploymentState } from "../test/turretSimulationFixtures";
 
@@ -140,5 +140,73 @@ describe("gRPC authorization package discovery", () => {
     await expect(loadAuthorizationContractsFromUpgradeCaps({ ...options, signal: AbortSignal.abort(), suiClient: client })).rejects.toThrow();
     expect(client.listOwnedObjects).not.toHaveBeenCalled();
     expect(toBase64(content)).not.toBe("");
+  });
+});
+
+describe("shared extension resolution", () => {
+  const SHARED = normalizeSuiAddress("0xc0ffee");
+  const sharedEntry = { version: 1 as const, packageId: SHARED, moduleName: "shared_logic", targetId: "testnet:stillness" as const,
+    transactionDigest: SHARED, deployedAt: new Date(0).toISOString(), contractName: "Shared Logic" };
+  const sharedOptions = { packageId: PACKAGE, targetId: "testnet:stillness" as const };
+
+  it("resolves a package published by anyone without consulting wallet ownership", async () => {
+    const client = clientFixture();
+    await expect(resolveSharedAuthorizationContract({ ...sharedOptions, suiClient: client })).resolves.toEqual({
+      version: 1, packageId: PACKAGE, moduleName: "starter_contract", targetId: "testnet:stillness",
+      transactionDigest: PACKAGE, deployedAt: new Date(0).toISOString(), contractName: "Starter Contract",
+    });
+    expect(client.listOwnedObjects).not.toHaveBeenCalled();
+  });
+
+  it("normalises a short package id before asserting package identity", async () => {
+    await expect(resolveSharedAuthorizationContract({ ...sharedOptions, packageId: "0xfeedface", suiClient: clientFixture() }))
+      .resolves.toEqual(expect.objectContaining({ packageId: PACKAGE }));
+  });
+
+  it.each([
+    ["no datatypes at all", []],
+    ["only an imported witness reference", [{ name: "TurretAuth", module: "other" }]],
+    ["a different local witness", [{ name: "SomethingElse", module: "starter_contract" }]],
+  ])("explains that a package carries no turret extension module when it has %s", async (_label, datatypes) => {
+    const descriptor = { package: { storageId: PACKAGE, modules: [{ name: "starter_contract", datatypes, functions: [] }] } };
+    await expect(resolveSharedAuthorizationContract({ ...sharedOptions, suiClient: clientFixture(undefined, descriptor) }))
+      .rejects.toThrow("no TurretAuth witness was found");
+  });
+
+  it.each([{}, { package: { ...pkg.package, storageId: "0x999" } }])("fails closed on missing or mismatched package identity", async (descriptor) => {
+    await expect(resolveSharedAuthorizationContract({ ...sharedOptions, suiClient: clientFixture(undefined, descriptor) })).rejects.toThrow();
+  });
+
+  it("rejects an invalid package id before any request is made", async () => {
+    const client = clientFixture();
+    await expect(resolveSharedAuthorizationContract({ ...sharedOptions, packageId: "feedface", suiClient: client })).rejects.toThrow();
+    expect(client.getPackage).not.toHaveBeenCalled();
+  });
+
+  it("honours an already-aborted signal", async () => {
+    const client = clientFixture();
+    await expect(resolveSharedAuthorizationContract({ ...sharedOptions, signal: AbortSignal.abort(), suiClient: client })).rejects.toThrow();
+    expect(client.getPackage).not.toHaveBeenCalled();
+  });
+
+  it("offers shared extensions alongside contracts discovered from wallet UpgradeCaps", async () => {
+    const contracts = await loadAuthorizationContractsFromUpgradeCaps({ ...options, suiClient: clientFixture(), sharedContracts: [sharedEntry] });
+    // Entries sort by contract name, so "Shared Logic" precedes "Starter Contract".
+    expect(contracts).toEqual([sharedEntry, expect.objectContaining({ packageId: PACKAGE, moduleName: "starter_contract" })]);
+  });
+
+  it("still offers shared extensions when discovery cannot run", async () => {
+    const client = clientFixture();
+    await expect(loadAuthorizationContractsFromUpgradeCaps({ ...options, targetId: "local", suiClient: client, sharedContracts: [sharedEntry] })).resolves.toEqual([sharedEntry]);
+    await expect(loadAuthorizationContractsFromUpgradeCaps({ ...options, walletAddress: null, suiClient: client, sharedContracts: [sharedEntry] })).resolves.toEqual([sharedEntry]);
+    expect(client.listOwnedObjects).not.toHaveBeenCalled();
+  });
+
+  it("keeps the wallet's own deployment first when a shared extension is also present", async () => {
+    const contracts = await loadAuthorizationContractsFromUpgradeCaps({
+      ...options, suiClient: clientFixture(), sharedContracts: [sharedEntry], fallbackDeploymentState: simulationDeploymentState,
+    });
+    expect(contracts[0]).toEqual(simulationDeploymentState);
+    expect(contracts).toContainEqual(sharedEntry);
   });
 });
