@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useFrontierWalletSession } from "../wallet/hooks";
 
 import type { DeploymentState } from "../compiler/types";
+import type { StoredDeploymentState } from "../types/authorization";
+import { buildOnboardingLink } from "../utils/onboardingLink";
 import { getDeploymentTarget } from "../data/deploymentTargets";
 import { getPackageReferenceBundle, verifyPublishedWorldPackageExists } from "../data/packageReferences";
 import { useTargetBalance } from "../hooks/useTargetBalance";
@@ -12,6 +14,47 @@ const MIST_PER_SUI = 1_000_000_000;
 
 interface DeployWorkflowViewProps {
   readonly deployment: DeploymentState;
+  /** Validated snapshot of the current deployment, when one has succeeded. */
+  readonly deploymentState?: StoredDeploymentState | null;
+}
+
+/**
+ * Hand the author the link that onboards somebody else onto what they just
+ * published. The package is already deployed and already verifiable; this only
+ * saves the recipient transcribing its identifiers.
+ */
+function DeploymentShareAction({ deploymentState }: { readonly deploymentState: StoredDeploymentState | null }) {
+  const [isCopied, setIsCopied] = useState(false);
+  const shareable = deploymentState !== null && deploymentState.targetId !== "local" ? deploymentState : null;
+
+  const handleCopy = useCallback(() => {
+    if (typeof window === "undefined" || shareable === null || shareable.targetId === "local") return;
+    const link = buildOnboardingLink(
+      { packageId: shareable.packageId, moduleName: shareable.moduleName, targetId: shareable.targetId },
+      window.location.origin,
+    );
+    navigator.clipboard.writeText(link)
+      .then(() => { setIsCopied(true); })
+      .catch(() => { /* Clipboard access can be refused; the label stays unchanged. */ });
+  }, [shareable]);
+
+  if (shareable === null) return null;
+
+  return (
+    <div className="space-y-2">
+      <button
+        className="border border-[var(--brand-orange)] px-3 py-2 text-sm uppercase tracking-[0.12em] text-[var(--brand-orange)]"
+        onClick={handleCopy}
+        type="button"
+      >
+        {isCopied ? "Onboarding link copied" : "Share this contract"}
+      </button>
+      <p className="text-xs text-[var(--text-secondary)]">
+        Copies a link that opens this contract for somebody else to review and authorize on their own
+        turrets. Nothing is republished and they deploy nothing.
+      </p>
+    </div>
+  );
 }
 
 function formatBalance(balanceMist: string | null | undefined): string {
@@ -231,7 +274,7 @@ function BlockingChecklist({ deployment }: DeployWorkflowViewProps) {
   );
 }
 
-function DeploymentStatusSummary({ deployment }: DeployWorkflowViewProps) {
+function DeploymentStatusSummary({ deployment, deploymentState = null }: DeployWorkflowViewProps) {
   const statusHeadline = getDeploymentStatusHeadline(deployment);
   const statusDetails = getDeploymentStatusDetails(deployment);
 
@@ -253,6 +296,7 @@ function DeploymentStatusSummary({ deployment }: DeployWorkflowViewProps) {
         ) : null}
         {(deployment.deploymentStatus?.packageId != null && deployment.deploymentStatus.packageId !== "") ? <p>Package ID: {deployment.deploymentStatus.packageId}</p> : null}
         {(deployment.deploymentStatus?.confirmationReference != null && deployment.deploymentStatus.confirmationReference !== "") ? <p>Transaction digest: {deployment.deploymentStatus.confirmationReference}</p> : null}
+        <DeploymentShareAction deploymentState={deploymentState} />
       </div>
     </section>
   );
@@ -341,7 +385,7 @@ function DeployWorkflowHeader({ deployment }: DeployWorkflowViewProps) {
   );
 }
 
-function DeployWorkflowView({ deployment }: DeployWorkflowViewProps) {
+function DeployWorkflowView({ deployment, deploymentState = null }: DeployWorkflowViewProps) {
   return (
     <section aria-label="Deploy workflow" className="flex flex-1 min-h-0 overflow-auto border-y border-[var(--ui-border-dark)]">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -349,7 +393,7 @@ function DeployWorkflowView({ deployment }: DeployWorkflowViewProps) {
 
         <div className="grid gap-6">
           <BlockingChecklist deployment={deployment} />
-          <DeploymentStatusSummary deployment={deployment} />
+          <DeploymentStatusSummary deployment={deployment} deploymentState={deploymentState} />
         </div>
       </div>
     </section>

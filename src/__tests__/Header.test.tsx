@@ -49,6 +49,7 @@ describe("Header", () => {
         canAccessDeploy={true}
         canAccessMove={true}
         hasAuthorizeAccess={true}
+        hasSimulateAccess={true}
         onViewChange={onViewChange}
       />,
     );
@@ -81,18 +82,29 @@ describe("Header", () => {
     expect(screen.queryByRole("button", { name: "Start tutorial" })).not.toBeInTheDocument();
   });
 
-  it("disables the Authorize tab until a deployment is available", () => {
-    render(<Header activeView="visual" canAccessDeploy={true} canAccessMove={true} hasAuthorizeAccess={false} onViewChange={() => undefined} />);
+  it("keeps the Authorize tab reachable so a shared package can be authorized without deploying", () => {
+    render(<Header activeView="visual" canAccessDeploy={true} canAccessMove={true} hasAuthorizeAccess={true} hasSimulateAccess={false} onViewChange={() => undefined} />);
 
     const authorizeButton = screen.getByRole("button", { name: "Authorize" });
+
+    expect(authorizeButton).not.toBeDisabled();
+    expect(authorizeButton).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("disables the Simulate tab until a contract or shared package is available", () => {
+    render(<Header activeView="visual" canAccessDeploy={true} canAccessMove={true} hasAuthorizeAccess={true} hasSimulateAccess={false} onViewChange={() => undefined} />);
+
     const simulateButton = screen.getByRole("button", { name: "Simulate" });
 
-    expect(authorizeButton).toBeDisabled();
-    expect(authorizeButton).toHaveAttribute("aria-disabled", "true");
-    expect(authorizeButton).toHaveAttribute("title", "Deploy a contract first");
     expect(simulateButton).toBeDisabled();
     expect(simulateButton).toHaveAttribute("aria-disabled", "true");
-    expect(simulateButton).toHaveAttribute("title", "Deploy a contract first");
+    expect(simulateButton).toHaveAttribute("title", "Deploy a contract or add a shared logic package first");
+  });
+
+  it("enables the Simulate tab once a shared package is available", () => {
+    render(<Header activeView="visual" canAccessDeploy={true} canAccessMove={true} hasAuthorizeAccess={true} hasSimulateAccess={true} onViewChange={() => undefined} />);
+
+    expect(screen.getByRole("button", { name: "Simulate" })).not.toBeDisabled();
   });
 
   it("does not surface lifecycle automation actions outside the current feature scope", () => {

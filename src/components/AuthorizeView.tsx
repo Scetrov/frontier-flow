@@ -6,9 +6,15 @@ import { useFrontierWalletSession } from "../wallet/hooks";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { StoredDeploymentState } from "../types/authorization";
+import type { TurretSimulationSession } from "../types/turretSimulation";
 import { getDeploymentTarget } from "../data/deploymentTargets";
 import { useAuthorization } from "../hooks/useAuthorization";
 import { useAuthorizationContracts } from "../hooks/useAuthorizationContracts";
+import SharedExtensionTrustNotice from "./SharedExtensionTrustNotice";
+import { useSharedExtensions, type SharedExtensionControls } from "../hooks/useSharedExtensions";
+import { getSharedExtensionKey, type SharedExtension } from "../utils/sharedExtensionStorage";
+import { buildOnboardingLink } from "../utils/onboardingLink";
+import { isContractSimulated, isSharedContract } from "../utils/contractAssurance";
 import { useTurretSimulation } from "../hooks/useTurretSimulation";
 import { useTurretList } from "../hooks/useTurretList";
 import { formatAddress } from "../utils/formatAddress";
@@ -49,6 +55,8 @@ interface AuthorizeViewPrimaryPanelProps {
   readonly handleAuthorize: () => void;
   readonly handleOpenSimulation: (turretObjectId: string) => void;
   readonly handleSelectionChange: (turretIds: readonly string[]) => void;
+  readonly isSelectedContractShared: boolean;
+  readonly isSelectedContractSimulated: boolean;
   readonly listInstanceKey: number;
   readonly selectedTurretIds: readonly string[];
   readonly turretList: ReturnType<typeof useTurretList>;
@@ -77,6 +85,7 @@ interface AuthorizeViewSelectionState {
 
 interface AuthorizeViewModel {
   readonly account: { readonly address: string } | null;
+  readonly sharedExtensions: SharedExtensionControls;
   readonly authorization: ReturnType<typeof useAuthorization>;
   readonly contractSelector: AuthorizeContractSelectorProps;
   readonly deploymentKey: string | null;
@@ -88,6 +97,8 @@ interface AuthorizeViewModel {
   readonly selectedDeploymentState: StoredDeploymentState | null;
   readonly selectedSimulationTurretId: string | null;
   readonly selectedTurretIds: readonly string[];
+  readonly isSelectedContractShared: boolean;
+  readonly isSelectedContractSimulated: boolean;
   readonly turretList: ReturnType<typeof useTurretList>;
   readonly turretSimulation: ReturnType<typeof useTurretSimulation>;
 }
@@ -333,6 +344,24 @@ function SimulationTurretQueryError(input: {
   );
 }
 
+/**
+ * Combine contracts discovered from wallet UpgradeCaps with shared extensions
+ * published by other players. A turret owner may hold no deployment of their
+ * own, so the target falls back to whatever a saved shared entry names.
+ */
+function useAuthorizeContractSources(deploymentState: StoredDeploymentState | null, walletAddress: string | null) {
+  const sharedExtensions = useSharedExtensions();
+  const fallbackTargetId = sharedExtensions.extensions.at(0)?.targetId ?? null;
+  const authorizationContracts = useAuthorizationContracts({
+    fallbackDeploymentState: deploymentState,
+    sharedContracts: sharedExtensions.extensions,
+    targetId: deploymentState?.targetId ?? fallbackTargetId,
+    walletAddress,
+  });
+
+  return { authorizationContracts, sharedExtensions };
+}
+
 function useAuthorizeViewModel(input: {
   readonly deploymentState: StoredDeploymentState | null;
   readonly onViewChange?: (view: PrimaryView) => void;
@@ -340,11 +369,7 @@ function useAuthorizeViewModel(input: {
   const { deploymentState, onViewChange } = input;
   const session = useFrontierWalletSession();
   const account = session.account;
-  const authorizationContracts = useAuthorizationContracts({
-    fallbackDeploymentState: deploymentState,
-    targetId: deploymentState === null ? null : deploymentState.targetId,
-    walletAddress: account?.address ?? null,
-  });
+  const { authorizationContracts, sharedExtensions } = useAuthorizeContractSources(deploymentState, account?.address ?? null);
   const [requestedDeploymentKey, setRequestedDeploymentKey] = useState<string | null>(getAuthorizeDeploymentKey(deploymentState));
   const [rawSelectedSimulationTurretId, setRawSelectedSimulationTurretId] = useState<string | null>(null);
   const selectedDeploymentKey = useMemo(() => resolveSelectedDeploymentKey({
@@ -380,6 +405,7 @@ function useAuthorizeViewModel(input: {
     turrets: turretList.turrets,
     walletAddress: account?.address ?? null,
   });
+  const assurance = useSelectedContractAssurance({ deploymentKey, extensions: sharedExtensions.extensions, session: turretSimulation.session });
   const selection = useAuthorizeViewSelection({ authorization, deploymentKey, turretList });
   const selectedSimulationTurretId = useMemo(() => resolveSelectedSimulationTurretId({
     rawSelectedSimulationTurretId,
@@ -427,6 +453,7 @@ function useAuthorizeViewModel(input: {
     account,
     authorization,
     contractSelector,
+    sharedExtensions,
     deploymentKey,
     handleAuthorize: selection.handleAuthorize,
     handleDismissProgress: selection.handleDismissProgress,
@@ -436,6 +463,8 @@ function useAuthorizeViewModel(input: {
     selectedDeploymentState,
     selectedSimulationTurretId,
     selectedTurretIds: selection.selectedTurretIds,
+    isSelectedContractShared: assurance.isSelectedContractShared,
+    isSelectedContractSimulated: assurance.isSelectedContractSimulated,
     turretList,
     turretSimulation,
   };
@@ -644,13 +673,134 @@ function AuthorizeContractSelector({
   );
 }
 
+async function copyOnboardingLink(
+  extension: SharedExtension,
+  setCopiedKey: (key: string | null) => void,
+): Promise<void> {
+  if (typeof window === "undefined") return;
+  const link = buildOnboardingLink(
+    { packageId: extension.packageId, moduleName: extension.moduleName, targetId: extension.targetId },
+    window.location.origin,
+  );
+  try {
+    await navigator.clipboard.writeText(link);
+    setCopiedKey(getSharedExtensionKey(extension));
+  } catch {
+    // Clipboard access can be refused; leaving the label unchanged says so.
+  }
+}
+
+function SharedExtensionField({ controls }: { readonly controls: SharedExtensionControls }) {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [packageId, setPackageId] = useState("");
+  const [targetId, setTargetId] = useState<SharedExtension["targetId"]>("testnet:stillness");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAdd = useCallback(() => {
+    const trimmed = packageId.trim();
+    if (!/^0x[0-9a-fA-F]{1,64}$/.test(trimmed)) {
+      setErrorMessage("Enter a package id such as 0xabc... (hex, 0x-prefixed).");
+      return;
+    }
+
+    setIsAdding(true);
+    setErrorMessage(null);
+    controls.onAdd(trimmed, targetId)
+      .then(() => { setPackageId(""); })
+      .catch((error: unknown) => {
+        setErrorMessage(error instanceof Error ? error.message : "Could not read that package.");
+      })
+      .finally(() => { setIsAdding(false); });
+  }, [controls, packageId, targetId]);
+
+  return (
+    <div className="grid gap-2 border-t border-[var(--ui-border-dark)] pt-4">
+      <label className="font-heading text-xs uppercase tracking-[0.16em] text-[var(--text-secondary)]" htmlFor="shared-extension-package">
+        Shared logic (published by anyone)
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <input
+          className="min-w-0 flex-1 border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.72)] px-3 py-2 text-sm text-[var(--cream-white)]"
+          disabled={isAdding}
+          id="shared-extension-package"
+          onChange={(event) => { setPackageId(event.target.value); }}
+          onKeyDown={(event) => { if (event.key === "Enter") { handleAdd(); } }}
+          placeholder="0x<package id>"
+          spellCheck={false}
+          value={packageId}
+        />
+        <select
+          aria-label="Shared logic network"
+          className="border border-[var(--ui-border-dark)] bg-[rgba(26,10,10,0.72)] px-2 py-2 text-sm text-[var(--cream-white)]"
+          disabled={isAdding}
+          onChange={(event) => { setTargetId(event.target.value as SharedExtension["targetId"]); }}
+          value={targetId}
+        >
+          <option value="testnet:stillness">stillness</option>
+          <option value="testnet:utopia">utopia</option>
+        </select>
+        <button
+          className="border border-[var(--brand-orange)] px-3 py-2 text-sm uppercase tracking-[0.12em] text-[var(--brand-orange)] disabled:opacity-50"
+          disabled={isAdding || packageId.trim().length === 0}
+          onClick={handleAdd}
+          type="button"
+        >
+          {isAdding ? "Checking..." : "Add"}
+        </button>
+      </div>
+      <p className="text-xs text-[var(--text-secondary)]">
+        Paste a package id to use someone else&apos;s turret logic. Nothing is republished &mdash;
+        your turret is pointed at their already-published contract.
+      </p>
+      <SharedExtensionTrustNotice />
+      {errorMessage === null ? null : (
+        <p className="text-xs text-[var(--brand-orange)]">{errorMessage}</p>
+      )}
+      {controls.extensions.length === 0 ? null : (
+        <ul className="grid gap-1">
+          {controls.extensions.map((extension) => {
+            const key = getSharedExtensionKey(extension);
+            return (
+              <li className="flex items-center justify-between gap-2 text-xs text-[var(--text-secondary)]" key={key}>
+                <span className="min-w-0 break-all">
+                  {extension.contractName} &mdash; {formatAddress(extension.packageId)}::{extension.moduleName}
+                </span>
+                <span className="flex shrink-0 gap-1">
+                  <button
+                    aria-label={`Copy onboarding link for ${extension.contractName}`}
+                    className="border border-[var(--ui-border-dark)] px-2 py-1 uppercase tracking-[0.12em]"
+                    onClick={() => { void copyOnboardingLink(extension, setCopiedKey); }}
+                    type="button"
+                  >
+                    {copiedKey === key ? "Copied" : "Share"}
+                  </button>
+                  <button
+                    aria-label={`Remove ${extension.contractName}`}
+                    className="border border-[var(--ui-border-dark)] px-2 py-1 uppercase tracking-[0.12em]"
+                    onClick={() => { controls.onRemove(key); }}
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function AuthorizeDeploymentPanel(input: {
   readonly className?: string;
   readonly contractSelector: AuthorizeContractSelectorProps;
   readonly deploymentState: StoredDeploymentState | null;
+  readonly sharedExtensions: SharedExtensionControls;
   readonly walletAddress: string | null | undefined;
 }) {
-  const { className, contractSelector, deploymentState, walletAddress } = input;
+  const { className, contractSelector, deploymentState, sharedExtensions, walletAddress } = input;
   const [copiedField, setCopiedField] = useState<"package" | "wallet" | null>(null);
 
   useEffect(() => {
@@ -691,9 +841,10 @@ function AuthorizeDeploymentPanel(input: {
         onChange={contractSelector.onChange}
         selectedDeploymentKey={contractSelector.selectedDeploymentKey}
       />
+      <SharedExtensionField controls={sharedExtensions} />
       {deploymentState === null ? (
         <p className="text-sm text-[var(--text-secondary)]">
-          No valid deployed contract is available for authorization.
+          No contract selected. Add a shared logic package above, or deploy your own.
         </p>
       ) : (
         <dl className="grid gap-4 text-sm text-[var(--text-secondary)]">
@@ -788,6 +939,46 @@ function useAuthorizeViewSelection(input: {
   };
 }
 
+/**
+ * Whether the selected contract came from somebody else, and whether it has
+ * been exercised in this session, so the authorize action can say so.
+ */
+function useSelectedContractAssurance(input: {
+  readonly deploymentKey: string | null;
+  readonly extensions: readonly SharedExtension[];
+  readonly session: TurretSimulationSession;
+}): { readonly isSelectedContractShared: boolean; readonly isSelectedContractSimulated: boolean } {
+  const { deploymentKey, extensions, session } = input;
+
+  return {
+    isSelectedContractShared: isSharedContract(deploymentKey, extensions),
+    isSelectedContractSimulated: isContractSimulated(deploymentKey, session),
+  };
+}
+
+/**
+ * Advisory shown before authorizing logic published by somebody else. It does
+ * not gate the action: a turret owner may know exactly what they are applying,
+ * and blocking them would be a worse failure than the one it prevents.
+ */
+function SharedContractSimulationNotice({ isSimulated }: { readonly isSimulated: boolean }) {
+  if (isSimulated) {
+    return (
+      <p className="ff-authorize-view__selection-summary text-xs text-[var(--text-secondary)]">
+        Simulated in this session. Re-run the simulation with a different character, ship, or tribe if
+        you want to see how this logic treats another target.
+      </p>
+    );
+  }
+
+  return (
+    <p className="ff-authorize-view__selection-summary text-xs text-[var(--brand-orange)]">
+      This logic has not been simulated yet. Simulate a turret above with yourself or a tribemate as
+      the candidate to see whether this contract would target them, before you authorize it.
+    </p>
+  );
+}
+
 function AuthorizeViewActions(input: {
   readonly isAuthorizing: boolean;
   readonly onAuthorize: () => void;
@@ -819,9 +1010,9 @@ function AuthorizeViewStatePanel({ deploymentState, errorMessage, onRetry, statu
   if (deploymentState === null) {
     return (
       <div className="ff-authorize-view__state-card">
-        <h2 className="ff-authorize-view__state-title">Deployment Required</h2>
+        <h2 className="ff-authorize-view__state-title">Contract Required</h2>
         <p className="ff-authorize-view__state-copy">
-          Deploy a published contract before you can fetch owned turrets for authorization.
+          Deploy a published contract, or add a shared logic package, before you can fetch owned turrets for authorization.
         </p>
       </div>
     );
@@ -874,6 +1065,8 @@ function AuthorizeViewPrimaryPanel({
   handleAuthorize,
   handleOpenSimulation,
   handleSelectionChange,
+  isSelectedContractShared,
+  isSelectedContractSimulated,
   listInstanceKey,
   selectedTurretIds,
   turretList,
@@ -891,6 +1084,7 @@ function AuthorizeViewPrimaryPanel({
           onSelectionChange={handleSelectionChange}
           turrets={turretList.turrets}
         />
+        {isSelectedContractShared ? <SharedContractSimulationNotice isSimulated={isSelectedContractSimulated} /> : null}
         <AuthorizeViewActions
           isAuthorizing={authorization.isAuthorizing}
           onAuthorize={handleAuthorize}
@@ -1110,6 +1304,8 @@ function AuthorizeView({ activeView = "authorize", deploymentState, onViewChange
                 handleAuthorize={model.handleAuthorize}
                 handleOpenSimulation={model.handleOpenSimulation}
                 handleSelectionChange={model.handleSelectionChange}
+                isSelectedContractShared={model.isSelectedContractShared}
+                isSelectedContractSimulated={model.isSelectedContractSimulated}
                 listInstanceKey={model.listInstanceKey}
                 selectedTurretIds={model.selectedTurretIds}
                 turretList={model.turretList}
@@ -1118,7 +1314,7 @@ function AuthorizeView({ activeView = "authorize", deploymentState, onViewChange
           </div>
 
           {activeView === "authorize" ? (
-            <AuthorizeDeploymentPanel contractSelector={model.contractSelector} deploymentState={model.selectedDeploymentState} walletAddress={model.account?.address} />
+            <AuthorizeDeploymentPanel contractSelector={model.contractSelector} deploymentState={model.selectedDeploymentState} sharedExtensions={model.sharedExtensions} walletAddress={model.account?.address} />
           ) : null}
         </div>
       </div>

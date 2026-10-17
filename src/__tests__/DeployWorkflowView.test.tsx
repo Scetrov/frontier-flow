@@ -82,6 +82,16 @@ function renderDeployWorkflowView(deployment: DeploymentState) {
   return render(<DeployWorkflowView deployment={deployment} />);
 }
 
+const deployedSnapshot = {
+  version: 1 as const,
+  packageId: "0xfeedface",
+  moduleName: "starter_contract",
+  targetId: "testnet:stillness" as const,
+  transactionDigest: "0xdigest",
+  deployedAt: new Date(0).toISOString(),
+  contractName: "Starter Contract",
+};
+
 describe("DeployWorkflowView", () => {
   beforeEach(() => {
     mockGetObject.mockReset();
@@ -201,5 +211,42 @@ describe("DeployWorkflowView", () => {
       expect(screen.queryByText(STILLNESS_WORLD_PACKAGE_ID)).not.toBeInTheDocument();
     });
     expect(screen.getByText("Checking published world package")).toBeVisible();
+  });
+});
+
+describe("DeployWorkflowView onboarding link", () => {
+  beforeEach(() => {
+    mockGetObject.mockResolvedValue({ object: { objectId: STILLNESS_WORLD_PACKAGE_ID, type: "package", version: "1", digest: "11111111111111111111111111111111" } });
+    mockUseTargetBalance.mockReturnValue(createBalanceQuery({ data: { totalBalance: "2500000000" } }));
+  });
+
+  it("offers a share action once a contract is published", () => {
+    render(<DeployWorkflowView deployment={createDeploymentState()} deploymentState={deployedSnapshot} />);
+
+    expect(screen.getByRole("button", { name: "Share this contract" })).toBeVisible();
+  });
+
+  it("copies a link that opens the published contract for somebody else", async () => {
+    const writeText = vi.fn<(text: string) => Promise<void>>(() => Promise.resolve());
+    Object.defineProperty(window.navigator, "clipboard", { configurable: true, value: { writeText } });
+
+    render(<DeployWorkflowView deployment={createDeploymentState()} deploymentState={deployedSnapshot} />);
+    screen.getByRole("button", { name: "Share this contract" }).click();
+
+    await waitFor(() => { expect(writeText).toHaveBeenCalledTimes(1); });
+    const link = new URL(writeText.mock.calls[0][0]);
+    expect(link.pathname).toBe("/onboard");
+    expect(link.searchParams.get("package")).toBe("0xfeedface");
+    expect(link.searchParams.get("module")).toBe("starter_contract");
+    expect(link.searchParams.get("network")).toBe("testnet:stillness");
+  });
+
+  it.each([
+    ["nothing has been published", null],
+    ["the deployment is local", { ...deployedSnapshot, targetId: "local" as const }],
+  ])("offers no share action when %s", (_label, snapshot) => {
+    render(<DeployWorkflowView deployment={createDeploymentState()} deploymentState={snapshot} />);
+
+    expect(screen.queryByRole("button", { name: "Share this contract" })).toBeNull();
   });
 });

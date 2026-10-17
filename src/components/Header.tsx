@@ -15,6 +15,7 @@ interface HeaderProps {
   readonly gitHubAccessState?: GitHubAccessState;
   readonly hasGitHubAuth?: boolean;
   readonly hasAuthorizeAccess?: boolean;
+  readonly hasSimulateAccess?: boolean;
   readonly isCompiling?: boolean;
   readonly onDetectedDeploymentTarget?: (targetId: Exclude<DeploymentTargetId, "local">) => void;
   readonly onGitHubSignIn?: () => void;
@@ -227,6 +228,7 @@ function buildViewNavigationItems(input: {
   readonly canAccessDeploy: boolean;
   readonly canAccessMove: boolean;
   readonly canAuthorize: boolean;
+  readonly canSimulate: boolean;
   readonly isCompiling: boolean;
   readonly onViewChange: (view: PrimaryView) => void;
 }): readonly ViewNavigationItem[] {
@@ -266,15 +268,15 @@ function buildViewNavigationItems(input: {
       icon: <AuthorizeNavIcon />,
       label: "Authorize",
       onClick: () => { input.onViewChange("authorize"); },
-      tooltip: !input.canAuthorize ? "Deploy a contract first" : undefined,
+      tooltip: !input.canAuthorize ? "Connect a wallet first" : undefined,
     },
     {
       active: input.activeView === "simulate",
-      disabled: !input.canAuthorize,
+      disabled: !input.canSimulate,
       icon: <SimulateNavIcon />,
       label: "Simulate",
       onClick: () => { input.onViewChange("simulate"); },
-      tooltip: !input.canAuthorize ? "Deploy a contract first" : undefined,
+      tooltip: !input.canSimulate ? "Deploy a contract or add a shared logic package first" : undefined,
     },
   ];
 }
@@ -284,6 +286,7 @@ function ViewNavigation({
   canAccessDeploy,
   canAccessMove,
   canAuthorize,
+  canSimulate,
   isCompiling,
   onViewChange,
 }: {
@@ -291,6 +294,7 @@ function ViewNavigation({
   readonly canAccessDeploy: boolean;
   readonly canAccessMove: boolean;
   readonly canAuthorize: boolean;
+  readonly canSimulate: boolean;
   readonly isCompiling: boolean;
   readonly onViewChange: (view: PrimaryView) => void;
 }) {
@@ -299,6 +303,7 @@ function ViewNavigation({
     canAccessDeploy,
     canAccessMove,
     canAuthorize,
+    canSimulate,
     isCompiling,
     onViewChange,
   });
@@ -358,6 +363,7 @@ function Header({
   },
   hasGitHubAuth = false,
   hasAuthorizeAccess = false,
+  hasSimulateAccess,
   isCompiling = false,
   onDetectedDeploymentTarget,
   onGitHubSignIn,
@@ -393,6 +399,7 @@ function Header({
             canAccessDeploy={canAccessDeploy}
             canAccessMove={canAccessMove}
             canAuthorize={hasAuthorizeAccess}
+            canSimulate={hasSimulateAccess === true}
             isCompiling={isCompiling}
             onViewChange={onViewChange}
           />
