@@ -24,6 +24,8 @@ export interface AuthorizationContractDiscoveryClient {
 
 interface LoadAuthorizationContractsInput {
   readonly fallbackDeploymentState: StoredDeploymentState | null;
+  /** Extensions published by other players that this wallet opted into. */
+  readonly sharedContracts?: readonly StoredDeploymentState[];
   readonly suiClient?: AuthorizationContractDiscoveryClient;
   readonly targetId: StoredDeploymentState["targetId"] | null;
   readonly walletAddress: string | null;
@@ -63,7 +65,8 @@ function createDiscoveryClient(targetId: StoredDeploymentState["targetId"], sign
 /** Discover authorization-capable package/module pairs from authoritative wallet-owned UpgradeCaps. */
 export async function loadAuthorizationContractsFromUpgradeCaps(input: LoadAuthorizationContractsInput): Promise<readonly StoredDeploymentState[]> {
   const { targetId, walletAddress } = input;
-  if (targetId === null || targetId === "local" || walletAddress === null) return mergeAuthorizationContracts([], input.fallbackDeploymentState);
+  const shared = input.sharedContracts ?? [];
+  if (targetId === null || targetId === "local" || walletAddress === null) return mergeAuthorizationContracts(shared, input.fallbackDeploymentState);
   const deadline = AbortSignal.timeout(15_000);
   const signal = input.signal ? AbortSignal.any([input.signal, deadline]) : deadline;
   signal.throwIfAborted();
@@ -86,16 +89,58 @@ export async function loadAuthorizationContractsFromUpgradeCaps(input: LoadAutho
       contractName: humanizeModuleName(moduleName),
     });
   }
-  return mergeAuthorizationContracts(discovered, input.fallbackDeploymentState);
+  return mergeAuthorizationContracts([...discovered, ...shared], input.fallbackDeploymentState);
 }
 
 function matchesFallbackContract(fallback: StoredDeploymentState | null, packageId: string, moduleName: string): fallback is StoredDeploymentState {
   return fallback !== null && requiredAddress(fallback.packageId) === packageId && fallback.moduleName === moduleName;
 }
 
+export interface ResolveSharedAuthorizationContractInput {
+  readonly packageId: string;
+  readonly targetId: Exclude<StoredDeploymentState["targetId"], "local">;
+  readonly suiClient?: AuthorizationContractDiscoveryClient;
+  readonly signal?: AbortSignal;
+}
+
+/**
+ * Resolve a package published by anyone into an authorizable contract entry.
+ * Authorization passes `<packageId>::<module>::TurretAuth` as a type argument,
+ * so the caller never needs to own the package or its UpgradeCap.
+ */
+export async function resolveSharedAuthorizationContract(
+  input: ResolveSharedAuthorizationContractInput,
+): Promise<StoredDeploymentState> {
+  const packageId = requiredAddress(input.packageId);
+  const deadline = AbortSignal.timeout(15_000);
+  const signal = input.signal ? AbortSignal.any([input.signal, deadline]) : deadline;
+  signal.throwIfAborted();
+  const client = input.suiClient ?? createDiscoveryClient(input.targetId, signal);
+  const response = await client.getPackage({ packageId }, { abort: signal, timeout: 8_000 }).response;
+  signal.throwIfAborted();
+  const moduleName = resolveAuthorizationModuleName(response, packageId);
+  if (moduleName === null) {
+    throw new Error("That package has no turret extension module (no TurretAuth witness was found).");
+  }
+
+  return {
+    version: 1,
+    packageId,
+    moduleName,
+    targetId: input.targetId,
+    transactionDigest: packageId,
+    deployedAt: UNKNOWN_DEPLOYED_AT,
+    contractName: humanizeModuleName(moduleName),
+  };
+}
+
 /** Select contracts for the current owner/target; never present earlier discovery as current. */
 export function useAuthorizationContracts(input: LoadAuthorizationContractsInput): UseAuthorizationContractsResult {
-  const fallbackContracts = useMemo(() => mergeAuthorizationContracts([], input.fallbackDeploymentState), [input.fallbackDeploymentState]);
+  const sharedContracts = input.sharedContracts;
+  const fallbackContracts = useMemo(
+    () => mergeAuthorizationContracts(sharedContracts ?? [], input.fallbackDeploymentState),
+    [input.fallbackDeploymentState, sharedContracts],
+  );
   const requestKey = input.targetId === null || input.targetId === "local" || input.walletAddress === null
     ? null : `${input.targetId}:${input.walletAddress}`;
   const [state, setState] = useState<AuthorizationContractDiscoveryState>({ contracts: fallbackContracts, errorMessage: null, requestKey: null });
@@ -104,6 +149,7 @@ export function useAuthorizationContracts(input: LoadAuthorizationContractsInput
     if (requestKey === null) return () => { controller.abort(); };
     void loadAuthorizationContractsFromUpgradeCaps({
       fallbackDeploymentState: input.fallbackDeploymentState,
+      sharedContracts,
       suiClient: input.suiClient,
       targetId: input.targetId,
       walletAddress: input.walletAddress,
@@ -118,7 +164,7 @@ export function useAuthorizationContracts(input: LoadAuthorizationContractsInput
       });
     });
     return () => { controller.abort(); };
-  }, [fallbackContracts, input.fallbackDeploymentState, input.suiClient, input.targetId, input.walletAddress, requestKey]);
+  }, [fallbackContracts, input.fallbackDeploymentState, input.suiClient, input.targetId, input.walletAddress, requestKey, sharedContracts]);
   if (requestKey === null) return { contracts: fallbackContracts, errorMessage: null, isLoading: false };
   if (state.requestKey !== requestKey) return { contracts: fallbackContracts, errorMessage: null, isLoading: true };
   return { contracts: state.contracts, errorMessage: state.errorMessage, isLoading: false };

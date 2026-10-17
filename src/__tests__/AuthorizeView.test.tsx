@@ -9,7 +9,10 @@ import type { UseAuthorizationResult } from "../hooks/useAuthorization";
 import type { UseTurretListResult } from "../hooks/useTurretList";
 import type { FetchOwnerCapInput } from "../utils/authorizationTransaction";
 import { createGrpcSimulationResponse } from "../test/turretSimulationMocks";
-import { emptyOwnedObjectsResponseBody } from "../test/suiGrpcMocks";
+import { emptyOwnedObjectsResponseBody, grpcResponse } from "../test/suiGrpcMocks";
+import { GrpcTypes } from "@mysten/sui/grpc";
+import { normalizeSuiAddress } from "@mysten/sui/utils";
+import { SHARED_EXTENSION_STORAGE_KEY } from "../utils/sharedExtensionStorage";
 import { encodeSimulationPriorityEntries } from "../utils/turretSimulationCodec";
 import { formatAddress } from "../utils/formatAddress";
 
@@ -679,5 +682,103 @@ describe("AuthorizeView", () => {
 
     expect(cancelAuthorization).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Authorize Selected" })).toBeDisabled();
+  });
+});
+
+describe("AuthorizeView shared extensions", () => {
+  const SHARED_PACKAGE = normalizeSuiAddress("0xfeedface");
+
+  function packageFetch(datatypes: readonly { readonly name: string; readonly module: string }[] = [{ name: "TurretAuth", module: "starter_contract" }]) {
+    return vi.fn((url: RequestInfo | URL) => {
+      const path = new URL(new Request(url).url).pathname;
+      if (path.endsWith("/ListOwnedObjects")) {
+        return Promise.resolve(new Response(emptyOwnedObjectsResponseBody(), { headers: { "content-type": "application/grpc-web-text" } }));
+      }
+      return Promise.resolve(grpcResponse(GrpcTypes.GetPackageResponse.toBinary(GrpcTypes.GetPackageResponse.create({
+        package: { storageId: SHARED_PACKAGE, originalId: SHARED_PACKAGE, version: 1n,
+          modules: [{ name: "starter_contract", datatypes: [...datatypes], functions: [{ name: "get_target_priority_list" }] }] },
+      }))));
+    });
+  }
+
+  function savedExtensions(): readonly { readonly packageId: string; readonly moduleName: string }[] {
+    return JSON.parse(window.localStorage.getItem(SHARED_EXTENSION_STORAGE_KEY) ?? "[]") as readonly { readonly packageId: string; readonly moduleName: string }[];
+  }
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    mockUseTurretList.mockReturnValue({ status: "success", turrets: [], errorMessage: null, refresh: vi.fn() });
+  });
+
+  afterEach(() => { window.localStorage.clear(); });
+
+  it("invites a turret owner with no deployment of their own to add shared logic", () => {
+    render(<AuthorizeView deploymentState={null} />);
+
+    expect(screen.getByLabelText("Shared logic (published by anyone)")).toBeVisible();
+    expect(screen.getByText("No contract selected. Add a shared logic package above, or deploy your own.")).toBeVisible();
+  });
+
+  it("warns that verification covers identity, not safety", () => {
+    render(<AuthorizeView deploymentState={null} />);
+
+    expect(screen.getByText(/Only authorize logic you trust\./)).toBeVisible();
+    expect(screen.getByText(/confirms its identity and TurretAuth declaration, not that its behavior is safe/)).toBeVisible();
+  });
+
+  it("names both routes to a contract rather than only deployment", () => {
+    render(<AuthorizeView deploymentState={null} />);
+
+    expect(screen.getByRole("heading", { name: "Contract Required" })).toBeVisible();
+    expect(screen.getByText("Deploy a published contract, or add a shared logic package, before you can fetch owned turrets for authorization.")).toBeVisible();
+  });
+
+  it.each([["nope"], ["feedface"], [`0x${"f".repeat(65)}`]])("refuses %s without reaching the network", (value) => {
+    const fetch = packageFetch();
+    vi.stubGlobal("fetch", fetch);
+    render(<AuthorizeView deploymentState={null} />);
+
+    fireEvent.change(screen.getByLabelText("Shared logic (published by anyone)"), { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(screen.getByText("Enter a package id such as 0xabc... (hex, 0x-prefixed).")).toBeVisible();
+    expect(fetch.mock.calls.filter(([url]) => new URL(new Request(url).url).pathname.endsWith("/GetPackage"))).toHaveLength(0);
+    expect(savedExtensions()).toEqual([]);
+  });
+
+  it("adds a package published by someone else and persists it without republishing", async () => {
+    vi.stubGlobal("fetch", packageFetch());
+    render(<AuthorizeView deploymentState={null} />);
+
+    fireEvent.change(screen.getByLabelText("Shared logic (published by anyone)"), { target: { value: "0xfeedface" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByRole("button", { name: "Remove Starter Contract" })).toBeVisible();
+    expect(screen.getByLabelText("Shared logic (published by anyone)")).toHaveValue("");
+    expect(savedExtensions()).toEqual([expect.objectContaining({ packageId: SHARED_PACKAGE, moduleName: "starter_contract" })]);
+  });
+
+  it("explains why a package without a turret module cannot be used", async () => {
+    vi.stubGlobal("fetch", packageFetch([]));
+    render(<AuthorizeView deploymentState={null} />);
+
+    fireEvent.change(screen.getByLabelText("Shared logic (published by anyone)"), { target: { value: "0xfeedface" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByText("That package has no turret extension module (no TurretAuth witness was found).")).toBeVisible();
+    expect(savedExtensions()).toEqual([]);
+  });
+
+  it("drops a saved shared extension on request", async () => {
+    window.localStorage.setItem(SHARED_EXTENSION_STORAGE_KEY, JSON.stringify([{
+      version: 1, packageId: SHARED_PACKAGE, moduleName: "starter_contract", targetId: "testnet:stillness",
+      transactionDigest: SHARED_PACKAGE, deployedAt: new Date(0).toISOString(), contractName: "Starter Contract",
+    }]));
+    render(<AuthorizeView deploymentState={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Starter Contract" }));
+
+    await waitFor(() => { expect(screen.queryByRole("button", { name: "Remove Starter Contract" })).toBeNull(); });
+    expect(savedExtensions()).toEqual([]);
   });
 });
