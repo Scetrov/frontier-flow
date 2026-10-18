@@ -16,6 +16,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  openspec-archived:
+    name: OpenSpec changes archived
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Reject unarchived OpenSpec changes
+        shell: bash
+        run: |
+          shopt -s nullglob dotglob
+          unarchived=()
+          for change in openspec/changes/*; do
+            if [[ "$change" != 'openspec/changes/archive' && -d "$change" ]]; then
+              unarchived+=("$change")
+            fi
+          done
+
+          if (( ${#unarchived[@]} > 0 )); then
+            echo '::error::Archive all OpenSpec changes before merging this PR (openspec archive <change-name> --yes).'
+            printf 'Unarchived change: %s\n' "${unarchived[@]}"
+            exit 1
+          fi
+
+          echo 'No unarchived OpenSpec changes found.'
+
   commit-messages:
     runs-on: ubuntu-latest
     steps:
