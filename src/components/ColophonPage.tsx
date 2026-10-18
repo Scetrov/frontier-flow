@@ -4,9 +4,10 @@ interface ProjectPackage {
 }
 
 const acknowledgements = [
-  "CCP Games",
+  "Fenris Creations",
   "Mysten Labs",
   "zktx.io",
+  "Ergod",
   "The Builders of EVE Frontier",
   "Everyone who tested Frontier Flow",
 ] as const;
