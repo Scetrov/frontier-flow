@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.13.0](https://github.com/Scetrov/frontier-flow/compare/v0.12.2...v0.13.0) (2026-10-18)
+
+
+### Features
+
+* **onboarding:** adopt a shared extension from a link ([#137](https://github.com/Scetrov/frontier-flow/issues/137)) ([605f88d](https://github.com/Scetrov/frontier-flow/commit/605f88dce6aba0d8d0896cba7af1cfc347d390a8))
+
 ## [0.12.2](https://github.com/Scetrov/frontier-flow/compare/v0.12.1...v0.12.2) (2026-10-14)
 
 
