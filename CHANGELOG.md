@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.13.1](https://github.com/Scetrov/frontier-flow/compare/v0.13.0...v0.13.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **world-package:** repin stillness and utopia to the live lineages ([#141](https://github.com/Scetrov/frontier-flow/issues/141)) ([ec824fe](https://github.com/Scetrov/frontier-flow/commit/ec824fe37b44a5865f37376e1bfa535585710b9f)), closes [#136](https://github.com/Scetrov/frontier-flow/issues/136)
+
 ## [0.13.0](https://github.com/Scetrov/frontier-flow/compare/v0.12.2...v0.13.0) (2026-10-18)
 
 
