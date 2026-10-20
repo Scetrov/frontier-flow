@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.13.2](https://github.com/Scetrov/frontier-flow/compare/v0.13.1...v0.13.2) (2026-10-20)
+
+
+### Bug Fixes
+
+* **world-api:** request complete tribe and ship collections ([#143](https://github.com/Scetrov/frontier-flow/issues/143)) ([763a53a](https://github.com/Scetrov/frontier-flow/commit/763a53ac90f0cb0ff20d2ee74769d458e478bdbe))
+
 ## [0.13.1](https://github.com/Scetrov/frontier-flow/compare/v0.13.0...v0.13.1) (2026-10-18)
 
 
