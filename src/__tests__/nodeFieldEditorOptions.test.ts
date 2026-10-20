@@ -10,8 +10,8 @@ describe("World API option cache", () => {
   it("maps collections and isolates cache entries by resolved URL", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = input instanceof Request ? input.url : String(input);
-      if (url === "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes") return Promise.resolve(response({ data: [{ id: 7, name: "Tribe", nameShort: "TRI" }, null] }));
-      if (url === "https://world-api-stillness.live.pub.evefrontier.com/v2/ships") return Promise.resolve(response({ data: [{ id: 8, name: "Ship", className: "Frigate" }] }));
+      if (url === "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes?limit=1000") return Promise.resolve(response({ data: [{ id: 7, name: "Tribe", nameShort: "TRI" }, null] }));
+      if (url === "https://world-api-stillness.live.pub.evefrontier.com/v2/ships?limit=1000") return Promise.resolve(response({ data: [{ id: 8, name: "Ship", className: "Frigate" }] }));
       return Promise.reject(new Error(`Unexpected URL ${url}`));
     });
     expect(await loadWorldApiOptions(buildWorldApiUrl("/v2/tribes"), buildTribeOption)).toEqual([{ value: 7, label: "Tribe", description: "TRI" }]);

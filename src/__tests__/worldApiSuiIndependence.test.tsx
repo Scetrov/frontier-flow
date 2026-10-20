@@ -29,7 +29,7 @@ vi.mock("../data/packageReferences", async () => ({
   shouldRefreshPublishedWorldPackageManifest: () => false,
 }));
 
-const TRIBE_URL = "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes";
+const TRIBE_URL = "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes?limit=1000";
 
 function tribeResponse(status: number) {
   return new Response(JSON.stringify({

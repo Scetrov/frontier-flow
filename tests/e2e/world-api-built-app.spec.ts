@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { buildWorldApiUrl } from "../../src/utils/worldApiClient";
 import { readProductionContentSecurityPolicy, startProductionCspApp } from "../fixtures/production-csp-app.mjs";
 import { SEEN_TUTORIAL_STORAGE_STATE, TUTORIAL_STORAGE_KEY } from "./fixtures/storage";
 
@@ -51,7 +52,7 @@ for (const [label, collection, key] of [
       page.on("request", (request) => { if (request.url().includes("world-api")) requests.push(request.url()); });
       await page.route(/https:\/\/.*(sui\.io|mystenlabs\.com).*\//, (route) => route.abort("failed"));
       await page.route("https://world-api*/**", async (route) => {
-        if (route.request().url() !== `${origin}/v2/${collection}`) throw new Error(`Unexpected World API URL ${route.request().url()}`);
+        if (route.request().url() !== buildWorldApiUrl(`/v2/${collection}`)) throw new Error(`Unexpected World API URL ${route.request().url()}`);
         if (fail) return route.abort("failed");
         return route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ data: [{ id: 7, name: "Verified choice", nameShort: "VC", className: "Frigate" }] }) });
       });
@@ -69,7 +70,7 @@ for (const [label, collection, key] of [
       await expect(page.getByRole("checkbox", { name: /Verified choice/ })).toBeChecked();
       await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
       await page.getByRole("region", { name: "Saved contract controls" }).getByRole("button", { name: "Save", exact: true }).click();
-      expect(requests).toEqual([`${origin}/v2/${collection}`, `${origin}/v2/${collection}`]);
+      expect(requests).toEqual([buildWorldApiUrl(`/v2/${collection}`), buildWorldApiUrl(`/v2/${collection}`)]);
       // Reload clears the in-memory option cache; failed lookup must not erase persisted IDs.
       fail = true;
       await page.reload();
@@ -81,7 +82,7 @@ for (const [label, collection, key] of [
       fail = false;
       await page.getByLabel(`Edit ${label}`).press("Enter");
       await expect(page.getByRole("checkbox", { name: /Verified choice/ })).toBeChecked();
-      expect(requests.every((url) => url === `${origin}/v2/${collection}`)).toBe(true);
+      expect(requests.every((url) => url === buildWorldApiUrl(`/v2/${collection}`))).toBe(true);
       expect(await page.evaluate(() => (window as unknown as { worldApiCspViolations: string[] }).worldApiCspViolations)).toEqual([]);
     } finally {
       await app.close();

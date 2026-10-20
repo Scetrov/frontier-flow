@@ -125,8 +125,8 @@ describe("turretSimulationReferenceData", () => {
       fetchFn,
       walletAddress: "0x1234",
     })).resolves.toEqual(expected);
-    expect(fetchFn).toHaveBeenNthCalledWith(1, "https://world-api-stillness.live.pub.evefrontier.com/v2/ships", { signal: undefined });
-    expect(fetchFn).toHaveBeenNthCalledWith(2, "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes", { signal: undefined });
+    expect(fetchFn).toHaveBeenNthCalledWith(1, "https://world-api-stillness.live.pub.evefrontier.com/v2/ships?limit=1000", { signal: undefined });
+    expect(fetchFn).toHaveBeenNthCalledWith(2, "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes?limit=1000", { signal: undefined });
   });
 
   it("returns partial data and an error message when one remote source fails", async () => {

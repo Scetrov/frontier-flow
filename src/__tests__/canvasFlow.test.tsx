@@ -321,7 +321,7 @@ describe("CanvasWorkspace", () => {
   it("opens a node field editor and saves live tribe selections", async () => {
     const fetchSpy = vi.spyOn(window, "fetch").mockImplementation((input) => {
       const url = input instanceof Request ? input.url : String(input);
-      if (url !== "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes") {
+      if (url !== "https://world-api-stillness.live.pub.evefrontier.com/v2/tribes?limit=1000") {
         return Promise.reject(new TypeError(`Unexpected or obsolete World API URL: ${url}`));
       }
       return Promise.resolve(new Response(
@@ -373,7 +373,7 @@ describe("CanvasWorkspace", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    expect(fetchSpy).toHaveBeenCalledWith("https://world-api-stillness.live.pub.evefrontier.com/v2/tribes", { signal: undefined });
+    expect(fetchSpy).toHaveBeenCalledWith("https://world-api-stillness.live.pub.evefrontier.com/v2/tribes?limit=1000", { signal: undefined });
     fireEvent.click(screen.getByLabelText("Edit List of Tribe"));
     expect(await screen.findByRole("checkbox")).toBeChecked();
     fetchSpy.mockRestore();
