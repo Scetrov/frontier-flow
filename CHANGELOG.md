@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.13.3](https://github.com/Scetrov/frontier-flow/compare/v0.13.2...v0.13.3) (2026-10-21)
+
+
+### Bug Fixes
+
+* **deps:** bump vite override to 8.1.6 to patch launch-editor vulns ([#147](https://github.com/Scetrov/frontier-flow/issues/147)) ([d3ae62e](https://github.com/Scetrov/frontier-flow/commit/d3ae62e7437d73236ccabd1e0d44d388a50d83ef))
+
 ## [0.13.2](https://github.com/Scetrov/frontier-flow/compare/v0.13.1...v0.13.2) (2026-10-20)
 
 
