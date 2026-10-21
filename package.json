@@ -92,6 +92,6 @@
     "postcss": "8.5.25",
     "picomatch": "4.0.4",
     "source-map-js": "1.2.2",
-    "vite": "8.0.16"
+    "vite": "8.1.6"
   }
 }
