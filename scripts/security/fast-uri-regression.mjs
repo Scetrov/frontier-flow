@@ -35,6 +35,43 @@ test("GHSA-qw65-cvwx-89v3: reject authority delimiters in ports", () => {
   assert.equal(uri.equal({ ...components }, { ...components }), false);
 });
 
+test("GHSA-333x-w4r6-6crp: suffix references cannot activate a scheme", () => {
+  for (const scheme of ["javascript", "data", "vbscript"]) {
+    // Exercise suffix serialization directly: a path colon must stay inert
+    // when the reference emits neither a scheme nor an authority.
+    const output = uri.serialize({ scheme: "custom", path: `${scheme}:payload` }, { reference: "suffix" });
+    assert.equal(output, `${scheme}%3Apayload`);
+  }
+});
+
+test("GHSA-w74x-v6f9-j3xg: encoded schemes are not decoded into live schemes", () => {
+  for (const input of [
+    "%6Aavascript:alert(1)", "%u006Aavascript:alert(1)",
+    "%64ata:text/plain,payload", "%u0064ata:text/plain,payload",
+    "%76bscript:payload", "%u0076bscript:payload",
+  ]) {
+    assert.match(uri.parse(input).error ?? "", /URI scheme is malformed/);
+    assert.equal(uri.normalize(input), input);
+    assert.throws(() => uri.resolve("https://safe.example/", input), /URI scheme is malformed/);
+  }
+  assert.equal(uri.equal("%68ttp://a/", "http://a/"), false);
+});
+
+test("GHSA-wjr9-j795-jxcr: malformed hosts are not silently canonicalized", () => {
+  for (const input of ["http://a@b@evil.example/", "http://exa\tmple.com/",
+    "http://exa\rmple.com/", "http://exa\nmple.com/"]) {
+    assert.ok(uri.parse(input).error, JSON.stringify(input));
+  }
+});
+
+test("GHSA-xhq7-xmqj-769h: normalization preserves relative destinations", () => {
+  const base = "https://safe.example/one/two/index.html";
+  for (const reference of ["a/../b", "../x", "../../x"]) {
+    assert.equal(uri.resolve(base, uri.normalize(reference)), uri.resolve(base, reference));
+  }
+  assert.equal(uri.equal("../x", "x"), false);
+});
+
 test("valid IPv6 hosts and numeric ports remain supported", () => {
   const parsed = uri.parse("http://[::1]:8124/app");
   assert.equal(parsed.error, undefined);
