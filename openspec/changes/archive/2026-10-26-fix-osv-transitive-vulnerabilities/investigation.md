@@ -27,6 +27,7 @@ Run `node --test scripts/security/fast-uri-regression.mjs scripts/security/undic
 - The crash-sensitive content-encoding test runs in a bounded child process. Undici 8.12.1 terminated it with an unhandled `ResponseContentLengthMismatchError`; 8.12.3 rejected fetch without terminating the process.
 - The suffix regression serializes an explicit component with an omitted scheme and a colon-bearing path. The advisory's string-normalization example is not a suitable patched-version assertion because malformed-input normalization can preserve the original string. The final serialization check was independently confirmed red against the published 3.1.8 package and green against 3.1.9.
 - Encoded-scheme resolution now throws a malformed-scheme error; the regression asserts that rejection rather than expecting a returned URL.
+- Following CodeQL alert 18 (`js/incomplete-url-scheme-check`), the encoded-scheme regression covers both percent and legacy `%u` encodings for `javascript:`, `data:`, and `vbscript:`. It asserts malformed-scheme parsing, exact preservation of the encoded input during normalization, and resolution rejection rather than a partial scheme blacklist. The updated check fails against 3.1.8 and passes against 3.1.9; no suppression was added.
 
 ## 1.3. Validation
 

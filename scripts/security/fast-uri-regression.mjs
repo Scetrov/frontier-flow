@@ -45,9 +45,13 @@ test("GHSA-333x-w4r6-6crp: suffix references cannot activate a scheme", () => {
 });
 
 test("GHSA-w74x-v6f9-j3xg: encoded schemes are not decoded into live schemes", () => {
-  for (const input of ["%6Aavascript:alert(1)", "%u006Aavascript:alert(1)"]) {
-    assert.notEqual(uri.parse(input).scheme, "javascript");
-    assert.ok(!uri.normalize(input).startsWith("javascript:"));
+  for (const input of [
+    "%6Aavascript:alert(1)", "%u006Aavascript:alert(1)",
+    "%64ata:text/plain,payload", "%u0064ata:text/plain,payload",
+    "%76bscript:payload", "%u0076bscript:payload",
+  ]) {
+    assert.match(uri.parse(input).error ?? "", /URI scheme is malformed/);
+    assert.equal(uri.normalize(input), input);
     assert.throws(() => uri.resolve("https://safe.example/", input), /URI scheme is malformed/);
   }
   assert.equal(uri.equal("%68ttp://a/", "http://a/"), false);
