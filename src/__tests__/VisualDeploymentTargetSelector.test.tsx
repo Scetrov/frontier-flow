@@ -17,7 +17,7 @@ describe("VisualDeploymentTargetSelector", () => {
   it("renders the supported network and server targets", () => {
     render(<VisualDeploymentTargetSelector onTargetChange={() => undefined} selectedTarget="local" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Target network/server" }));
+    fireEvent.click(screen.getByRole("button", { name: /Target network\/server/ }));
 
     const options = screen.getAllByRole("menuitemradio").map((option) => option.textContent);
 
@@ -29,7 +29,7 @@ describe("VisualDeploymentTargetSelector", () => {
 
     render(<VisualDeploymentTargetSelector onTargetChange={handleTargetChange} selectedTarget="local" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Target network/server" }));
+    fireEvent.click(screen.getByRole("button", { name: /Target network\/server/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "testnet:stillness" }));
 
     expect(handleTargetChange).toHaveBeenCalledWith("testnet:stillness");
@@ -49,7 +49,7 @@ describe("VisualDeploymentTargetSelector", () => {
 
     render(<VisualDeploymentTargetSelector onTargetChange={() => undefined} selectedTarget="local" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Target network/server" }));
+    fireEvent.click(screen.getByRole("button", { name: /Target network\/server/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Configure local environment" }));
 
     expect(screen.getByRole("dialog", { name: "Local deployment settings" })).toBeVisible();
@@ -77,7 +77,7 @@ describe("VisualDeploymentTargetSelector", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(<VisualDeploymentTargetSelector onTargetChange={() => undefined} selectedTarget="local" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Target network/server" }));
+    fireEvent.click(screen.getByRole("button", { name: /Target network\/server/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Configure local environment" }));
 
     fireEvent.change(screen.getByLabelText("RPC URL"), { target: { value: "not-a-url" } });
@@ -97,7 +97,7 @@ describe("VisualDeploymentTargetSelector", () => {
   it("includes the local settings action in arrow-key navigation", () => {
     render(<VisualDeploymentTargetSelector onTargetChange={() => undefined} selectedTarget="local" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Target network/server" }));
+    fireEvent.click(screen.getByRole("button", { name: /Target network\/server/ }));
 
     const localTarget = screen.getByRole("menuitemradio", { name: getLocalDeploymentTargetLabel() });
     expect(localTarget).toHaveFocus();

@@ -209,7 +209,7 @@ export default function GraphTransferDialog({
             <p className="ff-transfer-dialog__eyebrow">Graph Transfer</p>
             <h2 className="ff-transfer-dialog__title" id="ff-transfer-dialog-title">{getDialogTitle(state.mode)}</h2>
           </div>
-          <button aria-label="Dismiss graph transfer dialog" className="ff-transfer-dialog__dismiss" onClick={onDismiss} ref={dismissRef} type="button">
+          <button aria-label="Close graph transfer dialog" className="ff-transfer-dialog__dismiss" onClick={onDismiss} ref={dismissRef} type="button">
             <X aria-hidden="true" className="ff-contract-bar__button-icon" />
             <span className="ff-contract-bar__button-label">Close</span>
           </button>

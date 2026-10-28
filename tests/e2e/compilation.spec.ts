@@ -57,7 +57,7 @@ async function dropNode(page: Page, label: string, clientX: number, clientY: num
 }
 
 async function ensureCategoryExpanded(page: Page, categoryLabel: string) {
-  const toggle = page.getByRole("button", { name: `${categoryLabel} category` });
+  const toggle = page.getByRole("button", { name: new RegExp(`^${categoryLabel}`) });
   if ((await toggle.getAttribute("aria-expanded")) !== "true") {
     await toggle.click();
   }

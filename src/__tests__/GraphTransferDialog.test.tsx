@@ -38,7 +38,7 @@ describe("GraphTransferDialog", () => {
       />,
     );
 
-    const dismissButton = screen.getByRole("button", { name: "Dismiss graph transfer dialog" });
+    const dismissButton = screen.getByRole("button", { name: "Close graph transfer dialog" });
     expect(dismissButton).toHaveFocus();
 
     fireEvent.keyDown(window, { key: "Escape" });
@@ -103,7 +103,7 @@ describe("GraphTransferDialog", () => {
     expect(screen.getByText("Walrus blob id")).toBeInTheDocument();
     expect(screen.getByText("blob-123")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss graph transfer dialog" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close graph transfer dialog" }));
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });

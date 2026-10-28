@@ -28,7 +28,7 @@ export const TUTORIAL_STEPS: readonly TutorialStepDefinition[] = [
     ordinal: 1,
     message: "Select the network you want to deploy to here",
     tooltipPosition: "bottom",
-    resolveTarget: () => queryTarget('[aria-label="Target network/server"]'),
+    resolveTarget: () => queryTarget('[aria-label^="Target network/server"]'),
     requiresDrawerOpen: null,
     requiresDemoNode: false,
   },

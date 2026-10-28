@@ -2930,6 +2930,18 @@ body,
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ff-node-accent, var(--brand-orange)) 35%, transparent), 0 20px 35px rgba(3, 6, 10, 0.35);
 }
 
+/*
+ * Toolbox previews carry an explicit aria-label equal to the node title. The
+ * axe-core `label-content-name-mismatch` check (4.14+) requires that visible
+ * text inside a labelled widget is part of its accessible name, so the
+ * description and socket labels are omitted from the compact preview; they
+ * remain visible on canvas nodes.
+ */
+.ff-node--toolbox .ff-node__description,
+.ff-node--toolbox .ff-node__socket-label {
+  display: none;
+}
+
 *::-webkit-scrollbar {
   width: 0.8rem;
   height: 0.8rem;

@@ -20,7 +20,7 @@ function certificate() {
 }
 
 async function addList(page: Page, label: string) {
-  const category = page.getByRole("button", { name: "Static Data category" });
+  const category = page.getByRole("button", { name: /^Static Data/ });
   if (await category.getAttribute("aria-expanded") !== "true") await category.click();
   const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
   await page.getByRole("button", { name: label, exact: true }).dispatchEvent("dragstart", { dataTransfer });

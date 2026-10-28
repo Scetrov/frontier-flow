@@ -90,7 +90,7 @@ test("preserves shell landmarks and layout constraints across viewport widths", 
   await page.goto("/");
 
   const connectButton = page.getByRole("button", { name: "Connect" });
-  const savedContractControlsButton = page.getByRole("button", { name: "Open saved contract controls" });
+  const savedContractControlsButton = page.getByRole("button", { name: "Open saved contracts" });
 
   await pressTabUntilFocused(page, connectButton, 6);
   await pressTabUntilFocused(page, savedContractControlsButton, 4);

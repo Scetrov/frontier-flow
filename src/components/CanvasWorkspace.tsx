@@ -587,12 +587,12 @@ function ContractDrawer({
         </aside>
 
         <DrawerHandle
-          closeLabel="Close saved contract controls"
+          closeLabel="Close saved contracts"
           controls="saved-contract-controls"
           drawerLabel="Contracts"
           expanded={isContractPanelOpen}
           onClick={onTogglePanel}
-          openLabel="Open saved contract controls"
+          openLabel="Open saved contracts"
           side="left"
         />
       </div>
