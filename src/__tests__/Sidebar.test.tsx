@@ -129,13 +129,13 @@ describe("Sidebar", () => {
 
     const toolbox = screen.getByRole("complementary", { name: "Node toolbox" });
 
-    expect(within(toolbox).getByRole("button", { name: "Event Trigger category" })).toHaveAttribute(
+    expect(within(toolbox).getByRole("button", { name: /^Event Trigger/ })).toHaveAttribute(
       "aria-expanded",
       "true",
     );
 
     for (const label of ["Static Data", "Data Extractor", "Logic", "Action"]) {
-      expect(within(toolbox).getByRole("button", { name: `${label} category` })).toHaveAttribute(
+      expect(within(toolbox).getByRole("button", { name: new RegExp(`^${label}`) })).toHaveAttribute(
         "aria-expanded",
         "false",
       );
@@ -172,10 +172,10 @@ describe("Sidebar", () => {
 
     expect(screen.queryByRole("button", { name: /HP Ratio/ })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Data Extractor category" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Data Extractor/ }));
 
     expect(screen.getByRole("button", { name: /HP Ratio/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Data Extractor category" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /^Data Extractor/ })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("keeps static data and data extractor adjacent between event trigger and logic", () => {
@@ -195,10 +195,10 @@ describe("Sidebar", () => {
 
     expect(screen.getByRole("button", { name: /Entered \/ Attacked/ })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Event Trigger category" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Event Trigger/ }));
 
     expect(screen.queryByRole("button", { name: /Entered \/ Attacked/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Event Trigger category" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: /^Event Trigger/ })).toHaveAttribute("aria-expanded", "false");
   });
 
   it("shows the empty state when there are no definitions", () => {

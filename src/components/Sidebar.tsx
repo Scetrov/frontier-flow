@@ -131,7 +131,6 @@ function SidebarCategorySection({
     <section aria-label={group.label} className="space-y-3">
       <button
         aria-expanded={!isCollapsed}
-        aria-label={`${group.label} category`}
         className="flex w-full cursor-pointer items-center justify-between border-b border-[var(--ui-border-dark)] pb-2 text-left"
         onClick={onToggle}
         type="button"

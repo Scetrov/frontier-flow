@@ -15,7 +15,7 @@ async function dropNode(page: Page, label: string, clientX: number, clientY: num
 }
 
 async function ensureCategoryExpanded(page: Page, categoryLabel: string) {
-  const toggle = page.getByRole("button", { name: `${categoryLabel} category` });
+  const toggle = page.getByRole("button", { name: new RegExp(`^${categoryLabel}`) });
   if ((await toggle.getAttribute("aria-expanded")) !== "true") {
     await toggle.click();
   }
@@ -36,7 +36,7 @@ test("drops representative contract nodes onto the canvas", async ({ page, isMob
   await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/");
   const workspace = page.getByTestId("canvas-workspace");
-  await expect(page.getByRole("button", { name: "Data Extractor category" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Data Extractor/ })).toBeVisible();
 
   await dropNode(page, "Entered / Attacked", 220, 180);
   await ensureCategoryExpanded(page, "Data Extractor");
@@ -57,7 +57,7 @@ test("authors primitive targeting rules without retired bundled nodes in the too
 
   await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Logic category" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Logic/ })).toBeVisible();
 
   await ensureCategoryExpanded(page, "Logic");
 

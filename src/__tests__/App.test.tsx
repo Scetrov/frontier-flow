@@ -179,7 +179,7 @@ describe("App", () => {
   it("renders the deployment target selector in the visual workspace and persists changes", async () => {
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Target network/server" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Target network\/server/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "testnet:utopia" }));
 
     expect(JSON.parse(window.localStorage.getItem(UI_STATE_STORAGE_KEY) ?? "{}")).toMatchObject({

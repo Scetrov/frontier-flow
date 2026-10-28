@@ -130,19 +130,19 @@ describe("CanvasWorkspace", () => {
     render(<CanvasWorkspace />);
 
     const controls = screen.getByRole("region", { name: "Saved contract controls" });
-    const toggle = screen.getByRole("button", { name: "Close saved contract controls" });
+    const toggle = screen.getByRole("button", { name: "Close saved contracts" });
     expect(within(toggle).getByText("Contracts")).toBeInTheDocument();
     expect(toggle).toHaveClass("ff-canvas__drawer-handle");
 
     fireEvent.click(toggle);
 
     expect(controls).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByRole("button", { name: "Open saved contract controls" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open saved contracts" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open saved contract controls" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open saved contracts" }));
 
     expect(controls).toHaveAttribute("aria-hidden", "false");
-    expect(screen.getByRole("button", { name: "Close saved contract controls" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close saved contracts" })).toBeInTheDocument();
   });
 
   it("restores the saved contract drawer state from local storage on mount", () => {
@@ -159,13 +159,13 @@ describe("CanvasWorkspace", () => {
     render(<CanvasWorkspace />);
 
     expect(document.getElementById("saved-contract-controls")).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByRole("button", { name: "Open saved contract controls" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open saved contracts" })).toBeInTheDocument();
   });
 
   it("persists the saved contract drawer state when toggled", () => {
     render(<CanvasWorkspace />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Close saved contract controls" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close saved contracts" }));
 
     expect(JSON.parse(window.localStorage.getItem(UI_STATE_STORAGE_KEY) ?? "{}")).toMatchObject({
       isContractPanelOpen: false,
@@ -182,7 +182,7 @@ describe("CanvasWorkspace", () => {
 
     expect(screen.getByRole("dialog", { name: "Import YAML" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss graph transfer dialog" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close graph transfer dialog" }));
 
     expect(screen.queryByRole("dialog", { name: "Import YAML" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Contract name")).toHaveValue("Draft Name");

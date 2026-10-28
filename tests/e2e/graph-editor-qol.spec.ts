@@ -13,7 +13,7 @@ async function dropNode(page: Page, label: string, clientX: number, clientY: num
 }
 
 async function ensureCategoryExpanded(page: Page, categoryLabel: string) {
-  const toggle = page.getByRole("button", { name: `${categoryLabel} category` });
+  const toggle = page.getByRole("button", { name: new RegExp(`^${categoryLabel}`) });
   if ((await toggle.getAttribute("aria-expanded")) !== "true") {
     await toggle.click();
   }
@@ -25,7 +25,7 @@ test("supports graph-editor QoL deletion and taxonomy flows", async ({ page, isM
   await clearStorageAndMarkTutorialSeen(page);
   await page.goto("/");
   const toolbox = page.locator("#node-toolbox");
-  await expect(page.getByRole("button", { name: "Data Extractor category" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Data Extractor/ })).toBeVisible();
 
   expect(await toolbox.getByRole("heading", { level: 3 }).allTextContents()).toEqual([
     "Event Trigger",
@@ -35,7 +35,7 @@ test("supports graph-editor QoL deletion and taxonomy flows", async ({ page, isM
     "Action",
   ]);
 
-  await page.getByRole("button", { name: "Close saved contract controls" }).click();
+  await page.getByRole("button", { name: "Close saved contracts" }).click();
 
   await dropNode(page, "Entered / Attacked", 240, 180);
   const node = page.locator(".ff-node").filter({ has: page.getByText("Entered / Attacked", { exact: true }) }).first();

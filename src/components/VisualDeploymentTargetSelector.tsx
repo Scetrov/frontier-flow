@@ -157,7 +157,7 @@ function TargetSelectorTrigger({ buttonRef, menuId, menuOpen, onCloseMenu, onOpe
         aria-controls={menuId}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
-        aria-label="Target network/server"
+        aria-label={`Target network/server: ${selectedTargetLabel}`}
         className="ff-visual-target-selector__trigger"
         onClick={() => {
           if (menuOpen) {
