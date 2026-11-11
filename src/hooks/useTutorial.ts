@@ -204,11 +204,11 @@ function useTutorialTargetMeasurement(input: {
       onInsertDemoNode();
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
     const timeoutIds: number[] = [];
 
     const measureTarget = (attempt: number) => {
-      if (cancelled) {
+      if (controller.signal.aborted) {
         return;
       }
 
@@ -223,7 +223,7 @@ function useTutorialTargetMeasurement(input: {
 
       if (attempt >= MAX_RETRIES - 1) {
         timeoutIds.push(window.setTimeout(() => {
-          if (!cancelled) {
+          if (!controller.signal.aborted) {
             skipStepRef.current();
           }
         }, RETRY_DELAY_MS));
@@ -245,7 +245,7 @@ function useTutorialTargetMeasurement(input: {
     }
 
     return () => {
-      cancelled = true;
+      controller.abort();
       for (const timeoutId of timeoutIds) {
         window.clearTimeout(timeoutId);
       }

@@ -171,6 +171,40 @@ describe("useTutorial", () => {
     expect(onSetDrawerVisibility).toHaveBeenCalledWith("contract-panel", true);
   });
 
+  it.each(["dismiss", "unmount"] as const)("cancels pending target retries on %s", (cleanup) => {
+    const { result, unmount } = renderTutorialHook();
+
+    act(() => {
+      result.current.start();
+    });
+
+    expect(result.current.currentStep?.id).toBe("network-selector");
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+    act(() => {
+      if (cleanup === "unmount") {
+        unmount();
+      } else {
+        result.current.dismiss();
+      }
+    });
+
+    const networkSelector = document.createElement("button");
+    networkSelector.setAttribute("aria-label", "Target network/server");
+    document.body.append(networkSelector);
+
+    act(() => {
+      vi.advanceTimersByTime(SKIPPED_STEP_TIMEOUT_MS);
+    });
+
+    expect(networkSelector).not.toHaveClass("ff-tutorial__target");
+    expect(vi.getTimerCount()).toBe(0);
+    if (cleanup === "dismiss") {
+      expect(result.current.isActive).toBe(false);
+      expect(result.current.targetRect).toBeNull();
+    }
+  });
+
   it("waits for drawer transitions to settle before measuring drawer-backed steps", () => {
     const networkSelector = document.createElement("button");
     networkSelector.setAttribute("aria-label", "Target network/server");
