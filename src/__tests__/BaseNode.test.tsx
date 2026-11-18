@@ -129,8 +129,10 @@ describe("BaseNode", () => {
 
   it("uses the header accent color for the selected border highlight", () => {
     const { container } = renderSelectedBaseNode({ color: "var(--socket-value)" });
+    const nodeElement = container.firstElementChild;
 
-    expect(container.firstElementChild).toHaveStyle({ "--ff-node-accent": "var(--socket-value)" });
+    expect(nodeElement).toBeInstanceOf(HTMLElement);
+    expect((nodeElement as HTMLElement).style.getPropertyValue("--ff-node-accent")).toBe("var(--socket-value)");
   });
 
   it("renders deprecation copy from the node status", () => {
