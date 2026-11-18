@@ -97,6 +97,7 @@ test("supports keyboard navigation, passes focused accessibility auditing, and k
   await prepareTutorialPage(page);
 
   const dialog = await expectTutorialStep(page, 1);
+  await expect(dialog).toHaveCSS("opacity", "1");
   await expectNoAccessibilityViolations(page, { include: [".ff-tutorial__panel"] });
 
   await page.keyboard.press("Tab");
