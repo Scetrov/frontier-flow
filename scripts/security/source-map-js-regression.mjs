@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const version = "1.2.2";
 const integrity = "sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==";
-const consumers = ["@tailwindcss/node", "css-tree", "magicast", "postcss"];
+const consumers = ["@tailwindcss/node", "magicast", "postcss"];
 
 function resolvedPackage() {
   const manifest = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
