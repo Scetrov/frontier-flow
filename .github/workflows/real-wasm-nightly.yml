@@ -30,6 +30,7 @@ jobs:
       - name: Run real WASM compiler integration
         env:
           CI: true
+          GITHUB_TOKEN: ${{ github.token }}
         run: bun run test:real-wasm
 
       - name: Upload integration check artifacts

@@ -441,7 +441,8 @@ describe("compileMove", () => {
     );
   });
 
-  it("passes bundled dependency source files to the WASM package builder", async () => {
+  it("passes bundled dependency source files and authenticates both WASM builds", async () => {
+    setMoveBuilderGitHubAccessTokenProvider(() => "test-token");
     const shimModuleBytes = new Uint8Array([9, 9, 9]);
     const rootModuleBytes = new Uint8Array([7, 7, 7]);
     const artifact = {
@@ -479,11 +480,13 @@ describe("compileMove", () => {
         "deps/world/sources/in_game_id.move": "module world::in_game_id;",
         "deps/world/sources/turret.move": "module world::turret;",
       },
+      githubToken: "test-token",
       silenceWarnings: false,
       network: "testnet",
     }));
     expect(mockBuildMovePackage).toHaveBeenNthCalledWith(2, {
       files: createStandaloneWorldShimPackageFiles(),
+      githubToken: "test-token",
       silenceWarnings: true,
       network: "testnet",
     });
