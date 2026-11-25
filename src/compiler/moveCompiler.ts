@@ -235,7 +235,10 @@ async function ensureCompilerInitialised(): Promise<MoveCompilerModule> {
   return compilerModule;
 }
 
-async function getWorldShimModuleSet(compilerModule: MoveCompilerModule): Promise<ReadonlySet<string>> {
+async function getWorldShimModuleSet(
+  compilerModule: MoveCompilerModule,
+  githubToken: string | undefined,
+): Promise<ReadonlySet<string>> {
   if (worldShimModuleSetFailure !== null) {
     const retryAgeMs = Date.now() - worldShimModuleSetFailure.failedAt;
     if (retryAgeMs < WORLD_SHIM_FAILURE_RETRY_MS) {
@@ -248,6 +251,7 @@ async function getWorldShimModuleSet(compilerModule: MoveCompilerModule): Promis
   if (worldShimModuleSetPromise === null) {
     worldShimModuleSetPromise = compilerModule.dumpMovePackage({
       files: createStandaloneWorldShimPackageFiles(),
+      githubToken,
       silenceWarnings: true,
       network: "testnet",
     }).then((result) => {
@@ -461,7 +465,7 @@ export async function compileMove(
       network: "testnet",
     });
     const bundledDependencyModulesPromise = artifactBundlesWorldShim(artifact)
-      ? getWorldShimModuleSet(compilerModule)
+      ? getWorldShimModuleSet(compilerModule, githubToken)
       : Promise.resolve<ReadonlySet<string> | null>(null);
     const [result, bundledDependencyModules] = await Promise.all([buildPromise, bundledDependencyModulesPromise]);
 

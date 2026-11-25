@@ -1,3 +1,5 @@
+import { env } from "node:process";
+import { setMoveBuilderGitHubAccessTokenProvider } from "../src/compiler/moveBuilderLite";
 import { compilePipeline } from "../src/compiler/pipeline";
 import { compileableSmartTurretExtensions, type GraphFixture } from "../src/__fixtures__/graphs/smartTurretExtensionFixtures";
 import { createFlowNodeData, getNodeDefinition } from "../src/data/node-definitions";
@@ -32,6 +34,11 @@ function createFlowFromFixture(fixture: GraphFixture): { readonly nodes: FlowNod
 }
 
 async function main(): Promise<void> {
+  const githubToken = env.GITHUB_TOKEN;
+  if (githubToken) {
+    setMoveBuilderGitHubAccessTokenProvider(() => githubToken);
+  }
+
   for (const extension of compileableSmartTurretExtensions) {
     const fixture = extension.fixture;
     const flow = createFlowFromFixture(fixture);
