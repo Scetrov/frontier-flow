@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Releases are managed by [release-please](https://github.com/googleapis/release-please) from Conventional Commit messages.
 
+## [0.13.5](https://github.com/Scetrov/frontier-flow/compare/v0.13.4...v0.13.5) (2026-11-25)
+
+
+### Bug Fixes
+
+* **ci:** authenticate real WASM dependency fetches ([#164](https://github.com/Scetrov/frontier-flow/issues/164)) ([ab4c2d9](https://github.com/Scetrov/frontier-flow/commit/ab4c2d9552c81270b794233e0339e63fb506e695))
+
 ## [0.13.4](https://github.com/Scetrov/frontier-flow/compare/v0.13.3...v0.13.4) (2026-10-26)
 
 
